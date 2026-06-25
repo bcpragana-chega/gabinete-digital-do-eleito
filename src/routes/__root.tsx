@@ -86,6 +86,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "author", content: "Tribuno" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { property: "og:title", content: "Tribuno — Gabinete digital para eleitos locais" },
+      { name: "twitter:title", content: "Tribuno — Gabinete digital para eleitos locais" },
+      { name: "description", content: "Gabinete Digital provides elected officials in Portugal with a professional, organized platform to manage assembly information and documents." },
+      { property: "og:description", content: "Gabinete Digital provides elected officials in Portugal with a professional, organized platform to manage assembly information and documents." },
+      { name: "twitter:description", content: "Gabinete Digital provides elected officials in Portugal with a professional, organized platform to manage assembly information and documents." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ce3f9e1f-02aa-4a46-a59e-7d320f501c9f/id-preview-09b3d9bf--9ba95df2-3e44-4080-bc8e-f8a5f3eb0d85.lovable.app-1782391277988.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ce3f9e1f-02aa-4a46-a59e-7d320f501c9f/id-preview-09b3d9bf--9ba95df2-3e44-4080-bc8e-f8a5f3eb0d85.lovable.app-1782391277988.png" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
