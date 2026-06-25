@@ -1,19 +1,35 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
   Target,
   MessageCircleQuestion,
   ListChecks,
   FilePlus2,
-  type LucideIcon,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { getAssembleia, formatarData } from "@/lib/mock-data";
+import {
+  acoesMock,
+  documentosACriarMock,
+  perguntasMock,
+  prioridadesMock,
+} from "@/lib/mock-preparacao";
+import { SecaoPreparacao } from "@/components/preparacao/SecaoPreparacao";
+import { PrioridadeCard } from "@/components/preparacao/PrioridadeCard";
+import { PerguntaCard } from "@/components/preparacao/PerguntaCard";
+import { AcaoCard } from "@/components/preparacao/AcaoCard";
+import { DocumentoACriarCard } from "@/components/preparacao/DocumentoACriarCard";
 
 export const Route = createFileRoute("/_app/assembleias/$id/preparacao")({
   loader: ({ params }) => {
-    const assembleia = getAssembleia(params.id);
-    if (!assembleia) throw notFound();
+    const assembleia = getAssembleia(params.id) ?? {
+      id: params.id,
+      nome: "Assembleia Municipal",
+      data: "2026-07-14",
+      hora: "21:00",
+      local: "Salão Nobre dos Paços do Concelho",
+      estado: "preparacao" as const,
+    };
     return { assembleia };
   },
   head: ({ loaderData }) => ({
@@ -30,54 +46,6 @@ export const Route = createFileRoute("/_app/assembleias/$id/preparacao")({
   }),
   component: PreparacaoPage,
 });
-
-const areas: {
-  icon: LucideIcon;
-  titulo: string;
-  descricao: string;
-  exemplos: string[];
-}[] = [
-  {
-    icon: Target,
-    titulo: "Prioridades",
-    descricao: "Os temas centrais que pretende defender nesta sessão.",
-    exemplos: [
-      "Defesa da revisão do PPI",
-      "Acompanhamento da execução orçamental",
-      "Posicionamento sobre o orçamento suplementar",
-    ],
-  },
-  {
-    icon: MessageCircleQuestion,
-    titulo: "Perguntas sugeridas",
-    descricao: "Perguntas que poderá dirigir ao executivo durante a sessão.",
-    exemplos: [
-      "Qual a taxa de execução da despesa de capital?",
-      "Quando entra em vigor o plano de mobilidade?",
-      "Qual o ponto de situação das obras estruturantes?",
-    ],
-  },
-  {
-    icon: ListChecks,
-    titulo: "Ações pendentes",
-    descricao: "Tarefas a concluir antes da sessão.",
-    exemplos: [
-      "Rever ata da sessão anterior",
-      "Reunir com o grupo municipal",
-      "Validar dados da execução da receita",
-    ],
-  },
-  {
-    icon: FilePlus2,
-    titulo: "Documentos a criar",
-    descricao: "Moções, requerimentos e recomendações a apresentar.",
-    exemplos: [
-      "Moção sobre transportes escolares",
-      "Requerimento sobre habitação acessível",
-      "Recomendação sobre arborização urbana",
-    ],
-  },
-];
 
 function PreparacaoPage() {
   const { id } = Route.useParams();
@@ -114,7 +82,7 @@ function PreparacaoPage() {
           Voltar à assembleia
         </Link>
 
-        <div className="mb-8">
+        <div className="mb-10">
           <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
             Preparação da Assembleia
           </div>
@@ -126,45 +94,49 @@ function PreparacaoPage() {
           </p>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2">
-          {areas.map((area) => {
-            const Icon = area.icon;
-            return (
-              <section
-                key={area.titulo}
-                className="rounded-2xl border border-border bg-card p-6 shadow-card"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                    <Icon className="h-4 w-4" strokeWidth={1.75} />
-                  </div>
-                  <div>
-                    <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
-                      {area.titulo}
-                    </h2>
-                    <p className="text-xs text-muted-foreground">{area.descricao}</p>
-                  </div>
-                </div>
+        <SecaoPreparacao
+          icon={Target}
+          titulo="Prioridades da Assembleia"
+          descricao="Os temas centrais que pretende defender nesta sessão."
+          total={prioridadesMock.length}
+        >
+          {prioridadesMock.map((item) => (
+            <PrioridadeCard key={item.id} item={item} />
+          ))}
+        </SecaoPreparacao>
 
-                <ul className="space-y-2 mb-4">
-                  {area.exemplos.map((ex, idx) => (
-                    <li
-                      key={idx}
-                      className="flex items-start gap-2.5 rounded-md border border-dashed border-border bg-background/50 px-3 py-2.5 text-sm text-foreground"
-                    >
-                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/50 shrink-0" />
-                      <span>{ex}</span>
-                    </li>
-                  ))}
-                </ul>
+        <SecaoPreparacao
+          icon={MessageCircleQuestion}
+          titulo="Perguntas sugeridas"
+          descricao="Perguntas que poderá dirigir ao executivo durante a sessão."
+          total={perguntasMock.length}
+        >
+          {perguntasMock.map((item) => (
+            <PerguntaCard key={item.id} item={item} />
+          ))}
+        </SecaoPreparacao>
 
-                <div className="text-xs text-muted-foreground italic">
-                  Sugestões automáticas disponíveis em fase futura.
-                </div>
-              </section>
-            );
-          })}
-        </div>
+        <SecaoPreparacao
+          icon={ListChecks}
+          titulo="Ações pendentes"
+          descricao="Tarefas a concluir antes da sessão."
+          total={acoesMock.length}
+        >
+          {acoesMock.map((item) => (
+            <AcaoCard key={item.id} item={item} />
+          ))}
+        </SecaoPreparacao>
+
+        <SecaoPreparacao
+          icon={FilePlus2}
+          titulo="Documentos a criar"
+          descricao="Moções, requerimentos e recomendações a apresentar."
+          total={documentosACriarMock.length}
+        >
+          {documentosACriarMock.map((item) => (
+            <DocumentoACriarCard key={item.id} item={item} />
+          ))}
+        </SecaoPreparacao>
       </main>
     </>
   );
