@@ -9,27 +9,216 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppHistoricoRouteImport } from './routes/_app.historico'
+import { Route as AppDefinicoesRouteImport } from './routes/_app.definicoes'
+import { Route as AppAssembleiasIndexRouteImport } from './routes/_app.assembleias.index'
+import { Route as AppAssembleiasIdRouteImport } from './routes/_app.assembleias.$id'
+import { Route as AppAssembleiasIdPreparacaoRouteImport } from './routes/_app.assembleias.$id.preparacao'
+import { Route as AppAssembleiasIdDocumentosDocIdRouteImport } from './routes/_app.assembleias.$id.documentos.$docId'
 
-export interface FileRoutesByFullPath {}
-export interface FileRoutesByTo {}
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHistoricoRoute = AppHistoricoRouteImport.update({
+  id: '/historico',
+  path: '/historico',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDefinicoesRoute = AppDefinicoesRouteImport.update({
+  id: '/definicoes',
+  path: '/definicoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssembleiasIndexRoute = AppAssembleiasIndexRouteImport.update({
+  id: '/assembleias/',
+  path: '/assembleias/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssembleiasIdRoute = AppAssembleiasIdRouteImport.update({
+  id: '/assembleias/$id',
+  path: '/assembleias/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssembleiasIdPreparacaoRoute =
+  AppAssembleiasIdPreparacaoRouteImport.update({
+    id: '/preparacao',
+    path: '/preparacao',
+    getParentRoute: () => AppAssembleiasIdRoute,
+  } as any)
+const AppAssembleiasIdDocumentosDocIdRoute =
+  AppAssembleiasIdDocumentosDocIdRouteImport.update({
+    id: '/documentos/$docId',
+    path: '/documentos/$docId',
+    getParentRoute: () => AppAssembleiasIdRoute,
+  } as any)
+
+export interface FileRoutesByFullPath {
+  '/': typeof AppIndexRoute
+  '/definicoes': typeof AppDefinicoesRoute
+  '/historico': typeof AppHistoricoRoute
+  '/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
+  '/assembleias/': typeof AppAssembleiasIndexRoute
+  '/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRoute
+  '/assembleias/$id/documentos/$docId': typeof AppAssembleiasIdDocumentosDocIdRoute
+}
+export interface FileRoutesByTo {
+  '/definicoes': typeof AppDefinicoesRoute
+  '/historico': typeof AppHistoricoRoute
+  '/': typeof AppIndexRoute
+  '/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
+  '/assembleias': typeof AppAssembleiasIndexRoute
+  '/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRoute
+  '/assembleias/$id/documentos/$docId': typeof AppAssembleiasIdDocumentosDocIdRoute
+}
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/_app': typeof AppRouteWithChildren
+  '/_app/definicoes': typeof AppDefinicoesRoute
+  '/_app/historico': typeof AppHistoricoRoute
+  '/_app/': typeof AppIndexRoute
+  '/_app/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
+  '/_app/assembleias/': typeof AppAssembleiasIndexRoute
+  '/_app/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRoute
+  '/_app/assembleias/$id/documentos/$docId': typeof AppAssembleiasIdDocumentosDocIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: never
+  fullPaths:
+    | '/'
+    | '/definicoes'
+    | '/historico'
+    | '/assembleias/$id'
+    | '/assembleias/'
+    | '/assembleias/$id/preparacao'
+    | '/assembleias/$id/documentos/$docId'
   fileRoutesByTo: FileRoutesByTo
-  to: never
-  id: '__root__'
+  to:
+    | '/definicoes'
+    | '/historico'
+    | '/'
+    | '/assembleias/$id'
+    | '/assembleias'
+    | '/assembleias/$id/preparacao'
+    | '/assembleias/$id/documentos/$docId'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/_app/definicoes'
+    | '/_app/historico'
+    | '/_app/'
+    | '/_app/assembleias/$id'
+    | '/_app/assembleias/'
+    | '/_app/assembleias/$id/preparacao'
+    | '/_app/assembleias/$id/documentos/$docId'
   fileRoutesById: FileRoutesById
 }
-export interface RootRouteChildren {}
-
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {}
+export interface RootRouteChildren {
+  AppRoute: typeof AppRouteWithChildren
 }
 
-const rootRouteChildren: RootRouteChildren = {}
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/historico': {
+      id: '/_app/historico'
+      path: '/historico'
+      fullPath: '/historico'
+      preLoaderRoute: typeof AppHistoricoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/definicoes': {
+      id: '/_app/definicoes'
+      path: '/definicoes'
+      fullPath: '/definicoes'
+      preLoaderRoute: typeof AppDefinicoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/assembleias/': {
+      id: '/_app/assembleias/'
+      path: '/assembleias'
+      fullPath: '/assembleias/'
+      preLoaderRoute: typeof AppAssembleiasIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/assembleias/$id': {
+      id: '/_app/assembleias/$id'
+      path: '/assembleias/$id'
+      fullPath: '/assembleias/$id'
+      preLoaderRoute: typeof AppAssembleiasIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/assembleias/$id/preparacao': {
+      id: '/_app/assembleias/$id/preparacao'
+      path: '/preparacao'
+      fullPath: '/assembleias/$id/preparacao'
+      preLoaderRoute: typeof AppAssembleiasIdPreparacaoRouteImport
+      parentRoute: typeof AppAssembleiasIdRoute
+    }
+    '/_app/assembleias/$id/documentos/$docId': {
+      id: '/_app/assembleias/$id/documentos/$docId'
+      path: '/documentos/$docId'
+      fullPath: '/assembleias/$id/documentos/$docId'
+      preLoaderRoute: typeof AppAssembleiasIdDocumentosDocIdRouteImport
+      parentRoute: typeof AppAssembleiasIdRoute
+    }
+  }
+}
+
+interface AppAssembleiasIdRouteChildren {
+  AppAssembleiasIdPreparacaoRoute: typeof AppAssembleiasIdPreparacaoRoute
+  AppAssembleiasIdDocumentosDocIdRoute: typeof AppAssembleiasIdDocumentosDocIdRoute
+}
+
+const AppAssembleiasIdRouteChildren: AppAssembleiasIdRouteChildren = {
+  AppAssembleiasIdPreparacaoRoute: AppAssembleiasIdPreparacaoRoute,
+  AppAssembleiasIdDocumentosDocIdRoute: AppAssembleiasIdDocumentosDocIdRoute,
+}
+
+const AppAssembleiasIdRouteWithChildren =
+  AppAssembleiasIdRoute._addFileChildren(AppAssembleiasIdRouteChildren)
+
+interface AppRouteChildren {
+  AppDefinicoesRoute: typeof AppDefinicoesRoute
+  AppHistoricoRoute: typeof AppHistoricoRoute
+  AppIndexRoute: typeof AppIndexRoute
+  AppAssembleiasIdRoute: typeof AppAssembleiasIdRouteWithChildren
+  AppAssembleiasIndexRoute: typeof AppAssembleiasIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppDefinicoesRoute: AppDefinicoesRoute,
+  AppHistoricoRoute: AppHistoricoRoute,
+  AppIndexRoute: AppIndexRoute,
+  AppAssembleiasIdRoute: AppAssembleiasIdRouteWithChildren,
+  AppAssembleiasIndexRoute: AppAssembleiasIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+const rootRouteChildren: RootRouteChildren = {
+  AppRoute: AppRouteWithChildren,
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
