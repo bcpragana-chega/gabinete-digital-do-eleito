@@ -8,18 +8,20 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
-import { getAssembleia, getDocumento, formatarData } from "@/lib/mock-data";
+import { DocumentoEstadoBadge } from "@/components/documentos/DocumentoEstadoBadge";
+import { DocumentoPreview } from "@/components/documentos/DocumentoPreview";
+import { getAssembleia, formatarData } from "@/lib/mock-data";
+import { useDocumento } from "@/lib/documentos-store";
 
 export const Route = createFileRoute("/_app/assembleias/$id/documentos/$docId")({
   loader: ({ params }) => {
     const assembleia = getAssembleia(params.id);
-    const documento = getDocumento(params.docId);
-    if (!assembleia || !documento) throw notFound();
-    return { assembleia, documento };
+    if (!assembleia) throw notFound();
+    return { assembleia };
   },
   head: ({ loaderData }) => ({
     meta: [
-      { title: `${loaderData?.documento.nome ?? "Documento"} — Tribuno` },
+      { title: `${loaderData?.assembleia.nome ?? "Documento"} — Tribuno` },
       {
         name: "description",
         content: "Detalhe do documento da assembleia municipal.",
@@ -30,8 +32,9 @@ export const Route = createFileRoute("/_app/assembleias/$id/documentos/$docId")(
 });
 
 function DocumentoPage() {
-  const { id } = Route.useParams();
-  const { assembleia, documento } = Route.useLoaderData();
+  const { id, docId } = Route.useParams();
+  const { assembleia } = Route.useLoaderData();
+  const documento = useDocumento(docId);
 
   return (
     <>
@@ -50,7 +53,9 @@ function DocumentoPage() {
               {assembleia.nome}
             </Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
-            <span className="text-foreground truncate">{documento.tipo}</span>
+            <span className="text-foreground truncate">
+              {documento?.tipo ?? "Documento"}
+            </span>
           </span>
         }
       />
@@ -64,44 +69,78 @@ function DocumentoPage() {
           Voltar à assembleia
         </Link>
 
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-card mb-8">
-          <div className="flex items-start gap-5">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
-              <FileText className="h-6 w-6" strokeWidth={1.75} />
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                {documento.tipo}
+        {!documento ? (
+          <section className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-muted-foreground">
+            Documento não encontrado.
+          </section>
+        ) : (
+          <>
+            <section className="rounded-2xl border border-border bg-card p-6 shadow-card mb-8">
+              <div className="flex items-start gap-5">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+                  <FileText className="h-6 w-6" strokeWidth={1.75} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      {documento.tipo}
+                    </span>
+                    <DocumentoEstadoBadge estado={documento.estado} />
+                  </div>
+                  <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-foreground">
+                    {documento.titulo}
+                  </h1>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Data do documento: {formatarData(documento.data)}
+                    {typeof documento.paginas === "number"
+                      ? ` · ${documento.paginas} páginas`
+                      : ""}
+                    {documento.ficheiroNome
+                      ? ` · ${documento.ficheiroNome}`
+                      : ""}
+                  </p>
+                  {documento.notas && (
+                    <p className="mt-3 text-sm text-foreground/80 whitespace-pre-line">
+                      {documento.notas}
+                    </p>
+                  )}
+                </div>
               </div>
-              <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-foreground">
-                {documento.nome}
-              </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Data do documento: {formatarData(documento.data)} · {documento.paginas} páginas
-              </p>
-            </div>
-          </div>
-        </section>
+            </section>
 
-        <div className="grid gap-5 lg:grid-cols-3">
-          <ReservedSection
-            icon={Sparkles}
-            titulo="Análise"
-            descricao="A análise automática deste documento será disponibilizada em fase futura."
-            className="lg:col-span-2"
-          />
-          <ReservedSection
-            icon={AlertCircle}
-            titulo="Alertas"
-            descricao="Os alertas sobre prazos, valores e inconsistências serão apresentados aqui."
-          />
-          <ReservedSection
-            icon={LinkIcon}
-            titulo="Documentos relacionados"
-            descricao="Documentos com ligação a este (anexos, atas, propostas) serão listados nesta área."
-            className="lg:col-span-3"
-          />
-        </div>
+            <section className="rounded-2xl border border-border bg-card p-6 shadow-card mb-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <FileText className="h-4 w-4" strokeWidth={1.75} />
+                </div>
+                <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
+                  Pré-visualização
+                </h2>
+              </div>
+              <DocumentoPreview ficheiroNome={documento.ficheiroNome} />
+            </section>
+
+            <div className="grid gap-5 lg:grid-cols-3">
+              <ReservedSection
+                icon={Sparkles}
+                titulo="Análise"
+                descricao="A análise automática deste documento será disponibilizada em fase futura."
+                className="lg:col-span-2"
+              />
+              <ReservedSection
+                icon={AlertCircle}
+                titulo="Alertas"
+                descricao="Os alertas sobre prazos, valores e inconsistências serão apresentados aqui."
+              />
+              <ReservedSection
+                icon={LinkIcon}
+                titulo="Documentos relacionados"
+                descricao="Documentos com ligação a este (anexos, atas, propostas) serão listados nesta área."
+                className="lg:col-span-3"
+              />
+            </div>
+          </>
+        )}
       </main>
     </>
   );

@@ -1,43 +1,65 @@
+# Fase 3 — Gestão Documental da Assembleia
 
-# Fase 2 — Preparação da Assembleia com dados simulados
+Aprovado com a restrição: apenas metadados, sem guardar ficheiros reais.
 
-> Nota: este plano corresponde ao que já foi implementado no turno anterior. Aprovar este plano confirma o âmbito; nenhuma alteração adicional é necessária se aceitares o resultado atual em `/assembleias/:id/preparacao`.
+## Modelo de dados (`src/lib/types.ts`)
 
-## Objetivo
+```ts
+export type TipoDocumento =
+  | "Convocatória" | "Ata" | "Orçamento"
+  | "Execução da Receita" | "Execução da Despesa"
+  | "PPI" | "Relatório" | "Regulamento"
+  | "Proposta" | "Declaração de voto" | "Outro";
 
-Tornar `/assembleias/:id/preparacao` o centro visual de preparação da Assembleia, com simulação realista de como funcionará no futuro com IA. Sem IA, sem upload, sem persistência, sem CRUD, sem geração de documentos.
+export type EstadoDocumento = "Por rever" | "Revisto" | "Importante" | "Arquivado";
 
-## Secções
+export interface Documento {
+  id: string;
+  assembleiaId: string;
+  titulo: string;           // renomeado de "nome"
+  tipo: TipoDocumento;
+  data: string;
+  estado: EstadoDocumento;  // novo
+  ficheiroNome?: string;
+  ficheiroTipo?: string;
+  paginas?: number;
+  notas?: string;
+  createdAt: string;        // novo
+}
+```
 
-1. **Prioridades** — cartões com título, nível (Alta/Média/Baixa), descrição, documentos relacionados, estado (Por preparar / Preparado / Acompanhar).
-2. **Perguntas sugeridas** — cartões com tema, pergunta, prioridade, documentos relacionados, botão visual "Selecionar pergunta" / "Marcar como escolhida".
-3. **Ações pendentes** — cartões com tarefa, estado (Pendente / Em curso / Concluída), prazo opcional, botão visual "Marcar".
-4. **Documentos a criar** — cartões com tipo (Moção, Recomendação, Requerimento, Declaração de voto, Intervenção), motivo, prioridade, botão `disabled` "Criar futuramente".
+Migrar mocks em `src/lib/mock-data.ts`: `nome → titulo`, atribuir `estado` por defeito e `createdAt` derivado da data da assembleia. Manter helpers existentes.
 
-## Dados mock
+## Persistência local (`src/lib/documentos-store.ts`)
 
-Ficheiro `src/lib/mock-preparacao.ts` com arrays tipados, em pt-PT, usando temas autárquicos realistas: Execução do PPI, Transferências correntes, Novas instalações da Junta, Centro Cultural D. Dinis, Transferências de capital, Aquisição de terrenos para estacionamento.
+- Chave `tribuno.documents.v1`, valor JSON array de `Documento`.
+- `adicionarDocumento(input)` → `crypto.randomUUID()` + `createdAt: new Date().toISOString()`, escreve em localStorage e dispara `window.dispatchEvent(new Event("tribuno:documents"))`.
+- Hook `useDocumentosDaAssembleia(id)` → combina mocks + locais, ordena por data desc, subscreve aos eventos `tribuno:documents` e `storage`.
+- Hook `useDocumento(docId)` → procura em mocks (hidrata SSR) + locais (no cliente).
+- Apenas metadados são guardados — `ficheiroNome` e `ficheiroTipo` do `File` selecionado; o conteúdo binário nunca toca em storage.
 
-Os mesmos mocks aplicam-se a qualquer `:id` (fallback universal) — a página nunca aparece vazia.
+## Componentes (`src/components/documentos/`)
 
-## Componentes
+- `DocumentoEstadoBadge.tsx` — mapeia estados aos tokens `status-*` existentes.
+- `DocumentoCard.tsx` — substitui `src/components/cards/DocumentoCard.tsx`; mostra tipo, badge, título, data, páginas (se houver).
+- `DocumentoForm.tsx` — Input/Select/Textarea/Input file (lê só `name` + `type`); validação mínima (título obrigatório).
+- `AdicionarDocumentoSheet.tsx` — wrapper `Sheet` lateral com o botão "Adicionar documento" como trigger.
+- `DocumentoPreview.tsx` — caixa visual com nome do ficheiro + "Pré-visualização disponível em fase futura". Sem iframe.
 
-Em `src/components/preparacao/`:
+## Alterações em rotas
 
-- `badges.tsx` — `PrioridadeBadge`, `EstadoPrioridadeBadge`, `EstadoAcaoBadge`, `TipoDocumentoBadge`.
-- `SecaoPreparacao.tsx` — wrapper de secção (ícone, título, descrição, contador, grid responsiva).
-- `PrioridadeCard.tsx`, `PerguntaCard.tsx`, `AcaoCard.tsx`, `DocumentoACriarCard.tsx`.
+**`/assembleias/:id`** — botão `AdicionarDocumentoSheet` no header da secção; lista combinada via `useDocumentosDaAssembleia`; contagem dinâmica.
 
-Todos sem estado, usando apenas os tokens semânticos da Fase 1 e o componente `Badge` / `Button` do shadcn já presentes.
+**`/assembleias/:id/documentos/:docId`** — loader devolve apenas `assembleia`; o componente usa `useDocumento` (cobre mocks + locais). Adiciona `DocumentoEstadoBadge`, notas (se houver) e `DocumentoPreview`. Mantém as três áreas reservadas (Análise, Alertas, Documentos relacionados).
 
-## Alterações na rota
+## Limpeza
 
-`src/routes/_app.assembleias.$id.preparacao.tsx` deixa de mostrar placeholders e passa a renderizar as quatro secções com os mocks. Header da assembleia (título, data, hora, local, breadcrumb) mantém-se.
+Remover `src/components/cards/DocumentoCard.tsx` e atualizar imports.
 
 ## Fora de âmbito
 
-CRUD, edição, persistência, localStorage, importação/exportação, geração de documentos, IA, chat, upload, autenticação, backend.
+IA, OCR, leitura de ficheiros, geração documental, edição/eliminação, importação/exportação, chat, autenticação, backend, Lovable Cloud, página global de documentos, guardar conteúdo de ficheiros.
 
 ## Critério de validação
 
-Abrir `/assembleias/:id/preparacao` (qualquer id) mostra uma página densa e profissional com as quatro secções preenchidas, suficiente para validar se o layout serve um eleito local antes de avançar para funcionalidades reais.
+Abrir uma assembleia → "Adicionar documento" → preencher → guardar → cartão aparece → abrir detalhe → ver metadados + preview placeholder → refresh mantém o documento.

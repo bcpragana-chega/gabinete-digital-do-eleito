@@ -3,10 +3,17 @@ export type EstadoAssembleia = "preparacao" | "analise" | "concluida";
 export type TipoDocumento =
   | "Convocatória"
   | "Ata"
-  | "PPI"
+  | "Orçamento"
   | "Execução da Receita"
   | "Execução da Despesa"
-  | "Relatório Trimestral";
+  | "PPI"
+  | "Relatório"
+  | "Regulamento"
+  | "Proposta"
+  | "Declaração de voto"
+  | "Outro";
+
+export type EstadoDocumento = "Por rever" | "Revisto" | "Importante" | "Arquivado";
 
 export interface Assembleia {
   id: string;
@@ -20,8 +27,13 @@ export interface Assembleia {
 export interface Documento {
   id: string;
   assembleiaId: string;
-  nome: string;
+  titulo: string;
   tipo: TipoDocumento;
   data: string;
-  paginas: number;
+  estado: EstadoDocumento;
+  ficheiroNome?: string;
+  ficheiroTipo?: string;
+  paginas?: number;
+  notas?: string;
+  createdAt: string;
 }
