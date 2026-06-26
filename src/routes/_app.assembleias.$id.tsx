@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   Calendar,
@@ -6,6 +7,7 @@ import {
   ArrowRight,
   ChevronLeft,
   Sparkles,
+  Archive,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -13,8 +15,9 @@ import { DocumentoCard } from "@/components/documentos/DocumentoCard";
 import { AdicionarDocumentoSheet } from "@/components/documentos/AdicionarDocumentoSheet";
 import { formatarData } from "@/lib/mock-data";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
-import { useAssembleia } from "@/lib/assembleias-store";
+import { arquivarAssembleia, useAssembleia } from "@/lib/assembleias-store";
 import { EditarAssembleiaDialog } from "@/components/assembleias/EditarAssembleiaDialog";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_app/assembleias/$id")({
   head: () => ({
@@ -41,6 +44,7 @@ function AssembleiaDetailPage() {
 
   const assembleia = useAssembleia(id);
   const docs = useDocumentosDaAssembleia(id);
+  const [confirmarArquivo, setConfirmarArquivo] = useState(false);
 
   if (!assembleia) {
     return (
@@ -67,6 +71,20 @@ function AssembleiaDetailPage() {
       </>
     );
   }
+
+  function arquivar() {
+    if (!assembleia) return;
+
+    if (!confirmarArquivo) {
+      setConfirmarArquivo(true);
+      return;
+    }
+
+    arquivarAssembleia(assembleia.id);
+    setConfirmarArquivo(false);
+  }
+
+  const estaArquivada = assembleia.estado === "arquivada";
 
   return (
     <>
@@ -114,19 +132,32 @@ function AssembleiaDetailPage() {
             </div>
 
             <div className="flex gap-3 flex-wrap">
-  <EditarAssembleiaDialog assembleia={assembleia} />
+              <EditarAssembleiaDialog assembleia={assembleia} />
 
-  <Link
-    to="/assembleias/$id/preparacao"
-    params={{ id }}
-    className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-  >
-    <Sparkles className="h-4 w-4" strokeWidth={1.75} />
-    Preparar Assembleia
-    <ArrowRight className="h-4 w-4" />
-  </Link>
-</div>
+              {!estaArquivada && (
+                <Button variant="outline" onClick={arquivar}>
+                  <Archive className="mr-2 h-4 w-4" />
+                  {confirmarArquivo ? "Confirmar arquivo" : "Arquivar"}
+                </Button>
+              )}
+
+              <Link
+                to="/assembleias/$id/preparacao"
+                params={{ id }}
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+              >
+                <Sparkles className="h-4 w-4" strokeWidth={1.75} />
+                Preparar Assembleia
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
+
+          {confirmarArquivo && (
+            <p className="mt-4 text-sm text-muted-foreground">
+              Clique novamente em <span className="font-medium text-foreground">Confirmar arquivo</span> para arquivar esta assembleia.
+            </p>
+          )}
         </section>
 
         <section>
