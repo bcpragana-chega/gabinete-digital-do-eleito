@@ -1,4 +1,4 @@
-export type EstadoAssembleia = "preparacao" | "analise" | "concluida";
+export type EstadoAssembleia = "preparacao" | "analise" | "concluida" | "arquivada";
 
 export type TipoDocumento =
   | "Convocatória"
