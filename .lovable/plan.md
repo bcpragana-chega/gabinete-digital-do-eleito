@@ -1,99 +1,43 @@
 
-# Fase 2 — Centro Visual de Preparação da Assembleia
+# Fase 2 — Preparação da Assembleia com dados simulados
 
-Objetivo: transformar `/assembleias/:id/preparacao` num **mockup visual rico** que permita validar se o layout de preparação é útil e claro para um eleito local. Sem CRUD, sem persistência, sem localStorage, sem IA, sem formulários. Apenas cartões mock com dados autárquicos realistas, no mesmo design premium da Fase 1.
+> Nota: este plano corresponde ao que já foi implementado no turno anterior. Aprovar este plano confirma o âmbito; nenhuma alteração adicional é necessária se aceitares o resultado atual em `/assembleias/:id/preparacao`.
 
-## Âmbito
+## Objetivo
 
-A página de preparação deixa de ter placeholders e passa a ter quatro secções totalmente renderizadas a partir de dados mock estáticos:
+Tornar `/assembleias/:id/preparacao` o centro visual de preparação da Assembleia, com simulação realista de como funcionará no futuro com IA. Sem IA, sem upload, sem persistência, sem CRUD, sem geração de documentos.
 
-1. Prioridades da Assembleia
-2. Perguntas sugeridas
-3. Ações pendentes
-4. Documentos a criar
+## Secções
 
-Os botões existem visualmente mas não têm comportamento (ou abrem um `Tooltip` "Disponível em breve"). Nenhuma rota nova, nenhum estado, nenhuma escrita.
+1. **Prioridades** — cartões com título, nível (Alta/Média/Baixa), descrição, documentos relacionados, estado (Por preparar / Preparado / Acompanhar).
+2. **Perguntas sugeridas** — cartões com tema, pergunta, prioridade, documentos relacionados, botão visual "Selecionar pergunta" / "Marcar como escolhida".
+3. **Ações pendentes** — cartões com tarefa, estado (Pendente / Em curso / Concluída), prazo opcional, botão visual "Marcar".
+4. **Documentos a criar** — cartões com tipo (Moção, Recomendação, Requerimento, Declaração de voto, Intervenção), motivo, prioridade, botão `disabled` "Criar futuramente".
 
 ## Dados mock
 
-Novo ficheiro `src/lib/mock-preparacao.ts` exportando quatro arrays tipados, com os temas pedidos:
+Ficheiro `src/lib/mock-preparacao.ts` com arrays tipados, em pt-PT, usando temas autárquicos realistas: Execução do PPI, Transferências correntes, Novas instalações da Junta, Centro Cultural D. Dinis, Transferências de capital, Aquisição de terrenos para estacionamento.
 
-- Execução do PPI
-- Transferências correntes
-- Novas instalações da Junta
-- Centro Cultural D. Dinis
-- Transferências de capital
-- Aquisição de terrenos para estacionamento
+Os mesmos mocks aplicam-se a qualquer `:id` (fallback universal) — a página nunca aparece vazia.
 
-**Fallback:** os mesmos arrays são usados para qualquer `:id`. A página nunca aparece vazia — independentemente da assembleia selecionada, mostra sempre estes mocks. Sem ramificação por `id`.
+## Componentes
 
-Tipos:
+Em `src/components/preparacao/`:
 
-```ts
-type Prioridade = "Alta" | "Média" | "Baixa";
+- `badges.tsx` — `PrioridadeBadge`, `EstadoPrioridadeBadge`, `EstadoAcaoBadge`, `TipoDocumentoBadge`.
+- `SecaoPreparacao.tsx` — wrapper de secção (ícone, título, descrição, contador, grid responsiva).
+- `PrioridadeCard.tsx`, `PerguntaCard.tsx`, `AcaoCard.tsx`, `DocumentoACriarCard.tsx`.
 
-type PrioridadeAssembleia = {
-  id: string;
-  titulo: string;
-  prioridade: Prioridade;
-  descricao: string;
-  documentos: string[];          // títulos dos documentos relacionados
-  estado: "Por preparar" | "Preparado" | "Acompanhar";
-};
-
-type PerguntaSugerida = {
-  id: string;
-  tema: string;
-  pergunta: string;
-  prioridade: Prioridade;
-  documentos: string[];
-};
-
-type AcaoPendente = {
-  id: string;
-  tarefa: string;
-  estado: "Pendente" | "Em curso" | "Concluída";
-  prazo?: string;                // ex.: "15 jul 2026"
-};
-
-type DocumentoACriar = {
-  id: string;
-  tipo: "Moção" | "Recomendação" | "Requerimento" | "Declaração de voto" | "Intervenção";
-  motivo: string;
-  prioridade: Prioridade;
-};
-```
-
-Cada array com 3–4 entradas distribuídas pelos temas acima.
-
-## Componentes novos
-
-Todos em `src/components/preparacao/`, sem estado, props-in props-out, usando os tokens já definidos:
-
-- `PrioridadeCard.tsx` — header com título + badge de prioridade, descrição, lista discreta de documentos relacionados, badge de estado no rodapé.
-- `PerguntaCard.tsx` — chip de tema, pergunta em destaque, badge de prioridade, documentos relacionados, botão `Selecionar pergunta` (visual, sem `onClick`).
-- `AcaoCard.tsx` — tarefa, badge de estado, prazo opcional em texto secundário, botão `Marcar` (visual).
-- `DocumentoACriarCard.tsx` — badge de tipo, motivo, badge de prioridade, botão `Criar futuramente` desativado (`disabled`).
-- `SecaoPreparacao.tsx` — wrapper de secção com título, contador (`{n} itens`) e grid responsiva (`grid gap-4 md:grid-cols-2 xl:grid-cols-3`).
-
-Badges reutilizam o componente `Badge` do shadcn já presente, com variantes mapeadas por uma pequena função `prioridadeVariant()` / `estadoVariant()` local — sem novos tokens de cor.
+Todos sem estado, usando apenas os tokens semânticos da Fase 1 e o componente `Badge` / `Button` do shadcn já presentes.
 
 ## Alterações na rota
 
-`src/routes/assembleias.$id.preparacao.tsx`:
-
-- Remover os quatro blocos de placeholder atuais.
-- Importar os mocks e os quatro componentes.
-- Renderizar quatro `SecaoPreparacao` na mesma ordem do pedido.
-- Manter o header da página (título da assembleia, data, breadcrumb) tal como está hoje.
-- Os mesmos mocks são usados para qualquer `:id` (fallback universal).
-
-Nenhuma alteração noutras rotas, na sidebar, no `TopBar`, nem em `mock-data.ts`.
+`src/routes/_app.assembleias.$id.preparacao.tsx` deixa de mostrar placeholders e passa a renderizar as quatro secções com os mocks. Header da assembleia (título, data, hora, local, breadcrumb) mantém-se.
 
 ## Fora de âmbito
 
-CRUD, edição, formulários, localStorage, persistência, importação/exportação, estado global, backend, IA, chat, novos tokens de cor ou fontes.
+CRUD, edição, persistência, localStorage, importação/exportação, geração de documentos, IA, chat, upload, autenticação, backend.
 
 ## Critério de validação
 
-Ao abrir `/assembleias/:id/preparacao` (qualquer id) o utilizador vê uma página densa, profissional, com as quatro secções preenchidas com conteúdo autárquico realista.
+Abrir `/assembleias/:id/preparacao` (qualquer id) mostra uma página densa e profissional com as quatro secções preenchidas, suficiente para validar se o layout serve um eleito local antes de avançar para funcionalidades reais.
