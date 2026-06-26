@@ -13,6 +13,8 @@ type NovaAssembleiaInput = {
   estado: EstadoAssembleia;
 };
 
+type EditarAssembleiaInput = NovaAssembleiaInput;
+
 function isBrowser() {
   return typeof window !== "undefined";
 }
@@ -71,6 +73,27 @@ export function adicionarAssembleia(input: NovaAssembleiaInput): Assembleia {
   guardarAssembleiasLocais([...atuais, nova]);
 
   return nova;
+}
+
+export function editarAssembleia(id: string, input: EditarAssembleiaInput): Assembleia | undefined {
+  const atuais = lerAssembleiasLocais();
+
+  const atualizada = atuais.map((assembleia) =>
+    assembleia.id === id
+      ? {
+          ...assembleia,
+          nome: input.nome,
+          data: input.data,
+          hora: input.hora,
+          local: input.local,
+          estado: input.estado,
+        }
+      : assembleia,
+  );
+
+  guardarAssembleiasLocais(atualizada);
+
+  return atualizada.find((assembleia) => assembleia.id === id);
 }
 
 export function useAssembleias(): Assembleia[] {
