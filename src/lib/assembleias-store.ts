@@ -78,7 +78,7 @@ export function adicionarAssembleia(input: NovaAssembleiaInput): Assembleia {
 export function editarAssembleia(id: string, input: EditarAssembleiaInput): Assembleia | undefined {
   const atuais = lerAssembleiasLocais();
 
-  const atualizada = atuais.map((assembleia) =>
+  const atualizadas = atuais.map((assembleia) =>
     assembleia.id === id
       ? {
           ...assembleia,
@@ -91,9 +91,26 @@ export function editarAssembleia(id: string, input: EditarAssembleiaInput): Asse
       : assembleia,
   );
 
-  guardarAssembleiasLocais(atualizada);
+  guardarAssembleiasLocais(atualizadas);
 
-  return atualizada.find((assembleia) => assembleia.id === id);
+  return atualizadas.find((assembleia) => assembleia.id === id);
+}
+
+export function arquivarAssembleia(id: string): Assembleia | undefined {
+  const atuais = lerAssembleiasLocais();
+
+  const atualizadas = atuais.map((assembleia) =>
+    assembleia.id === id
+      ? {
+          ...assembleia,
+          estado: "arquivada" as EstadoAssembleia,
+        }
+      : assembleia,
+  );
+
+  guardarAssembleiasLocais(atualizadas);
+
+  return atualizadas.find((assembleia) => assembleia.id === id);
 }
 
 export function useAssembleias(): Assembleia[] {
