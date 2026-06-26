@@ -6,12 +6,14 @@ export function SecaoPreparacao({
   titulo,
   descricao,
   total,
+  action,
   children,
 }: {
   icon: LucideIcon;
   titulo: string;
   descricao: string;
   total: number;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -28,10 +30,15 @@ export function SecaoPreparacao({
             <p className="text-xs text-muted-foreground">{descricao}</p>
           </div>
         </div>
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          {total} {total === 1 ? "item" : "itens"}
-        </span>
+
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {total} {total === 1 ? "item" : "itens"}
+          </span>
+          {action}
+        </div>
       </div>
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{children}</div>
     </section>
   );
