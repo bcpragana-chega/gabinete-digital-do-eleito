@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useRouterState,
+} from "@tanstack/react-router";
 import {
   Calendar,
   MapPin,
@@ -36,15 +41,15 @@ export const Route = createFileRoute("/_app/assembleias/$id")({
 function AssembleiaDetailPage() {
   const { id } = Route.useParams();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const assembleia = useAssembleia(id);
+  const docs = useDocumentosDaAssembleia(id);
+  const [confirmarArquivo, setConfirmarArquivo] = useState(false);
+
   const isSubRoute = pathname.includes(`/assembleias/${id}/`);
 
   if (isSubRoute) {
     return <Outlet />;
   }
-
-  const assembleia = useAssembleia(id);
-  const docs = useDocumentosDaAssembleia(id);
-  const [confirmarArquivo, setConfirmarArquivo] = useState(false);
 
   if (!assembleia) {
     return (
@@ -64,7 +69,8 @@ function AssembleiaDetailPage() {
               Assembleia não encontrada
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador.
+              Esta assembleia pode ter sido removida ou ainda não estar
+              disponível neste navegador.
             </p>
           </section>
         </main>
@@ -91,7 +97,10 @@ function AssembleiaDetailPage() {
       <TopBar
         breadcrumb={
           <span>
-            <Link to="/assembleias" className="hover:text-foreground transition-colors">
+            <Link
+              to="/assembleias"
+              className="hover:text-foreground transition-colors"
+            >
               Assembleias
             </Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
@@ -155,7 +164,11 @@ function AssembleiaDetailPage() {
 
           {confirmarArquivo && (
             <p className="mt-4 text-sm text-muted-foreground">
-              Clique novamente em <span className="font-medium text-foreground">Confirmar arquivo</span> para arquivar esta assembleia.
+              Clique novamente em{" "}
+              <span className="font-medium text-foreground">
+                Confirmar arquivo
+              </span>{" "}
+              para arquivar esta assembleia.
             </p>
           )}
         </section>
