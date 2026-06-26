@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { AssembleiaCard } from "@/components/cards/AssembleiaCard";
 import { NovaAssembleiaDialog } from "@/components/assembleias/NovaAssembleiaDialog";
 import { useAssembleias } from "@/lib/assembleias-store";
+import type { EstadoAssembleia } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/assembleias/")({
   head: () => ({
@@ -28,10 +30,20 @@ const filtros = [
   { id: "preparacao", label: "Preparação" },
   { id: "analise", label: "Em análise" },
   { id: "concluida", label: "Concluída" },
-];
+] as const;
+
+type FiltroId = (typeof filtros)[number]["id"];
 
 function AssembleiasPage() {
   const assembleias = useAssembleias();
+  const [filtroAtivo, setFiltroAtivo] = useState<FiltroId>("todas");
+
+  const assembleiasVisiveis = assembleias
+    .filter((assembleia) => assembleia.estado !== "arquivada")
+    .filter((assembleia) => {
+      if (filtroAtivo === "todas") return true;
+      return assembleia.estado === (filtroAtivo as EstadoAssembleia);
+    });
 
   return (
     <>
@@ -43,7 +55,7 @@ function AssembleiasPage() {
               Assembleias
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              {assembleias.length} sessões organizadas
+              {assembleiasVisiveis.length} sessões organizadas
             </p>
           </div>
 
@@ -51,12 +63,13 @@ function AssembleiasPage() {
         </div>
 
         <div className="flex flex-wrap gap-1 border-b border-border mb-6">
-          {filtros.map((f, idx) => (
+          {filtros.map((f) => (
             <button
               key={f.id}
               type="button"
+              onClick={() => setFiltroAtivo(f.id)}
               className={
-                idx === 0
+                filtroAtivo === f.id
                   ? "px-3 py-2 text-sm font-medium text-foreground border-b-2 border-primary -mb-px"
                   : "px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               }
@@ -66,11 +79,22 @@ function AssembleiasPage() {
           ))}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {assembleias.map((a) => (
-            <AssembleiaCard key={a.id} assembleia={a} />
-          ))}
-        </div>
+        {assembleiasVisiveis.length === 0 ? (
+          <section className="rounded-2xl border border-border bg-card p-8 shadow-card">
+            <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
+              Nenhuma assembleia encontrada
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Crie uma nova assembleia ou altere o filtro selecionado.
+            </p>
+          </section>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {assembleiasVisiveis.map((a) => (
+              <AssembleiaCard key={a.id} assembleia={a} />
+            ))}
+          </div>
+        )}
       </main>
     </>
   );
