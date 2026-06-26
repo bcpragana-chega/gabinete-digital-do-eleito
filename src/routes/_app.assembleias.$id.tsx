@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   Calendar,
   MapPin,
@@ -11,18 +11,15 @@ import { TopBar } from "@/components/layout/TopBar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DocumentoCard } from "@/components/documentos/DocumentoCard";
 import { AdicionarDocumentoSheet } from "@/components/documentos/AdicionarDocumentoSheet";
-import { getAssembleia, formatarData } from "@/lib/mock-data";
+import { formatarData } from "@/lib/mock-data";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
+import { useAssembleia } from "@/lib/assembleias-store";
+import { EditarAssembleiaDialog } from "@/components/assembleias/EditarAssembleiaDialog";
 
 export const Route = createFileRoute("/_app/assembleias/$id")({
-  loader: ({ params }) => {
-    const assembleia = getAssembleia(params.id);
-    if (!assembleia) throw notFound();
-    return { assembleia };
-  },
-  head: ({ loaderData }) => ({
+  head: () => ({
     meta: [
-      { title: `${loaderData?.assembleia.nome ?? "Assembleia"} — Tribuno` },
+      { title: "Assembleia — Tribuno" },
       {
         name: "description",
         content:
@@ -35,8 +32,41 @@ export const Route = createFileRoute("/_app/assembleias/$id")({
 
 function AssembleiaDetailPage() {
   const { id } = Route.useParams();
-  const { assembleia } = Route.useLoaderData();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isSubRoute = pathname.includes(`/assembleias/${id}/`);
+
+  if (isSubRoute) {
+    return <Outlet />;
+  }
+
+  const assembleia = useAssembleia(id);
   const docs = useDocumentosDaAssembleia(id);
+
+  if (!assembleia) {
+    return (
+      <>
+        <TopBar breadcrumb="Assembleias" />
+        <main className="px-8 py-10 max-w-7xl">
+          <Link
+            to="/assembleias"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Todas as assembleias
+          </Link>
+
+          <section className="rounded-2xl border border-border bg-card p-8 shadow-card">
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+              Assembleia não encontrada
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador.
+            </p>
+          </section>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -83,15 +113,19 @@ function AssembleiaDetailPage() {
               </dl>
             </div>
 
-            <Link
-              to="/assembleias/$id/preparacao"
-              params={{ id }}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-            >
-              <Sparkles className="h-4 w-4" strokeWidth={1.75} />
-              Preparar Assembleia
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <div className="flex gap-3 flex-wrap">
+  <EditarAssembleiaDialog assembleia={assembleia} />
+
+  <Link
+    to="/assembleias/$id/preparacao"
+    params={{ id }}
+    className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+  >
+    <Sparkles className="h-4 w-4" strokeWidth={1.75} />
+    Preparar Assembleia
+    <ArrowRight className="h-4 w-4" />
+  </Link>
+</div>
           </div>
         </section>
 
