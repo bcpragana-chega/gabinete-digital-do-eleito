@@ -7,7 +7,7 @@ import {
   FilePlus2,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
-import { getAssembleia, formatarData } from "@/lib/mock-data";
+import { formatarData } from "@/lib/mock-data";
 import {
   acoesMock,
   documentosACriarMock,
@@ -19,24 +19,12 @@ import { PrioridadeCard } from "@/components/preparacao/PrioridadeCard";
 import { PerguntaCard } from "@/components/preparacao/PerguntaCard";
 import { AcaoCard } from "@/components/preparacao/AcaoCard";
 import { DocumentoACriarCard } from "@/components/preparacao/DocumentoACriarCard";
+import { useAssembleia } from "@/lib/assembleias-store";
 
 export const Route = createFileRoute("/_app/assembleias/$id/preparacao")({
-  loader: ({ params }) => {
-    const assembleia = getAssembleia(params.id) ?? {
-      id: params.id,
-      nome: "Assembleia Municipal",
-      data: "2026-07-14",
-      hora: "21:00",
-      local: "Salão Nobre dos Paços do Concelho",
-      estado: "preparacao" as const,
-    };
-    return { assembleia };
-  },
-  head: ({ loaderData }) => ({
+  head: () => ({
     meta: [
-      {
-        title: `Preparação — ${loaderData?.assembleia.nome ?? "Assembleia"} — Tribuno`,
-      },
+      { title: "Preparação — Assembleia — Tribuno" },
       {
         name: "description",
         content:
@@ -49,7 +37,33 @@ export const Route = createFileRoute("/_app/assembleias/$id/preparacao")({
 
 function PreparacaoPage() {
   const { id } = Route.useParams();
-  const { assembleia } = Route.useLoaderData();
+  const assembleia = useAssembleia(id);
+
+  if (!assembleia) {
+    return (
+      <>
+        <TopBar breadcrumb="Preparação" />
+        <main className="px-8 py-10 max-w-7xl">
+          <Link
+            to="/assembleias"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Todas as assembleias
+          </Link>
+
+          <section className="rounded-2xl border border-border bg-card p-8 shadow-card">
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+              Assembleia não encontrada
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador.
+            </p>
+          </section>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
