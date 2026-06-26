@@ -1,4 +1,9 @@
-import type { Assembleia, Documento, TipoDocumento } from "./types";
+import type {
+  Assembleia,
+  Documento,
+  EstadoDocumento,
+  TipoDocumento,
+} from "./types";
 
 export const assembleias: Assembleia[] = [
   {
@@ -57,17 +62,28 @@ const tiposBase: TipoDocumento[] = [
   "PPI",
   "Execução da Receita",
   "Execução da Despesa",
-  "Relatório Trimestral",
+  "Relatório",
+];
+
+const estadosBase: EstadoDocumento[] = [
+  "Revisto",
+  "Por rever",
+  "Importante",
+  "Revisto",
+  "Por rever",
+  "Revisto",
 ];
 
 export const documentos: Documento[] = assembleias.flatMap((a) =>
   tiposBase.map((tipo, idx) => ({
     id: `${a.id}-${idx}`,
     assembleiaId: a.id,
-    nome: `${tipo} — ${formatarDataCurta(a.data)}`,
+    titulo: `${tipo} — ${formatarDataCurta(a.data)}`,
     tipo,
     data: a.data,
+    estado: estadosBase[idx],
     paginas: 6 + ((idx * 7) % 24),
+    createdAt: `${a.data}T09:00:00.000Z`,
   })),
 );
 

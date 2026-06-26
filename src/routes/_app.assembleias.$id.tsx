@@ -9,12 +9,10 @@ import {
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { DocumentoCard } from "@/components/cards/DocumentoCard";
-import {
-  getAssembleia,
-  getDocumentosByAssembleia,
-  formatarData,
-} from "@/lib/mock-data";
+import { DocumentoCard } from "@/components/documentos/DocumentoCard";
+import { AdicionarDocumentoSheet } from "@/components/documentos/AdicionarDocumentoSheet";
+import { getAssembleia, formatarData } from "@/lib/mock-data";
+import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
 
 export const Route = createFileRoute("/_app/assembleias/$id")({
   loader: ({ params }) => {
@@ -38,7 +36,7 @@ export const Route = createFileRoute("/_app/assembleias/$id")({
 function AssembleiaDetailPage() {
   const { id } = Route.useParams();
   const { assembleia } = Route.useLoaderData();
-  const docs = getDocumentosByAssembleia(id);
+  const docs = useDocumentosDaAssembleia(id);
 
   return (
     <>
@@ -98,7 +96,7 @@ function AssembleiaDetailPage() {
         </section>
 
         <section>
-          <div className="flex items-end justify-between mb-4">
+          <div className="flex items-end justify-between mb-4 gap-4 flex-wrap">
             <div>
               <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">
                 Documentos da sessão
@@ -107,6 +105,7 @@ function AssembleiaDetailPage() {
                 {docs.length} documentos disponíveis
               </p>
             </div>
+            <AdicionarDocumentoSheet assembleiaId={id} />
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             {docs.map((d) => (
