@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { AssembleiaCard } from "@/components/cards/AssembleiaCard";
-import { assembleias } from "@/lib/mock-data";
+import { NovaAssembleiaDialog } from "@/components/assembleias/NovaAssembleiaDialog";
+import { useAssembleias } from "@/lib/assembleias-store";
 
 export const Route = createFileRoute("/_app/assembleias/")({
   head: () => ({
@@ -31,6 +31,8 @@ const filtros = [
 ];
 
 function AssembleiasPage() {
+  const assembleias = useAssembleias();
+
   return (
     <>
       <TopBar breadcrumb="Assembleias" />
@@ -44,13 +46,8 @@ function AssembleiasPage() {
               {assembleias.length} sessões organizadas
             </p>
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Nova Assembleia
-          </button>
+
+          <NovaAssembleiaDialog />
         </div>
 
         <div className="flex flex-wrap gap-1 border-b border-border mb-6">
