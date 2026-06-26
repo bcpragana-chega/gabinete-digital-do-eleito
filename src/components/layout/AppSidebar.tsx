@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Landmark, History, Settings, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const items = [
+export const sidebarItems = [
   { to: "/" as const, label: "Gabinete", icon: Home, exact: true },
   { to: "/assembleias" as const, label: "Assembleias", icon: Landmark, exact: false },
   { to: "/historico" as const, label: "Histórico", icon: History, exact: false },
@@ -37,9 +37,10 @@ export function AppSidebar() {
         <div className="px-3 pb-2 text-[10.5px] font-medium uppercase tracking-wider text-sidebar-muted">
           Navegação
         </div>
-        {items.map((item) => {
+        {sidebarItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.to, item.exact);
+
           return (
             <Link
               key={item.to}
