@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
@@ -8,17 +9,14 @@ import {
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { formatarData } from "@/lib/mock-data";
-import {
-  acoesMock,
-  documentosACriarMock,
-  perguntasMock,
-  prioridadesMock,
-} from "@/lib/mock-preparacao";
+import { obterPreparacaoDaAssembleia } from "@/lib/preparacao-store";
 import { SecaoPreparacao } from "@/components/preparacao/SecaoPreparacao";
 import { PrioridadeCard } from "@/components/preparacao/PrioridadeCard";
 import { PerguntaCard } from "@/components/preparacao/PerguntaCard";
 import { AcaoCard } from "@/components/preparacao/AcaoCard";
 import { DocumentoACriarCard } from "@/components/preparacao/DocumentoACriarCard";
+import { AdicionarPrioridadeDialog } from "@/components/preparacao/AdicionarPrioridadeDialog";
+import { AdicionarPerguntaDialog } from "@/components/preparacao/AdicionarPerguntaDialog";
 import { useAssembleia } from "@/lib/assembleias-store";
 
 export const Route = createFileRoute("/_app/assembleias/$id/preparacao")({
@@ -38,6 +36,16 @@ export const Route = createFileRoute("/_app/assembleias/$id/preparacao")({
 function PreparacaoPage() {
   const { id } = Route.useParams();
   const assembleia = useAssembleia(id);
+  const [versao, setVersao] = useState(0);
+
+  const preparacao = useMemo(
+    () => obterPreparacaoDaAssembleia(id),
+    [id, versao],
+  );
+
+  function atualizarPreparacao() {
+    setVersao((valor) => valor + 1);
+  }
 
   if (!assembleia) {
     return (
@@ -57,7 +65,8 @@ function PreparacaoPage() {
               Assembleia não encontrada
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador.
+              Esta assembleia pode ter sido removida ou ainda não estar
+              disponível neste navegador.
             </p>
           </section>
         </main>
@@ -65,12 +74,21 @@ function PreparacaoPage() {
     );
   }
 
+  const semPreparacao =
+    preparacao.prioridades.length === 0 &&
+    preparacao.perguntas.length === 0 &&
+    preparacao.acoes.length === 0 &&
+    preparacao.documentosACriar.length === 0;
+
   return (
     <>
       <TopBar
         breadcrumb={
           <span>
-            <Link to="/assembleias" className="hover:text-foreground transition-colors">
+            <Link
+              to="/assembleias"
+              className="hover:text-foreground transition-colors"
+            >
               Assembleias
             </Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
@@ -104,17 +122,37 @@ function PreparacaoPage() {
             {assembleia.nome}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {formatarData(assembleia.data)} · {assembleia.hora} · {assembleia.local}
+            {formatarData(assembleia.data)} · {assembleia.hora} ·{" "}
+            {assembleia.local}
           </p>
         </div>
+
+        {semPreparacao && (
+          <section className="rounded-2xl border border-dashed border-border bg-card p-8 shadow-card mb-8">
+            <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
+              Preparação ainda vazia
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
+              Esta assembleia ainda não tem prioridades, perguntas, ações
+              pendentes ou documentos a criar. Comece por adicionar a primeira
+              prioridade da sessão.
+            </p>
+          </section>
+        )}
 
         <SecaoPreparacao
           icon={Target}
           titulo="Prioridades da Assembleia"
           descricao="Os temas centrais que pretende defender nesta sessão."
-          total={prioridadesMock.length}
+          total={preparacao.prioridades.length}
+          action={
+            <AdicionarPrioridadeDialog
+              assembleiaId={id}
+              onAdicionar={atualizarPreparacao}
+            />
+          }
         >
-          {prioridadesMock.map((item) => (
+          {preparacao.prioridades.map((item) => (
             <PrioridadeCard key={item.id} item={item} />
           ))}
         </SecaoPreparacao>
@@ -123,9 +161,15 @@ function PreparacaoPage() {
           icon={MessageCircleQuestion}
           titulo="Perguntas sugeridas"
           descricao="Perguntas que poderá dirigir ao executivo durante a sessão."
-          total={perguntasMock.length}
+          total={preparacao.perguntas.length}
+          action={
+            <AdicionarPerguntaDialog
+              assembleiaId={id}
+              onAdicionar={atualizarPreparacao}
+            />
+          }
         >
-          {perguntasMock.map((item) => (
+          {preparacao.perguntas.map((item) => (
             <PerguntaCard key={item.id} item={item} />
           ))}
         </SecaoPreparacao>
@@ -134,9 +178,9 @@ function PreparacaoPage() {
           icon={ListChecks}
           titulo="Ações pendentes"
           descricao="Tarefas a concluir antes da sessão."
-          total={acoesMock.length}
+          total={preparacao.acoes.length}
         >
-          {acoesMock.map((item) => (
+          {preparacao.acoes.map((item) => (
             <AcaoCard key={item.id} item={item} />
           ))}
         </SecaoPreparacao>
@@ -145,9 +189,9 @@ function PreparacaoPage() {
           icon={FilePlus2}
           titulo="Documentos a criar"
           descricao="Moções, requerimentos e recomendações a apresentar."
-          total={documentosACriarMock.length}
+          total={preparacao.documentosACriar.length}
         >
-          {documentosACriarMock.map((item) => (
+          {preparacao.documentosACriar.map((item) => (
             <DocumentoACriarCard key={item.id} item={item} />
           ))}
         </SecaoPreparacao>
