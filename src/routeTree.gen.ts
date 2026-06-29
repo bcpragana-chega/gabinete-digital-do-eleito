@@ -16,7 +16,11 @@ import { Route as AppDefinicoesRouteImport } from './routes/_app.definicoes'
 import { Route as AppAssembleiasIndexRouteImport } from './routes/_app.assembleias.index'
 import { Route as AppAssembleiasIdRouteImport } from './routes/_app.assembleias.$id'
 import { Route as AppAssembleiasIdPreparacaoRouteImport } from './routes/_app.assembleias.$id.preparacao'
+import { Route as AppAssembleiasIdPreparacaoPontosRouteImport } from './routes/_app.assembleias.$id.preparacao.pontos'
+import { Route as AppAssembleiasIdPreparacaoEstrategiaRouteImport } from './routes/_app.assembleias.$id.preparacao.estrategia'
+import { Route as AppAssembleiasIdPreparacaoDocumentosRouteImport } from './routes/_app.assembleias.$id.preparacao.documentos'
 import { Route as AppAssembleiasIdDocumentosDocIdRouteImport } from './routes/_app.assembleias.$id.documentos.$docId'
+import { Route as AppAssembleiasIdPreparacaoPontosPontoIdRouteImport } from './routes/_app.assembleias.$id.preparacao.pontos.$pontoId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -53,11 +57,35 @@ const AppAssembleiasIdPreparacaoRoute =
     path: '/preparacao',
     getParentRoute: () => AppAssembleiasIdRoute,
   } as any)
+const AppAssembleiasIdPreparacaoPontosRoute =
+  AppAssembleiasIdPreparacaoPontosRouteImport.update({
+    id: '/pontos',
+    path: '/pontos',
+    getParentRoute: () => AppAssembleiasIdPreparacaoRoute,
+  } as any)
+const AppAssembleiasIdPreparacaoEstrategiaRoute =
+  AppAssembleiasIdPreparacaoEstrategiaRouteImport.update({
+    id: '/estrategia',
+    path: '/estrategia',
+    getParentRoute: () => AppAssembleiasIdPreparacaoRoute,
+  } as any)
+const AppAssembleiasIdPreparacaoDocumentosRoute =
+  AppAssembleiasIdPreparacaoDocumentosRouteImport.update({
+    id: '/documentos',
+    path: '/documentos',
+    getParentRoute: () => AppAssembleiasIdPreparacaoRoute,
+  } as any)
 const AppAssembleiasIdDocumentosDocIdRoute =
   AppAssembleiasIdDocumentosDocIdRouteImport.update({
     id: '/documentos/$docId',
     path: '/documentos/$docId',
     getParentRoute: () => AppAssembleiasIdRoute,
+  } as any)
+const AppAssembleiasIdPreparacaoPontosPontoIdRoute =
+  AppAssembleiasIdPreparacaoPontosPontoIdRouteImport.update({
+    id: '/$pontoId',
+    path: '/$pontoId',
+    getParentRoute: () => AppAssembleiasIdPreparacaoPontosRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -66,8 +94,12 @@ export interface FileRoutesByFullPath {
   '/historico': typeof AppHistoricoRoute
   '/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
   '/assembleias/': typeof AppAssembleiasIndexRoute
-  '/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRoute
+  '/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRouteWithChildren
   '/assembleias/$id/documentos/$docId': typeof AppAssembleiasIdDocumentosDocIdRoute
+  '/assembleias/$id/preparacao/documentos': typeof AppAssembleiasIdPreparacaoDocumentosRoute
+  '/assembleias/$id/preparacao/estrategia': typeof AppAssembleiasIdPreparacaoEstrategiaRoute
+  '/assembleias/$id/preparacao/pontos': typeof AppAssembleiasIdPreparacaoPontosRouteWithChildren
+  '/assembleias/$id/preparacao/pontos/$pontoId': typeof AppAssembleiasIdPreparacaoPontosPontoIdRoute
 }
 export interface FileRoutesByTo {
   '/definicoes': typeof AppDefinicoesRoute
@@ -75,8 +107,12 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
   '/assembleias': typeof AppAssembleiasIndexRoute
-  '/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRoute
+  '/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRouteWithChildren
   '/assembleias/$id/documentos/$docId': typeof AppAssembleiasIdDocumentosDocIdRoute
+  '/assembleias/$id/preparacao/documentos': typeof AppAssembleiasIdPreparacaoDocumentosRoute
+  '/assembleias/$id/preparacao/estrategia': typeof AppAssembleiasIdPreparacaoEstrategiaRoute
+  '/assembleias/$id/preparacao/pontos': typeof AppAssembleiasIdPreparacaoPontosRouteWithChildren
+  '/assembleias/$id/preparacao/pontos/$pontoId': typeof AppAssembleiasIdPreparacaoPontosPontoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,8 +122,12 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
   '/_app/assembleias/': typeof AppAssembleiasIndexRoute
-  '/_app/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRoute
+  '/_app/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRouteWithChildren
   '/_app/assembleias/$id/documentos/$docId': typeof AppAssembleiasIdDocumentosDocIdRoute
+  '/_app/assembleias/$id/preparacao/documentos': typeof AppAssembleiasIdPreparacaoDocumentosRoute
+  '/_app/assembleias/$id/preparacao/estrategia': typeof AppAssembleiasIdPreparacaoEstrategiaRoute
+  '/_app/assembleias/$id/preparacao/pontos': typeof AppAssembleiasIdPreparacaoPontosRouteWithChildren
+  '/_app/assembleias/$id/preparacao/pontos/$pontoId': typeof AppAssembleiasIdPreparacaoPontosPontoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -99,6 +139,10 @@ export interface FileRouteTypes {
     | '/assembleias/'
     | '/assembleias/$id/preparacao'
     | '/assembleias/$id/documentos/$docId'
+    | '/assembleias/$id/preparacao/documentos'
+    | '/assembleias/$id/preparacao/estrategia'
+    | '/assembleias/$id/preparacao/pontos'
+    | '/assembleias/$id/preparacao/pontos/$pontoId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/definicoes'
@@ -108,6 +152,10 @@ export interface FileRouteTypes {
     | '/assembleias'
     | '/assembleias/$id/preparacao'
     | '/assembleias/$id/documentos/$docId'
+    | '/assembleias/$id/preparacao/documentos'
+    | '/assembleias/$id/preparacao/estrategia'
+    | '/assembleias/$id/preparacao/pontos'
+    | '/assembleias/$id/preparacao/pontos/$pontoId'
   id:
     | '__root__'
     | '/_app'
@@ -118,6 +166,10 @@ export interface FileRouteTypes {
     | '/_app/assembleias/'
     | '/_app/assembleias/$id/preparacao'
     | '/_app/assembleias/$id/documentos/$docId'
+    | '/_app/assembleias/$id/preparacao/documentos'
+    | '/_app/assembleias/$id/preparacao/estrategia'
+    | '/_app/assembleias/$id/preparacao/pontos'
+    | '/_app/assembleias/$id/preparacao/pontos/$pontoId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -175,6 +227,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAssembleiasIdPreparacaoRouteImport
       parentRoute: typeof AppAssembleiasIdRoute
     }
+    '/_app/assembleias/$id/preparacao/pontos': {
+      id: '/_app/assembleias/$id/preparacao/pontos'
+      path: '/pontos'
+      fullPath: '/assembleias/$id/preparacao/pontos'
+      preLoaderRoute: typeof AppAssembleiasIdPreparacaoPontosRouteImport
+      parentRoute: typeof AppAssembleiasIdPreparacaoRoute
+    }
+    '/_app/assembleias/$id/preparacao/estrategia': {
+      id: '/_app/assembleias/$id/preparacao/estrategia'
+      path: '/estrategia'
+      fullPath: '/assembleias/$id/preparacao/estrategia'
+      preLoaderRoute: typeof AppAssembleiasIdPreparacaoEstrategiaRouteImport
+      parentRoute: typeof AppAssembleiasIdPreparacaoRoute
+    }
+    '/_app/assembleias/$id/preparacao/documentos': {
+      id: '/_app/assembleias/$id/preparacao/documentos'
+      path: '/documentos'
+      fullPath: '/assembleias/$id/preparacao/documentos'
+      preLoaderRoute: typeof AppAssembleiasIdPreparacaoDocumentosRouteImport
+      parentRoute: typeof AppAssembleiasIdPreparacaoRoute
+    }
     '/_app/assembleias/$id/documentos/$docId': {
       id: '/_app/assembleias/$id/documentos/$docId'
       path: '/documentos/$docId'
@@ -182,16 +255,59 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAssembleiasIdDocumentosDocIdRouteImport
       parentRoute: typeof AppAssembleiasIdRoute
     }
+    '/_app/assembleias/$id/preparacao/pontos/$pontoId': {
+      id: '/_app/assembleias/$id/preparacao/pontos/$pontoId'
+      path: '/$pontoId'
+      fullPath: '/assembleias/$id/preparacao/pontos/$pontoId'
+      preLoaderRoute: typeof AppAssembleiasIdPreparacaoPontosPontoIdRouteImport
+      parentRoute: typeof AppAssembleiasIdPreparacaoPontosRoute
+    }
   }
 }
 
+interface AppAssembleiasIdPreparacaoPontosRouteChildren {
+  AppAssembleiasIdPreparacaoPontosPontoIdRoute: typeof AppAssembleiasIdPreparacaoPontosPontoIdRoute
+}
+
+const AppAssembleiasIdPreparacaoPontosRouteChildren: AppAssembleiasIdPreparacaoPontosRouteChildren =
+  {
+    AppAssembleiasIdPreparacaoPontosPontoIdRoute:
+      AppAssembleiasIdPreparacaoPontosPontoIdRoute,
+  }
+
+const AppAssembleiasIdPreparacaoPontosRouteWithChildren =
+  AppAssembleiasIdPreparacaoPontosRoute._addFileChildren(
+    AppAssembleiasIdPreparacaoPontosRouteChildren,
+  )
+
+interface AppAssembleiasIdPreparacaoRouteChildren {
+  AppAssembleiasIdPreparacaoDocumentosRoute: typeof AppAssembleiasIdPreparacaoDocumentosRoute
+  AppAssembleiasIdPreparacaoEstrategiaRoute: typeof AppAssembleiasIdPreparacaoEstrategiaRoute
+  AppAssembleiasIdPreparacaoPontosRoute: typeof AppAssembleiasIdPreparacaoPontosRouteWithChildren
+}
+
+const AppAssembleiasIdPreparacaoRouteChildren: AppAssembleiasIdPreparacaoRouteChildren =
+  {
+    AppAssembleiasIdPreparacaoDocumentosRoute:
+      AppAssembleiasIdPreparacaoDocumentosRoute,
+    AppAssembleiasIdPreparacaoEstrategiaRoute:
+      AppAssembleiasIdPreparacaoEstrategiaRoute,
+    AppAssembleiasIdPreparacaoPontosRoute:
+      AppAssembleiasIdPreparacaoPontosRouteWithChildren,
+  }
+
+const AppAssembleiasIdPreparacaoRouteWithChildren =
+  AppAssembleiasIdPreparacaoRoute._addFileChildren(
+    AppAssembleiasIdPreparacaoRouteChildren,
+  )
+
 interface AppAssembleiasIdRouteChildren {
-  AppAssembleiasIdPreparacaoRoute: typeof AppAssembleiasIdPreparacaoRoute
+  AppAssembleiasIdPreparacaoRoute: typeof AppAssembleiasIdPreparacaoRouteWithChildren
   AppAssembleiasIdDocumentosDocIdRoute: typeof AppAssembleiasIdDocumentosDocIdRoute
 }
 
 const AppAssembleiasIdRouteChildren: AppAssembleiasIdRouteChildren = {
-  AppAssembleiasIdPreparacaoRoute: AppAssembleiasIdPreparacaoRoute,
+  AppAssembleiasIdPreparacaoRoute: AppAssembleiasIdPreparacaoRouteWithChildren,
   AppAssembleiasIdDocumentosDocIdRoute: AppAssembleiasIdDocumentosDocIdRoute,
 }
 

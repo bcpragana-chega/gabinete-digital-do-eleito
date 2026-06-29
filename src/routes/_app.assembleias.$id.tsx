@@ -16,10 +16,7 @@ import {
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { DocumentoCard } from "@/components/documentos/DocumentoCard";
-import { AdicionarDocumentoSheet } from "@/components/documentos/AdicionarDocumentoSheet";
 import { formatarData } from "@/lib/mock-data";
-import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
 import { arquivarAssembleia, useAssembleia } from "@/lib/assembleias-store";
 import { EditarAssembleiaDialog } from "@/components/assembleias/EditarAssembleiaDialog";
 import { Button } from "@/components/ui/button";
@@ -31,7 +28,7 @@ export const Route = createFileRoute("/_app/assembleias/$id")({
       {
         name: "description",
         content:
-          "Detalhe da sessão: documentos, preparação e acompanhamento da assembleia municipal.",
+          "Detalhe da sessão, preparação e acompanhamento da assembleia municipal.",
       },
     ],
   }),
@@ -42,7 +39,6 @@ function AssembleiaDetailPage() {
   const { id } = Route.useParams();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const assembleia = useAssembleia(id);
-  const docs = useDocumentosDaAssembleia(id);
   const [confirmarArquivo, setConfirmarArquivo] = useState(false);
 
   const isSubRoute = pathname.includes(`/assembleias/${id}/`);
@@ -117,7 +113,7 @@ function AssembleiaDetailPage() {
           Todas as assembleias
         </Link>
 
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-card mb-8">
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-card">
           <div className="flex items-start justify-between gap-6 flex-wrap">
             <div className="min-w-0">
               <StatusBadge estado={assembleia.estado} />
@@ -171,25 +167,6 @@ function AssembleiaDetailPage() {
               para arquivar esta assembleia.
             </p>
           )}
-        </section>
-
-        <section>
-          <div className="flex items-end justify-between mb-4 gap-4 flex-wrap">
-            <div>
-              <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">
-                Documentos da sessão
-              </h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {docs.length} documentos disponíveis
-              </p>
-            </div>
-            <AdicionarDocumentoSheet assembleiaId={id} />
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {docs.map((d) => (
-              <DocumentoCard key={d.id} documento={d} />
-            ))}
-          </div>
         </section>
       </main>
     </>

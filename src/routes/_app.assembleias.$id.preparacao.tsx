@@ -1,23 +1,21 @@
-import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useRouterState,
+} from "@tanstack/react-router";
 import {
   ChevronLeft,
-  Target,
-  MessageCircleQuestion,
-  ListChecks,
+  FileText,
+  ClipboardList,
+  ListOrdered,
   FilePlus2,
+  Plus,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { formatarData } from "@/lib/mock-data";
-import { obterPreparacaoDaAssembleia } from "@/lib/preparacao-store";
-import { SecaoPreparacao } from "@/components/preparacao/SecaoPreparacao";
-import { PrioridadeCard } from "@/components/preparacao/PrioridadeCard";
-import { PerguntaCard } from "@/components/preparacao/PerguntaCard";
-import { AcaoCard } from "@/components/preparacao/AcaoCard";
-import { DocumentoACriarCard } from "@/components/preparacao/DocumentoACriarCard";
-import { AdicionarPrioridadeDialog } from "@/components/preparacao/AdicionarPrioridadeDialog";
-import { AdicionarPerguntaDialog } from "@/components/preparacao/AdicionarPerguntaDialog";
 import { useAssembleia } from "@/lib/assembleias-store";
+import { PreparacaoAreaCard } from "@/components/preparacao/PreparacaoAreaCard";
 
 export const Route = createFileRoute("/_app/assembleias/$id/preparacao")({
   head: () => ({
@@ -26,7 +24,7 @@ export const Route = createFileRoute("/_app/assembleias/$id/preparacao")({
       {
         name: "description",
         content:
-          "Prepare a assembleia: prioridades, perguntas sugeridas, ações pendentes e documentos a criar.",
+          "Prepare a assembleia: documentos, estratégia, pontos da ordem de trabalhos e documentos a criar.",
       },
     ],
   }),
@@ -35,16 +33,13 @@ export const Route = createFileRoute("/_app/assembleias/$id/preparacao")({
 
 function PreparacaoPage() {
   const { id } = Route.useParams();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const assembleia = useAssembleia(id);
-  const [versao, setVersao] = useState(0);
 
-  const preparacao = useMemo(
-    () => obterPreparacaoDaAssembleia(id),
-    [id, versao],
-  );
+  const isSubRoute = pathname.includes(`/assembleias/${id}/preparacao/`);
 
-  function atualizarPreparacao() {
-    setVersao((valor) => valor + 1);
+  if (isSubRoute) {
+    return <Outlet />;
   }
 
   if (!assembleia) {
@@ -74,12 +69,6 @@ function PreparacaoPage() {
     );
   }
 
-  const semPreparacao =
-    preparacao.prioridades.length === 0 &&
-    preparacao.perguntas.length === 0 &&
-    preparacao.acoes.length === 0 &&
-    preparacao.documentosACriar.length === 0;
-
   return (
     <>
       <TopBar
@@ -104,6 +93,7 @@ function PreparacaoPage() {
           </span>
         }
       />
+
       <main className="px-8 py-10 max-w-7xl">
         <Link
           to="/assembleias/$id"
@@ -116,7 +106,7 @@ function PreparacaoPage() {
 
         <div className="mb-10">
           <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-            Preparação da Assembleia
+            Preparação
           </div>
           <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
             {assembleia.nome}
@@ -127,74 +117,37 @@ function PreparacaoPage() {
           </p>
         </div>
 
-        {semPreparacao && (
-          <section className="rounded-2xl border border-dashed border-border bg-card p-8 shadow-card mb-8">
-            <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
-              Preparação ainda vazia
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-              Esta assembleia ainda não tem prioridades, perguntas, ações
-              pendentes ou documentos a criar. Comece por adicionar a primeira
-              prioridade da sessão.
-            </p>
-          </section>
-        )}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <PreparacaoAreaCard
+            icon={FileText}
+            titulo="Documentos"
+            descricao="Carregar, organizar e consultar os documentos da sessão."
+            to="/assembleias/$id/preparacao/documentos"
+            params={{ id }}
+          />
 
-        <SecaoPreparacao
-          icon={Target}
-          titulo="Prioridades da Assembleia"
-          descricao="Os temas centrais que pretende defender nesta sessão."
-          total={preparacao.prioridades.length}
-          action={
-            <AdicionarPrioridadeDialog
-              assembleiaId={id}
-              onAdicionar={atualizarPreparacao}
-            />
-          }
-        >
-          {preparacao.prioridades.map((item) => (
-            <PrioridadeCard key={item.id} item={item} />
-          ))}
-        </SecaoPreparacao>
+          <PreparacaoAreaCard
+  icon={ClipboardList}
+  titulo="Estratégia da Sessão"
+  descricao="Objetivos, mensagens-chave, riscos e notas gerais da assembleia."
+  to="/assembleias/$id/preparacao/estrategia"
+  params={{ id }}
+/>
 
-        <SecaoPreparacao
-          icon={MessageCircleQuestion}
-          titulo="Perguntas sugeridas"
-          descricao="Perguntas que poderá dirigir ao executivo durante a sessão."
-          total={preparacao.perguntas.length}
-          action={
-            <AdicionarPerguntaDialog
-              assembleiaId={id}
-              onAdicionar={atualizarPreparacao}
-            />
-          }
-        >
-          {preparacao.perguntas.map((item) => (
-            <PerguntaCard key={item.id} item={item} />
-          ))}
-        </SecaoPreparacao>
+          <PreparacaoAreaCard
+  icon={ListOrdered}
+  titulo="Pontos da Ordem de Trabalhos"
+  descricao="Preparar cada ponto com notas, perguntas, ações e documentos associados."
+  to="/assembleias/$id/preparacao/pontos"
+  params={{ id }}
+/>
 
-        <SecaoPreparacao
-          icon={ListChecks}
-          titulo="Ações pendentes"
-          descricao="Tarefas a concluir antes da sessão."
-          total={preparacao.acoes.length}
-        >
-          {preparacao.acoes.map((item) => (
-            <AcaoCard key={item.id} item={item} />
-          ))}
-        </SecaoPreparacao>
-
-        <SecaoPreparacao
-          icon={FilePlus2}
-          titulo="Documentos a criar"
-          descricao="Moções, requerimentos e recomendações a apresentar."
-          total={preparacao.documentosACriar.length}
-        >
-          {preparacao.documentosACriar.map((item) => (
-            <DocumentoACriarCard key={item.id} item={item} />
-          ))}
-        </SecaoPreparacao>
+          <PreparacaoAreaCard
+            icon={FilePlus2}
+            titulo="Documentos a Criar"
+            descricao="Moções, recomendações, requerimentos, declarações de voto e intervenções."
+          />
+        </div>
       </main>
     </>
   );
