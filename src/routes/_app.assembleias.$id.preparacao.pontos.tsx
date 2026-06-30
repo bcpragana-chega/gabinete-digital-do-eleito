@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeft, ListOrdered } from "lucide-react";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
+import { ArrowRight, ChevronLeft, ListOrdered } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { AdicionarPontoDialog } from "@/components/preparacao/AdicionarPontoDialog";
 import { useAssembleia } from "@/lib/assembleias-store";
@@ -23,13 +29,31 @@ export const Route = createFileRoute(
 
 function PreparacaoPontosPage() {
   const { id } = Route.useParams();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
   const assembleia = useAssembleia(id);
   const [versao, setVersao] = useState(0);
 
   const pontos = useMemo(() => obterPontosDaAssembleia(id), [id, versao]);
 
+  const isSubRoute = pathname.includes(`/assembleias/${id}/preparacao/pontos/`);
+
   function atualizarPontos() {
     setVersao((valor) => valor + 1);
+  }
+
+  function abrirPonto(pontoId: string) {
+    navigate({
+      to: "/assembleias/$id/preparacao/pontos/$pontoId",
+      params: {
+        id,
+        pontoId,
+      },
+    });
+  }
+
+  if (isSubRoute) {
+    return <Outlet />;
   }
 
   if (!assembleia) {
@@ -49,10 +73,6 @@ function PreparacaoPontosPage() {
             <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
               Assembleia não encontrada
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Esta assembleia pode ter sido removida ou ainda não estar
-              disponível neste navegador.
-            </p>
           </section>
         </main>
       </>
@@ -61,36 +81,7 @@ function PreparacaoPontosPage() {
 
   return (
     <>
-      <TopBar
-        breadcrumb={
-          <span>
-            <Link
-              to="/assembleias"
-              className="hover:text-foreground transition-colors"
-            >
-              Assembleias
-            </Link>
-            <span className="mx-2 text-muted-foreground/60">/</span>
-            <Link
-              to="/assembleias/$id"
-              params={{ id }}
-              className="hover:text-foreground transition-colors"
-            >
-              {assembleia.nome}
-            </Link>
-            <span className="mx-2 text-muted-foreground/60">/</span>
-            <Link
-              to="/assembleias/$id/preparacao"
-              params={{ id }}
-              className="hover:text-foreground transition-colors"
-            >
-              Preparação
-            </Link>
-            <span className="mx-2 text-muted-foreground/60">/</span>
-            <span className="text-foreground">Pontos</span>
-          </span>
-        }
-      />
+      <TopBar breadcrumb="Pontos" />
 
       <main className="px-8 py-10 max-w-7xl">
         <Link
@@ -131,54 +122,37 @@ function PreparacaoPontosPage() {
             <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
               Ainda não existem pontos
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-              Crie manualmente os pontos da ordem de trabalhos. Mais tarde, o
-              Tribuno poderá identificá-los automaticamente a partir da
-              convocatória.
-            </p>
           </section>
         ) : (
           <section className="grid gap-4 md:grid-cols-2">
             {pontos.map((ponto) => (
-              <article
+              <button
                 key={ponto.id}
-                className="rounded-2xl border border-border bg-card p-5 shadow-card"
+                type="button"
+                onClick={() => abrirPonto(ponto.id)}
+                className="group block text-left"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Ponto {ponto.numero}
+                <article className="rounded-2xl border border-border bg-card p-5 shadow-card transition-all group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-md">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Ponto {ponto.numero}
+                      </div>
+                      <h2 className="mt-2 font-display text-xl font-semibold tracking-tight text-foreground">
+                        {ponto.titulo}
+                      </h2>
                     </div>
-                    <h2 className="mt-2 font-display text-xl font-semibold tracking-tight text-foreground">
-                      {ponto.titulo}
-                    </h2>
+
+                    <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
                   </div>
 
-                  <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                    {ponto.prioridade}
-                  </span>
-                </div>
-
-                {ponto.descricao && (
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    {ponto.descricao}
-                  </p>
-                )}
-
-                <div className="mt-5 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                  <span className="rounded-full border border-border px-2.5 py-1">
-                    {ponto.estado}
-                  </span>
-                  <span className="rounded-full border border-border px-2.5 py-1">
-                    Voto: {ponto.sentidoVoto}
-                  </span>
-                  {ponto.tempoEstimado && (
-                    <span className="rounded-full border border-border px-2.5 py-1">
-                      {ponto.tempoEstimado} min
-                    </span>
+                  {ponto.descricao && (
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      {ponto.descricao}
+                    </p>
                   )}
-                </div>
-              </article>
+                </article>
+              </button>
             ))}
           </section>
         )}

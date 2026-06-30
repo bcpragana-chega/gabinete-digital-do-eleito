@@ -66,6 +66,15 @@ export function obterPontosDaAssembleia(
     .sort((a, b) => a.numero - b.numero);
 }
 
+export function obterPontoPorId(
+  assembleiaId: string,
+  pontoId: string,
+): PontoOrdemTrabalhos | undefined {
+  return obterPontosDaAssembleia(assembleiaId).find(
+    (ponto) => ponto.id === pontoId,
+  );
+}
+
 export function adicionarPonto(
   assembleiaId: string,
   data: Pick<PontoOrdemTrabalhos, "titulo" | "descricao" | "prioridade"> & {
@@ -104,6 +113,26 @@ export function adicionarPonto(
   guardarPontos([novoPonto, ...pontos]);
 
   return novoPonto;
+}
+
+export function atualizarPonto(
+  pontoId: string,
+  data: Partial<Omit<PontoOrdemTrabalhos, "id" | "assembleiaId" | "numero">>,
+) {
+  const pontos = lerPontos();
+
+  const pontosAtualizados = pontos.map((ponto) =>
+    ponto.id === pontoId
+      ? {
+          ...ponto,
+          ...data,
+        }
+      : ponto,
+  );
+
+  guardarPontos(pontosAtualizados);
+
+  return pontosAtualizados.find((ponto) => ponto.id === pontoId);
 }
 
 export function removerPonto(id: string) {
