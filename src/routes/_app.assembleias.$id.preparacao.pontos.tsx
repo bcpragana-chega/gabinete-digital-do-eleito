@@ -9,6 +9,8 @@ import {
 import { ArrowRight, ChevronLeft, ListOrdered } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { AdicionarPontoDialog } from "@/components/preparacao/AdicionarPontoDialog";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useAssembleia } from "@/lib/assembleias-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
 
@@ -69,11 +71,7 @@ function PreparacaoPontosPage() {
             Todas as assembleias
           </Link>
 
-          <section className="rounded-2xl border border-border bg-card p-8 shadow-card">
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-              Assembleia não encontrada
-            </h1>
-          </section>
+          <EmptyState title="Assembleia não encontrada" />
         </main>
       </>
     );
@@ -93,36 +91,15 @@ function PreparacaoPontosPage() {
           Voltar à preparação
         </Link>
 
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-card mb-8">
-          <div className="flex items-start justify-between gap-6 flex-wrap">
-            <div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground mb-4">
-                <ListOrdered className="h-5 w-5" strokeWidth={1.75} />
-              </div>
-
-              <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-                Pontos da Ordem de Trabalhos
-              </h1>
-
-              <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-                Organize aqui os pontos da sessão e prepare notas, perguntas,
-                ações, sentido de voto e documentos associados a cada ponto.
-              </p>
-            </div>
-
-            <AdicionarPontoDialog
-              assembleiaId={id}
-              onAdicionar={atualizarPontos}
-            />
-          </div>
-        </section>
+        <PageHeader
+          icon={ListOrdered}
+          title="Pontos da Ordem de Trabalhos"
+          description="Organize aqui os pontos da sessão e prepare notas, perguntas, ações, sentido de voto e documentos associados a cada ponto."
+          actions={<AdicionarPontoDialog assembleiaId={id} onAdicionar={atualizarPontos} />}
+        />
 
         {pontos.length === 0 ? (
-          <section className="rounded-2xl border border-dashed border-border bg-card p-8 shadow-card">
-            <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
-              Ainda não existem pontos
-            </h2>
-          </section>
+          <EmptyState title="Ainda não existem pontos" />
         ) : (
           <section className="grid gap-4 md:grid-cols-2">
             {pontos.map((ponto) => (

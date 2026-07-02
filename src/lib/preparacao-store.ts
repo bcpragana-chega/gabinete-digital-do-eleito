@@ -2,7 +2,7 @@ export type NivelPrioridade = "Alta" | "Média" | "Baixa";
 
 export type EstadoPrioridade = "Por preparar" | "Preparado" | "Acompanhar";
 export type EstadoAcao = "Pendente" | "Em curso" | "Concluída";
-export type TipoDocumento =
+export type TipoDocumentoPlaneadoPreparacao =
   | "Moção"
   | "Recomendação"
   | "Requerimento"
@@ -36,10 +36,10 @@ export type AcaoPendente = {
   prazo?: string;
 };
 
-export type DocumentoACriar = {
+export type DocumentoPlaneadoPreparacao = {
   id: string;
   assembleiaId: string;
-  tipo: TipoDocumento;
+  tipo: TipoDocumentoPlaneadoPreparacao;
   motivo: string;
   prioridade: NivelPrioridade;
 };
@@ -50,7 +50,7 @@ type PreparacaoStore = {
   prioridades: PrioridadeAssembleia[];
   perguntas: PerguntaSugerida[];
   acoes: AcaoPendente[];
-  documentosACriar: DocumentoACriar[];
+  documentosACriar: DocumentoPlaneadoPreparacao[];
 };
 
 const storeVazio: PreparacaoStore = {
@@ -159,11 +159,11 @@ export function adicionarAcao(
 
 export function adicionarDocumentoACriar(
   assembleiaId: string,
-  data: Omit<DocumentoACriar, "id" | "assembleiaId">,
+  data: Omit<DocumentoPlaneadoPreparacao, "id" | "assembleiaId">,
 ) {
   const store = lerStore();
 
-  const novoDocumento: DocumentoACriar = {
+  const novoDocumento: DocumentoPlaneadoPreparacao = {
     id: gerarId("documento"),
     assembleiaId,
     ...data,

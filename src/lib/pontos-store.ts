@@ -1,17 +1,8 @@
 export type NivelPrioridade = "Alta" | "Média" | "Baixa";
 
-export type EstadoPonto =
-  | "Por preparar"
-  | "Em preparação"
-  | "Preparado"
-  | "Concluído";
+export type EstadoPonto = "Por preparar" | "Em preparação" | "Preparado" | "Concluído";
 
-export type SentidoVoto =
-  | "A favor"
-  | "Contra"
-  | "Abstenção"
-  | "Livre"
-  | "Por decidir";
+export type SentidoVoto = "A favor" | "Contra" | "Abstenção" | "Livre" | "Por decidir";
 
 export type PontoOrdemTrabalhos = {
   id: string;
@@ -24,6 +15,9 @@ export type PontoOrdemTrabalhos = {
   objetivoPolitico: string;
   mensagemPrincipal: string;
   notas: string;
+  riscos: string;
+  linhaIntervencao: string;
+  notasInternas: string;
   sentidoVoto: SentidoVoto;
   documentos: string[];
   perguntas: string[];
@@ -58,9 +52,7 @@ function guardarPontos(pontos: PontoOrdemTrabalhos[]) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(pontos));
 }
 
-export function obterPontosDaAssembleia(
-  assembleiaId: string,
-): PontoOrdemTrabalhos[] {
+export function obterPontosDaAssembleia(assembleiaId: string): PontoOrdemTrabalhos[] {
   return lerPontos()
     .filter((ponto) => ponto.assembleiaId === assembleiaId)
     .sort((a, b) => a.numero - b.numero);
@@ -70,9 +62,7 @@ export function obterPontoPorId(
   assembleiaId: string,
   pontoId: string,
 ): PontoOrdemTrabalhos | undefined {
-  return obterPontosDaAssembleia(assembleiaId).find(
-    (ponto) => ponto.id === pontoId,
-  );
+  return obterPontosDaAssembleia(assembleiaId).find((ponto) => ponto.id === pontoId);
 }
 
 export function adicionarPonto(
@@ -82,9 +72,7 @@ export function adicionarPonto(
   },
 ) {
   const pontos = lerPontos();
-  const pontosDaAssembleia = pontos.filter(
-    (ponto) => ponto.assembleiaId === assembleiaId,
-  );
+  const pontosDaAssembleia = pontos.filter((ponto) => ponto.assembleiaId === assembleiaId);
 
   const proximoNumero =
     pontosDaAssembleia.length > 0
@@ -102,6 +90,9 @@ export function adicionarPonto(
     objetivoPolitico: "",
     mensagemPrincipal: "",
     notas: "",
+    riscos: "",
+    linhaIntervencao: "",
+    notasInternas: "",
     sentidoVoto: "Por decidir",
     documentos: [],
     perguntas: [],

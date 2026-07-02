@@ -1,0 +1,116 @@
+import { useEffect, useState } from "react";
+import type { DossieNota } from "./types";
+
+const STORAGE_KEY = "tribuno.dossie-notas.v1";
+const EVENT_NAME = "tribuno:dossie-notas";
+
+function isBrowser() {
+  return typeof window !== "undefined";
+}
+
+function gerarId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function lerNotasLocais(): DossieNota[] {
+  if (!isBrowser()) return [];
+
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed;
+  } catch {
+    return [];
+  }
+}
+
+function guardarNotasLocais(notas: DossieNota[]) {
+  if (!isBrowser()) return;
+
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notas));
+  window.dispatchEvent(new Event(EVENT_NAME));
+}
+
+export function listarNotasDossie(dossieId: string): DossieNota[] {
+  return lerNotasLocais()
+    .filter((nota) => nota.dossieId === dossieId)
+    .sort((a, b) => {
+      const dataA = a.updatedAt ?? a.createdAt;
+      const dataB = b.updatedAt ?? b.createdAt;
+      return dataB.localeCompare(dataA);
+    });
+}
+
+export function listarTodasNotasDossie(): DossieNota[] {
+  return lerNotasLocais().sort((a, b) => {
+    const dataA = a.updatedAt ?? a.createdAt;
+    const dataB = b.updatedAt ?? b.createdAt;
+    return dataB.localeCompare(dataA);
+  });
+}
+
+export function adicionarNotaDossie(dossieId: string, conteudo: string): DossieNota {
+  const agora = new Date().toISOString();
+  const nota: DossieNota = {
+    id: `nota-${gerarId()}`,
+    dossieId,
+    conteudo,
+    createdAt: agora,
+    updatedAt: agora,
+  };
+
+  guardarNotasLocais([...lerNotasLocais(), nota]);
+
+  return nota;
+}
+
+export function editarNotaDossie(id: string, conteudo: string): DossieNota | undefined {
+  const notas = lerNotasLocais();
+  const atualizadas = notas.map((nota) =>
+    nota.id === id
+      ? {
+          ...nota,
+          conteudo,
+          updatedAt: new Date().toISOString(),
+        }
+      : nota,
+  );
+
+  guardarNotasLocais(atualizadas);
+
+  return atualizadas.find((nota) => nota.id === id);
+}
+
+export function apagarNotaDossie(id: string) {
+  guardarNotasLocais(lerNotasLocais().filter((nota) => nota.id !== id));
+}
+
+export function useNotasDossie(dossieId: string): DossieNota[] {
+  const [notas, setNotas] = useState<DossieNota[]>([]);
+
+  useEffect(() => {
+    const atualizar = () => {
+      setNotas(listarNotasDossie(dossieId));
+    };
+
+    atualizar();
+
+    window.addEventListener(EVENT_NAME, atualizar);
+    window.addEventListener("storage", atualizar);
+
+    return () => {
+      window.removeEventListener(EVENT_NAME, atualizar);
+      window.removeEventListener("storage", atualizar);
+    };
+  }, [dossieId]);
+
+  return notas;
+}

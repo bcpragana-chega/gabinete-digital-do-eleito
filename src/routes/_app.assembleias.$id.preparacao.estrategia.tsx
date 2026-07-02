@@ -3,6 +3,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronLeft, ClipboardList } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { StrategyField } from "@/components/estrategia/StrategyField";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useAssembleia } from "@/lib/assembleias-store";
 import {
@@ -78,15 +80,10 @@ function PreparacaoEstrategiaPage() {
             Todas as assembleias
           </Link>
 
-          <section className="rounded-2xl border border-border bg-card p-8 shadow-card">
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-              Assembleia não encontrada
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Esta assembleia pode ter sido removida ou ainda não estar
-              disponível neste navegador.
-            </p>
-          </section>
+          <EmptyState
+            title="Assembleia não encontrada"
+            description="Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador."
+          />
         </main>
       </>
     );
@@ -135,21 +132,11 @@ function PreparacaoEstrategiaPage() {
           Voltar à preparação
         </Link>
 
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-card mb-8">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground mb-4">
-            <ClipboardList className="h-5 w-5" strokeWidth={1.75} />
-          </div>
-
-          <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-            Briefing político
-          </h1>
-
-          <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-            Defina a linha política da sessão antes de preparar perguntas,
-            intervenções ou documentos. As alterações são guardadas
-            automaticamente.
-          </p>
-        </section>
+        <PageHeader
+          icon={ClipboardList}
+          title="Briefing político"
+          description="Defina a linha política da sessão antes de preparar perguntas, intervenções ou documentos. As alterações são guardadas automaticamente."
+        />
 
         <section className="space-y-4">
           <StrategyField

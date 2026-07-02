@@ -1,18 +1,8 @@
-import {
-  createFileRoute,
-  Link,
-  Outlet,
-  useRouterState,
-} from "@tanstack/react-router";
-import {
-  ChevronLeft,
-  FileText,
-  ClipboardList,
-  ListOrdered,
-  FilePlus2,
-  Plus,
-} from "lucide-react";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { ChevronLeft, FileText, ClipboardList, ListOrdered, FilePlus2 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { formatarData } from "@/lib/mock-data";
 import { useAssembleia } from "@/lib/assembleias-store";
 import { PreparacaoAreaCard } from "@/components/preparacao/PreparacaoAreaCard";
@@ -55,15 +45,10 @@ function PreparacaoPage() {
             Todas as assembleias
           </Link>
 
-          <section className="rounded-2xl border border-border bg-card p-8 shadow-card">
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-              Assembleia não encontrada
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Esta assembleia pode ter sido removida ou ainda não estar
-              disponível neste navegador.
-            </p>
-          </section>
+          <EmptyState
+            title="Assembleia não encontrada"
+            description="Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador."
+          />
         </main>
       </>
     );
@@ -74,10 +59,7 @@ function PreparacaoPage() {
       <TopBar
         breadcrumb={
           <span>
-            <Link
-              to="/assembleias"
-              className="hover:text-foreground transition-colors"
-            >
+            <Link to="/assembleias" className="hover:text-foreground transition-colors">
               Assembleias
             </Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
@@ -104,18 +86,12 @@ function PreparacaoPage() {
           Voltar à assembleia
         </Link>
 
-        <div className="mb-10">
-          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-            Preparação
-          </div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
-            {assembleia.nome}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {formatarData(assembleia.data)} · {assembleia.hora} ·{" "}
-            {assembleia.local}
-          </p>
-        </div>
+        <PageHeader
+          icon={ClipboardList}
+          eyebrow="Preparação"
+          title={assembleia.nome}
+          description={`${formatarData(assembleia.data)} · ${assembleia.hora} · ${assembleia.local}`}
+        />
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <PreparacaoAreaCard
@@ -127,25 +103,27 @@ function PreparacaoPage() {
           />
 
           <PreparacaoAreaCard
-  icon={ClipboardList}
-  titulo="Estratégia da Sessão"
-  descricao="Objetivos, mensagens-chave, riscos e notas gerais da assembleia."
-  to="/assembleias/$id/preparacao/estrategia"
-  params={{ id }}
-/>
+            icon={ClipboardList}
+            titulo="Estratégia da Sessão"
+            descricao="Objetivos, mensagens-chave, riscos e notas gerais da assembleia."
+            to="/assembleias/$id/preparacao/estrategia"
+            params={{ id }}
+          />
 
           <PreparacaoAreaCard
-  icon={ListOrdered}
-  titulo="Pontos da Ordem de Trabalhos"
-  descricao="Preparar cada ponto com notas, perguntas, ações e documentos associados."
-  to="/assembleias/$id/preparacao/pontos"
-  params={{ id }}
-/>
+            icon={ListOrdered}
+            titulo="Pontos da Ordem de Trabalhos"
+            descricao="Preparar cada ponto com notas, perguntas, ações e documentos associados."
+            to="/assembleias/$id/preparacao/pontos"
+            params={{ id }}
+          />
 
           <PreparacaoAreaCard
             icon={FilePlus2}
             titulo="Documentos a Criar"
             descricao="Moções, recomendações, requerimentos, declarações de voto e intervenções."
+            to="/assembleias/$id/preparacao/documentos-a-criar"
+            params={{ id }}
           />
         </div>
       </main>

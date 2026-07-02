@@ -8,6 +8,9 @@ import {
 import { TopBar } from "@/components/layout/TopBar";
 import { DocumentoCard } from "@/components/documentos/DocumentoCard";
 import { AdicionarDocumentoSheet } from "@/components/documentos/AdicionarDocumentoSheet";
+import { DashboardMetric } from "@/components/ui/DashboardMetric";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
 import { useAssembleia } from "@/lib/assembleias-store";
 
@@ -44,15 +47,10 @@ function PreparacaoDocumentosPage() {
             Todas as assembleias
           </Link>
 
-          <section className="rounded-2xl border border-border bg-card p-8 shadow-card">
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
-              Assembleia não encontrada
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Esta assembleia pode ter sido removida ou ainda não estar
-              disponível neste navegador.
-            </p>
-          </section>
+          <EmptyState
+            title="Assembleia não encontrada"
+            description="Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador."
+          />
         </main>
       </>
     );
@@ -101,80 +99,27 @@ function PreparacaoDocumentosPage() {
           Voltar à preparação
         </Link>
 
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-card mb-8">
-          <div className="flex items-start justify-between gap-6 flex-wrap">
-            <div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground mb-4">
-                <FileText className="h-5 w-5" strokeWidth={1.75} />
-              </div>
-
-              <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-                Documentos
-              </h1>
-
-              <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-                Carregue aqui a convocatória, atas, relatórios, propostas e
-                restantes documentos necessários para preparar a assembleia.
-              </p>
-            </div>
-
-            <AdicionarDocumentoSheet assembleiaId={id} />
-          </div>
-        </section>
+        <PageHeader
+          icon={FileText}
+          title="Documentos"
+          description="Carregue aqui a convocatória, atas, relatórios, propostas e restantes documentos necessários para preparar a assembleia."
+          actions={<AdicionarDocumentoSheet assembleiaId={id} />}
+        />
 
         <div className="grid gap-4 md:grid-cols-3 mb-8">
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                <FileText className="h-4 w-4" strokeWidth={1.75} />
-              </div>
-
-              <div>
-                <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
-                  Documentos carregados
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {documentos.length}{" "}
-                  {documentos.length === 1 ? "documento" : "documentos"} nesta
-                  preparação.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                <ListChecks className="h-4 w-4" strokeWidth={1.75} />
-              </div>
-
-              <div>
-                <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
-                  Pontos identificados
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Ainda não foram criados pontos da ordem de trabalhos.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                <SearchCheck className="h-4 w-4" strokeWidth={1.75} />
-              </div>
-
-              <div>
-                <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
-                  Estado da análise
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Por analisar.
-                </p>
-              </div>
-            </div>
-          </section>
+          <DashboardMetric
+            label="Documentos carregados"
+            value={documentos.length}
+            icon={FileText}
+            description={`${documentos.length === 1 ? "documento" : "documentos"} nesta preparação.`}
+          />
+          <DashboardMetric
+            label="Pontos identificados"
+            value="0"
+            icon={ListChecks}
+            description="Ainda não foram criados pontos da ordem de trabalhos."
+          />
+          <DashboardMetric label="Estado da análise" value="Por analisar" icon={SearchCheck} />
         </div>
 
         <section>
@@ -190,15 +135,10 @@ function PreparacaoDocumentosPage() {
           </div>
 
           {documentos.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border bg-card p-8 shadow-card">
-              <h3 className="font-display text-xl font-semibold tracking-tight text-foreground">
-                Ainda não existem documentos
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Comece por carregar a convocatória, atas, relatórios ou propostas
-                que pretende analisar.
-              </p>
-            </div>
+            <EmptyState
+              title="Ainda não existem documentos"
+              description="Comece por carregar a convocatória, atas, relatórios ou propostas que pretende analisar."
+            />
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {documentos.map((documento) => (

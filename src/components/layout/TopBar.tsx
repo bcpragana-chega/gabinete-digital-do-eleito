@@ -1,8 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, Menu, Search, Scale } from "lucide-react";
+import { Bell, Menu, Scale } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { sidebarItems } from "@/components/layout/AppSidebar";
+import { UniversalSearch } from "@/components/search/UniversalSearch";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -13,7 +14,6 @@ import {
 } from "@/components/ui/sheet";
 
 export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
-  const [pesquisa, setPesquisa] = useState("");
   const [menuAberto, setMenuAberto] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -111,16 +111,7 @@ export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="hidden lg:flex items-center gap-2 rounded-md border border-input bg-card px-3 py-1.5 w-72">
-            <Search className="h-3.5 w-3.5 text-muted-foreground" />
-            <input
-              type="search"
-              value={pesquisa}
-              onChange={(e) => setPesquisa(e.target.value)}
-              placeholder="Pesquisar documentos, assembleias..."
-              className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
-            />
-          </div>
+          <UniversalSearch />
 
           <button
             type="button"
