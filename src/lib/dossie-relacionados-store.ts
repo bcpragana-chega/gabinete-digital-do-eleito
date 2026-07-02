@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { adicionarEventoAutomaticoTimelineDossie } from "./dossie-timeline-store";
 import type { CategoriaRelacionadoDossie, DossieRelacionado } from "./types";
 
 const STORAGE_KEY = "tribuno.dossie-relacionados.v1";
@@ -70,6 +71,17 @@ export function adicionarRelacionadoDossie(
   };
 
   guardarRelacionadosLocais([...lerRelacionadosLocais(), relacionado]);
+
+  if (input.categoria === "compromissos") {
+    adicionarEventoAutomaticoTimelineDossie(dossieId, {
+      titulo: "Compromisso criado",
+      descricao: `${input.nome}: ${input.descricao}`,
+      tipo: "compromisso",
+      origemTipo: "compromisso",
+      origemId: relacionado.id,
+      origemHref: `/dossies/${dossieId}`,
+    });
+  }
 
   return relacionado;
 }

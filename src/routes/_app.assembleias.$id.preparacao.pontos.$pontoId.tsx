@@ -256,7 +256,7 @@ function PreparacaoPontoDetalhePage() {
               ]}
             />
 
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="secondary" size="sm">
               <Link to="/assembleias/$id/preparacao/pontos" params={{ id }}>
                 <ChevronLeft className="h-3.5 w-3.5" />
                 Voltar aos pontos
@@ -568,7 +568,7 @@ function DocumentosACriarSection({
               title={rascunho.titulo}
               meta={`${rascunho.tipo} · ${rascunho.estado}`}
               action={
-                <Button asChild size="sm" variant="outline">
+                <Button asChild size="sm" variant="secondary">
                   <Link
                     to="/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId"
                     params={{

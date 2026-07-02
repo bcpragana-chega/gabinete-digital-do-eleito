@@ -32,7 +32,7 @@ export function PerguntaCard({ item }: { item: PerguntaSugerida }) {
       )}
 
       <div className="mt-5 flex justify-end border-t border-border pt-3">
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="secondary">
           Selecionar pergunta
         </Button>
       </div>

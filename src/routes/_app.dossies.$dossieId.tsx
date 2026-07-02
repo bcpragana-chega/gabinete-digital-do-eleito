@@ -14,7 +14,7 @@ import { EditarDossieDialog } from "@/components/dossies/EditarDossieDialog";
 import { DossieNotasSection } from "@/components/dossies/DossieNotasSection";
 import { DossieRelacionadosSection } from "@/components/dossies/DossieRelacionadosSection";
 import { DossieTimelineSection } from "@/components/dossies/DossieTimelineSection";
-import { ActionCard, InfoCard, MetricCard } from "@/components/ui/cards";
+import { ActionCard, InfoCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
 import { Breadcrumb } from "@/components/ui/navigation";
@@ -23,7 +23,6 @@ import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import {
   WorkspaceHeader,
   WorkspaceLayout,
-  WorkspaceMetrics,
   WorkspaceSection,
 } from "@/components/ui/workspace";
 import { arquivarDossie, useDossie } from "@/lib/dossies-store";
@@ -95,7 +94,7 @@ function DossieDetalhePage() {
     return (
       <>
         <TopBar breadcrumb="Dossiê" />
-        <main className="min-h-screen bg-muted/30">
+        <main className="min-h-screen bg-transparent">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
             <Button asChild variant="ghost" size="sm" className="mb-6">
               <Link to="/dossies">
@@ -127,7 +126,7 @@ function DossieDetalhePage() {
   return (
     <>
       <TopBar breadcrumb="Dossiê" />
-      <main className="min-h-screen bg-muted/30">
+      <main className="min-h-screen bg-transparent">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <Breadcrumb items={[{ label: "Dossiês" }, { label: dossie.titulo }]} />
@@ -146,11 +145,12 @@ function DossieDetalhePage() {
                 eyebrow="Workspace de Dossiê"
                 title={dossie.titulo}
                 description="Centro de trabalho para acompanhar este tema ao longo do mandato."
+                className="border-border/60 bg-white p-7 shadow-none"
                 actions={
                   <div className="flex flex-wrap justify-end gap-2">
                     {!arquivado && <EditarDossieDialog dossie={dossie} />}
                     {!arquivado && (
-                      <Button type="button" variant="outline" size="sm" onClick={arquivar}>
+                      <Button type="button" variant="secondary" size="sm" onClick={arquivar}>
                         <Archive className="mr-2 h-4 w-4" />
                         Arquivar
                       </Button>
@@ -211,14 +211,7 @@ function DossieDetalhePage() {
               </>
             }
           >
-            <WorkspaceMetrics>
-              <MetricCard label="Documentos" value="0" description="Placeholder" />
-              <MetricCard label="Assembleias" value="0" description="Placeholder" />
-              <MetricCard label="Pessoas" value="0" description="Placeholder" />
-              <MetricCard label="Compromissos" value="0" description="Placeholder" />
-            </WorkspaceMetrics>
-
-            <WorkspaceSection>
+            <WorkspaceSection className="border-border/60 bg-white shadow-none">
               <SectionTitle
                 icon={FileText}
                 title="Resumo"
@@ -229,7 +222,7 @@ function DossieDetalhePage() {
               </p>
             </WorkspaceSection>
 
-            <WorkspaceSection>
+            <WorkspaceSection className="border-border/60 bg-white shadow-none">
               <SectionTitle
                 icon={CheckCircle2}
                 title="Objetivo político"
@@ -240,7 +233,7 @@ function DossieDetalhePage() {
               </p>
             </WorkspaceSection>
 
-            <WorkspaceSection>
+            <WorkspaceSection className="border-border/60 bg-white shadow-none">
               <SectionTitle
                 icon={Clock3}
                 title="Próxima ação"
@@ -262,7 +255,7 @@ function DossieDetalhePage() {
 
             <DossieNotasSection dossieId={dossie.id} />
 
-            <WorkspaceSection>
+            <WorkspaceSection className="border-border/60 bg-white shadow-none">
               <SectionTitle
                 icon={Activity}
                 title="Atividade recente"

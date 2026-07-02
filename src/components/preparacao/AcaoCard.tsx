@@ -19,7 +19,7 @@ export function AcaoCard({ item }: { item: AcaoPendente }) {
       )}
 
       <div className="mt-5 flex justify-end border-t border-border pt-3">
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="secondary">
           Marcar
         </Button>
       </div>

@@ -347,7 +347,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
     onChange: (campo: keyof DossieRelacionadoInput, valor: string) => void,
   ) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 border-t border-border/60 pt-4">
         <div className="grid gap-4 md:grid-cols-[1fr_180px]">
           <div className="space-y-2">
             <label
@@ -361,7 +361,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
               value={input.nome}
               onChange={(event) => onChange("nome", event.target.value)}
               placeholder={`Ex.: ${config.singular} relevante`}
-              className="bg-background"
+              className="bg-card"
             />
           </div>
           <div className="space-y-2">
@@ -376,7 +376,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
               value={input.tipo}
               onChange={(event) => onChange("tipo", event.target.value)}
               placeholder={config.tipoPlaceholder}
-              className="bg-background"
+              className="bg-card"
             />
           </div>
         </div>
@@ -393,7 +393,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
             value={input.descricao}
             onChange={(event) => onChange("descricao", event.target.value)}
             placeholder="Explica porque este item importa para o Dossiê..."
-            className="min-h-24 resize-y bg-background"
+            className="min-h-24 resize-y bg-card"
           />
         </div>
       </div>
@@ -401,14 +401,14 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
   }
 
   return (
-    <WorkspaceSection>
+    <WorkspaceSection className="border-border/60 bg-white shadow-none">
       <SectionTitle
         icon={Building2}
         title="Relacionados"
         description="Relações manuais que começam a preparar o Knowledge Graph do Dossiê."
       />
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-2">
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
         {categorias.map((config) => {
           const itens = relacionadosDaCategoria(config.value);
           const totalItens = (() => {
@@ -426,6 +426,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
               eyebrow="Relacionado"
               title={config.label}
               description={config.description}
+              className="bg-background"
               meta={
                 <StatusBadge tone="muted" dot={false}>
                   {totalItens} {totalItens === 1 ? "item" : "itens"}
@@ -433,18 +434,19 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
               }
               actions={
                 !estaACriar && (
-                  <Button type="button" variant="outline" size="sm" onClick={() => iniciarCriacao(config.value)}>
-                    <Plus className="mr-2 h-4 w-4" />
+                  <Button type="button" variant="ghost" size="sm" onClick={() => iniciarCriacao(config.value)} className="rounded-full">
+                    <Plus className="h-4 w-4" />
                     Adicionar
                   </Button>
                 )
               }
             >
-              <div className="space-y-4">
+              <div className="grid gap-4">
                 {config.value === "documentos" && (
                   <InfoCard
                     title="Documentos existentes"
                     description="Associa documentos reais já registados no sistema sem os duplicar."
+                    className="border-0 bg-transparent p-0 shadow-none"
                   >
                     {documentosExistentes.length === 0 ? (
                       <EmptyState
@@ -460,7 +462,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                             onValueChange={setDocumentoParaAssociar}
                             disabled={documentosDisponiveis.length === 0}
                           >
-                            <SelectTrigger className="bg-background">
+                          <SelectTrigger className="bg-card">
                               <SelectValue
                                 placeholder={
                                   documentosDisponiveis.length === 0
@@ -480,6 +482,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                           <Button
                             type="button"
                             size="sm"
+                            variant="secondary"
                             onClick={associarDocumento}
                             disabled={!documentoParaAssociar}
                           >
@@ -495,13 +498,14 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                             description="Seleciona um documento existente para o ligar a este Dossiê."
                           />
                         ) : (
-                          <div className="space-y-3">
+                          <div className="grid max-h-80 gap-3 overflow-y-auto pr-1 md:grid-cols-2">
                             {documentosAssociados.map((documento) => (
                               <InfoCard
                                 key={documento.id}
                                 icon={FileText}
                                 title={documento.titulo}
                                 description={documento.notas || "Documento associado ao Dossiê."}
+                                className="border-0 bg-transparent p-0 shadow-none"
                               >
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                   <div className="flex flex-wrap items-center gap-2">
@@ -517,7 +521,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                                   </div>
                                   <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => desassociarDocumento(documento)}
                                   >
@@ -538,6 +542,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                   <InfoCard
                     title="Assembleias existentes"
                     description="Associa assembleias reais já registadas no sistema sem as duplicar."
+                    className="border-0 bg-transparent p-0 shadow-none"
                   >
                     {assembleiasExistentes.length === 0 ? (
                       <EmptyState
@@ -553,7 +558,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                             onValueChange={setAssembleiaParaAssociar}
                             disabled={assembleiasDisponiveis.length === 0}
                           >
-                            <SelectTrigger className="bg-background">
+                            <SelectTrigger className="bg-card">
                               <SelectValue
                                 placeholder={
                                   assembleiasDisponiveis.length === 0
@@ -573,6 +578,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                           <Button
                             type="button"
                             size="sm"
+                            variant="secondary"
                             onClick={associarAssembleia}
                             disabled={!assembleiaParaAssociar}
                           >
@@ -588,13 +594,14 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                             description="Seleciona uma assembleia existente para a ligar a este Dossiê."
                           />
                         ) : (
-                          <div className="space-y-3">
+                          <div className="grid max-h-80 gap-3 overflow-y-auto pr-1 md:grid-cols-2">
                             {assembleiasAssociadas.map((assembleia) => (
                               <InfoCard
                                 key={assembleia.id}
                                 icon={NotebookText}
                                 title={assembleia.nome}
                                 description={assembleia.local}
+                                className="border-0 bg-transparent p-0 shadow-none"
                               >
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                   <div className="flex flex-wrap items-center gap-2">
@@ -608,7 +615,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                                   </div>
                                   <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => desassociarAssembleia(assembleia)}
                                   >
@@ -629,12 +636,13 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                   <InfoCard
                     title={`Novo ${config.singular.toLowerCase()}`}
                     description="Este item fica apenas ligado manualmente ao Dossiê."
+                    className="border-0 bg-transparent p-0 shadow-none"
                   >
                     {renderFormulario(config, novoItem, atualizarNovo)}
                     <div className="mt-4 flex flex-wrap justify-end gap-2">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={() => {
                           setCategoriaEmCriacao(null);
@@ -659,18 +667,25 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                     description="Adiciona um item manual para começar a ligar conhecimento."
                   />
                 ) : (
-                  itens.map((item) => {
+                  <div className="grid max-h-80 gap-3 overflow-y-auto pr-1 md:grid-cols-2">
+                  {itens.map((item) => {
                     const emEdicao = itemEmEdicao === item.id && edicao;
 
                     return (
-                      <InfoCard key={item.id} icon={Icon} title={item.nome} description={emEdicao ? undefined : item.descricao}>
+                      <InfoCard
+                       key={item.id}
+                       icon={Icon}
+                       title={item.nome}
+                       description={emEdicao ? undefined : item.descricao}
+                        className="border-0 bg-transparent p-0 shadow-none"
+                      >
                         {emEdicao ? (
                           <>
                             {renderFormulario(config, edicao, atualizarEdicao)}
                             <div className="mt-4 flex flex-wrap justify-end gap-2">
                               <Button
                                 type="button"
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => {
                                   setItemEmEdicao(null);
@@ -702,7 +717,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                             <div className="flex flex-wrap justify-end gap-2">
                               <Button
                                 type="button"
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => iniciarEdicao(item)}
                               >
@@ -711,7 +726,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                               </Button>
                               <Button
                                 type="button"
-                                variant="outline"
+                                variant="secondary"
                                 size="sm"
                                 onClick={() => apagarItem(item)}
                               >
@@ -723,7 +738,8 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                         )}
                       </InfoCard>
                     );
-                  })
+                  })}
+                  </div>
                 )}
               </div>
             </EntityCard>

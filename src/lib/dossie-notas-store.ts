@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { adicionarEventoAutomaticoTimelineDossie } from "./dossie-timeline-store";
 import type { DossieNota } from "./types";
 
 const STORAGE_KEY = "tribuno.dossie-notas.v1";
@@ -68,6 +69,14 @@ export function adicionarNotaDossie(dossieId: string, conteudo: string): DossieN
   };
 
   guardarNotasLocais([...lerNotasLocais(), nota]);
+  adicionarEventoAutomaticoTimelineDossie(dossieId, {
+    titulo: "Nota criada",
+    descricao: conteudo,
+    tipo: "nota",
+    origemTipo: "nota",
+    origemId: nota.id,
+    origemHref: `/dossies/${dossieId}`,
+  });
 
   return nota;
 }
@@ -86,7 +95,19 @@ export function editarNotaDossie(id: string, conteudo: string): DossieNota | und
 
   guardarNotasLocais(atualizadas);
 
-  return atualizadas.find((nota) => nota.id === id);
+  const notaAtualizada = atualizadas.find((nota) => nota.id === id);
+  if (notaAtualizada) {
+    adicionarEventoAutomaticoTimelineDossie(notaAtualizada.dossieId, {
+      titulo: "Nota editada",
+      descricao: conteudo,
+      tipo: "nota",
+      origemTipo: "nota",
+      origemId: notaAtualizada.id,
+      origemHref: `/dossies/${notaAtualizada.dossieId}`,
+    });
+  }
+
+  return notaAtualizada;
 }
 
 export function apagarNotaDossie(id: string) {

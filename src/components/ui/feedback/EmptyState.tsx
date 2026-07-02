@@ -20,7 +20,7 @@ export function EmptyState({
     return (
       <div
         className={cn(
-          "rounded-lg border border-dashed border-border bg-background/50 px-4 py-6 text-center",
+          "rounded-2xl border border-dashed border-border/70 bg-background px-4 py-7 text-center",
           className,
         )}
       >
@@ -32,9 +32,9 @@ export function EmptyState({
   }
 
   return (
-    <section className={cn("rounded-2xl border border-dashed border-border bg-card p-8 shadow-card", className)}>
+    <section className={cn("rounded-2xl border border-dashed border-border/70 bg-background p-8", className)}>
       {title && (
-        <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
+        <h2 className="font-display text-xl font-semibold text-foreground">
           {title}
         </h2>
       )}

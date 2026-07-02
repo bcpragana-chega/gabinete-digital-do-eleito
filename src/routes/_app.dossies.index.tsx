@@ -1,20 +1,19 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Archive, ArrowRight, FileText, NotebookText, Tags } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  FileText,
+  Folder,
+} from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { NovoDossieDialog } from "@/components/dossies/NovoDossieDialog";
-import { EditarDossieDialog } from "@/components/dossies/EditarDossieDialog";
-import { EntityCard, MetricCard } from "@/components/ui/cards";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/button";
-import {
-  WorkspaceHeader,
-  WorkspaceLayout,
-  WorkspaceMetrics,
-  WorkspaceSection,
-} from "@/components/ui/workspace";
-import { arquivarDossie, useDossies } from "@/lib/dossies-store";
+import { Card } from "@/components/ui/card";
+import { ds } from "@/components/ui/design-system";
+import { useDossies } from "@/lib/dossies-store";
 import type { Dossie, EstadoDossie, PrioridadeDossie } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/dossies/")({
@@ -79,13 +78,6 @@ function documentosMock(dossie: Dossie) {
   return valores[dossie.id] ?? Math.max(0, dossie.tags.length);
 }
 
-function proximaAcaoPlaceholder(dossie: Dossie) {
-  if (dossie.estado === "concluido") return "Rever histórico quando necessário";
-  if (dossie.prioridade === "Crítica") return "Definir seguimento prioritário";
-  if (dossie.prioridade === "Alta") return "Preparar próximo passo político";
-  return "Adicionar contexto e relações futuras";
-}
-
 function DossiesPage() {
   const dossies = useDossies();
   const [filtroAtivo, setFiltroAtivo] = useState<FiltroId>("todos");
@@ -108,58 +100,48 @@ function DossiesPage() {
   return (
     <>
       <TopBar breadcrumb="Dossiês" />
-      <main className="min-h-screen bg-muted/30">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-          <WorkspaceLayout
-            header={
-              <WorkspaceHeader
-                icon={NotebookText}
-                eyebrow="Conhecimento do mandato"
-                title="Dossiês"
-                description="Temas e problemas acompanhados ao longo do mandato. Nesta fase, os Dossiês ainda não têm relações com Assembleias, Documentos ou Compromissos."
-                actions={<NovoDossieDialog />}
-                meta={
-                  <>
-                    <StatusBadge tone="default">{dossiesNaoArquivados.length} dossiês</StatusBadge>
-                    <StatusBadge tone="muted">{dossiesArquivados.length} arquivados</StatusBadge>
-                    <StatusBadge tone="muted">Relações futuras preparadas</StatusBadge>
-                  </>
-                }
-              />
-            }
-          >
-            <WorkspaceMetrics>
-              <MetricCard icon={NotebookText} label="Ativos" value={ativos} />
-              <MetricCard icon={FileText} label="Em acompanhamento" value={emAcompanhamento} />
-              <MetricCard icon={Tags} label="Concluídos" value={concluidos} />
-              <MetricCard
-                icon={ArrowRight}
-                label="Preparado para"
-                value="7 relações"
-                description="Timeline, pessoas, entidades, documentos, assembleias, compromissos e IA"
-              />
-            </WorkspaceMetrics>
+      <main className={ds.surface.page}>
+        <div className={ds.layout.page}>
+          <div className="mb-10 flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="max-w-2xl">
+              <h1 className={ds.typography.display}>
+                Dossiês
+              </h1>
+              <p className={`mt-2 ${ds.typography.body}`}>
+                Acompanhe os temas mais importantes do seu mandato.
+              </p>
+            </div>
+            <NovoDossieDialog />
+          </div>
 
-            <WorkspaceSection>
-              <div className="mb-5 flex flex-wrap gap-1 border-b border-border">
+          <section>
+            <div className="mb-5 flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {filtros.map((filtro) => (
-                  <Button
+                  <button
                     key={filtro.id}
                     type="button"
-                    variant="ghost"
-                    size="sm"
                     onClick={() => setFiltroAtivo(filtro.id)}
-                    className={
+                    className={`inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
                       filtroAtivo === filtro.id
-                        ? "rounded-none border-b-2 border-primary text-foreground -mb-px"
-                        : "rounded-none text-muted-foreground hover:text-foreground"
-                    }
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                    }`}
                   >
                     {filtro.label}
-                  </Button>
+                    <span className="rounded-full bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-border/50">
+                      {filtro.id === "todos" && dossiesNaoArquivados.length}
+                      {filtro.id === "ativo" && ativos}
+                      {filtro.id === "em acompanhamento" && emAcompanhamento}
+                      {filtro.id === "concluido" && concluidos}
+                      {filtro.id === "arquivados" && dossiesArquivados.length}
+                    </span>
+                  </button>
                 ))}
               </div>
+            </div>
 
+            <div>
               {dossiesVisiveis.length === 0 ? (
                 <EmptyState
                   title="Nenhum Dossiê encontrado"
@@ -167,14 +149,14 @@ function DossiesPage() {
                   action={<NovoDossieDialog />}
                 />
               ) : (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className={ds.layout.gridCards}>
                   {dossiesVisiveis.map((dossie) => (
                     <DossieCard key={dossie.id} dossie={dossie} />
                   ))}
                 </div>
               )}
-            </WorkspaceSection>
-          </WorkspaceLayout>
+            </div>
+          </section>
         </div>
       </main>
     </>
@@ -182,81 +164,60 @@ function DossiesPage() {
 }
 
 function DossieCard({ dossie }: { dossie: Dossie }) {
-  function arquivar() {
-    const confirmado = window.confirm(`Arquivar o Dossiê "${dossie.titulo}"?`);
-    if (!confirmado) return;
-    arquivarDossie(dossie.id);
-  }
-
   const arquivado = Boolean(dossie.archivedAt);
 
   return (
-    <EntityCard
-      icon={NotebookText}
-      eyebrow="Dossiê"
-      title={dossie.titulo}
-      description={dossie.resumo || "Sem resumo registado."}
-      actions={
-        <div className="flex flex-wrap justify-end gap-2">
-          {!arquivado && <EditarDossieDialog dossie={dossie} />}
-          {!arquivado && (
-            <Button type="button" variant="outline" size="sm" onClick={arquivar}>
-              <Archive className="mr-2 h-4 w-4" />
-              Arquivar
-            </Button>
-          )}
+    <Card className="group flex h-72 min-w-0 flex-col overflow-hidden p-5 transition-colors hover:border-border">
+      <div className="flex shrink-0 items-start justify-between gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+          <Folder className={ds.icon.md} strokeWidth={1.75} />
         </div>
-      }
-      meta={
-        <div className="flex flex-wrap gap-2">
+        <StatusBadge tone={prioridadeTone(dossie.prioridade)} dot={false}>
+          {dossie.prioridade}
+        </StatusBadge>
+      </div>
+
+      <div className="mt-5 min-w-0 overflow-hidden">
+        <h2 className="line-clamp-2 break-words text-xl font-semibold leading-7 text-foreground">
+          {dossie.titulo}
+        </h2>
+        <p className="mt-3 line-clamp-2 break-words text-sm leading-7 text-muted-foreground">
+          {dossie.resumo || "Sem resumo registado."}
+        </p>
+      </div>
+
+      <div className="mt-4 shrink-0 overflow-hidden">
+        <div className="flex min-w-0 flex-wrap gap-2">
           {arquivado && (
             <StatusBadge tone="muted" dot={false}>
               Arquivado
             </StatusBadge>
           )}
-          <StatusBadge tone={estadoTone(dossie.estado)}>{estadoLabel(dossie.estado)}</StatusBadge>
-          <StatusBadge tone={prioridadeTone(dossie.prioridade)} dot={false}>
-            {dossie.prioridade}
+          <StatusBadge tone={estadoTone(dossie.estado)}>
+            {estadoLabel(dossie.estado)}
           </StatusBadge>
         </div>
-      }
-    >
-      {dossie.objetivoPolitico && (
-        <p className="text-sm leading-relaxed text-muted-foreground">{dossie.objetivoPolitico}</p>
-      )}
-      <div className="mt-4 grid gap-3 rounded-xl border border-border bg-background/60 p-3 text-xs text-muted-foreground">
-        <div className="flex items-center justify-between gap-3">
-          <span>Última atualização</span>
-          <span className="font-medium text-foreground">{formatarAtualizacao(dossie)}</span>
+      </div>
+
+      <div className="mt-5 flex shrink-0 flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+        <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
+          <CalendarDays className={ds.icon.sm} strokeWidth={1.75} />
+          <span className="truncate">{formatarAtualizacao(dossie)}</span>
         </div>
-        <div className="flex items-center justify-between gap-3">
-          <span>Próxima ação</span>
-          <span className="text-right font-medium text-foreground">
-            {proximaAcaoPlaceholder(dossie)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <span>Documentos</span>
-          <span className="font-medium text-foreground">{documentosMock(dossie)}</span>
+        <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
+          <FileText className={ds.icon.sm} strokeWidth={1.75} />
+          <span className="truncate">{documentosMock(dossie)} documentos</span>
         </div>
       </div>
-      {dossie.tags.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {dossie.tags.map((tag) => (
-            <StatusBadge key={tag} tone="muted" dot={false}>
-              {tag}
-            </StatusBadge>
-          ))}
-        </div>
-      )}
-      <div className="mt-5 flex justify-end">
-        <Button asChild size="sm" variant="outline">
+
+      <div className="mt-auto flex shrink-0 justify-end pt-5">
+        <Button asChild variant="secondary">
           <Link to="/dossies/$dossieId" params={{ dossieId: dossie.id }}>
             Abrir
-            <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+            <ArrowRight className={ds.icon.sm} strokeWidth={1.75} />
           </Link>
         </Button>
       </div>
-    </EntityCard>
+    </Card>
   );
 }

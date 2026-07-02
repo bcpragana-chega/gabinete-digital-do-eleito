@@ -9,7 +9,7 @@ function AppLayout() {
   return (
     <div className="min-h-screen bg-background">
       <AppSidebar />
-      <div className="md:pl-64">
+      <div className="md:pl-60">
         <Outlet />
       </div>
     </div>

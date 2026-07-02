@@ -13,7 +13,7 @@ export function DocumentoACriarCard({ item }: { item: DocumentoACriar }) {
       <p className="text-sm leading-relaxed text-muted-foreground">{item.motivo}</p>
 
       <div className="mt-5 flex justify-end border-t border-border pt-3">
-        <Button size="sm" variant="outline" disabled>
+        <Button size="sm" variant="secondary" disabled>
           Criar futuramente
         </Button>
       </div>

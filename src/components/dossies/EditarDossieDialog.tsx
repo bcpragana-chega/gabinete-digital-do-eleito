@@ -14,9 +14,10 @@ import { DossieForm } from "@/components/dossies/DossieForm";
 
 type EditarDossieDialogProps = {
   dossie: Dossie;
+  compact?: boolean;
 };
 
-export function EditarDossieDialog({ dossie }: EditarDossieDialogProps) {
+export function EditarDossieDialog({ dossie, compact = false }: EditarDossieDialogProps) {
   const [open, setOpen] = useState(false);
 
   function guardar(values: DossieInput) {
@@ -27,9 +28,9 @@ export function EditarDossieDialog({ dossie }: EditarDossieDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Pencil className="mr-2 h-4 w-4" />
-          Editar
+        <Button variant={compact ? "ghost" : "outline"} size="sm" className={compact ? "px-2.5" : undefined}>
+          <Pencil className={compact ? "h-4 w-4" : "mr-2 h-4 w-4"} />
+          <span className={compact ? "sr-only" : undefined}>Editar</span>
         </Button>
       </DialogTrigger>
 

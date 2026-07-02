@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
 
 type EntityCardProps = {
   icon?: LucideIcon;
@@ -24,28 +25,32 @@ export function EntityCard({
   className,
 }: EntityCardProps) {
   return (
-    <article className={cn("rounded-xl border border-border bg-card p-5 shadow-card", className)}>
-      <div className="flex items-start justify-between gap-4">
+    <Card className={cn("min-w-0 p-5 transition-colors", className)}>
+      <div className="flex min-w-0 items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           {Icon && (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/60 bg-muted/45 text-muted-foreground">
               <Icon className="h-4 w-4" strokeWidth={1.75} />
             </div>
           )}
           <div className="min-w-0">
             {eyebrow && (
-              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="truncate text-xs font-medium uppercase text-muted-foreground">
                 {eyebrow}
               </div>
             )}
-            <h3 className="mt-1 text-sm font-semibold text-foreground">{title}</h3>
-            {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-            {meta && <div className="mt-3 text-xs text-muted-foreground">{meta}</div>}
+            <h3 className="mt-1 line-clamp-2 break-words text-sm font-semibold leading-6 text-foreground">{title}</h3>
+            {description && (
+              <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-muted-foreground">
+                {description}
+              </p>
+            )}
+            {meta && <div className="mt-3 line-clamp-2 break-words text-xs text-muted-foreground">{meta}</div>}
           </div>
         </div>
         {actions && <div className="shrink-0">{actions}</div>}
       </div>
-      {children && <div className="mt-4">{children}</div>}
-    </article>
+      {children && <div className="mt-4 min-w-0">{children}</div>}
+    </Card>
   );
 }

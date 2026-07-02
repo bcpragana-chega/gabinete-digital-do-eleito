@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { adicionarEventoAutomaticoTimelineDossie } from "./dossie-timeline-store";
 import type { DossieAssembleiaRelacionada } from "./types";
 
 const STORAGE_KEY = "tribuno.dossie-assembleias.v1";
@@ -45,6 +46,12 @@ export function listarAssembleiasDoDossie(dossieId: string): DossieAssembleiaRel
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export function listarDossiesAssociadosAAssembleia(
+  assembleiaId: string,
+): DossieAssembleiaRelacionada[] {
+  return lerRelacoesLocais().filter((relacao) => relacao.assembleiaId === assembleiaId);
+}
+
 export function associarAssembleiaAoDossie(
   dossieId: string,
   assembleiaId: string,
@@ -64,6 +71,14 @@ export function associarAssembleiaAoDossie(
   };
 
   guardarRelacoesLocais([...relacoes, relacao]);
+  adicionarEventoAutomaticoTimelineDossie(dossieId, {
+    titulo: "Assembleia associada",
+    descricao: "Uma assembleia existente foi associada a este Dossiê.",
+    tipo: "assembleia",
+    origemTipo: "assembleia",
+    origemId: assembleiaId,
+    origemHref: `/assembleias/${assembleiaId}`,
+  });
 
   return relacao;
 }

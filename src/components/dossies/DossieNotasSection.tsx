@@ -81,9 +81,10 @@ export function DossieNotasSection({ dossieId }: DossieNotasSectionProps) {
 
   return (
     <WorkspaceSection
+      className="border-border/60 bg-white shadow-none"
       actions={
         !aCriar && (
-          <Button type="button" size="sm" onClick={() => setACriar(true)}>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setACriar(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Adicionar nota
           </Button>
@@ -103,12 +104,12 @@ export function DossieNotasSection({ dossieId }: DossieNotasSectionProps) {
               value={novoConteudo}
               onChange={(event) => setNovoConteudo(event.target.value)}
               placeholder="Escreve uma nota para este Dossiê..."
-              className="min-h-32 resize-y bg-background"
+              className="min-h-32 resize-y bg-white"
             />
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => {
                   setACriar(false);
@@ -153,7 +154,7 @@ export function DossieNotasSection({ dossieId }: DossieNotasSectionProps) {
                     <div className="flex flex-wrap justify-end gap-2">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={() => iniciarEdicao(nota)}
                       >
@@ -162,7 +163,7 @@ export function DossieNotasSection({ dossieId }: DossieNotasSectionProps) {
                       </Button>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={() => apagarNota(nota)}
                       >
@@ -178,12 +179,12 @@ export function DossieNotasSection({ dossieId }: DossieNotasSectionProps) {
                     <Textarea
                       value={conteudoEmEdicao}
                       onChange={(event) => setConteudoEmEdicao(event.target.value)}
-                      className="min-h-32 resize-y bg-background"
+                      className="min-h-32 resize-y bg-white"
                     />
                     <div className="mt-4 flex flex-wrap justify-end gap-2">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={() => {
                           setNotaEmEdicao(null);

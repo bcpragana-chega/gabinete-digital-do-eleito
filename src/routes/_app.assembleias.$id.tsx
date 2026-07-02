@@ -140,7 +140,7 @@ function AssembleiaDetailPage() {
               <EditarAssembleiaDialog assembleia={assembleia} />
 
               {!estaArquivada && (
-                <Button variant="outline" onClick={arquivar}>
+                <Button variant="secondary" onClick={arquivar}>
                   <Archive className="mr-2 h-4 w-4" />
                   {confirmarArquivo ? "Confirmar arquivo" : "Arquivar"}
                 </Button>

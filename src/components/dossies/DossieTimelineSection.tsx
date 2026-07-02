@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   CalendarDays,
   FileText,
@@ -160,7 +161,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
               value={input.titulo}
               onChange={(event) => onChange("titulo", event.target.value)}
               placeholder="Ex.: Reunião com moradores"
-              className="bg-background"
+              className="bg-white"
             />
           </div>
           <div className="space-y-2">
@@ -172,7 +173,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
               type="date"
               value={input.data}
               onChange={(event) => onChange("data", event.target.value)}
-              className="bg-background"
+              className="bg-white"
             />
           </div>
         </div>
@@ -183,7 +184,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
             value={input.tipo}
             onValueChange={(value) => onChange("tipo", value as TipoEventoTimelineDossie)}
           >
-            <SelectTrigger className="bg-background">
+            <SelectTrigger className="bg-white">
               <SelectValue placeholder="Selecionar tipo" />
             </SelectTrigger>
             <SelectContent>
@@ -205,7 +206,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
             value={input.descricao}
             onChange={(event) => onChange("descricao", event.target.value)}
             placeholder="Descreve o que aconteceu e porque importa para este Dossiê..."
-            className="min-h-28 resize-y bg-background"
+            className="min-h-28 resize-y bg-white"
           />
         </div>
       </div>
@@ -214,9 +215,10 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
 
   return (
     <WorkspaceSection
+      className="border-border/60 bg-white shadow-none"
       actions={
         !aCriar && (
-          <Button type="button" size="sm" onClick={() => setACriar(true)}>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setACriar(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Adicionar evento
           </Button>
@@ -226,7 +228,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
       <SectionTitle
         icon={CalendarDays}
         title="Timeline"
-        description="História manual deste Dossiê ao longo do mandato."
+        description="História manual e automática deste Dossiê ao longo do mandato."
       />
 
       <div className="mt-5 space-y-5">
@@ -236,7 +238,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => {
                   setACriar(false);
@@ -286,7 +288,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
                       <div className="mt-4 flex flex-wrap justify-end gap-2">
                         <Button
                           type="button"
-                          variant="outline"
+                            variant="ghost"
                           size="sm"
                           onClick={() => {
                             setEventoEmEdicao(null);
@@ -313,12 +315,22 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
                         <StatusBadge tone="muted" dot={false}>
                           {config.label}
                         </StatusBadge>
+                        {evento.automatico && (
+                          <StatusBadge tone="info" dot={false}>
+                            Automático
+                          </StatusBadge>
+                        )}
                         <span className="text-xs text-muted-foreground">{eventoMeta(evento)}</span>
                       </div>
                       <div className="flex flex-wrap justify-end gap-2">
+                        {evento.origemHref && (
+                          <Button asChild type="button" variant="ghost" size="sm">
+                            <Link to={evento.origemHref as never}>Abrir origem</Link>
+                          </Button>
+                        )}
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           onClick={() => iniciarEdicao(evento)}
                         >
@@ -327,7 +339,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
                         </Button>
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           onClick={() => apagarEvento(evento)}
                         >

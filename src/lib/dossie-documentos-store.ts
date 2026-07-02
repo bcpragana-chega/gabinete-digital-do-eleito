@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { adicionarEventoAutomaticoTimelineDossie } from "./dossie-timeline-store";
 import type { DossieDocumentoRelacionado } from "./types";
 
 const STORAGE_KEY = "tribuno.dossie-documentos.v1";
@@ -45,6 +46,10 @@ export function listarDocumentosDoDossie(dossieId: string): DossieDocumentoRelac
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export function listarDossiesAssociadosAoDocumento(documentoId: string): DossieDocumentoRelacionado[] {
+  return lerRelacoesLocais().filter((relacao) => relacao.documentoId === documentoId);
+}
+
 export function associarDocumentoAoDossie(
   dossieId: string,
   documentoId: string,
@@ -64,6 +69,13 @@ export function associarDocumentoAoDossie(
   };
 
   guardarRelacoesLocais([...relacoes, relacao]);
+  adicionarEventoAutomaticoTimelineDossie(dossieId, {
+    titulo: "Documento associado",
+    descricao: "Um documento existente foi associado a este Dossiê.",
+    tipo: "documento",
+    origemTipo: "documento",
+    origemId: documentoId,
+  });
 
   return relacao;
 }

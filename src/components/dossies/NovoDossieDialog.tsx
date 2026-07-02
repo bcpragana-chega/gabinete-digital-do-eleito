@@ -24,7 +24,7 @@ export function NovoDossieDialog() {
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          Novo Dossiê
+          Novo dossiê
         </Button>
       </DialogTrigger>
 

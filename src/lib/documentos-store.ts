@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { listarDossiesAssociadosAAssembleia } from "./dossie-assembleias-store";
+import { listarDossiesAssociadosAoDocumento } from "./dossie-documentos-store";
+import { adicionarEventoAutomaticoTimelineDossie } from "./dossie-timeline-store";
 import type { Documento, EstadoDocumento, TipoDocumento } from "./types";
 import {
   documentos as mockDocs,
@@ -30,6 +33,42 @@ function write(docs: Documento[]) {
   window.dispatchEvent(new Event(EVENT));
 }
 
+function hrefDocumento(documento: Documento) {
+  return `/assembleias/${documento.assembleiaId}/documentos/${documento.id}`;
+}
+
+function registarDocumentoCriadoNaTimeline(documento: Documento) {
+  listarDossiesAssociadosAAssembleia(documento.assembleiaId).forEach((relacao) => {
+    adicionarEventoAutomaticoTimelineDossie(relacao.dossieId, {
+      titulo: "Documento criado",
+      descricao: documento.titulo,
+      tipo: "documento",
+      origemTipo: "documento",
+      origemId: documento.id,
+      origemHref: hrefDocumento(documento),
+    });
+  });
+}
+
+function registarDocumentoEditadoNaTimeline(documento: Documento) {
+  const relacoes = [
+    ...listarDossiesAssociadosAAssembleia(documento.assembleiaId),
+    ...listarDossiesAssociadosAoDocumento(documento.id),
+  ];
+  const dossies = new Set(relacoes.map((relacao) => relacao.dossieId));
+
+  dossies.forEach((dossieId) => {
+    adicionarEventoAutomaticoTimelineDossie(dossieId, {
+      titulo: "Documento editado",
+      descricao: documento.titulo,
+      tipo: "documento",
+      origemTipo: "documento",
+      origemId: documento.id,
+      origemHref: hrefDocumento(documento),
+    });
+  });
+}
+
 export interface NovoDocumentoInput {
   assembleiaId: string;
   titulo: string;
@@ -50,7 +89,30 @@ export function adicionarDocumento(input: NovoDocumentoInput): Documento {
   const docs = read();
   docs.push(doc);
   write(docs);
+  registarDocumentoCriadoNaTimeline(doc);
   return doc;
+}
+
+export function editarDocumento(
+  id: string,
+  input: Partial<Omit<Documento, "id" | "createdAt">>,
+): Documento | undefined {
+  const docs = read();
+  const atualizados = docs.map((doc) =>
+    doc.id === id
+      ? {
+          ...doc,
+          ...input,
+        }
+      : doc,
+  );
+
+  write(atualizados);
+
+  const atualizado = atualizados.find((doc) => doc.id === id);
+  if (atualizado) registarDocumentoEditadoNaTimeline(atualizado);
+
+  return atualizado;
 }
 
 export function listarDocumentosLocais(assembleiaId?: string): Documento[] {

@@ -9,6 +9,10 @@ export type DossieTimelineEventoInput = {
   descricao: string;
   data: string;
   tipo: TipoEventoTimelineDossie;
+  automatico?: boolean;
+  origemTipo?: string;
+  origemId?: string;
+  origemHref?: string;
 };
 
 function isBrowser() {
@@ -72,6 +76,17 @@ export function adicionarEventoTimelineDossie(
   guardarEventosLocais([...lerEventosLocais(), evento]);
 
   return evento;
+}
+
+export function adicionarEventoAutomaticoTimelineDossie(
+  dossieId: string,
+  input: Omit<DossieTimelineEventoInput, "automatico" | "data"> & { data?: string },
+) {
+  return adicionarEventoTimelineDossie(dossieId, {
+    ...input,
+    automatico: true,
+    data: input.data ?? new Date().toISOString().slice(0, 10),
+  });
 }
 
 export function editarEventoTimelineDossie(

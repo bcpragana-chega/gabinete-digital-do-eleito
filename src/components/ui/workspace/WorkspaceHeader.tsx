@@ -24,26 +24,26 @@ export function WorkspaceHeader({
   className,
 }: WorkspaceHeaderProps) {
   return (
-    <section className={cn("rounded-2xl border border-border bg-card p-6 shadow-card", className)}>
+    <section className={cn("rounded-2xl border border-border/70 bg-card p-6 shadow-none sm:p-7", className)}>
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="flex min-w-0 flex-1 items-start gap-5">
           {Icon && (
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
               <Icon className="h-5 w-5" strokeWidth={1.75} />
             </div>
           )}
 
           <div className="min-w-0 flex-1">
             {eyebrow && (
-              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="text-xs font-medium uppercase text-muted-foreground">
                 {eyebrow}
               </div>
             )}
-            <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+            <h1 className="mt-1 font-display text-2xl font-semibold text-foreground md:text-3xl">
               {title}
             </h1>
             {description && (
-              <div className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</div>
+              <div className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</div>
             )}
             {meta && <div className="mt-4 flex flex-wrap gap-2">{meta}</div>}
             {children}

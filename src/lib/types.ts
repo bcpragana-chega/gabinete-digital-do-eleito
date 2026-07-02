@@ -94,6 +94,10 @@ export interface DossieTimelineEvento {
   descricao: string;
   data: string;
   tipo: TipoEventoTimelineDossie;
+  automatico?: boolean;
+  origemTipo?: string;
+  origemId?: string;
+  origemHref?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -128,4 +132,15 @@ export interface DossieAssembleiaRelacionada {
   dossieId: string;
   assembleiaId: string;
   createdAt: string;
+}
+
+export type EstadoInboxDocumento = "Novo" | "Em análise" | "Tratado";
+
+export interface DocumentoInboxItem {
+  documentoId: string;
+  estado: EstadoInboxDocumento;
+  dossieId?: string;
+  assembleiaId?: string;
+  archivedAt?: string;
+  updatedAt?: string;
 }

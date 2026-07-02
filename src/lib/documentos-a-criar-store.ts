@@ -1,4 +1,6 @@
 import type { DocumentoCriado } from "@/lib/types";
+import { listarDossiesAssociadosAAssembleia } from "@/lib/dossie-assembleias-store";
+import { adicionarEventoAutomaticoTimelineDossie } from "@/lib/dossie-timeline-store";
 
 const STORAGE_KEY = "tribuno-documentos-a-criar";
 const EVENT = "tribuno:documentos-a-criar";
@@ -34,6 +36,23 @@ function gerarId() {
   }
 
   return `documento-a-criar-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function hrefRascunho(documento: DocumentoCriado) {
+  return `/assembleias/${documento.assembleiaId}/preparacao/pontos/${documento.pontoId}/rascunhos/${documento.id}`;
+}
+
+function registarDocumentoACriarNaTimeline(documento: DocumentoCriado, acao: "criado" | "editado") {
+  listarDossiesAssociadosAAssembleia(documento.assembleiaId).forEach((relacao) => {
+    adicionarEventoAutomaticoTimelineDossie(relacao.dossieId, {
+      titulo: acao === "criado" ? "Documento criado" : "Documento editado",
+      descricao: documento.titulo,
+      tipo: "documento",
+      origemTipo: "documento-a-criar",
+      origemId: documento.id,
+      origemHref: hrefRascunho(documento),
+    });
+  });
 }
 
 export function listarDocumentosACriarDoPonto(
@@ -79,6 +98,7 @@ export function adicionarDocumentoACriarRascunho(
   };
 
   guardarDocumentos([novoDocumento, ...documentos]);
+  registarDocumentoACriarNaTimeline(novoDocumento, "criado");
 
   return novoDocumento;
 }
@@ -101,7 +121,10 @@ export function atualizarDocumentoACriarRascunho(
 
   guardarDocumentos(documentosAtualizados);
 
-  return documentosAtualizados.find((documento) => documento.id === rascunhoId);
+  const atualizado = documentosAtualizados.find((documento) => documento.id === rascunhoId);
+  if (atualizado) registarDocumentoACriarNaTimeline(atualizado, "editado");
+
+  return atualizado;
 }
 
 export function subscreverDocumentosACriar(listener: () => void) {

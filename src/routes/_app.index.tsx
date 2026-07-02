@@ -147,7 +147,7 @@ function GabinetePage() {
   return (
     <>
       <TopBar breadcrumb="Gabinete" />
-      <main className="min-h-screen bg-muted/30">
+      <main className="min-h-screen bg-transparent">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
           <WorkspaceLayout
             header={
@@ -156,12 +156,13 @@ function GabinetePage() {
                 eyebrow="Centro de Comando"
                 title="Bom dia, Benjamin."
                 description="O essencial do mandato para decidir o próximo passo com calma e contexto."
+                className="relative overflow-hidden bg-card p-7"
                 actions={
                   proxima ? (
                     <Link
                       to="/assembleias/$id/preparacao"
                       params={{ id: proxima.id }}
-                      className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                      className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                     >
                       Continuar preparação
                       <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
@@ -177,7 +178,7 @@ function GabinetePage() {
                 }
               >
                 {proxima ? (
-                  <div className="mt-6 rounded-2xl border border-border bg-background/60 p-4">
+                  <div className="mt-7 border-t border-border/60 pt-6">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
@@ -188,7 +189,7 @@ function GabinetePage() {
                             {proxima.estado}
                           </StatusBadge>
                         </div>
-                        <h2 className="mt-2 font-display text-xl font-semibold tracking-tight text-foreground">
+                        <h2 className="mt-2 line-clamp-2 break-words font-display text-2xl font-semibold text-foreground">
                           {proxima.nome}
                         </h2>
                         <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
@@ -206,11 +207,11 @@ function GabinetePage() {
                           </span>
                         </div>
                       </div>
-                      <div className="rounded-xl border border-border bg-card px-4 py-3 text-sm">
-                        <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <div className="rounded-2xl bg-muted px-5 py-4 text-sm text-foreground">
+                        <div className="text-xs font-medium uppercase text-muted-foreground">
                           Estado da preparação
                         </div>
-                        <div className="mt-1 font-display text-2xl font-semibold text-foreground">
+                        <div className="mt-1 font-display text-3xl font-semibold text-foreground">
                           {diasParaProxima === 0 ? "Hoje" : `${diasParaProxima} dias`}
                         </div>
                       </div>
@@ -273,7 +274,7 @@ function GabinetePage() {
                 title="O que precisa da tua atenção"
                 description="Ações, prioridades e pendentes mais importantes neste momento."
               />
-              <div className="mt-5 grid gap-4 lg:grid-cols-3">
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
                 <ActionCard
                   icon={ListChecks}
                   title="Preparar próxima assembleia"
@@ -287,24 +288,27 @@ function GabinetePage() {
                       <Link
                         to="/assembleias/$id/preparacao"
                         params={{ id: proxima.id }}
-                        className="text-sm font-medium text-primary hover:text-primary/80"
+                        className="text-sm font-semibold text-primary hover:text-primary/80"
                       >
                         Abrir
                       </Link>
                     ) : null
                   }
+                  className="min-w-0"
                 />
                 <ActionCard
                   icon={Clock3}
                   title="Rever pendentes"
                   description="2 compromissos precisam de seguimento esta semana."
                   meta="Mock"
+                  className="min-w-0"
                 />
                 <ActionCard
                   icon={NotebookText}
                   title="Atualizar Dossiês"
                   description="Iluminação Pública e Centro de Saúde têm atividade recente."
                   meta="Prioridade"
+                  className="min-w-0 lg:col-span-2"
                 />
               </div>
             </WorkspaceSection>
@@ -318,7 +322,7 @@ function GabinetePage() {
               <div className="mt-5">
                 {proxima ? (
                   <ActionCard
-                    icon={Landmark}
+                    icon={ListChecks}
                     title={proxima.nome}
                     description="Último local sugerido: preparação da próxima assembleia."
                     meta={`${formatarData(proxima.data)} · ${proxima.hora}`}
@@ -326,12 +330,13 @@ function GabinetePage() {
                       <Link
                         to="/assembleias/$id/preparacao"
                         params={{ id: proxima.id }}
-                        className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                        className="inline-flex h-9 items-center gap-2 rounded-lg border border-border/80 bg-card/80 px-3 text-sm font-medium text-foreground shadow-sm transition-all hover:bg-muted/70"
                       >
                         Continuar
                         <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
                       </Link>
                     }
+                    className="min-w-0"
                   />
                 ) : (
                   <EmptyState compact title="Sem trabalho recente para continuar." />
@@ -354,6 +359,7 @@ function GabinetePage() {
                     title={dossie.titulo}
                     description={dossie.detalhe}
                     meta={`Próximo passo: ${dossie.acao}`}
+                    className="min-w-0"
                   />
                 ))}
               </div>

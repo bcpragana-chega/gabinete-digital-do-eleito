@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppHistoricoRouteImport } from './routes/_app.historico'
 import { Route as AppDefinicoesRouteImport } from './routes/_app.definicoes'
+import { Route as AppCaixaDeEntradaRouteImport } from './routes/_app.caixa-de-entrada'
 import { Route as AppDossiesIndexRouteImport } from './routes/_app.dossies.index'
 import { Route as AppAssembleiasIndexRouteImport } from './routes/_app.assembleias.index'
 import { Route as AppDossiesDossieIdRouteImport } from './routes/_app.dossies.$dossieId'
@@ -43,6 +44,11 @@ const AppHistoricoRoute = AppHistoricoRouteImport.update({
 const AppDefinicoesRoute = AppDefinicoesRouteImport.update({
   id: '/definicoes',
   path: '/definicoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCaixaDeEntradaRoute = AppCaixaDeEntradaRouteImport.update({
+  id: '/caixa-de-entrada',
+  path: '/caixa-de-entrada',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDossiesIndexRoute = AppDossiesIndexRouteImport.update({
@@ -116,6 +122,7 @@ const AppAssembleiasIdPreparacaoPontosPontoIdRascunhosRascunhoIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/definicoes': typeof AppDefinicoesRoute
   '/historico': typeof AppHistoricoRoute
   '/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
@@ -132,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId': typeof AppAssembleiasIdPreparacaoPontosPontoIdRascunhosRascunhoIdRoute
 }
 export interface FileRoutesByTo {
+  '/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/definicoes': typeof AppDefinicoesRoute
   '/historico': typeof AppHistoricoRoute
   '/': typeof AppIndexRoute
@@ -151,6 +159,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/_app/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/_app/definicoes': typeof AppDefinicoesRoute
   '/_app/historico': typeof AppHistoricoRoute
   '/_app/': typeof AppIndexRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/caixa-de-entrada'
     | '/definicoes'
     | '/historico'
     | '/assembleias/$id'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/caixa-de-entrada'
     | '/definicoes'
     | '/historico'
     | '/'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/_app/caixa-de-entrada'
     | '/_app/definicoes'
     | '/_app/historico'
     | '/_app/'
@@ -254,6 +266,13 @@ declare module '@tanstack/react-router' {
       path: '/definicoes'
       fullPath: '/definicoes'
       preLoaderRoute: typeof AppDefinicoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/caixa-de-entrada': {
+      id: '/_app/caixa-de-entrada'
+      path: '/caixa-de-entrada'
+      fullPath: '/caixa-de-entrada'
+      preLoaderRoute: typeof AppCaixaDeEntradaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dossies/': {
@@ -411,6 +430,7 @@ const AppAssembleiasIdRouteWithChildren =
   AppAssembleiasIdRoute._addFileChildren(AppAssembleiasIdRouteChildren)
 
 interface AppRouteChildren {
+  AppCaixaDeEntradaRoute: typeof AppCaixaDeEntradaRoute
   AppDefinicoesRoute: typeof AppDefinicoesRoute
   AppHistoricoRoute: typeof AppHistoricoRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -421,6 +441,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppCaixaDeEntradaRoute: AppCaixaDeEntradaRoute,
   AppDefinicoesRoute: AppDefinicoesRoute,
   AppHistoricoRoute: AppHistoricoRoute,
   AppIndexRoute: AppIndexRoute,

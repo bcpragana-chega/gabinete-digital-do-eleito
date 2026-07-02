@@ -78,7 +78,7 @@ export function AdicionarItemPreparacao({
 
   if (!aberto) {
     return (
-      <Button size="sm" variant="outline" onClick={() => setAberto(true)}>
+      <Button size="sm" variant="secondary" onClick={() => setAberto(true)}>
         <Plus className="mr-2 h-4 w-4" />
         {tituloBotao}
       </Button>
@@ -147,7 +147,7 @@ export function AdicionarItemPreparacao({
         <div className="flex justify-end gap-2 pt-2">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={() => {
               limparFormulario();
               setAberto(false);
