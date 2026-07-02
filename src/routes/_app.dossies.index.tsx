@@ -102,7 +102,7 @@ function DossiesPage() {
       <TopBar breadcrumb="Dossiês" />
       <main className={ds.surface.page}>
         <div className={ds.layout.page}>
-          <div className="mb-10 flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="mb-8 flex flex-col gap-5 sm:mb-10 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-2xl">
               <h1 className={ds.typography.display}>
                 Dossiês
@@ -111,12 +111,14 @@ function DossiesPage() {
                 Acompanhe os temas mais importantes do seu mandato.
               </p>
             </div>
-            <NovoDossieDialog />
+            <div className="w-full sm:w-auto">
+              <NovoDossieDialog />
+            </div>
           </div>
 
           <section>
-            <div className="mb-5 flex flex-wrap items-center gap-2">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+              <div className="flex w-max min-w-full items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-wrap">
                 {filtros.map((filtro) => (
                   <button
                     key={filtro.id}
@@ -167,7 +169,7 @@ function DossieCard({ dossie }: { dossie: Dossie }) {
   const arquivado = Boolean(dossie.archivedAt);
 
   return (
-    <Card className="group flex h-72 min-w-0 flex-col overflow-hidden p-5 transition-colors hover:border-border">
+    <Card className="group flex min-h-72 min-w-0 flex-col overflow-hidden p-5 transition-colors hover:border-border md:h-72">
       <div className="flex shrink-0 items-start justify-between gap-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
           <Folder className={ds.icon.md} strokeWidth={1.75} />
@@ -211,7 +213,7 @@ function DossieCard({ dossie }: { dossie: Dossie }) {
       </div>
 
       <div className="mt-auto flex shrink-0 justify-end pt-5">
-        <Button asChild variant="secondary">
+        <Button asChild variant="secondary" className="w-full sm:w-auto">
           <Link to="/dossies/$dossieId" params={{ dossieId: dossie.id }}>
             Abrir
             <ArrowRight className={ds.icon.sm} strokeWidth={1.75} />

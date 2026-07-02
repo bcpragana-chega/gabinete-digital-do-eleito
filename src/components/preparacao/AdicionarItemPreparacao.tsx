@@ -78,7 +78,7 @@ export function AdicionarItemPreparacao({
 
   if (!aberto) {
     return (
-      <Button size="sm" variant="secondary" onClick={() => setAberto(true)}>
+      <Button size="sm" variant="secondary" onClick={() => setAberto(true)} className="w-full sm:w-auto">
         <Plus className="mr-2 h-4 w-4" />
         {tituloBotao}
       </Button>

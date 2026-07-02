@@ -24,9 +24,9 @@ export function WorkspaceHeader({
   className,
 }: WorkspaceHeaderProps) {
   return (
-    <section className={cn("rounded-2xl border border-border/70 bg-card p-6 shadow-none sm:p-7", className)}>
-      <div className="flex flex-wrap items-start justify-between gap-6">
-        <div className="flex min-w-0 flex-1 items-start gap-5">
+    <section className={cn("rounded-2xl border border-border/70 bg-card p-4 shadow-none sm:p-7", className)}>
+      <div className="flex flex-col items-stretch gap-5 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-6">
+        <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
           {Icon && (
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
               <Icon className="h-5 w-5" strokeWidth={1.75} />
@@ -39,7 +39,7 @@ export function WorkspaceHeader({
                 {eyebrow}
               </div>
             )}
-            <h1 className="mt-1 font-display text-2xl font-semibold text-foreground md:text-3xl">
+            <h1 className="mt-1 break-words font-display text-2xl font-semibold text-foreground md:text-3xl">
               {title}
             </h1>
             {description && (
@@ -50,7 +50,7 @@ export function WorkspaceHeader({
           </div>
         </div>
 
-        {actions && <div className="shrink-0">{actions}</div>}
+        {actions && <div className="min-w-0 shrink-0 sm:max-w-full">{actions}</div>}
       </div>
     </section>
   );

@@ -110,7 +110,7 @@ function CaixaDeEntradaPage() {
                 eyebrow="Entrada de documentos"
                 title="Caixa de Entrada"
                 description="Documentos novos entram aqui antes de serem associados, analisados ou arquivados."
-                className="bg-card p-7"
+                className="bg-card p-4 sm:p-7"
                 meta={
                   <>
                     <StatusBadge tone="warning">{novos} novos</StatusBadge>
@@ -164,7 +164,7 @@ function CaixaDeEntradaPage() {
                       }
                     >
                       <div className="grid gap-3 border-t border-border/60 pt-4">
-                        <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                           <Select
                             value={inbox.dossieId ?? ""}
                             onValueChange={(dossieId) => {
@@ -183,7 +183,7 @@ function CaixaDeEntradaPage() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <Button asChild variant="secondary" size="sm">
+                          <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
                             <Link to="/dossies">
                               <NotebookText className="mr-2 h-4 w-4" />
                               Dossiês
@@ -191,7 +191,7 @@ function CaixaDeEntradaPage() {
                           </Button>
                         </div>
 
-                        <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                           <Select
                             value={inbox.assembleiaId ?? documento.assembleiaId ?? ""}
                             onValueChange={(assembleiaId) =>
@@ -209,7 +209,7 @@ function CaixaDeEntradaPage() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <Button asChild variant="secondary" size="sm">
+                          <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
                             <Link to="/assembleias">
                               <Landmark className="mr-2 h-4 w-4" />
                               Assembleias
@@ -218,11 +218,12 @@ function CaixaDeEntradaPage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap justify-end gap-2">
+                      <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
                         <Button
                           type="button"
                           variant="secondary"
                           size="sm"
+                          className="w-full sm:w-auto"
                           onClick={() => marcarInboxDocumentoComoTratado(documento.id)}
                         >
                           <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -232,6 +233,7 @@ function CaixaDeEntradaPage() {
                           type="button"
                           variant="secondary"
                           size="sm"
+                          className="w-full sm:w-auto"
                           onClick={() => arquivarInboxDocumento(documento.id)}
                         >
                           <Archive className="mr-2 h-4 w-4" />

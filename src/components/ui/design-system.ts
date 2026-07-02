@@ -1,8 +1,8 @@
 export const ds = {
   typography: {
-    display: "font-display text-5xl font-semibold leading-tight text-foreground",
-    h1: "font-display text-4xl font-semibold leading-tight text-foreground",
-    h2: "font-display text-2xl font-semibold leading-8 text-foreground",
+    display: "font-display text-4xl font-semibold leading-tight text-foreground sm:text-5xl",
+    h1: "font-display text-3xl font-semibold leading-tight text-foreground sm:text-4xl",
+    h2: "font-display text-xl font-semibold leading-8 text-foreground sm:text-2xl",
     h3: "text-lg font-semibold leading-7 text-foreground",
     body: "text-base leading-8 text-muted-foreground",
     small: "text-sm leading-7 text-muted-foreground",
@@ -21,8 +21,8 @@ export const ds = {
     tile: "flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground",
   },
   layout: {
-    page: "mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10",
+    page: "mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10",
     stack: "space-y-6",
-    gridCards: "grid gap-6 md:grid-cols-2 xl:grid-cols-3",
+    gridCards: "grid gap-4 md:grid-cols-2 xl:grid-cols-3",
   },
 };

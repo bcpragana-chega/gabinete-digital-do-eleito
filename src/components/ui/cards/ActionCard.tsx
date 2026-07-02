@@ -24,7 +24,7 @@ export function ActionCard({
 }: ActionCardProps) {
   return (
     <Card className={cn("min-w-0 p-4 shadow-none", className)}>
-      <div className="flex min-w-0 items-start justify-between gap-4">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           {Icon && (
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-muted/60 text-muted-foreground">
@@ -41,7 +41,7 @@ export function ActionCard({
             {meta && <div className="mt-2 truncate text-xs text-muted-foreground">{meta}</div>}
           </div>
         </div>
-        {action && <div className="shrink-0">{action}</div>}
+        {action && <div className="flex shrink-0 justify-end sm:justify-start">{action}</div>}
       </div>
       {children && <div className="mt-4 min-w-0">{children}</div>}
     </Card>

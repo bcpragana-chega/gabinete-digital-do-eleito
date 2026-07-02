@@ -340,29 +340,41 @@ export function UniversalSearch() {
 
   return (
     <>
+      <button
+        type="button"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-transparent text-muted-foreground transition-colors hover:border-border/70 hover:bg-muted/60 hover:text-foreground lg:hidden"
+        aria-label="Abrir pesquisa"
+        onClick={() => {
+          setFocused(false);
+          setPaletteOpen(true);
+        }}
+      >
+        <Search className="h-4 w-4" strokeWidth={1.75} />
+      </button>
+
       <div ref={containerRef} className="relative hidden lg:block">
         <div
           className={cn(
-            "flex w-64 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 py-1.5 transition-colors",
-            focused && "border-ring/40 bg-card",
+            "flex h-10 w-[20rem] max-w-[20rem] items-center gap-2 rounded-full border border-border/50 bg-muted/45 px-3 text-muted-foreground transition-all",
+            focused && "border-ring/30 bg-card text-foreground ring-2 ring-ring/5",
           )}
         >
-          <Search className="h-3.5 w-3.5 text-muted-foreground" />
+          <Search className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={1.75} />
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onFocus={() => setFocused(true)}
-            placeholder="Pesquisar no Tribuno..."
-            className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+            placeholder="Pesquisar..."
+            className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/80"
           />
-          <kbd className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-            Cmd K
+          <kbd className="flex h-5 shrink-0 items-center rounded-md border border-border/50 bg-background/70 px-1.5 text-[10px] font-medium leading-none text-muted-foreground">
+            ⌘K
           </kbd>
         </div>
 
         {showPanel && (
-          <div className="absolute right-0 top-11 z-50 w-[28rem] overflow-hidden rounded-2xl border border-border/70 bg-card/95 shadow-card backdrop-blur">
+          <div className="absolute right-0 top-12 z-50 w-[28rem] overflow-hidden rounded-2xl border border-border/70 bg-card/95 shadow-card backdrop-blur">
             {hasResults ? (
               <div className="max-h-[28rem] overflow-y-auto p-2">
                 {groups.map((group) => {
@@ -416,7 +428,7 @@ export function UniversalSearch() {
           if (!open) resetPalette();
         }}
       >
-        <DialogContent className="top-[16%] max-w-2xl translate-y-0 overflow-hidden rounded-2xl border-border/70 bg-card/95 p-0 shadow-card backdrop-blur">
+        <DialogContent className="top-2 h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none translate-y-0 overflow-hidden rounded-2xl border-border/70 bg-card/95 p-0 shadow-card backdrop-blur sm:top-[16%] sm:h-auto sm:max-w-2xl">
           <DialogTitle className="sr-only">Command Palette</DialogTitle>
           <DialogDescription className="sr-only">Pesquisa universal do Tribuno.</DialogDescription>
 
@@ -428,15 +440,15 @@ export function UniversalSearch() {
               value={paletteQuery}
               onChange={(event) => setPaletteQuery(event.target.value)}
               onKeyDown={onPaletteKeyDown}
-              placeholder="Pesquisar assembleias, dossies, documentos, notas..."
-              className="h-9 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              placeholder="Pesquisar..."
+              className="h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground sm:h-9 sm:text-sm"
             />
             <kbd className="rounded-md border border-border/70 bg-muted/70 px-1.5 py-0.5 text-[10px] text-muted-foreground">
               Esc
             </kbd>
           </div>
 
-          <div className="max-h-[28rem] overflow-y-auto p-3">
+          <div className="max-h-[calc(100dvh-8.5rem)] overflow-y-auto p-2 sm:max-h-[28rem] sm:p-3">
             {paletteHasItems ? (
               <>
                 {filteredQuickActions.length > 0 && (
@@ -456,7 +468,7 @@ export function UniversalSearch() {
                             onMouseEnter={() => setActiveIndex(actionIndex)}
                             onClick={() => executeQuickAction(action)}
                             className={cn(
-                              "flex w-full items-start gap-3 rounded-xl px-2 py-2 text-left transition-colors",
+                              "flex min-h-14 w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors sm:min-h-12 sm:px-2 sm:py-2.5",
                               active ? "bg-muted/80" : "hover:bg-muted/60",
                             )}
                           >
@@ -494,7 +506,7 @@ export function UniversalSearch() {
                             onMouseEnter={() => setActiveIndex(resultIndex)}
                             onClick={() => openResult(result)}
                             className={cn(
-                              "flex w-full items-start gap-3 rounded-xl px-2 py-2 text-left transition-colors",
+                              "flex min-h-14 w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors sm:min-h-12 sm:px-2 sm:py-2.5",
                               active ? "bg-muted/80" : "hover:bg-muted/60",
                             )}
                           >
@@ -519,7 +531,7 @@ export function UniversalSearch() {
 
           <div className="flex items-center justify-between gap-4 border-t border-border/70 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
             <span>Setas para navegar · Enter abrir · Esc fechar</span>
-            <span>Preparado para Pessoas, Entidades e Compromissos</span>
+            <span className="hidden sm:inline">Preparado para Pessoas, Entidades e Compromissos</span>
           </div>
         </DialogContent>
       </Dialog>

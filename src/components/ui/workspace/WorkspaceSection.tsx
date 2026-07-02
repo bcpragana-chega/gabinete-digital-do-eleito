@@ -19,18 +19,18 @@ export function WorkspaceSection({
   contentClassName,
 }: WorkspaceSectionProps) {
   return (
-    <section className={cn("rounded-2xl border border-border/70 bg-card p-5 shadow-none sm:p-6", className)}>
+    <section className={cn("min-w-0 rounded-2xl border border-border/70 bg-card p-4 shadow-none sm:p-6", className)}>
       {(title || description || actions) && (
-        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div className="mb-5 flex flex-col items-stretch gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
             {title && (
-              <h2 className="font-display text-lg font-semibold text-foreground">
+              <h2 className="break-words font-display text-lg font-semibold text-foreground">
                 {title}
               </h2>
             )}
-            {description && <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>}
+            {description && <p className="mt-1 break-words text-sm leading-6 text-muted-foreground">{description}</p>}
           </div>
-          {actions && <div className="shrink-0">{actions}</div>}
+          {actions && <div className="min-w-0 sm:shrink-0">{actions}</div>}
         </div>
       )}
       {children && <div className={cn("min-w-0", contentClassName)}>{children}</div>}

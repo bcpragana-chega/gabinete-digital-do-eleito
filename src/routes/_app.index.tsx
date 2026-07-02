@@ -156,13 +156,13 @@ function GabinetePage() {
                 eyebrow="Centro de Comando"
                 title="Bom dia, Benjamin."
                 description="O essencial do mandato para decidir o próximo passo com calma e contexto."
-                className="relative overflow-hidden bg-card p-7"
+                className="relative overflow-hidden bg-card p-4 sm:p-7"
                 actions={
                   proxima ? (
                     <Link
                       to="/assembleias/$id/preparacao"
                       params={{ id: proxima.id }}
-                      className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto"
                     >
                       Continuar preparação
                       <ArrowRight className="h-4 w-4" strokeWidth={1.75} />

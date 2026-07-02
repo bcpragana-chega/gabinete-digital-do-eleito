@@ -64,8 +64,9 @@ export function DossieForm({
   }
 
   return (
-    <div className="grid gap-4 py-2">
-      <div className="grid gap-2">
+    <div className="flex min-h-0 flex-col">
+      <div className="grid max-h-[calc(100dvh-11.5rem)] gap-4 overflow-y-auto px-4 py-4 sm:max-h-[calc(100vh-13rem)] sm:px-6 sm:py-5">
+        <div className="grid gap-2">
         <Label htmlFor="dossie-titulo">Título</Label>
         <Input
           id="dossie-titulo"
@@ -73,10 +74,10 @@ export function DossieForm({
           onChange={(event) => setTitulo(event.target.value)}
           placeholder="Ex.: Habitação"
         />
-      </div>
+        </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="grid gap-2">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-2">
           <Label>Estado</Label>
           <Select value={estado} onValueChange={(value) => setEstado(value as EstadoDossie)}>
             <SelectTrigger>
@@ -90,9 +91,9 @@ export function DossieForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
+          </div>
 
-        <div className="grid gap-2">
+          <div className="grid gap-2">
           <Label>Prioridade</Label>
           <Select
             value={prioridade}
@@ -109,10 +110,10 @@ export function DossieForm({
               ))}
             </SelectContent>
           </Select>
+          </div>
         </div>
-      </div>
 
-      <div className="grid gap-2">
+        <div className="grid gap-2">
         <Label htmlFor="dossie-objetivo">Objetivo político</Label>
         <Textarea
           id="dossie-objetivo"
@@ -121,9 +122,9 @@ export function DossieForm({
           placeholder="Qual é o objetivo político deste Dossiê?"
           rows={4}
         />
-      </div>
+        </div>
 
-      <div className="grid gap-2">
+        <div className="grid gap-2">
         <Label htmlFor="dossie-resumo">Resumo</Label>
         <Textarea
           id="dossie-resumo"
@@ -132,9 +133,9 @@ export function DossieForm({
           placeholder="Resumo curto do tema, problema ou acompanhamento."
           rows={5}
         />
-      </div>
+        </div>
 
-      <div className="grid gap-2">
+        <div className="grid gap-2">
         <Label htmlFor="dossie-tags">Tags</Label>
         <Input
           id="dossie-tags"
@@ -143,11 +144,16 @@ export function DossieForm({
           placeholder="habitação, orçamento, freguesia"
         />
         <p className="text-xs text-muted-foreground">Separar tags por vírgulas.</p>
+        </div>
       </div>
 
-      <Button type="button" onClick={guardar} disabled={!formularioValido}>
-        {submitLabel}
-      </Button>
+      <div className="shrink-0 border-t border-border/70 bg-background px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex justify-end">
+          <Button type="button" onClick={guardar} disabled={!formularioValido} className="w-full sm:w-auto">
+            {submitLabel}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

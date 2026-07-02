@@ -21,13 +21,13 @@ export function AdicionarDocumentoSheet({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button size="sm" className="gap-1.5">
+        <Button size="sm" className="w-full gap-1.5 sm:w-auto">
           <Plus className="h-4 w-4" />
           Adicionar documento
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader className="mb-6">
+      <SheetContent className="flex h-full w-full flex-col overflow-hidden p-0 sm:max-w-md">
+        <SheetHeader className="shrink-0 border-b border-border/70 px-6 py-5">
           <SheetTitle>Adicionar documento</SheetTitle>
           <SheetDescription>
             Associe um documento a esta assembleia. Apenas metadados são

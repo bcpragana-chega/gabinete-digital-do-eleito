@@ -145,12 +145,12 @@ function DossieDetalhePage() {
                 eyebrow="Workspace de Dossiê"
                 title={dossie.titulo}
                 description="Centro de trabalho para acompanhar este tema ao longo do mandato."
-                className="border-border/60 bg-white p-7 shadow-none"
+                className="border-border/60 bg-white p-4 shadow-none sm:p-7"
                 actions={
-                  <div className="flex flex-wrap justify-end gap-2">
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
                     {!arquivado && <EditarDossieDialog dossie={dossie} />}
                     {!arquivado && (
-                      <Button type="button" variant="secondary" size="sm" onClick={arquivar}>
+                      <Button type="button" variant="secondary" size="sm" onClick={arquivar} className="w-full sm:w-auto">
                         <Archive className="mr-2 h-4 w-4" />
                         Arquivar
                       </Button>

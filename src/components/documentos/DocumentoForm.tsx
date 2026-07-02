@@ -80,8 +80,9 @@ export function DocumentoForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="space-y-2">
+    <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+        <div className="space-y-2">
         <Label htmlFor="doc-titulo">Título do documento</Label>
         <Input
           id="doc-titulo"
@@ -90,10 +91,10 @@ export function DocumentoForm({
           placeholder="Ex.: Convocatória da sessão de Julho"
           required
         />
-      </div>
+        </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
           <Label>Tipo</Label>
           <Select value={tipo} onValueChange={(v) => setTipo(v as TipoDocumento)}>
             <SelectTrigger>
@@ -107,9 +108,9 @@ export function DocumentoForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
+          </div>
 
-        <div className="space-y-2">
+          <div className="space-y-2">
           <Label>Estado</Label>
           <Select
             value={estado}
@@ -126,10 +127,10 @@ export function DocumentoForm({
               ))}
             </SelectContent>
           </Select>
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-2">
+        <div className="space-y-2">
         <Label htmlFor="doc-data">Data do documento</Label>
         <Input
           id="doc-data"
@@ -138,9 +139,9 @@ export function DocumentoForm({
           onChange={(e) => setData(e.target.value)}
           required
         />
-      </div>
+        </div>
 
-      <div className="space-y-2">
+        <div className="space-y-2">
         <Label htmlFor="doc-ficheiro">Ficheiro</Label>
         <Input
           id="doc-ficheiro"
@@ -154,9 +155,9 @@ export function DocumentoForm({
         <p className="text-xs text-muted-foreground">
           Apenas o nome do ficheiro é guardado nesta fase.
         </p>
-      </div>
+        </div>
 
-      <div className="space-y-2">
+        <div className="space-y-2">
         <Label htmlFor="doc-notas">Notas (opcional)</Label>
         <Textarea
           id="doc-notas"
@@ -165,11 +166,12 @@ export function DocumentoForm({
           rows={3}
           placeholder="Observações para uso interno…"
         />
+        </div>
+
+        {erro && <p className="text-sm text-destructive">{erro}</p>}
       </div>
 
-      {erro && <p className="text-sm text-destructive">{erro}</p>}
-
-      <div className="flex justify-end gap-2 pt-2">
+      <div className="flex shrink-0 justify-end gap-2 border-t border-border/70 bg-background px-6 py-4">
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancelar
         </Button>

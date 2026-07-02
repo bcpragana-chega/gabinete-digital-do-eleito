@@ -25,14 +25,14 @@ export function NovaAssembleiaDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Nova Assembleia
         </Button>
       </DialogTrigger>
 
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="max-h-[calc(100vh-4rem)] gap-0 overflow-hidden p-0">
+        <DialogHeader className="border-b border-border/70 px-6 py-5">
           <DialogTitle>Nova Assembleia</DialogTitle>
         </DialogHeader>
 

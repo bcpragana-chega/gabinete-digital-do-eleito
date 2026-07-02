@@ -53,8 +53,9 @@ export function AssembleiaForm({
   }
 
   return (
-    <div className="grid gap-4 py-2">
-      <div className="grid gap-2">
+    <div className="flex min-h-0 flex-col">
+      <div className="grid max-h-[calc(100dvh-11.5rem)] gap-4 overflow-y-auto px-4 py-4 sm:max-h-[calc(100vh-13rem)] sm:px-6 sm:py-5">
+        <div className="grid gap-2">
         <Label htmlFor="nome">Título</Label>
         <Input
           id="nome"
@@ -62,9 +63,9 @@ export function AssembleiaForm({
           onChange={(event) => setNome(event.target.value)}
           placeholder="Ex.: Assembleia de Freguesia Ordinária — Setembro"
         />
-      </div>
+        </div>
 
-      <div className="grid gap-2">
+        <div className="grid gap-2">
         <Label htmlFor="data">Data</Label>
         <Input
           id="data"
@@ -72,9 +73,9 @@ export function AssembleiaForm({
           value={data}
           onChange={(event) => setData(event.target.value)}
         />
-      </div>
+        </div>
 
-      <div className="grid gap-2">
+        <div className="grid gap-2">
         <Label htmlFor="hora">Hora</Label>
         <Input
           id="hora"
@@ -82,9 +83,9 @@ export function AssembleiaForm({
           value={hora}
           onChange={(event) => setHora(event.target.value)}
         />
-      </div>
+        </div>
 
-      <div className="grid gap-2">
+        <div className="grid gap-2">
         <Label htmlFor="local">Local</Label>
         <Input
           id="local"
@@ -92,9 +93,9 @@ export function AssembleiaForm({
           onChange={(event) => setLocal(event.target.value)}
           placeholder="Ex.: Centro Cultural D. Dinis"
         />
-      </div>
+        </div>
 
-      <div className="grid gap-2">
+        <div className="grid gap-2">
         <Label>Estado</Label>
         <Select value={estado} onValueChange={(value) => setEstado(value as EstadoAssembleia)}>
           <SelectTrigger>
@@ -106,11 +107,16 @@ export function AssembleiaForm({
             <SelectItem value="concluida">Concluída</SelectItem>
           </SelectContent>
         </Select>
+        </div>
       </div>
 
-      <Button onClick={guardar} disabled={!formularioValido}>
-        {submitLabel}
-      </Button>
+      <div className="shrink-0 border-t border-border/70 bg-background px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex justify-end">
+          <Button onClick={guardar} disabled={!formularioValido} className="w-full sm:w-auto">
+            {submitLabel}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
