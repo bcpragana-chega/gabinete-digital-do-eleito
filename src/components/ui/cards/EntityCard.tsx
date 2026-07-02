@@ -25,11 +25,11 @@ export function EntityCard({
   className,
 }: EntityCardProps) {
   return (
-    <Card className={cn("min-w-0 p-5 transition-colors", className)}>
+    <Card className={cn("min-w-0 border-border/80 bg-muted/30 p-5 shadow-none transition-colors hover:bg-muted/40", className)}>
       <div className="flex min-w-0 items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           {Icon && (
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/60 bg-muted/45 text-muted-foreground">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-card text-muted-foreground">
               <Icon className="h-4 w-4" strokeWidth={1.75} />
             </div>
           )}

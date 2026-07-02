@@ -13,11 +13,11 @@ type InfoCardProps = {
 
 export function InfoCard({ icon: Icon, title, description, children, className }: InfoCardProps) {
   return (
-    <Card className={cn("min-w-0 p-4 shadow-none", className)}>
+    <Card className={cn("min-w-0 border-border/80 bg-muted/30 p-4 shadow-none", className)}>
       {(Icon || title || description) && (
         <div className="flex min-w-0 items-start gap-3">
           {Icon && (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-muted/60 text-muted-foreground">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-card text-muted-foreground">
               <Icon className="h-4 w-4" strokeWidth={1.75} />
             </div>
           )}

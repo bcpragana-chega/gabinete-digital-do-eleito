@@ -24,7 +24,7 @@ export function WorkspaceHeader({
   className,
 }: WorkspaceHeaderProps) {
   return (
-    <section className={cn("rounded-2xl border border-border/70 bg-card p-4 shadow-none sm:p-7", className)}>
+    <section className={cn("rounded-2xl border border-border bg-card p-4 shadow-card sm:p-7", className)}>
       <div className="flex flex-col items-stretch gap-5 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-6">
         <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
           {Icon && (

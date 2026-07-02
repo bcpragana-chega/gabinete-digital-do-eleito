@@ -10,9 +10,9 @@ export const ds = {
   },
   surface: {
     page: "min-h-screen bg-background",
-    panel: "overflow-hidden rounded-2xl border border-border/70 bg-card shadow-none",
-    card: "rounded-2xl border border-border/70 bg-card shadow-none transition-colors hover:border-border",
-    subtle: "rounded-2xl border border-border/60 bg-card",
+    panel: "overflow-hidden rounded-2xl border border-border bg-card shadow-card",
+    card: "rounded-2xl border border-border bg-card shadow-card transition-colors hover:border-border/80 hover:bg-card",
+    subtle: "rounded-2xl border border-border/80 bg-muted/35",
   },
   icon: {
     sm: "h-4 w-4",

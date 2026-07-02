@@ -4,12 +4,12 @@ import { cn } from "@/lib/utils";
 type StatusTone = "default" | "muted" | "success" | "warning" | "danger" | "info";
 
 const toneStyles: Record<StatusTone, string> = {
-  default: "border-border/70 bg-muted/70 text-foreground",
-  muted: "border-border/70 bg-background/80 text-muted-foreground",
-  success: "border-status-concluida/70 bg-status-concluida/70 text-status-concluida-foreground",
-  warning: "border-status-alerta/70 bg-status-alerta/70 text-status-alerta-foreground",
-  danger: "border-destructive/20 bg-destructive/10 text-destructive",
-  info: "border-status-analise/70 bg-status-analise/70 text-status-analise-foreground",
+  default: "border-border bg-muted text-foreground",
+  muted: "border-border bg-muted/65 text-muted-foreground",
+  success: "border-status-concluida bg-status-concluida/80 text-status-concluida-foreground",
+  warning: "border-status-alerta bg-status-alerta/80 text-status-alerta-foreground",
+  danger: "border-destructive/25 bg-destructive/10 text-destructive",
+  info: "border-status-analise bg-status-analise/80 text-status-analise-foreground",
 };
 
 type StatusBadgeProps = {

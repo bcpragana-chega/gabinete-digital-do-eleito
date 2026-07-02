@@ -19,7 +19,7 @@ export function WorkspaceSection({
   contentClassName,
 }: WorkspaceSectionProps) {
   return (
-    <section className={cn("min-w-0 rounded-2xl border border-border/70 bg-card p-4 shadow-none sm:p-6", className)}>
+    <section className={cn("min-w-0 rounded-2xl border border-border bg-card p-4 shadow-card sm:p-6", className)}>
       {(title || description || actions) && (
         <div className="mb-5 flex flex-col items-stretch gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
