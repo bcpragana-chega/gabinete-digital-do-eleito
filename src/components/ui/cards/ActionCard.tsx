@@ -23,7 +23,7 @@ export function ActionCard({
   className,
 }: ActionCardProps) {
   return (
-    <Card className={cn("min-w-0 border-border/80 bg-muted/30 p-4 shadow-none", className)}>
+    <Card className={cn("min-w-0 border-border/80 bg-muted/25 p-4 shadow-none", className)}>
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           {Icon && (

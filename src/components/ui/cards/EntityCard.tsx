@@ -25,7 +25,7 @@ export function EntityCard({
   className,
 }: EntityCardProps) {
   return (
-    <Card className={cn("min-w-0 border-border/80 bg-muted/30 p-5 shadow-none transition-colors hover:bg-muted/40", className)}>
+    <Card className={cn("min-w-0 border-border/80 bg-muted/25 p-4 shadow-none transition-colors hover:bg-muted/40", className)}>
       <div className="flex min-w-0 items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           {Icon && (

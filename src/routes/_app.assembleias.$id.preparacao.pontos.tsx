@@ -71,7 +71,7 @@ function PreparacaoPontosPage() {
             Todas as assembleias
           </Link>
 
-          <EmptyState title="Assembleia não encontrada" />
+          <EmptyState title="Sessão não encontrada" />
         </main>
       </>
     );

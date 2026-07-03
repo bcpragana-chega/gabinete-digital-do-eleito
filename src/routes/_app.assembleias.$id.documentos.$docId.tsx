@@ -41,9 +41,7 @@ function DocumentoPage() {
       <TopBar
         breadcrumb={
           <span>
-            <Link to="/assembleias" className="hover:text-foreground transition-colors">
-              Assembleias
-            </Link>
+            <Link to="/assembleias" className="hover:text-foreground transition-colors">Sessões</Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
             <Link
               to="/assembleias/$id"

@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Bell, Menu, Scale } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { sidebarItems } from "@/components/layout/AppSidebar";
+import { sidebarFooterItems, sidebarItems } from "@/components/layout/AppSidebar";
 import { UniversalSearch } from "@/components/search/UniversalSearch";
 import { cn } from "@/lib/utils";
 import {
@@ -18,8 +18,16 @@ export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const mobileTitle = typeof breadcrumb === "string" ? breadcrumb : "Tribuno";
 
-  const isActive = (to: string, exact: boolean) =>
-    exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
+  const isActive = (item: (typeof sidebarItems | typeof sidebarFooterItems)[number]) => {
+    const activeMain = item.exact
+      ? pathname === item.to
+      : pathname === item.to || pathname.startsWith(item.to + "/");
+    const activeAlias =
+      "aliases" in item &&
+      item.aliases?.some((alias) => pathname === alias || pathname.startsWith(alias + "/"));
+
+    return activeMain || activeAlias;
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/45 bg-background/90 backdrop-blur-xl">
@@ -53,7 +61,7 @@ export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
                     <div className="leading-tight">
                       <div className="font-display text-base font-semibold">Tribuno</div>
                       <div className="text-[11px] uppercase text-muted-foreground">
-                        Gabinete digital
+                        Apoio ao mandato
                       </div>
                     </div>
                   </div>
@@ -66,7 +74,7 @@ export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
 
                   {sidebarItems.map((item) => {
                     const Icon = item.icon;
-                    const active = isActive(item.to, item.exact);
+                    const active = isActive(item);
 
                     return (
                       <Link
@@ -86,6 +94,30 @@ export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
                     );
                   })}
                 </nav>
+
+                <div className="border-t border-border/60 px-3 py-3">
+                  {sidebarFooterItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item);
+
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMenuAberto(false)}
+                        className={cn(
+                          "flex min-h-11 items-center gap-3 rounded-2xl px-3.5 py-3 text-[15px] transition-all",
+                          active
+                            ? "bg-muted text-foreground font-medium"
+                            : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
 
                 <div className="border-t border-border/60 px-4 py-4">
                   <div className="flex items-center gap-3">

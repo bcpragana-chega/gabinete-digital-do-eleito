@@ -8,10 +8,10 @@ import { useAssembleias } from "@/lib/assembleias-store";
 export const Route = createFileRoute("/_app/historico")({
   head: () => ({
     meta: [
-      { title: "Histórico — Tribuno" },
+      { title: "O que aconteceu — Tribuno" },
       {
         name: "description",
-        content: "Cronologia das assembleias municipais já realizadas.",
+        content: "O que já aconteceu no mandato.",
       },
     ],
   }),
@@ -55,24 +55,24 @@ function HistoricoPage() {
 
   return (
     <>
-      <TopBar breadcrumb="Histórico" />
+      <TopBar breadcrumb="O que aconteceu" />
       <main className="px-8 py-10 max-w-4xl">
         <div className="mb-8">
           <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
-            Histórico
+            O que aconteceu
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Cronologia das assembleias concluídas e arquivadas.
+            Sessões concluídas e arquivadas.
           </p>
         </div>
 
         {historico.length === 0 ? (
           <section className="rounded-2xl border border-border bg-card p-8 shadow-card">
             <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
-              Ainda não existem assembleias no histórico
+              Ainda não há sessões concluídas
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              As assembleias concluídas ou arquivadas aparecerão aqui automaticamente.
+              As sessões concluídas ou arquivadas aparecerão aqui automaticamente.
             </p>
           </section>
         ) : (

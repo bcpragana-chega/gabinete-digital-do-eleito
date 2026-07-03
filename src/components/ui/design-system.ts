@@ -1,18 +1,18 @@
 export const ds = {
   typography: {
-    display: "font-display text-4xl font-semibold leading-tight text-foreground sm:text-5xl",
-    h1: "font-display text-3xl font-semibold leading-tight text-foreground sm:text-4xl",
-    h2: "font-display text-xl font-semibold leading-8 text-foreground sm:text-2xl",
-    h3: "text-lg font-semibold leading-7 text-foreground",
-    body: "text-base leading-8 text-muted-foreground",
-    small: "text-sm leading-7 text-muted-foreground",
+    display: "font-display text-3xl font-semibold leading-tight text-foreground sm:text-4xl",
+    h1: "font-display text-2xl font-semibold leading-tight text-foreground sm:text-3xl",
+    h2: "font-display text-xl font-semibold leading-7 text-foreground",
+    h3: "text-base font-semibold leading-6 text-foreground",
+    body: "text-sm leading-6 text-muted-foreground",
+    small: "text-sm leading-6 text-muted-foreground",
     caption: "text-xs font-medium text-muted-foreground",
   },
   surface: {
     page: "min-h-screen bg-background",
     panel: "overflow-hidden rounded-2xl border border-border bg-card shadow-card",
-    card: "rounded-2xl border border-border bg-card shadow-card transition-colors hover:border-border/80 hover:bg-card",
-    subtle: "rounded-2xl border border-border/80 bg-muted/35",
+    card: "rounded-2xl border border-border bg-card shadow-card transition-colors hover:border-border/80",
+    subtle: "rounded-2xl border border-border/80 bg-muted/25",
   },
   icon: {
     sm: "h-4 w-4",

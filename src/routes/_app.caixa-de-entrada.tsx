@@ -44,10 +44,10 @@ import type { Documento, EstadoInboxDocumento } from "@/lib/types";
 export const Route = createFileRoute("/_app/caixa-de-entrada")({
   head: () => ({
     meta: [
-      { title: "Caixa de Entrada — Tribuno" },
+      { title: "Por tratar — Tribuno" },
       {
         name: "description",
-        content: "Inbox de documentos novos antes de serem organizados no Tribuno.",
+        content: "Documentos que ainda precisam de atenção.",
       },
     ],
   }),
@@ -100,16 +100,16 @@ function CaixaDeEntradaPage() {
 
   return (
     <>
-      <TopBar breadcrumb="Caixa de Entrada" />
+      <TopBar breadcrumb="Por tratar" />
       <main className="min-h-screen bg-transparent">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
           <WorkspaceLayout
             header={
               <WorkspaceHeader
                 icon={Inbox}
-                eyebrow="Entrada de documentos"
-                title="Caixa de Entrada"
-                description="Documentos novos entram aqui antes de serem associados, analisados ou arquivados."
+                eyebrow="Documentos pendentes"
+                title="Por tratar"
+                description="Documentos que ainda precisam de leitura, associação ou arquivo."
                 className="bg-card p-4 sm:p-7"
                 meta={
                   <>
@@ -131,14 +131,14 @@ function CaixaDeEntradaPage() {
             <WorkspaceSection>
               <SectionTitle
                 icon={Inbox}
-                title="Documentos por tratar"
-                description="Organize rapidamente cada documento antes de o considerar tratado."
+                  title="Documentos por tratar"
+                description="Dê destino a cada documento."
               />
 
               {pendentes.length === 0 ? (
                 <EmptyState
                   className="mt-5"
-                  title="Caixa de Entrada vazia"
+                  title="Nada por tratar"
                   description="Não há documentos novos ou em análise por tratar."
                 />
               ) : (
@@ -173,7 +173,7 @@ function CaixaDeEntradaPage() {
                             }}
                           >
                             <SelectTrigger className="bg-background">
-                              <SelectValue placeholder="Associar a Dossiê" />
+                              <SelectValue placeholder="Ligar a assunto" />
                             </SelectTrigger>
                             <SelectContent>
                               {dossies.map((dossie) => (
@@ -186,7 +186,7 @@ function CaixaDeEntradaPage() {
                           <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
                             <Link to="/dossies">
                               <NotebookText className="mr-2 h-4 w-4" />
-                              Dossiês
+                              Assuntos
                             </Link>
                           </Button>
                         </div>
@@ -199,7 +199,7 @@ function CaixaDeEntradaPage() {
                             }
                           >
                             <SelectTrigger className="bg-background">
-                              <SelectValue placeholder="Associar a Assembleia" />
+                              <SelectValue placeholder="Ligar a sessão" />
                             </SelectTrigger>
                             <SelectContent>
                               {assembleias.map((assembleia) => (
@@ -212,7 +212,7 @@ function CaixaDeEntradaPage() {
                           <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
                             <Link to="/assembleias">
                               <Landmark className="mr-2 h-4 w-4" />
-                              Assembleias
+                              Sessões
                             </Link>
                           </Button>
                         </div>

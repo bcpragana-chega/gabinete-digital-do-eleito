@@ -106,7 +106,7 @@ export function arquivarInboxDocumento(documentoId: string) {
   dossies.forEach((dossieId) => {
     adicionarEventoAutomaticoTimelineDossie(dossieId, {
       titulo: "Documento arquivado",
-      descricao: "Um documento associado ao Dossiê foi arquivado na Caixa de Entrada.",
+      descricao: "Um documento ligado ao assunto foi arquivado em Por tratar.",
       tipo: "documento",
       origemTipo: "documento",
       origemId: documentoId,

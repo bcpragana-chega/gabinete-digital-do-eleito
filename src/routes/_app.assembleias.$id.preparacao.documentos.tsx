@@ -48,7 +48,7 @@ function PreparacaoDocumentosPage() {
           </Link>
 
           <EmptyState
-            title="Assembleia não encontrada"
+            title="Sessão não encontrada"
             description="Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador."
           />
         </main>
@@ -64,9 +64,7 @@ function PreparacaoDocumentosPage() {
             <Link
               to="/assembleias"
               className="hover:text-foreground transition-colors"
-            >
-              Assembleias
-            </Link>
+            >Sessões</Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
             <Link
               to="/assembleias/$id"

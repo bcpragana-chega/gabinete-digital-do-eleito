@@ -72,8 +72,8 @@ export function associarAssembleiaAoDossie(
 
   guardarRelacoesLocais([...relacoes, relacao]);
   adicionarEventoAutomaticoTimelineDossie(dossieId, {
-    titulo: "Assembleia associada",
-    descricao: "Uma assembleia existente foi associada a este Dossiê.",
+    titulo: "Sessão ligada",
+    descricao: "Uma sessão existente foi ligada a este assunto.",
     tipo: "assembleia",
     origemTipo: "assembleia",
     origemId: assembleiaId,

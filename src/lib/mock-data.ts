@@ -8,7 +8,7 @@ import type {
 export const assembleias: Assembleia[] = [
   {
     id: "ord-2026-jul",
-    nome: "Assembleia Municipal Ordinária — Julho",
+    nome: "Sessão municipal ordinária — Julho",
     data: "2026-07-14",
     hora: "21:00",
     local: "Salão Nobre dos Paços do Concelho",
@@ -16,7 +16,7 @@ export const assembleias: Assembleia[] = [
   },
   {
     id: "ext-2026-orc",
-    nome: "Assembleia Extraordinária — Orçamento Suplementar",
+    nome: "Sessão extraordinária — Orçamento Suplementar",
     data: "2026-07-02",
     hora: "18:30",
     local: "Auditório Municipal",
@@ -24,7 +24,7 @@ export const assembleias: Assembleia[] = [
   },
   {
     id: "ord-2026-jun",
-    nome: "Assembleia Municipal Ordinária — 2.º Trimestre",
+    nome: "Sessão municipal ordinária — 2.º trimestre",
     data: "2026-06-20",
     hora: "21:00",
     local: "Salão Nobre dos Paços do Concelho",
@@ -32,7 +32,7 @@ export const assembleias: Assembleia[] = [
   },
   {
     id: "ord-2026-abr",
-    nome: "Assembleia Municipal Ordinária — Abril",
+    nome: "Sessão municipal ordinária — Abril",
     data: "2026-04-25",
     hora: "21:00",
     local: "Salão Nobre dos Paços do Concelho",
@@ -40,7 +40,7 @@ export const assembleias: Assembleia[] = [
   },
   {
     id: "ext-2026-pdm",
-    nome: "Assembleia Extraordinária — Revisão do PDM",
+    nome: "Sessão extraordinária — Revisão do PDM",
     data: "2026-03-12",
     hora: "20:00",
     local: "Centro Cultural",
@@ -48,7 +48,7 @@ export const assembleias: Assembleia[] = [
   },
   {
     id: "ord-2026-fev",
-    nome: "Assembleia Municipal Ordinária — Fevereiro",
+    nome: "Sessão municipal ordinária — Fevereiro",
     data: "2026-02-27",
     hora: "21:00",
     local: "Salão Nobre dos Paços do Concelho",

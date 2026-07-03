@@ -77,7 +77,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Tribuno — Gabinete digital para eleitos locais" },
+      { title: "Tribuno — Apoio ao mandato para eleitos locais" },
       {
         name: "description",
         content:
@@ -86,11 +86,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "author", content: "Tribuno" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { property: "og:title", content: "Tribuno — Gabinete digital para eleitos locais" },
-      { name: "twitter:title", content: "Tribuno — Gabinete digital para eleitos locais" },
-      { name: "description", content: "Gabinete Digital provides elected officials in Portugal with a professional, organized platform to manage assembly information and documents." },
-      { property: "og:description", content: "Gabinete Digital provides elected officials in Portugal with a professional, organized platform to manage assembly information and documents." },
-      { name: "twitter:description", content: "Gabinete Digital provides elected officials in Portugal with a professional, organized platform to manage assembly information and documents." },
+      { property: "og:title", content: "Tribuno — Apoio ao mandato para eleitos locais" },
+      { name: "twitter:title", content: "Tribuno — Apoio ao mandato para eleitos locais" },
+      { name: "description", content: "Tribuno helps elected officials organize sessions, documents and mandate information." },
+      { property: "og:description", content: "Tribuno helps elected officials organize sessions, documents and mandate information." },
+      { name: "twitter:description", content: "Tribuno helps elected officials organize sessions, documents and mandate information." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ce3f9e1f-02aa-4a46-a59e-7d320f501c9f/id-preview-09b3d9bf--9ba95df2-3e44-4080-bc8e-f8a5f3eb0d85.lovable.app-1782391277988.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ce3f9e1f-02aa-4a46-a59e-7d320f501c9f/id-preview-09b3d9bf--9ba95df2-3e44-4080-bc8e-f8a5f3eb0d85.lovable.app-1782391277988.png" },
     ],

@@ -149,32 +149,32 @@ export function UniversalSearch() {
     return [
       {
         id: "criar-dossie",
-        title: "Criar Dossiê",
-        description: "Abrir Dossiês para criar um novo tema de acompanhamento.",
+        title: "Criar assunto",
+        description: "Abrir Assuntos para criar um novo tema de acompanhamento.",
         icon: Plus,
         href: "/dossies",
         terms: ["criar dossie", "novo dossie", "dossie"],
       },
       {
         id: "criar-assembleia",
-        title: "Criar Assembleia",
-        description: "Abrir Assembleias para registar uma nova sessão.",
+        title: "Criar sessão",
+        description: "Abrir Sessões para registar uma nova sessão.",
         icon: Plus,
         href: "/assembleias",
         terms: ["criar assembleia", "nova assembleia", "assembleia"],
       },
       {
         id: "abrir-dossies",
-        title: "Abrir Dossiês",
-        description: "Ver todos os Dossiês ativos e arquivados.",
+        title: "Abrir assuntos",
+        description: "Ver todos os assuntos ativos e arquivados.",
         icon: NotebookText,
         href: "/dossies",
         terms: ["abrir dossies", "dossies", "temas"],
       },
       {
         id: "abrir-assembleias",
-        title: "Abrir Assembleias",
-        description: "Ver a lista de assembleias do mandato.",
+        title: "Abrir sessões",
+        description: "Ver a lista de sessões do mandato.",
         icon: CalendarDays,
         href: "/assembleias",
         terms: ["abrir assembleias", "assembleias", "sessoes"],
@@ -189,8 +189,8 @@ export function UniversalSearch() {
       },
       {
         id: "abrir-historico",
-        title: "Abrir Histórico",
-        description: "Consultar atividade e memória histórica.",
+        title: "Abrir o que aconteceu",
+        description: "Consultar o que já aconteceu.",
         icon: History,
         href: "/historico",
         terms: ["abrir historico", "historico", "atividade"],
@@ -200,7 +200,7 @@ export function UniversalSearch() {
         title: "Continuar preparação",
         description: assembleiaPreparacao
           ? `Continuar a preparação de ${assembleiaPreparacao.nome}.`
-          : "Abrir assembleias para escolher uma preparação.",
+          : "Abrir sessões para escolher uma preparação.",
         icon: PlayCircle,
         href: assembleiaPreparacao
           ? `/assembleias/${assembleiaPreparacao.id}/preparacao`
@@ -415,7 +415,7 @@ export function UniversalSearch() {
             )}
 
             <div className="border-t border-border/70 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
-              Preparado para incluir Pessoas, Entidades e Compromissos.
+              Preparado para incluir pessoas, entidades e compromissos.
             </div>
           </div>
         )}
@@ -429,8 +429,8 @@ export function UniversalSearch() {
         }}
       >
         <DialogContent className="top-2 h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none translate-y-0 overflow-hidden rounded-2xl border-border/70 bg-card/95 p-0 shadow-card backdrop-blur sm:top-[16%] sm:h-auto sm:max-w-2xl">
-          <DialogTitle className="sr-only">Command Palette</DialogTitle>
-          <DialogDescription className="sr-only">Pesquisa universal do Tribuno.</DialogDescription>
+          <DialogTitle className="sr-only">Pesquisa</DialogTitle>
+          <DialogDescription className="sr-only">Pesquisar no Tribuno.</DialogDescription>
 
           <div className="flex items-center gap-3 border-b border-border/70 bg-muted/20 px-4 py-3">
             <Search className="h-4 w-4 text-muted-foreground" />
@@ -531,7 +531,7 @@ export function UniversalSearch() {
 
           <div className="flex items-center justify-between gap-4 border-t border-border/70 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
             <span>Setas para navegar · Enter abrir · Esc fechar</span>
-            <span className="hidden sm:inline">Preparado para Pessoas, Entidades e Compromissos</span>
+            <span className="hidden sm:inline">Preparado para pessoas, entidades e compromissos</span>
           </div>
         </DialogContent>
       </Dialog>

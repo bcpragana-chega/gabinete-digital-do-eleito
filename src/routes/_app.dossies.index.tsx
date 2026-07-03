@@ -1,16 +1,14 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  ArrowRight,
+  Activity,
   CalendarDays,
-  FileText,
   Folder,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { NovoDossieDialog } from "@/components/dossies/NovoDossieDialog";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ds } from "@/components/ui/design-system";
 import { useDossies } from "@/lib/dossies-store";
@@ -19,10 +17,10 @@ import type { Dossie, EstadoDossie, PrioridadeDossie } from "@/lib/types";
 export const Route = createFileRoute("/_app/dossies/")({
   head: () => ({
     meta: [
-      { title: "Dossiês — Tribuno" },
+      { title: "Assuntos — Tribuno" },
       {
         name: "description",
-        content: "Dossiês do mandato: temas e problemas acompanhados pelo eleito.",
+        content: "Assuntos do mandato: temas e problemas acompanhados pelo eleito.",
       },
     ],
   }),
@@ -67,17 +65,6 @@ function formatarAtualizacao(dossie: Dossie) {
   }).format(new Date(data));
 }
 
-function documentosMock(dossie: Dossie) {
-  const valores: Record<string, number> = {
-    "dossie-habitacao": 3,
-    "dossie-centro-saude": 2,
-    "dossie-iluminacao-publica": 4,
-    "dossie-orcamento-2027": 7,
-  };
-
-  return valores[dossie.id] ?? Math.max(0, dossie.tags.length);
-}
-
 function DossiesPage() {
   const dossies = useDossies();
   const [filtroAtivo, setFiltroAtivo] = useState<FiltroId>("todos");
@@ -99,16 +86,16 @@ function DossiesPage() {
 
   return (
     <>
-      <TopBar breadcrumb="Dossiês" />
+      <TopBar breadcrumb="Assuntos" />
       <main className={ds.surface.page}>
         <div className={ds.layout.page}>
           <div className="mb-8 flex flex-col gap-5 sm:mb-10 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-2xl">
               <h1 className={ds.typography.display}>
-                Dossiês
+                Assuntos
               </h1>
               <p className={`mt-2 ${ds.typography.body}`}>
-                Acompanhe os temas mais importantes do seu mandato.
+                Temas acompanhados ao longo do mandato, com estado, objetivo e histórico.
               </p>
             </div>
             <div className="w-full sm:w-auto">
@@ -146,8 +133,8 @@ function DossiesPage() {
             <div>
               {dossiesVisiveis.length === 0 ? (
                 <EmptyState
-                  title="Nenhum Dossiê encontrado"
-                  description="Crie um novo Dossiê ou altere o filtro selecionado."
+                  title="Nenhum assunto encontrado"
+                  description="Crie um novo assunto ou altere o filtro selecionado."
                   action={<NovoDossieDialog />}
                 />
               ) : (
@@ -169,57 +156,56 @@ function DossieCard({ dossie }: { dossie: Dossie }) {
   const arquivado = Boolean(dossie.archivedAt);
 
   return (
-    <Card className="group flex min-h-72 min-w-0 flex-col overflow-hidden p-5 transition-colors hover:border-border md:h-72">
-      <div className="flex shrink-0 items-start justify-between gap-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-          <Folder className={ds.icon.md} strokeWidth={1.75} />
-        </div>
-        <StatusBadge tone={prioridadeTone(dossie.prioridade)} dot={false}>
-          {dossie.prioridade}
-        </StatusBadge>
-      </div>
-
-      <div className="mt-5 min-w-0 overflow-hidden">
-        <h2 className="line-clamp-2 break-words text-xl font-semibold leading-7 text-foreground">
-          {dossie.titulo}
-        </h2>
-        <p className="mt-3 line-clamp-2 break-words text-sm leading-7 text-muted-foreground">
-          {dossie.resumo || "Sem resumo registado."}
-        </p>
-      </div>
-
-      <div className="mt-4 shrink-0 overflow-hidden">
-        <div className="flex min-w-0 flex-wrap gap-2">
-          {arquivado && (
-            <StatusBadge tone="muted" dot={false}>
-              Arquivado
-            </StatusBadge>
-          )}
-          <StatusBadge tone={estadoTone(dossie.estado)}>
-            {estadoLabel(dossie.estado)}
+    <Link to="/dossies/$dossieId" params={{ dossieId: dossie.id }} className="group block min-w-0">
+      <Card className="flex min-h-72 min-w-0 flex-col overflow-hidden p-5 transition-colors hover:border-border hover:bg-card/95 md:h-72">
+        <div className="flex shrink-0 items-start justify-between gap-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <Folder className={ds.icon.md} strokeWidth={1.75} />
+          </div>
+          <StatusBadge tone="muted" dot={false}>
+            Tema em acompanhamento
           </StatusBadge>
         </div>
-      </div>
 
-      <div className="mt-5 flex shrink-0 flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-        <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
-          <CalendarDays className={ds.icon.sm} strokeWidth={1.75} />
-          <span className="truncate">{formatarAtualizacao(dossie)}</span>
+        <div className="mt-5 min-w-0 overflow-hidden">
+          <h2 className="line-clamp-2 break-words text-xl font-semibold leading-7 text-foreground">
+            {dossie.titulo}
+          </h2>
+          <p className="mt-3 line-clamp-2 break-words text-sm leading-7 text-muted-foreground">
+            {dossie.resumo || "Sem resumo registado."}
+          </p>
         </div>
-        <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
-          <FileText className={ds.icon.sm} strokeWidth={1.75} />
-          <span className="truncate">{documentosMock(dossie)} documentos</span>
-        </div>
-      </div>
 
-      <div className="mt-auto flex shrink-0 justify-end pt-5">
-        <Button asChild variant="secondary" className="w-full sm:w-auto">
-          <Link to="/dossies/$dossieId" params={{ dossieId: dossie.id }}>
-            Abrir
-            <ArrowRight className={ds.icon.sm} strokeWidth={1.75} />
-          </Link>
-        </Button>
-      </div>
-    </Card>
+        <div className="mt-4 shrink-0 overflow-hidden">
+          <div className="flex min-w-0 flex-wrap gap-2">
+            {arquivado && (
+              <StatusBadge tone="muted" dot={false}>
+                Arquivado
+              </StatusBadge>
+            )}
+            <StatusBadge tone={estadoTone(dossie.estado)}>
+              {estadoLabel(dossie.estado)}
+            </StatusBadge>
+            <StatusBadge tone={prioridadeTone(dossie.prioridade)} dot={false}>
+              {dossie.prioridade}
+            </StatusBadge>
+          </div>
+        </div>
+
+        <div className="mt-auto flex shrink-0 items-end justify-between gap-4 pt-5 text-sm">
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
+              <CalendarDays className={ds.icon.sm} strokeWidth={1.75} />
+              <span className="truncate">Última atividade</span>
+            </div>
+            <p className="mt-1 truncate font-medium text-foreground">{formatarAtualizacao(dossie)}</p>
+          </div>
+          <Activity
+            className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+            strokeWidth={1.75}
+          />
+        </div>
+      </Card>
+    </Link>
   );
 }

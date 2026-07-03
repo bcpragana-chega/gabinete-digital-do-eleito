@@ -1,30 +1,31 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, CalendarDays, FileText, Landmark, MapPin } from "lucide-react";
+import { CalendarDays, Clock, FileText, Landmark, ListChecks, MapPin } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { NovaAssembleiaDialog } from "@/components/assembleias/NovaAssembleiaDialog";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ds } from "@/components/ui/design-system";
 import { useAssembleias } from "@/lib/assembleias-store";
+import { listarDocumentosLocais } from "@/lib/documentos-store";
 import { formatarData, getDocumentosByAssembleia } from "@/lib/mock-data";
+import { obterPontosDaAssembleia } from "@/lib/pontos-store";
 import type { Assembleia, EstadoAssembleia } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/assembleias/")({
   head: () => ({
     meta: [
-      { title: "Assembleias — Tribuno" },
+      { title: "Sessões — Tribuno" },
       {
         name: "description",
         content:
-          "Lista de assembleias municipais em preparação, em análise e concluídas.",
+          "Lista de sessões em preparação, em análise e concluídas.",
       },
-      { property: "og:title", content: "Assembleias — Tribuno" },
+      { property: "og:title", content: "Sessões — Tribuno" },
       {
         property: "og:description",
-        content: "Organize todas as assembleias do seu mandato num único local.",
+        content: "Organize todas as sessões do mandato num único local.",
       },
     ],
   }),
@@ -78,16 +79,16 @@ function AssembleiasPage() {
 
   return (
     <>
-      <TopBar breadcrumb="Assembleias" />
+      <TopBar breadcrumb="Sessões" />
       <main className={ds.surface.page}>
         <div className={ds.layout.page}>
           <div className="mb-8 flex flex-col gap-5 sm:mb-10 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-2xl">
               <h1 className={ds.typography.display}>
-                Assembleias
+                Sessões
               </h1>
               <p className={`mt-2 ${ds.typography.body}`}>
-                Organize as sessões do mandato e continue a preparação com contexto.
+                Reuniões concretas para preparar documentos, pontos e estratégia.
               </p>
             </div>
             <div className="w-full sm:w-auto">
@@ -123,8 +124,8 @@ function AssembleiasPage() {
 
             {assembleiasVisiveis.length === 0 ? (
               <EmptyState
-                title="Nenhuma assembleia encontrada"
-                description="Crie uma nova assembleia ou altere o filtro selecionado."
+                title="Nenhuma sessão encontrada"
+                description="Crie uma nova sessão ou altere o filtro selecionado."
                 action={<NovaAssembleiaDialog />}
               />
             ) : (
@@ -142,48 +143,64 @@ function AssembleiasPage() {
 }
 
 function AssembleiaWorkspaceCard({ assembleia }: { assembleia: Assembleia }) {
-  const documentos = getDocumentosByAssembleia(assembleia.id).length;
+  const documentos =
+    getDocumentosByAssembleia(assembleia.id).length + listarDocumentosLocais(assembleia.id).length;
+  const pontos = obterPontosDaAssembleia(assembleia.id).length;
 
   return (
-    <Card className="group flex min-h-72 min-w-0 flex-col overflow-hidden p-5 transition-colors hover:border-border md:h-72">
-      <div className="flex shrink-0 items-start justify-between gap-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-          <Landmark className={ds.icon.md} strokeWidth={1.75} />
+    <Link to="/assembleias/$id" params={{ id: assembleia.id }} className="group block min-w-0">
+      <Card className="flex min-h-72 min-w-0 flex-col overflow-hidden p-5 transition-colors hover:border-border hover:bg-card/95 md:h-72">
+        <div className="flex shrink-0 items-start justify-between gap-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <Landmark className={ds.icon.md} strokeWidth={1.75} />
+          </div>
+          <StatusBadge tone="muted" dot={false}>
+            Sessão de trabalho
+          </StatusBadge>
         </div>
-        <StatusBadge tone={estadoTone(assembleia.estado)}>
-          {estadoLabel(assembleia.estado)}
-        </StatusBadge>
-      </div>
 
-      <div className="mt-5 min-w-0 overflow-hidden">
-        <h2 className="line-clamp-2 break-words text-xl font-semibold leading-7 text-foreground">
-          {assembleia.nome}
-        </h2>
-      </div>
+        <div className="mt-5 min-w-0 overflow-hidden">
+          <h2 className="line-clamp-2 break-words text-xl font-semibold leading-7 text-foreground">
+            {assembleia.nome}
+          </h2>
+          <div className="mt-3 flex min-w-0 flex-wrap gap-2">
+            <StatusBadge tone={estadoTone(assembleia.estado)}>
+              {estadoLabel(assembleia.estado)}
+            </StatusBadge>
+          </div>
+        </div>
 
-      <div className="mt-5 grid shrink-0 gap-2 text-sm text-muted-foreground">
-        <div className="flex min-w-0 items-center gap-2">
-          <CalendarDays className={ds.icon.sm} strokeWidth={1.75} />
-          <span className="truncate">{formatarData(assembleia.data)} · {assembleia.hora}</span>
+        <div className="mt-5 grid shrink-0 gap-2 text-sm text-muted-foreground">
+          <div className="flex min-w-0 items-center gap-2">
+            <CalendarDays className={ds.icon.sm} strokeWidth={1.75} />
+            <span className="truncate">{formatarData(assembleia.data)}</span>
+          </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <Clock className={ds.icon.sm} strokeWidth={1.75} />
+            <span className="truncate">{assembleia.hora}</span>
+          </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <MapPin className={ds.icon.sm} strokeWidth={1.75} />
+            <span className="truncate">{assembleia.local}</span>
+          </div>
         </div>
-        <div className="flex min-w-0 items-center gap-2">
-          <MapPin className={ds.icon.sm} strokeWidth={1.75} />
-          <span className="truncate">{assembleia.local}</span>
-        </div>
-        <div className="flex min-w-0 items-center gap-2">
-          <FileText className={ds.icon.sm} strokeWidth={1.75} />
-          <span className="truncate">{documentos} documentos</span>
-        </div>
-      </div>
 
-      <div className="mt-auto flex shrink-0 justify-end pt-5">
-        <Button asChild variant="secondary" className="w-full sm:w-auto">
-          <Link to="/assembleias/$id" params={{ id: assembleia.id }}>
+        <div className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-3 pt-5 text-sm">
+          <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-2 text-muted-foreground">
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <FileText className={ds.icon.sm} strokeWidth={1.75} />
+              <span className="truncate">{documentos} documentos</span>
+            </span>
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <ListChecks className={ds.icon.sm} strokeWidth={1.75} />
+              <span className="truncate">{pontos} pontos</span>
+            </span>
+          </div>
+          <span className="font-medium text-foreground transition-transform group-hover:translate-x-0.5">
             Abrir
-            <ArrowRight className={ds.icon.sm} strokeWidth={1.75} />
-          </Link>
-        </Button>
-      </div>
-    </Card>
+          </span>
+        </div>
+      </Card>
+    </Link>
   );
 }

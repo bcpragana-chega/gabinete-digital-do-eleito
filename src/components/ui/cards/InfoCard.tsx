@@ -13,7 +13,7 @@ type InfoCardProps = {
 
 export function InfoCard({ icon: Icon, title, description, children, className }: InfoCardProps) {
   return (
-    <Card className={cn("min-w-0 border-border/80 bg-muted/30 p-4 shadow-none", className)}>
+    <Card className={cn("min-w-0 border-border/80 bg-muted/25 p-4 shadow-none", className)}>
       {(Icon || title || description) && (
         <div className="flex min-w-0 items-start gap-3">
           {Icon && (

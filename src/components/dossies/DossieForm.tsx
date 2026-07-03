@@ -36,7 +36,7 @@ function parseTags(value: string) {
 
 export function DossieForm({
   initialValues,
-  submitLabel = "Guardar Dossiê",
+  submitLabel = "Guardar assunto",
   onSubmit,
 }: DossieFormProps) {
   const [titulo, setTitulo] = useState(initialValues?.titulo ?? "");
@@ -114,12 +114,12 @@ export function DossieForm({
         </div>
 
         <div className="grid gap-2">
-        <Label htmlFor="dossie-objetivo">Objetivo político</Label>
+        <Label htmlFor="dossie-objetivo">Objetivo</Label>
         <Textarea
           id="dossie-objetivo"
           value={objetivoPolitico}
           onChange={(event) => setObjetivoPolitico(event.target.value)}
-          placeholder="Qual é o objetivo político deste Dossiê?"
+          placeholder="O que pretende acompanhar ou resolver?"
           rows={4}
         />
         </div>

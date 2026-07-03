@@ -73,16 +73,16 @@ const categorias: CategoriaConfig[] = [
     value: "documentos",
     label: "Documentos",
     singular: "Documento",
-    description: "Documentos recebidos, criados ou anexados ao Dossiê.",
+    description: "Documentos recebidos, criados ou anexados ao assunto.",
     tipoPlaceholder: "Ex.: relatório, ata, proposta",
     icon: FileText,
   },
   {
     value: "assembleias",
-    label: "Assembleias",
-    singular: "Assembleia",
+    label: "Sessões",
+    singular: "Sessão",
     description: "Sessões, pontos e decisões que alimentam este tema.",
-    tipoPlaceholder: "Ex.: assembleia municipal, reunião pública",
+    tipoPlaceholder: "Ex.: sessão municipal, reunião pública",
     icon: NotebookText,
   },
   {
@@ -344,7 +344,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
   }
 
   function desassociarDocumento(documento: Documento) {
-    const confirmado = window.confirm(`Desassociar o documento "${documento.titulo}" deste Dossiê?`);
+    const confirmado = window.confirm(`Desligar o documento "${documento.titulo}" deste assunto?`);
     if (!confirmado) return;
     desassociarDocumentoDoDossie(dossieId, documento.id);
   }
@@ -356,7 +356,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
   }
 
   function desassociarAssembleia(assembleia: Assembleia) {
-    const confirmado = window.confirm(`Desassociar a assembleia "${assembleia.nome}" deste Dossiê?`);
+    const confirmado = window.confirm(`Desligar a sessão "${assembleia.nome}" deste assunto?`);
     if (!confirmado) return;
     desassociarAssembleiaDoDossie(dossieId, assembleia.id);
   }
@@ -401,7 +401,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
             id={`${config.value}-descricao`}
             value={input.descricao}
             onChange={(event) => onChange("descricao", event.target.value)}
-            placeholder="Explica porque este item importa para o Dossiê..."
+            placeholder="Explica porque este item importa para este assunto..."
             className="min-h-24 resize-y"
           />
         </div>
@@ -461,7 +461,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
           <EmptyState
             compact
             title="Sem documentos reais associados."
-            description="Seleciona um documento existente para o ligar a este Dossiê."
+            description="Seleciona um documento existente para o ligar a este assunto."
           />
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
@@ -470,7 +470,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                 key={documento.id}
                 icon={FileText}
                 title={documento.titulo}
-                description={documento.notas || "Documento associado ao Dossiê."}
+                description={documento.notas || "Documento associado ao assunto."}
                 meta={`${documento.tipo} · ${documento.estado} · ${formatarData(documento.data)}`}
                 actions={
                   <Button
@@ -480,7 +480,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                     onClick={() => desassociarDocumento(documento)}
                   >
                     <X className="mr-2 h-4 w-4" />
-                    Desassociar
+                    Desligar
                   </Button>
                 }
               />
@@ -496,8 +496,8 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
       return (
         <EmptyState
           compact
-          title="Ainda não há assembleias disponíveis."
-          description="Quando existirem assembleias no sistema, poderás associá-las aqui."
+          title="Ainda não há sessões disponíveis."
+          description="Quando existirem sessões no sistema, poderás associá-las aqui."
         />
       );
     }
@@ -514,8 +514,8 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
               <SelectValue
                 placeholder={
                   assembleiasDisponiveis.length === 0
-                    ? "Todas as assembleias já estão associadas"
-                    : "Selecionar assembleia existente"
+                    ? "Todas as sessões já estão ligadas"
+                    : "Selecionar sessão existente"
                 }
               />
             </SelectTrigger>
@@ -542,8 +542,8 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
         {assembleiasAssociadas.length === 0 ? (
           <EmptyState
             compact
-            title="Sem assembleias reais associadas."
-            description="Seleciona uma assembleia existente para a ligar a este Dossiê."
+            title="Sem sessões ligadas."
+            description="Seleciona uma sessão existente para a ligar a este assunto."
           />
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
@@ -562,7 +562,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                     onClick={() => desassociarAssembleia(assembleia)}
                   >
                     <X className="mr-2 h-4 w-4" />
-                    Desassociar
+                    Desligar
                   </Button>
                 }
               />
@@ -581,9 +581,9 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Itens manuais</h3>
+            <h3 className="text-sm font-semibold text-foreground">Itens adicionados</h3>
             <p className="text-sm text-muted-foreground">
-              Registos simples ligados apenas a este Dossiê.
+              Registos simples ligados apenas a este assunto.
             </p>
           </div>
           {!estaACriar && (
@@ -622,7 +622,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
           <EmptyState
             compact
             title={`Sem ${config.label.toLowerCase()} manuais.`}
-            description="Adiciona um item manual para começar a ligar conhecimento."
+            description="Adiciona um item para começar a ligar informação."
           />
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
@@ -689,11 +689,11 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
   }
 
   return (
-    <WorkspaceSection className="border-border/60 bg-white shadow-none">
+    <WorkspaceSection>
       <SectionTitle
         icon={Building2}
-        title="Relacionados"
-        description="Relações que começam a preparar o Knowledge Graph do Dossiê."
+        title="Ligado a este assunto"
+        description="Informação ligada a este assunto."
       />
 
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -744,7 +744,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
               {configAberta.value === "documentos" && (
                 <ManagementBlock
                   title="Documentos existentes"
-                  description="Associa documentos reais já registados no sistema sem os duplicar."
+                  description="Liga documentos já registados sem duplicar."
                 >
                   {renderDocumentosReais()}
                 </ManagementBlock>
@@ -752,8 +752,8 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
 
               {configAberta.value === "assembleias" && (
                 <ManagementBlock
-                  title="Assembleias existentes"
-                  description="Associa assembleias reais já registadas no sistema sem as duplicar."
+                  title="Sessões existentes"
+                  description="Liga sessões já registadas sem duplicar."
                 >
                   {renderAssembleiasReais()}
                 </ManagementBlock>
@@ -761,7 +761,7 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
 
               <ManagementBlock
                 title={`${configAberta.label} manuais`}
-                description="Itens criados diretamente neste Dossiê."
+                description="Itens criados diretamente neste assunto."
               >
                 {renderManuais(configAberta)}
               </ManagementBlock>

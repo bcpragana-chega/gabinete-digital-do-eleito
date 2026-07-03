@@ -33,11 +33,11 @@ export type UniversalSearchGroup = {
 };
 
 const groupLabels: Record<UniversalSearchType, string> = {
-  assembleias: "Assembleias",
-  dossies: "Dossiês",
+  assembleias: "Sessões",
+  dossies: "Assuntos",
   documentos: "Documentos",
-  notas: "Notas dos Dossiês",
-  timeline: "Timeline dos Dossiês",
+  notas: "Notas dos assuntos",
+  timeline: "O que aconteceu",
   pessoas: "Pessoas",
   entidades: "Entidades",
   compromissos: "Compromissos",
@@ -132,7 +132,7 @@ function buildIndex(): UniversalSearchResult[] {
     return {
       id: nota.id,
       type: "notas",
-      title: dossie ? `Nota · ${dossie.titulo}` : "Nota de Dossiê",
+      title: dossie ? `Nota · ${dossie.titulo}` : "Nota de assunto",
       description: nota.conteudo,
       meta: dossie?.titulo,
       href: `/dossies/${nota.dossieId}`,

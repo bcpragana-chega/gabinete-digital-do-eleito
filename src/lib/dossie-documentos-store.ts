@@ -71,7 +71,7 @@ export function associarDocumentoAoDossie(
   guardarRelacoesLocais([...relacoes, relacao]);
   adicionarEventoAutomaticoTimelineDossie(dossieId, {
     titulo: "Documento associado",
-    descricao: "Um documento existente foi associado a este Dossiê.",
+    descricao: "Um documento existente foi ligado a este assunto.",
     tipo: "documento",
     origemTipo: "documento",
     origemId: documentoId,

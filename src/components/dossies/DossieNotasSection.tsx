@@ -73,7 +73,7 @@ export function DossieNotasSection({ dossieId }: DossieNotasSectionProps) {
   }
 
   function apagarNota(nota: DossieNota) {
-    const confirmado = window.confirm("Apagar esta nota do Dossiê?");
+    const confirmado = window.confirm("Apagar esta nota do assunto?");
     if (!confirmado) return;
 
     apagarNotaDossie(nota.id);
@@ -81,7 +81,7 @@ export function DossieNotasSection({ dossieId }: DossieNotasSectionProps) {
 
   return (
     <WorkspaceSection
-      className="border-border/60 bg-white shadow-none"
+      className=""
       actions={
         !aCriar && (
           <Button type="button" variant="secondary" size="sm" onClick={() => setACriar(true)}>
@@ -93,8 +93,8 @@ export function DossieNotasSection({ dossieId }: DossieNotasSectionProps) {
     >
       <SectionTitle
         icon={MessageSquareText}
-        title="Notas"
-        description="Observações próprias deste Dossiê, guardadas localmente neste navegador."
+        title="Notas do assunto"
+        description="Observações e decisões guardadas ao longo do acompanhamento."
       />
 
       <div className="mt-5 space-y-4">
@@ -103,8 +103,8 @@ export function DossieNotasSection({ dossieId }: DossieNotasSectionProps) {
             <Textarea
               value={novoConteudo}
               onChange={(event) => setNovoConteudo(event.target.value)}
-              placeholder="Escreve uma nota para este Dossiê..."
-              className="min-h-32 resize-y bg-white"
+              placeholder="Escreve uma nota para este assunto..."
+              className="min-h-32 resize-y bg-card"
             />
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <Button
@@ -130,7 +130,7 @@ export function DossieNotasSection({ dossieId }: DossieNotasSectionProps) {
         {notas.length === 0 && !aCriar ? (
           <EmptyState
             compact
-            title="Ainda não há notas neste Dossiê."
+            title="Ainda não há notas neste assunto."
             description="Cria a primeira nota para guardar observações de trabalho."
             action={
               <Button type="button" size="sm" onClick={() => setACriar(true)}>
@@ -179,7 +179,7 @@ export function DossieNotasSection({ dossieId }: DossieNotasSectionProps) {
                     <Textarea
                       value={conteudoEmEdicao}
                       onChange={(event) => setConteudoEmEdicao(event.target.value)}
-                      className="min-h-32 resize-y bg-white"
+                      className="min-h-32 resize-y bg-card"
                     />
                     <div className="mt-4 flex flex-wrap justify-end gap-2">
                       <Button

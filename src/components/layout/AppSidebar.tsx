@@ -1,21 +1,46 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Landmark, History, Settings, Scale, NotebookText, Inbox } from "lucide-react";
+import {
+  BookOpen,
+  CalendarDays,
+  Home,
+  Landmark,
+  Settings,
+  Scale,
+  NotebookText,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const sidebarItems = [
-  { to: "/" as const, label: "Gabinete", icon: Home, exact: true },
-  { to: "/caixa-de-entrada" as const, label: "Caixa de Entrada", icon: Inbox, exact: false },
-  { to: "/assembleias" as const, label: "Assembleias", icon: Landmark, exact: false },
-  { to: "/dossies" as const, label: "Dossiês", icon: NotebookText, exact: false },
-  { to: "/historico" as const, label: "Histórico", icon: History, exact: false },
+  { to: "/" as const, label: "Hoje", icon: Home, exact: true },
+  { to: "/dossies" as const, label: "Assuntos", icon: NotebookText, exact: false },
+  { to: "/assembleias" as const, label: "Sessões", icon: Landmark, exact: false },
+  {
+    to: "/biblioteca" as const,
+    label: "Biblioteca",
+    icon: BookOpen,
+    exact: false,
+    aliases: ["/caixa-de-entrada"],
+  },
+  { to: "/agenda" as const, label: "Agenda", icon: CalendarDays, exact: false },
+];
+
+export const sidebarFooterItems = [
   { to: "/definicoes" as const, label: "Definições", icon: Settings, exact: false },
 ];
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  const isActive = (to: string, exact: boolean) =>
-    exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
+  const isActive = (item: (typeof sidebarItems | typeof sidebarFooterItems)[number]) => {
+    const activeMain = item.exact
+      ? pathname === item.to
+      : pathname === item.to || pathname.startsWith(item.to + "/");
+    const activeAlias =
+      "aliases" in item &&
+      item.aliases?.some((alias) => pathname === alias || pathname.startsWith(alias + "/"));
+
+    return activeMain || activeAlias;
+  };
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border/60 bg-background/95 p-3 text-foreground md:flex">
@@ -27,7 +52,7 @@ export function AppSidebar() {
           <div className="leading-tight">
             <div className="font-display text-base font-semibold">Tribuno</div>
             <div className="text-xs text-muted-foreground">
-              Gabinete digital
+              Apoio ao mandato
             </div>
           </div>
         </div>
@@ -39,7 +64,7 @@ export function AppSidebar() {
         </div>
         {sidebarItems.map((item) => {
           const Icon = item.icon;
-          const active = isActive(item.to, item.exact);
+          const active = isActive(item);
 
           return (
             <Link
@@ -49,6 +74,29 @@ export function AppSidebar() {
                 "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
                 active
                   ? "bg-muted/70 font-medium text-foreground before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-foreground/70"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <nav className="mb-3 space-y-1 border-t border-border/60 pt-3">
+        {sidebarFooterItems.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item);
+
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={cn(
+                "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
+                active
+                  ? "bg-muted/70 font-medium text-foreground"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
               )}
             >

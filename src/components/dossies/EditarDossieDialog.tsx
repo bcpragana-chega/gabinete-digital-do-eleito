@@ -40,7 +40,7 @@ export function EditarDossieDialog({ dossie, compact = false }: EditarDossieDial
 
       <DialogContent className="max-h-[calc(100vh-4rem)] max-w-2xl gap-0 overflow-hidden p-0">
         <DialogHeader className="border-b border-border/70 px-6 py-5">
-          <DialogTitle>Editar Dossiê</DialogTitle>
+          <DialogTitle>Editar assunto</DialogTitle>
         </DialogHeader>
 
         <DossieForm initialValues={dossie} onSubmit={guardar} submitLabel="Guardar alterações" />

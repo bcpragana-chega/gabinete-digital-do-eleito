@@ -1,436 +1,228 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
-  Bot,
   Calendar,
-  CheckCircle2,
-  Clock3,
   FileText,
   Landmark,
-  Lightbulb,
-  ListChecks,
-  MapPin,
-  MessageSquareText,
   NotebookText,
-  Siren,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
-import { ActionCard, EntityCard, InfoCard, MetricCard } from "@/components/ui/cards";
-import { SectionTitle, StatusBadge } from "@/components/ui/common";
-import { EmptyState } from "@/components/ui/feedback";
-import { Timeline, TimelineItem } from "@/components/ui/timeline";
-import {
-  WorkspaceHeader,
-  WorkspaceLayout,
-  WorkspaceMetrics,
-  WorkspaceSection,
-} from "@/components/ui/workspace";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { WorkspaceSection } from "@/components/ui/workspace";
 import { formatarData } from "@/lib/mock-data";
 import { useAssembleias } from "@/lib/assembleias-store";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/")({
   head: () => ({
     meta: [
-      { title: "Gabinete — Tribuno" },
+      { title: "Hoje — Tribuno" },
       {
         name: "description",
         content:
-          "Gabinete digital do eleito local: próxima assembleia, documentos, alertas e ações pendentes.",
+          "O que precisa de fazer hoje: sessões, documentos e assuntos importantes.",
       },
-      { property: "og:title", content: "Gabinete — Tribuno" },
+      { property: "og:title", content: "Hoje — Tribuno" },
       {
         property: "og:description",
-        content: "Gabinete digital para eleitos locais em Portugal.",
+        content: "Apoio ao mandato para eleitos locais em Portugal.",
       },
     ],
   }),
   component: GabinetePage,
 });
 
-function diasAte(iso: string): number {
-  const alvo = new Date(iso + "T00:00:00").getTime();
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  return Math.max(0, Math.round((alvo - hoje.getTime()) / 86400000));
-}
-
 const dossiesAtivos = [
-  {
-    titulo: "Habitação",
-    estado: "Ativo",
-    detalhe: "3 documentos recentes · 1 compromisso pendente",
-    acao: "Preparar pergunta",
-  },
-  {
-    titulo: "Centro de Saúde",
-    estado: "A acompanhar",
-    detalhe: "Reunião registada · resposta em aberto",
-    acao: "Atualizar seguimento",
-  },
-  {
-    titulo: "Iluminação Pública",
-    estado: "Crítico",
-    detalhe: "2 pedidos sem resposta",
-    acao: "Criar requerimento",
-  },
-  {
-    titulo: "Orçamento 2027",
-    estado: "Em preparação",
-    detalhe: "4 pontos por rever",
-    acao: "Analisar documentos",
-  },
+  { titulo: "Habitação", detalhe: "Acompanhar respostas municipais" },
+  { titulo: "Centro de Saúde", detalhe: "Rever ponto de situação" },
+  { titulo: "Iluminação Pública", detalhe: "Preparar seguimento" },
+  { titulo: "Orçamento 2027", detalhe: "Analisar documentos" },
 ];
 
-const agendaMock = [
-  {
-    titulo: "Reunião com moradores",
-    data: "Hoje",
-    detalhe: "Habitação · 18:00",
-  },
-  {
-    titulo: "Prazo de resposta",
-    data: "Amanhã",
-    detalhe: "Iluminação Pública",
-  },
-  {
-    titulo: "Revisão de documentos",
-    data: "Esta semana",
-    detalhe: "Orçamento 2027",
-  },
-];
-
-const atividadeMock = [
-  {
-    titulo: "Nota adicionada ao Dossiê Habitação",
-    descricao: "Apontamento de reunião com moradores.",
-    meta: "Hoje",
-  },
-  {
-    titulo: "Documento associado a Orçamento 2027",
-    descricao: "Relatório de execução orçamental marcado para análise.",
-    meta: "Ontem",
-  },
-  {
-    titulo: "Compromisso atualizado",
-    descricao: "Centro de Saúde ficou a aguardar resposta da entidade responsável.",
-    meta: "2 dias",
-  },
+const agenda = [
+  { periodo: "Hoje", texto: "Rever documentos recebidos" },
+  { periodo: "Amanhã", texto: "Preparar próxima sessão" },
+  { periodo: "Esta semana", texto: "Atualizar assuntos prioritários" },
 ];
 
 function GabinetePage() {
   const assembleias = useAssembleias();
-
-  const ativas = assembleias.filter((a) => a.estado !== "arquivada");
-
+  const ativas = assembleias.filter((assembleia) => assembleia.estado !== "arquivada");
   const proxima =
     ativas
-      .filter((a) => a.estado !== "concluida")
+      .filter((assembleia) => assembleia.estado !== "concluida")
       .sort((a, b) => `${a.data}T${a.hora}`.localeCompare(`${b.data}T${b.hora}`))[0] ??
     ativas
       .slice()
       .sort((a, b) => `${b.data}T${b.hora}`.localeCompare(`${a.data}T${a.hora}`))[0];
 
-  const docsProxima = useDocumentosDaAssembleia(proxima?.id ?? "");
-
-  const assembleiasEmPreparacao = ativas.filter((a) => a.estado === "preparacao").length;
-  const assembleiasConcluidas = assembleias.filter((a) => a.estado === "concluida").length;
-  const assembleiasArquivadas = assembleias.filter((a) => a.estado === "arquivada").length;
-
-  const atividadeRecente = assembleias
-    .slice()
-    .sort((a, b) => `${b.data}T${b.hora}`.localeCompare(`${a.data}T${a.hora}`))
-    .slice(0, 3);
-
-  const diasParaProxima = proxima ? diasAte(proxima.data) : null;
+  const documentos = useDocumentosDaAssembleia(proxima?.id ?? "");
+  const documentosPorAnalisar = Math.max(documentos.length, 6);
 
   return (
     <>
-      <TopBar breadcrumb="Gabinete" />
-      <main className="min-h-screen bg-transparent">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-          <WorkspaceLayout
-            header={
-              <WorkspaceHeader
-                icon={Landmark}
-                eyebrow="Centro de Comando"
-                title="Bom dia, Benjamin."
-                description="O essencial do mandato para decidir o próximo passo com calma e contexto."
-                className="relative overflow-hidden bg-card p-4 sm:p-7"
-                actions={
-                  proxima ? (
-                    <Link
-                      to="/assembleias/$id/preparacao"
-                      params={{ id: proxima.id }}
-                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto"
-                    >
-                      Continuar preparação
-                      <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
-                    </Link>
-                  ) : null
-                }
-                meta={
-                  <>
-                    <StatusBadge tone="info">Workspace diário</StatusBadge>
-                    <StatusBadge tone="muted">{ativas.length} assembleias ativas</StatusBadge>
-                    <StatusBadge tone="muted">{dossiesAtivos.length} dossiês ativos</StatusBadge>
-                  </>
-                }
-              >
-                {proxima ? (
-                  <div className="mt-7 border-t border-border/60 pt-6">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                            Próxima assembleia
-                          </span>
-                          <StatusBadge tone="warning" dot={false}>
-                            {proxima.estado}
-                          </StatusBadge>
-                        </div>
-                        <h2 className="mt-2 line-clamp-2 break-words font-display text-2xl font-semibold text-foreground">
-                          {proxima.nome}
-                        </h2>
-                        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                          <span className="inline-flex items-center gap-2">
-                            <Calendar className="h-4 w-4" strokeWidth={1.75} />
-                            {formatarData(proxima.data)} · {proxima.hora}
-                          </span>
-                          <span className="inline-flex items-center gap-2">
-                            <MapPin className="h-4 w-4" strokeWidth={1.75} />
-                            {proxima.local}
-                          </span>
-                          <span className="inline-flex items-center gap-2">
-                            <FileText className="h-4 w-4" strokeWidth={1.75} />
-                            {docsProxima.length} documentos
-                          </span>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl bg-muted px-5 py-4 text-sm text-foreground">
-                        <div className="text-xs font-medium uppercase text-muted-foreground">
-                          Estado da preparação
-                        </div>
-                        <div className="mt-1 font-display text-3xl font-semibold text-foreground">
-                          {diasParaProxima === 0 ? "Hoje" : `${diasParaProxima} dias`}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <EmptyState
-                    compact
-                    className="mt-6"
-                    title="Ainda não existem assembleias."
-                    description="Crie a primeira assembleia para começar a organizar o mandato."
-                  />
-                )}
-              </WorkspaceHeader>
-            }
-            sidebar={
-              <>
-                <WorkspaceSection>
-                  <SectionTitle
-                    icon={Calendar}
-                    title="Agenda"
-                    description="Próximos eventos e momentos de trabalho."
-                  />
-                  <div className="mt-5 space-y-3">
-                    {agendaMock.map((item) => (
-                      <InfoCard key={item.titulo} title={item.titulo} description={item.detalhe}>
-                        <StatusBadge tone="muted" dot={false}>
-                          {item.data}
-                        </StatusBadge>
-                      </InfoCard>
-                    ))}
-                  </div>
-                </WorkspaceSection>
+      <TopBar breadcrumb="Hoje" />
+      <main className="min-h-screen bg-background">
+        <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8 lg:py-9">
+          <header className="max-w-2xl">
+            <h1 className="font-display text-3xl font-semibold leading-tight text-foreground sm:text-4xl">
+              Bom dia, Benjamin.
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Hoje tens 3 ações importantes.
+            </p>
+          </header>
 
-                <WorkspaceSection>
-                  <SectionTitle
-                    icon={Bot}
-                    title="Assistente Tribuno"
-                    description="Preparado para IA. Dados demonstrativos por agora."
-                  />
-                  <div className="mt-5 space-y-3">
-                    <InfoCard
-                      icon={Lightbulb}
-                      title="Sugestão futura"
-                      description="Identificar riscos nos Dossiês ativos e preparar contexto antes da assembleia."
-                    />
-                    <InfoCard
-                      icon={MessageSquareText}
-                      title="Perguntas rápidas"
-                      description="Resumo do dia, pendentes críticos e documentos por analisar."
-                    />
-                  </div>
-                </WorkspaceSection>
-              </>
-            }
-          >
-            <WorkspaceSection>
-              <SectionTitle
-                icon={Siren}
-                title="O que precisa da tua atenção"
-                description="Ações, prioridades e pendentes mais importantes neste momento."
-              />
-              <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                <ActionCard
-                  icon={ListChecks}
-                  title="Preparar próxima assembleia"
-                  description={
-                    proxima
-                      ? `${proxima.nome} · ${docsProxima.length} documentos carregados`
-                      : "Sem assembleia futura registada"
-                  }
-                  action={
-                    proxima ? (
-                      <Link
-                        to="/assembleias/$id/preparacao"
-                        params={{ id: proxima.id }}
-                        className="text-sm font-semibold text-primary hover:text-primary/80"
-                      >
-                        Abrir
-                      </Link>
-                    ) : null
-                  }
-                  className="min-w-0"
-                />
-                <ActionCard
-                  icon={Clock3}
-                  title="Rever pendentes"
-                  description="2 compromissos precisam de seguimento esta semana."
-                  meta="Mock"
-                  className="min-w-0"
-                />
-                <ActionCard
-                  icon={NotebookText}
-                  title="Atualizar Dossiês"
-                  description="Iluminação Pública e Centro de Saúde têm atividade recente."
-                  meta="Prioridade"
-                  className="min-w-0 lg:col-span-2"
-                />
+          <Card className="overflow-hidden p-4 sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                  <Landmark className="h-4 w-4" strokeWidth={1.75} />
+                  Fazer agora
+                </div>
+                <h2 className="line-clamp-2 break-words font-display text-xl font-semibold leading-7 text-foreground sm:text-2xl">
+                  {proxima ? proxima.nome : "Preparar próxima sessão"}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  {documentosPorAnalisar} documentos por analisar antes da preparação.
+                </p>
               </div>
-            </WorkspaceSection>
 
-            <WorkspaceSection>
-              <SectionTitle
-                icon={ArrowRight}
-                title="Continuar trabalho"
-                description="Retomar o último contexto útil."
-              />
-              <div className="mt-5">
-                {proxima ? (
-                  <ActionCard
-                    icon={ListChecks}
-                    title={proxima.nome}
-                    description="Último local sugerido: preparação da próxima assembleia."
-                    meta={`${formatarData(proxima.data)} · ${proxima.hora}`}
-                    action={
-                      <Link
-                        to="/assembleias/$id/preparacao"
-                        params={{ id: proxima.id }}
-                        className="inline-flex h-9 items-center gap-2 rounded-lg border border-border/80 bg-card/80 px-3 text-sm font-medium text-foreground shadow-sm transition-all hover:bg-muted/70"
-                      >
-                        Continuar
-                        <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
-                      </Link>
-                    }
-                    className="min-w-0"
+              {proxima ? (
+                <Button asChild size="lg" className="w-full sm:w-auto sm:min-w-36">
+                  <Link to="/assembleias/$id" params={{ id: proxima.id }}>
+                    Continuar
+                    <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+                  </Link>
+                </Button>
+              ) : (
+                <Button asChild size="lg" className="w-full sm:w-auto sm:min-w-36">
+                  <Link to="/assembleias">
+                    Abrir sessões
+                    <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="space-y-5">
+              <WorkspaceSection title="A seguir">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <NextActionCard
+                    icon={FileText}
+                    title="Rever documentos"
+                    description={`${documentosPorAnalisar} documentos aguardam análise.`}
+                    to={proxima ? "/assembleias/$id" : "/caixa-de-entrada"}
+                    params={proxima ? { id: proxima.id } : undefined}
                   />
-                ) : (
-                  <EmptyState compact title="Sem trabalho recente para continuar." />
-                )}
-              </div>
-            </WorkspaceSection>
-
-            <WorkspaceSection>
-              <SectionTitle
-                icon={NotebookText}
-                title="Dossiês ativos"
-                description="Principais temas acompanhados neste momento."
-              />
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                {dossiesAtivos.map((dossie) => (
-                  <EntityCard
-                    key={dossie.titulo}
+                  <NextActionCard
                     icon={NotebookText}
-                    eyebrow={dossie.estado}
-                    title={dossie.titulo}
-                    description={dossie.detalhe}
-                    meta={`Próximo passo: ${dossie.acao}`}
-                    className="min-w-0"
+                    title="Atualizar assunto"
+                    description="Registar evolução num tema em acompanhamento."
+                    to="/dossies"
                   />
-                ))}
-              </div>
-            </WorkspaceSection>
+                </div>
+              </WorkspaceSection>
 
-            <WorkspaceMetrics>
-              <MetricCard
-                icon={FileText}
-                label="Documentos"
-                value={docsProxima.length}
-                description="Na próxima sessão"
-              />
-              <MetricCard
-                icon={Siren}
-                label="Em preparação"
-                value={assembleiasEmPreparacao}
-                description="Assembleias ativas"
-              />
-              <MetricCard
-                icon={CheckCircle2}
-                label="Concluídas"
-                value={assembleiasConcluidas}
-                description="No histórico"
-              />
-              <MetricCard
-                icon={Landmark}
-                label="Arquivadas"
-                value={assembleiasArquivadas}
-                description="Guardadas em histórico"
-              />
-            </WorkspaceMetrics>
-
-            <WorkspaceSection>
-              <SectionTitle
-                icon={Clock3}
-                title="Atividade recente"
-                description="Últimos sinais de trabalho e atualização."
-              />
-              <div className="mt-5">
-                <Timeline>
-                  {atividadeMock.map((item) => (
-                    <TimelineItem
-                      key={item.titulo}
-                      title={item.titulo}
-                      description={item.descricao}
-                      meta={item.meta}
-                    />
-                  ))}
-                  {atividadeRecente.map((item) => (
-                    <TimelineItem
-                      key={item.id}
-                      icon={Landmark}
-                      title={item.nome}
-                      description="Assembleia no histórico recente."
-                      meta={formatarData(item.data)}
+              <WorkspaceSection title="Assuntos em acompanhamento">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {dossiesAtivos.map((dossie) => (
+                    <Link
+                      key={dossie.titulo}
+                      to="/dossies"
+                      className="group min-w-0 rounded-2xl border border-border/80 bg-muted/25 p-4 transition-colors hover:bg-muted/40"
                     >
-                      <Link
-                        to="/assembleias/$id"
-                        params={{ id: item.id }}
-                        className="text-sm font-medium text-primary hover:text-primary/80"
-                      >
-                        Abrir assembleia
-                      </Link>
-                    </TimelineItem>
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-semibold text-foreground">
+                            {dossie.titulo}
+                          </h3>
+                          <p className="mt-1 truncate text-sm leading-6 text-muted-foreground">
+                            {dossie.detalhe}
+                          </p>
+                        </div>
+                        <ArrowRight
+                          className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                          strokeWidth={1.75}
+                        />
+                      </div>
+                    </Link>
                   ))}
-                </Timeline>
+                </div>
+              </WorkspaceSection>
+            </div>
+
+            <WorkspaceSection title="Próximas sessões" className="lg:self-start">
+              <div className="space-y-0">
+                {agenda.map((item) => (
+                  <div
+                    key={item.periodo}
+                    className="relative border-l border-border pb-5 pl-4 last:pb-0"
+                  >
+                    <span className="absolute -left-1.5 top-1 h-3 w-3 rounded-full border border-border bg-card" />
+                    <div className="text-xs font-medium text-muted-foreground">{item.periodo}</div>
+                    <p className="mt-1 text-sm leading-6 text-foreground">{item.texto}</p>
+                  </div>
+                ))}
+                {proxima && (
+                  <div className="mt-4 rounded-2xl border border-border/80 bg-muted/25 p-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <Calendar className="h-4 w-4" strokeWidth={1.75} />
+                      Próxima sessão
+                    </div>
+                    <p className="mt-2 line-clamp-2 break-words text-sm font-semibold leading-6 text-foreground">
+                      {formatarData(proxima.data)} · {proxima.hora}
+                    </p>
+                  </div>
+                )}
               </div>
             </WorkspaceSection>
-          </WorkspaceLayout>
+          </section>
         </div>
       </main>
     </>
+  );
+}
+
+type NextActionCardProps = {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  to: string;
+  params?: Record<string, string>;
+};
+
+function NextActionCard({
+  icon: Icon,
+  title,
+  description,
+  to,
+  params,
+}: NextActionCardProps) {
+  return (
+    <Card className="flex min-w-0 flex-col border-border/80 bg-muted/25 p-4 shadow-none transition-colors hover:bg-muted/40">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-muted/40 text-muted-foreground">
+          <Icon className="h-4 w-4" strokeWidth={1.75} />
+        </div>
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-semibold text-foreground">{title}</h3>
+          <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-muted-foreground">
+            {description}
+          </p>
+        </div>
+      </div>
+      <Button asChild variant="secondary" className={cn("mt-4 w-full justify-center sm:w-fit")}>
+        <Link to={to as never} params={params as never}>
+          Abrir
+          <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+        </Link>
+      </Button>
+    </Card>
   );
 }

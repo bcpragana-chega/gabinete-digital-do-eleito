@@ -27,7 +27,7 @@ type AssembleiaFormProps = {
 
 export function AssembleiaForm({
   initialValues,
-  submitLabel = "Guardar Assembleia",
+  submitLabel = "Guardar sessão",
   onSubmit,
 }: AssembleiaFormProps) {
   const [nome, setNome] = useState(initialValues?.nome ?? "");
@@ -61,7 +61,7 @@ export function AssembleiaForm({
           id="nome"
           value={nome}
           onChange={(event) => setNome(event.target.value)}
-          placeholder="Ex.: Assembleia de Freguesia Ordinária — Setembro"
+          placeholder="Ex.: Sessão ordinária de setembro"
         />
         </div>
 

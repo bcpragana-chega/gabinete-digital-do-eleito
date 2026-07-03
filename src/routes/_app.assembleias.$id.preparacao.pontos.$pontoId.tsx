@@ -174,7 +174,7 @@ function PreparacaoPontoDetalhePage() {
           </Link>
 
           <EmptyState
-            title="Assembleia não encontrada"
+            title="Sessão não encontrada"
             description="Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador."
           />
         </main>
@@ -210,9 +210,7 @@ function PreparacaoPontoDetalhePage() {
       <TopBar
         breadcrumb={
           <span>
-            <Link to="/assembleias" className="hover:text-foreground transition-colors">
-              Assembleias
-            </Link>
+            <Link to="/assembleias" className="hover:text-foreground transition-colors">Sessões</Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
             <Link
               to="/assembleias/$id"
@@ -248,7 +246,7 @@ function PreparacaoPontoDetalhePage() {
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <Breadcrumb
               items={[
-                { label: "Assembleias" },
+                { label: "Sessões" },
                 { label: assembleia.nome },
                 { label: "Preparação" },
                 { label: "Pontos" },
@@ -639,7 +637,7 @@ function DocumentosAssociadosSection({
                     variant={associado ? "secondary" : "outline"}
                     onClick={() => onAlternarDocumento(documento.id)}
                   >
-                    {associado ? "Remover" : "Associar"}
+                    {associado ? "Remover" : "Ligar"}
                   </Button>
                 </div>
               </InfoCard>

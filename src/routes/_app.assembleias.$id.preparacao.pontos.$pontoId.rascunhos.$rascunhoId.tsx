@@ -103,7 +103,7 @@ function RascunhoDocumentoPage() {
             Todas as assembleias
           </Link>
 
-          <EmptyState title="Assembleia não encontrada" />
+          <EmptyState title="Sessão não encontrada" />
         </main>
       </>
     );
@@ -137,9 +137,7 @@ function RascunhoDocumentoPage() {
       <TopBar
         breadcrumb={
           <span>
-            <Link to="/assembleias" className="hover:text-foreground transition-colors">
-              Assembleias
-            </Link>
+            <Link to="/assembleias" className="hover:text-foreground transition-colors">Sessões</Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
             <Link
               to="/assembleias/$id"
@@ -302,7 +300,7 @@ function RascunhoPreview({
         </header>
 
         <dl className="mt-6 grid gap-3 rounded-lg border border-border bg-background/60 p-4 text-sm md:grid-cols-2">
-          <PreviewMeta label="Assembleia" value={assembleiaNome} />
+          <PreviewMeta label="Sessão" value={assembleiaNome} />
           <PreviewMeta
             label="Ponto da ordem de trabalhos"
             value={pontoNumero ? `Ponto ${pontoNumero} · ${pontoTitulo}` : pontoTitulo}

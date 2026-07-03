@@ -31,10 +31,10 @@ import type { Dossie, EstadoDossie, PrioridadeDossie } from "@/lib/types";
 export const Route = createFileRoute("/_app/dossies/$dossieId")({
   head: () => ({
     meta: [
-      { title: "Dossiê — Tribuno" },
+      { title: "Assunto — Tribuno" },
       {
         name: "description",
-        content: "Workspace de Dossiê do mandato.",
+        content: "Assunto acompanhado ao longo do mandato.",
       },
     ],
   }),
@@ -72,11 +72,11 @@ function formatarData(data?: string) {
 
 function proximaAcaoPlaceholder(dossie: Dossie) {
   if (dossie.prioridade === "Crítica") {
-    return "Validar urgência política e preparar intervenção.";
+    return "Rever urgência política e registar o próximo seguimento.";
   }
 
   if (dossie.estado === "em acompanhamento") {
-    return "Rever informação recente e definir seguimento.";
+    return "Rever a evolução recente do assunto.";
   }
 
   if (dossie.estado === "concluido") {
@@ -93,18 +93,18 @@ function DossieDetalhePage() {
   if (!dossie) {
     return (
       <>
-        <TopBar breadcrumb="Dossiê" />
+        <TopBar breadcrumb="Assunto" />
         <main className="min-h-screen bg-transparent">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
             <Button asChild variant="ghost" size="sm" className="mb-6">
               <Link to="/dossies">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar aos Dossiês
+                Voltar aos assuntos
               </Link>
             </Button>
             <EmptyState
-              title="Dossiê não encontrado"
-              description="Este Dossiê pode ter sido removido ou ainda não estar disponível neste navegador."
+              title="Assunto não encontrado"
+              description="Este assunto pode ter sido removido ou ainda não estar disponível neste navegador."
             />
           </div>
         </main>
@@ -115,7 +115,7 @@ function DossieDetalhePage() {
   function arquivar() {
     if (!dossie || dossie.archivedAt) return;
 
-    const confirmado = window.confirm(`Arquivar o Dossiê "${dossie.titulo}"?`);
+    const confirmado = window.confirm(`Arquivar o assunto "${dossie.titulo}"?`);
     if (!confirmado) return;
     arquivarDossie(dossie.id);
   }
@@ -125,15 +125,15 @@ function DossieDetalhePage() {
 
   return (
     <>
-      <TopBar breadcrumb="Dossiê" />
+      <TopBar breadcrumb="Assunto" />
       <main className="min-h-screen bg-transparent">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <Breadcrumb items={[{ label: "Dossiês" }, { label: dossie.titulo }]} />
+            <Breadcrumb items={[{ label: "Assuntos" }, { label: dossie.titulo }]} />
             <Button asChild variant="ghost" size="sm">
               <Link to="/dossies">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar aos Dossiês
+                Voltar aos assuntos
               </Link>
             </Button>
           </div>
@@ -142,10 +142,10 @@ function DossieDetalhePage() {
             header={
               <WorkspaceHeader
                 icon={NotebookText}
-                eyebrow="Workspace de Dossiê"
+                eyebrow="Assunto"
                 title={dossie.titulo}
-                description="Centro de trabalho para acompanhar este tema ao longo do mandato."
-                className="border-border/60 bg-white p-4 shadow-none sm:p-7"
+                description="Tema acompanhado ao longo do mandato, com notas, histórico e ligações."
+                className="p-4 sm:p-7"
                 actions={
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
                     {!arquivado && <EditarDossieDialog dossie={dossie} />}
@@ -185,7 +185,7 @@ function DossieDetalhePage() {
                   <SectionTitle
                     icon={Bot}
                     title="Assistente"
-                    description="Preparado para IA como contexto futuro do Dossiê."
+                    description="Preparado para ajudar com contexto deste assunto."
                   />
                   <div className="mt-5">
                     <InfoCard
@@ -196,54 +196,67 @@ function DossieDetalhePage() {
                 </WorkspaceSection>
 
                 <WorkspaceSection>
-                  <SectionTitle icon={Clock3} title="Estado do workspace" />
+                  <SectionTitle icon={Clock3} title="Estado do assunto" />
                   <div className="mt-5 space-y-3">
                     <InfoCard
                       title="Última atualização"
                       description={ultimaAtualizacao}
                     />
                     <InfoCard
-                      title="Arquitetura preparada"
-                      description="Timeline, relações, notas e atividade já têm espaço reservado."
+                      title="Memória do assunto"
+                      description="Notas, acontecimentos e ligações guardam o histórico do tema."
                     />
                   </div>
                 </WorkspaceSection>
               </>
             }
           >
-            <WorkspaceSection className="border-border/60 bg-white shadow-none">
+            <WorkspaceSection>
+              <SectionTitle
+                icon={Activity}
+                title="Estado do assunto"
+                description="Como está este tema neste momento."
+              />
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                <InfoCard title="Estado" description={estadoLabel(dossie.estado)} />
+                <InfoCard title="Prioridade" description={dossie.prioridade} />
+                <InfoCard title="Última atividade" description={ultimaAtualizacao} />
+              </div>
+            </WorkspaceSection>
+
+            <WorkspaceSection>
               <SectionTitle
                 icon={FileText}
                 title="Resumo"
-                description="Síntese executiva do tema ou problema acompanhado."
+                description="O essencial sobre este tema de mandato."
               />
               <p className="mt-5 whitespace-pre-line text-sm leading-7 text-muted-foreground">
                 {dossie.resumo || "Sem resumo registado."}
               </p>
             </WorkspaceSection>
 
-            <WorkspaceSection className="border-border/60 bg-white shadow-none">
+            <WorkspaceSection>
               <SectionTitle
                 icon={CheckCircle2}
-                title="Objetivo político"
-                description="A intenção que orienta decisões, intervenções e acompanhamento."
+                title="Objetivo"
+                description="O que pretende acompanhar, resolver ou defender."
               />
               <p className="mt-5 whitespace-pre-line text-sm leading-7 text-muted-foreground">
                 {dossie.objetivoPolitico || "Sem objetivo político registado."}
               </p>
             </WorkspaceSection>
 
-            <WorkspaceSection className="border-border/60 bg-white shadow-none">
+            <WorkspaceSection>
               <SectionTitle
                 icon={Clock3}
                 title="Próxima ação"
-                description="Placeholder para orientar o trabalho imediato."
+                description="O próximo seguimento deste tema."
               />
               <div className="mt-5">
                 <ActionCard
                   icon={Clock3}
                   title={proximaAcaoPlaceholder(dossie)}
-                  description="Esta ação é provisória. No futuro poderá ser calculada a partir de assembleias, compromissos e atividade recente."
+                  description="Esta indicação é provisória. No futuro poderá ser calculada a partir de sessões, compromissos e atividade recente."
                   meta={`Baseado no estado "${estadoLabel(dossie.estado)}" e prioridade "${dossie.prioridade}".`}
                 />
               </div>
@@ -255,33 +268,33 @@ function DossieDetalhePage() {
 
             <DossieNotasSection dossieId={dossie.id} />
 
-            <WorkspaceSection className="border-border/60 bg-white shadow-none">
+            <WorkspaceSection>
               <SectionTitle
                 icon={Activity}
-                title="Atividade recente"
-                description="Registo resumido dos movimentos conhecidos neste Dossiê."
+                title="Última atividade"
+                description="Últimos sinais registados neste tema."
               />
               <Timeline className="mt-5">
                 {dossie.updatedAt && (
                   <TimelineItem
                     icon={Activity}
-                    title="Dossiê atualizado"
-                    description="Os dados principais deste Dossiê foram alterados."
+                    title="Assunto atualizado"
+                    description="Os dados principais deste assunto foram alterados."
                     meta={formatarData(dossie.updatedAt)}
                   />
                 )}
                 {dossie.archivedAt && (
                   <TimelineItem
                     icon={Archive}
-                    title="Dossiê arquivado"
-                    description="O Dossiê deixou de estar ativo na lista principal."
+                    title="Assunto arquivado"
+                    description="O assunto deixou de estar ativo na lista principal."
                     meta={formatarData(dossie.archivedAt)}
                   />
                 )}
                 <TimelineItem
                   icon={NotebookText}
-                  title="Dossiê criado"
-                  description="Workspace inicial criado para acompanhar este tema."
+                  title="Assunto criado"
+                  description="Espaço criado para acompanhar este tema."
                   meta={formatarData(dossie.createdAt)}
                 />
               </Timeline>

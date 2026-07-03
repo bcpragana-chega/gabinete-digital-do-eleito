@@ -46,7 +46,7 @@ type DossieTimelineSectionProps = {
 const tiposEvento: Array<{ value: TipoEventoTimelineDossie; label: string; icon: LucideIcon }> = [
   { value: "nota", label: "Nota", icon: MessageSquareText },
   { value: "documento", label: "Documento", icon: FileText },
-  { value: "assembleia", label: "Assembleia", icon: NotebookText },
+  { value: "assembleia", label: "Sessão", icon: NotebookText },
   { value: "compromisso", label: "Compromisso", icon: ScrollText },
   { value: "reunião", label: "Reunião", icon: Users },
   { value: "outro", label: "Outro", icon: Handshake },
@@ -161,7 +161,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
               value={input.titulo}
               onChange={(event) => onChange("titulo", event.target.value)}
               placeholder="Ex.: Reunião com moradores"
-              className="bg-white"
+              className="bg-card"
             />
           </div>
           <div className="space-y-2">
@@ -173,7 +173,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
               type="date"
               value={input.data}
               onChange={(event) => onChange("data", event.target.value)}
-              className="bg-white"
+              className="bg-card"
             />
           </div>
         </div>
@@ -184,7 +184,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
             value={input.tipo}
             onValueChange={(value) => onChange("tipo", value as TipoEventoTimelineDossie)}
           >
-            <SelectTrigger className="bg-white">
+            <SelectTrigger className="bg-card">
               <SelectValue placeholder="Selecionar tipo" />
             </SelectTrigger>
             <SelectContent>
@@ -205,8 +205,8 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
             id="timeline-descricao"
             value={input.descricao}
             onChange={(event) => onChange("descricao", event.target.value)}
-            placeholder="Descreve o que aconteceu e porque importa para este Dossiê..."
-            className="min-h-28 resize-y bg-white"
+            placeholder="Descreve o que aconteceu e porque importa para este assunto..."
+            className="min-h-28 resize-y bg-card"
           />
         </div>
       </div>
@@ -215,25 +215,25 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
 
   return (
     <WorkspaceSection
-      className="border-border/60 bg-white shadow-none"
+      className=""
       actions={
         !aCriar && (
           <Button type="button" variant="secondary" size="sm" onClick={() => setACriar(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Adicionar evento
+            Adicionar acontecimento
           </Button>
         )
       }
     >
       <SectionTitle
         icon={CalendarDays}
-        title="Timeline"
-        description="História manual e automática deste Dossiê ao longo do mandato."
+        title="O que aconteceu"
+        description="História manual e automática deste assunto ao longo do mandato."
       />
 
       <div className="mt-5 space-y-5">
         {aCriar && (
-          <InfoCard title="Novo evento" description="Regista um acontecimento relevante para o Dossiê.">
+          <InfoCard title="Novo acontecimento" description="Regista algo importante para este assunto.">
             {renderFormulario(novoEvento, atualizarNovo)}
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <Button
@@ -250,7 +250,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
               </Button>
               <Button type="button" size="sm" onClick={criarEvento} disabled={!eventoValido(novoEvento)}>
                 <Save className="mr-2 h-4 w-4" />
-                Guardar evento
+                Guardar acontecimento
               </Button>
             </div>
           </InfoCard>
@@ -259,12 +259,12 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
         {eventos.length === 0 && !aCriar ? (
           <EmptyState
             compact
-            title="Ainda não há eventos na timeline."
-            description="Adiciona o primeiro acontecimento para começar a contar a história deste Dossiê."
+            title="Ainda não há acontecimentos."
+            description="Adiciona o primeiro acontecimento para começar a contar a história deste assunto."
             action={
               <Button type="button" size="sm" onClick={() => setACriar(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Adicionar evento
+                Adicionar acontecimento
               </Button>
             }
           />

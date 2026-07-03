@@ -14,6 +14,8 @@ import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppHistoricoRouteImport } from './routes/_app.historico'
 import { Route as AppDefinicoesRouteImport } from './routes/_app.definicoes'
 import { Route as AppCaixaDeEntradaRouteImport } from './routes/_app.caixa-de-entrada'
+import { Route as AppBibliotecaRouteImport } from './routes/_app.biblioteca'
+import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
 import { Route as AppDossiesIndexRouteImport } from './routes/_app.dossies.index'
 import { Route as AppAssembleiasIndexRouteImport } from './routes/_app.assembleias.index'
 import { Route as AppDossiesDossieIdRouteImport } from './routes/_app.dossies.$dossieId'
@@ -49,6 +51,16 @@ const AppDefinicoesRoute = AppDefinicoesRouteImport.update({
 const AppCaixaDeEntradaRoute = AppCaixaDeEntradaRouteImport.update({
   id: '/caixa-de-entrada',
   path: '/caixa-de-entrada',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBibliotecaRoute = AppBibliotecaRouteImport.update({
+  id: '/biblioteca',
+  path: '/biblioteca',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgendaRoute = AppAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDossiesIndexRoute = AppDossiesIndexRouteImport.update({
@@ -122,6 +134,8 @@ const AppAssembleiasIdPreparacaoPontosPontoIdRascunhosRascunhoIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/agenda': typeof AppAgendaRoute
+  '/biblioteca': typeof AppBibliotecaRoute
   '/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/definicoes': typeof AppDefinicoesRoute
   '/historico': typeof AppHistoricoRoute
@@ -139,6 +153,8 @@ export interface FileRoutesByFullPath {
   '/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId': typeof AppAssembleiasIdPreparacaoPontosPontoIdRascunhosRascunhoIdRoute
 }
 export interface FileRoutesByTo {
+  '/agenda': typeof AppAgendaRoute
+  '/biblioteca': typeof AppBibliotecaRoute
   '/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/definicoes': typeof AppDefinicoesRoute
   '/historico': typeof AppHistoricoRoute
@@ -159,6 +175,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/_app/agenda': typeof AppAgendaRoute
+  '/_app/biblioteca': typeof AppBibliotecaRoute
   '/_app/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/_app/definicoes': typeof AppDefinicoesRoute
   '/_app/historico': typeof AppHistoricoRoute
@@ -180,6 +198,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agenda'
+    | '/biblioteca'
     | '/caixa-de-entrada'
     | '/definicoes'
     | '/historico'
@@ -197,6 +217,8 @@ export interface FileRouteTypes {
     | '/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/agenda'
+    | '/biblioteca'
     | '/caixa-de-entrada'
     | '/definicoes'
     | '/historico'
@@ -216,6 +238,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/_app/agenda'
+    | '/_app/biblioteca'
     | '/_app/caixa-de-entrada'
     | '/_app/definicoes'
     | '/_app/historico'
@@ -273,6 +297,20 @@ declare module '@tanstack/react-router' {
       path: '/caixa-de-entrada'
       fullPath: '/caixa-de-entrada'
       preLoaderRoute: typeof AppCaixaDeEntradaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/biblioteca': {
+      id: '/_app/biblioteca'
+      path: '/biblioteca'
+      fullPath: '/biblioteca'
+      preLoaderRoute: typeof AppBibliotecaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/agenda': {
+      id: '/_app/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AppAgendaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dossies/': {
@@ -430,6 +468,8 @@ const AppAssembleiasIdRouteWithChildren =
   AppAssembleiasIdRoute._addFileChildren(AppAssembleiasIdRouteChildren)
 
 interface AppRouteChildren {
+  AppAgendaRoute: typeof AppAgendaRoute
+  AppBibliotecaRoute: typeof AppBibliotecaRoute
   AppCaixaDeEntradaRoute: typeof AppCaixaDeEntradaRoute
   AppDefinicoesRoute: typeof AppDefinicoesRoute
   AppHistoricoRoute: typeof AppHistoricoRoute
@@ -441,6 +481,8 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAgendaRoute: AppAgendaRoute,
+  AppBibliotecaRoute: AppBibliotecaRoute,
   AppCaixaDeEntradaRoute: AppCaixaDeEntradaRoute,
   AppDefinicoesRoute: AppDefinicoesRoute,
   AppHistoricoRoute: AppHistoricoRoute,
