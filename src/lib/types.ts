@@ -134,6 +134,39 @@ export interface DossieAssembleiaRelacionada {
   createdAt: string;
 }
 
+export type TipoObjetoTribuno =
+  | "assunto"
+  | "sessao"
+  | "documento"
+  | "ponto"
+  | "documento_criado"
+  | "evento";
+
+export type TipoRelacaoTribuno =
+  | "associado_a"
+  | "discutido_em"
+  | "usado_em"
+  | "produzido_em"
+  | "relacionado_com"
+  | "gerou"
+  | "citado_em";
+
+export interface ReferenciaObjetoTribuno {
+  tipo: TipoObjetoTribuno;
+  id: string;
+}
+
+export interface RelacaoTribuno {
+  id: string;
+  origemTipo: TipoObjetoTribuno;
+  origemId: string;
+  destinoTipo: TipoObjetoTribuno;
+  destinoId: string;
+  tipoRelacao: TipoRelacaoTribuno;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type EstadoInboxDocumento = "Novo" | "Em análise" | "Tratado";
 
 export interface DocumentoInboxItem {

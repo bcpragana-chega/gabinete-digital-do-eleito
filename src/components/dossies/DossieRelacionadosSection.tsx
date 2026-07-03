@@ -39,21 +39,27 @@ import {
   useAssembleiasDoDossie,
 } from "@/lib/dossie-assembleias-store";
 import {
-  associarDocumentoAoDossie,
-  desassociarDocumentoDoDossie,
-  useDocumentosDoDossie,
-} from "@/lib/dossie-documentos-store";
-import {
   adicionarRelacionadoDossie,
   apagarRelacionadoDossie,
   editarRelacionadoDossie,
   useRelacionadosDossie,
   type DossieRelacionadoInput,
 } from "@/lib/dossie-relacionados-store";
+import {
+  criarRelacaoTribuno,
+  removerRelacaoTribunoPorObjetos,
+  useRelacoesPorObjeto,
+} from "@/lib/relacoes-store";
 import { listarAssembleias } from "@/lib/assembleias-store";
 import { listarDocumentosLocais } from "@/lib/documentos-store";
 import { documentos as documentosMock } from "@/lib/mock-data";
-import type { Assembleia, CategoriaRelacionadoDossie, Documento, DossieRelacionado } from "@/lib/types";
+import type {
+  Assembleia,
+  CategoriaRelacionadoDossie,
+  Documento,
+  DossieRelacionado,
+  RelacaoTribuno,
+} from "@/lib/types";
 
 type DossieRelacionadosSectionProps = {
   dossieId: string;
@@ -193,10 +199,23 @@ function useAssembleiasExistentes() {
   return assembleias;
 }
 
+function isRelacaoAssuntoDocumento(relacao: RelacaoTribuno, dossieId: string) {
+  return (
+    relacao.origemTipo === "assunto" &&
+    relacao.origemId === dossieId &&
+    relacao.destinoTipo === "documento" &&
+    relacao.tipoRelacao === "associado_a"
+  );
+}
+
 export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectionProps) {
   const relacionados = useRelacionadosDossie(dossieId);
   const documentosExistentes = useDocumentosExistentes();
-  const relacoesDocumentos = useDocumentosDoDossie(dossieId);
+  const relacoesDoAssunto = useRelacoesPorObjeto("assunto", dossieId);
+  const relacoesDocumentos = useMemo(
+    () => relacoesDoAssunto.filter((relacao) => isRelacaoAssuntoDocumento(relacao, dossieId)),
+    [dossieId, relacoesDoAssunto],
+  );
   const assembleiasExistentes = useAssembleiasExistentes();
   const relacoesAssembleias = useAssembleiasDoDossie(dossieId);
   const [categoriaAberta, setCategoriaAberta] = useState<CategoriaRelacionadoDossie | null>(null);
@@ -212,13 +231,13 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
   const documentosAssociados = useMemo(() => {
     return relacoesDocumentos
       .map((relacao) =>
-        documentosExistentes.find((documento) => documento.id === relacao.documentoId),
+        documentosExistentes.find((documento) => documento.id === relacao.destinoId),
       )
       .filter((documento): documento is Documento => Boolean(documento));
   }, [documentosExistentes, relacoesDocumentos]);
 
   const documentosAssociadosIds = useMemo(
-    () => new Set(relacoesDocumentos.map((relacao) => relacao.documentoId)),
+    () => new Set(relacoesDocumentos.map((relacao) => relacao.destinoId)),
     [relacoesDocumentos],
   );
 
@@ -339,14 +358,26 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
 
   function associarDocumento() {
     if (!documentoParaAssociar) return;
-    associarDocumentoAoDossie(dossieId, documentoParaAssociar);
+    criarRelacaoTribuno({
+      origemTipo: "assunto",
+      origemId: dossieId,
+      destinoTipo: "documento",
+      destinoId: documentoParaAssociar,
+      tipoRelacao: "associado_a",
+    });
     setDocumentoParaAssociar("");
   }
 
   function desassociarDocumento(documento: Documento) {
     const confirmado = window.confirm(`Desligar o documento "${documento.titulo}" deste assunto?`);
     if (!confirmado) return;
-    desassociarDocumentoDoDossie(dossieId, documento.id);
+    removerRelacaoTribunoPorObjetos({
+      origemTipo: "assunto",
+      origemId: dossieId,
+      destinoTipo: "documento",
+      destinoId: documento.id,
+      tipoRelacao: "associado_a",
+    });
   }
 
   function associarAssembleia() {

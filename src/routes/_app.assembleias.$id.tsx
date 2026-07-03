@@ -18,6 +18,7 @@ import {
   MapPin,
   NotebookText,
   ScrollText,
+  X,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { formatarData } from "@/lib/mock-data";
@@ -31,6 +32,13 @@ import { ActionCard, InfoCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
 import { Breadcrumb } from "@/components/ui/navigation";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import {
   WorkspaceHeader,
@@ -41,7 +49,13 @@ import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
 import { listarDocumentosACriarDaAssembleia } from "@/lib/documentos-a-criar-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
 import { obterEstrategiaDaAssembleia } from "@/lib/estrategia-store";
-import type { EstadoAssembleia } from "@/lib/types";
+import { useDossies } from "@/lib/dossies-store";
+import {
+  criarRelacaoTribuno,
+  removerRelacaoTribunoPorObjetos,
+  useRelacoesPorObjeto,
+} from "@/lib/relacoes-store";
+import type { Dossie, EstadoAssembleia, RelacaoTribuno } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/assembleias/$id")({
   head: () => ({
@@ -71,6 +85,15 @@ function estadoTone(estado: EstadoAssembleia) {
   return "warning";
 }
 
+function isRelacaoSessaoAssunto(relacao: RelacaoTribuno, sessaoId: string) {
+  return (
+    relacao.origemTipo === "sessao" &&
+    relacao.origemId === sessaoId &&
+    relacao.destinoTipo === "assunto" &&
+    relacao.tipoRelacao === "discutido_em"
+  );
+}
+
 function AssembleiaDetailPage() {
   const { id } = Route.useParams();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -80,8 +103,33 @@ function AssembleiaDetailPage() {
   const pontos = useMemo(() => obterPontosDaAssembleia(id), [id, versaoPontos]);
   const documentosACriar = useMemo(() => listarDocumentosACriarDaAssembleia(id), [id]);
   const estrategia = useMemo(() => obterEstrategiaDaAssembleia(id), [id]);
+  const dossies = useDossies();
+  const relacoesDaSessao = useRelacoesPorObjeto("sessao", id);
   const [confirmarArquivo, setConfirmarArquivo] = useState(false);
   const [wizardAberto, setWizardAberto] = useState(false);
+  const [assuntoParaAssociar, setAssuntoParaAssociar] = useState("");
+
+  const relacoesAssuntos = useMemo(
+    () => relacoesDaSessao.filter((relacao) => isRelacaoSessaoAssunto(relacao, id)),
+    [id, relacoesDaSessao],
+  );
+
+  const assuntosDaSessao = useMemo(() => {
+    return relacoesAssuntos
+      .map((relacao) => dossies.find((dossie) => dossie.id === relacao.destinoId))
+      .filter((dossie): dossie is Dossie => Boolean(dossie));
+  }, [dossies, relacoesAssuntos]);
+
+  const assuntosDaSessaoIds = useMemo(
+    () => new Set(relacoesAssuntos.map((relacao) => relacao.destinoId)),
+    [relacoesAssuntos],
+  );
+
+  const assuntosDisponiveis = useMemo(
+    () =>
+      dossies.filter((dossie) => !dossie.archivedAt && !assuntosDaSessaoIds.has(dossie.id)),
+    [assuntosDaSessaoIds, dossies],
+  );
 
   const isSubRoute = pathname.includes(`/assembleias/${id}/`);
 
@@ -130,6 +178,32 @@ function AssembleiaDetailPage() {
     estrategia.adversariosPrevisiveis,
     estrategia.notasLivres,
   ].some((campo) => campo.trim().length > 0);
+
+  function associarAssunto() {
+    if (!assuntoParaAssociar) return;
+
+    criarRelacaoTribuno({
+      origemTipo: "sessao",
+      origemId: id,
+      destinoTipo: "assunto",
+      destinoId: assuntoParaAssociar,
+      tipoRelacao: "discutido_em",
+    });
+    setAssuntoParaAssociar("");
+  }
+
+  function desassociarAssunto(dossie: Dossie) {
+    const confirmado = window.confirm(`Remover o assunto "${dossie.titulo}" desta sessão?`);
+    if (!confirmado) return;
+
+    removerRelacaoTribunoPorObjetos({
+      origemTipo: "sessao",
+      origemId: id,
+      destinoTipo: "assunto",
+      destinoId: dossie.id,
+      tipoRelacao: "discutido_em",
+    });
+  }
 
   return (
     <>
@@ -414,12 +488,86 @@ function AssembleiaDetailPage() {
             <WorkspaceSection>
               <SectionTitle
                 icon={NotebookText}
+                title="Assuntos desta sessão"
+                description="Temas que serão discutidos ou trabalhados nesta reunião."
+              />
+              <div className="mt-5 grid gap-4">
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                  <Select
+                    value={assuntoParaAssociar}
+                    onValueChange={setAssuntoParaAssociar}
+                    disabled={assuntosDisponiveis.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          assuntosDisponiveis.length === 0
+                            ? "Todos os assuntos disponíveis já estão ligados"
+                            : "Selecionar assunto existente"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assuntosDisponiveis.map((dossie) => (
+                        <SelectItem key={dossie.id} value={dossie.id}>
+                          {dossie.titulo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={associarAssunto}
+                    disabled={!assuntoParaAssociar}
+                  >
+                    Associar
+                  </Button>
+                </div>
+
+                {assuntosDaSessao.length === 0 ? (
+                  <EmptyState
+                    compact
+                    title="Nenhum assunto ligado a esta sessão."
+                    description="Associe os temas que vão ser discutidos ou trabalhados nesta reunião."
+                  />
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {assuntosDaSessao.map((dossie) => (
+                      <ActionCard
+                        key={dossie.id}
+                        icon={NotebookText}
+                        title={dossie.titulo}
+                        description={dossie.resumo || "Assunto ligado a esta sessão."}
+                        meta={`${dossie.estado} · ${dossie.prioridade}`}
+                        action={
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => desassociarAssunto(dossie)}
+                          >
+                            <X className="mr-2 h-4 w-4" />
+                            Remover
+                          </Button>
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </WorkspaceSection>
+
+            <WorkspaceSection>
+              <SectionTitle
+                icon={NotebookText}
                 title="Ligado a esta sessão"
-                description="Assuntos, documentos, pessoas, entidades e compromissos ligados à sessão."
+                description="Documentos, pessoas, entidades e compromissos ligados à sessão."
               />
               <div className="mt-5 grid gap-3 md:grid-cols-2">
-                <InfoCard title="Assuntos" description="Ligações reais serão mostradas nesta área." />
                 <InfoCard title="Compromissos" description="Preparado para acompanhamento futuro." />
+                <InfoCard title="Outras ligações" description="Preparado para relações futuras." />
               </div>
             </WorkspaceSection>
 
