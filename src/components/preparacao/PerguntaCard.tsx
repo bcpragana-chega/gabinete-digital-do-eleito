@@ -1,6 +1,6 @@
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { PerguntaSugerida } from "@/lib/mock-preparacao";
+import type { PerguntaSugerida } from "@/lib/preparacao-store";
 import { PrioridadeBadge } from "./badges";
 
 export function PerguntaCard({ item }: { item: PerguntaSugerida }) {
@@ -13,17 +13,12 @@ export function PerguntaCard({ item }: { item: PerguntaSugerida }) {
         <PrioridadeBadge nivel={item.prioridade} />
       </div>
 
-      <p className="font-display text-[15px] leading-snug text-foreground">
-        {item.pergunta}
-      </p>
+      <p className="font-display text-[15px] leading-snug text-foreground">{item.pergunta}</p>
 
       {item.documentos.length > 0 && (
         <ul className="mt-4 space-y-1.5">
           {item.documentos.map((doc) => (
-            <li
-              key={doc}
-              className="flex items-start gap-2 text-xs text-muted-foreground"
-            >
+            <li key={doc} className="flex items-start gap-2 text-xs text-muted-foreground">
               <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
               <span className="truncate">{doc}</span>
             </li>

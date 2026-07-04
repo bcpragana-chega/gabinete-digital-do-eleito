@@ -23,7 +23,11 @@ export function TimelineItem({
     <li className={cn("relative pl-10", className)}>
       <span className="absolute left-4 top-8 h-full w-px bg-border" aria-hidden="true" />
       <span className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground">
-        {Icon ? <Icon className="h-4 w-4" strokeWidth={1.75} /> : <span className="h-2 w-2 rounded-full bg-current" />}
+        {Icon ? (
+          <Icon className="h-4 w-4" strokeWidth={1.75} />
+        ) : (
+          <span className="h-2 w-2 rounded-full bg-current" />
+        )}
       </span>
       <div className="rounded-xl border border-border bg-background/60 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">

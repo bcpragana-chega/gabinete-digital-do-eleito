@@ -3,7 +3,6 @@ import { listarDossies, obterDossie } from "@/lib/dossies-store";
 import { listarDocumentosLocais } from "@/lib/documentos-store";
 import { listarTodasNotasDossie } from "@/lib/dossie-notas-store";
 import { listarTodosEventosTimelineDossie } from "@/lib/dossie-timeline-store";
-import { documentos as documentosMock } from "@/lib/mock-data";
 import type { Documento } from "@/lib/types";
 
 export type UniversalSearchType =
@@ -80,34 +79,38 @@ function matches(result: UniversalSearchResult, query: string) {
 }
 
 function buildIndex(): UniversalSearchResult[] {
-  const assembleias = listarAssembleias().map((assembleia): UniversalSearchResult => ({
-    id: assembleia.id,
-    type: "assembleias",
-    title: assembleia.nome,
-    description: assembleia.local,
-    meta: `${assembleia.data}${assembleia.hora ? ` · ${assembleia.hora}` : ""}`,
-    href: `/assembleias/${assembleia.id}`,
-    terms: [assembleia.nome, assembleia.local, assembleia.estado, assembleia.data],
-  }));
+  const assembleias = listarAssembleias().map(
+    (assembleia): UniversalSearchResult => ({
+      id: assembleia.id,
+      type: "assembleias",
+      title: assembleia.nome,
+      description: assembleia.local,
+      meta: `${assembleia.data}${assembleia.hora ? ` · ${assembleia.hora}` : ""}`,
+      href: `/assembleias/${assembleia.id}`,
+      terms: [assembleia.nome, assembleia.local, assembleia.estado, assembleia.data],
+    }),
+  );
 
-  const dossies = listarDossies().map((dossie): UniversalSearchResult => ({
-    id: dossie.id,
-    type: "dossies",
-    title: dossie.titulo,
-    description: dossie.resumo,
-    meta: dossie.prioridade,
-    href: `/dossies/${dossie.id}`,
-    terms: [
-      dossie.titulo,
-      dossie.resumo,
-      dossie.objetivoPolitico,
-      dossie.estado,
-      dossie.prioridade,
-      ...dossie.tags,
-    ],
-  }));
+  const dossies = listarDossies().map(
+    (dossie): UniversalSearchResult => ({
+      id: dossie.id,
+      type: "dossies",
+      title: dossie.titulo,
+      description: dossie.resumo,
+      meta: dossie.prioridade,
+      href: `/dossies/${dossie.id}`,
+      terms: [
+        dossie.titulo,
+        dossie.resumo,
+        dossie.objetivoPolitico,
+        dossie.estado,
+        dossie.prioridade,
+        ...dossie.tags,
+      ],
+    }),
+  );
 
-  const documentos = documentosUnicos([...documentosMock, ...listarDocumentosLocais()]).map(
+  const documentos = documentosUnicos(listarDocumentosLocais()).map(
     (documento): UniversalSearchResult => ({
       id: documento.id,
       type: "documentos",

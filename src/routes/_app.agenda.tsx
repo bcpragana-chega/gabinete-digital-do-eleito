@@ -5,11 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EntityCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
-import {
-  WorkspaceHeader,
-  WorkspaceLayout,
-  WorkspaceSection,
-} from "@/components/ui/workspace";
+import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import { formatarData } from "@/lib/mock-data";
 

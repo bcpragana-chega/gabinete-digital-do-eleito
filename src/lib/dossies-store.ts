@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Dossie, EstadoDossie, PrioridadeDossie } from "./types";
+import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
 
-const STORAGE_KEY = "tribuno.dossies.v1";
+const STORAGE_KEY = "tribuno:assuntos";
 const EVENT_NAME = "tribuno:dossies";
 
 export type DossieInput = {
@@ -13,82 +14,18 @@ export type DossieInput = {
   tags: string[];
 };
 
-const dossiesIniciais: Dossie[] = [
-  {
-    id: "dossie-habitacao",
-    titulo: "Habitação",
-    estado: "ativo",
-    prioridade: "Alta",
-    objetivoPolitico: "Acompanhar respostas municipais e necessidades habitacionais do território.",
-    resumo: "Assunto para reunir problemas, documentos e compromissos relacionados com habitação.",
-    tags: ["habitação", "território", "apoio social"],
-    createdAt: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    id: "dossie-centro-saude",
-    titulo: "Centro de Saúde",
-    estado: "em acompanhamento",
-    prioridade: "Crítica",
-    objetivoPolitico: "Garantir acompanhamento político e institucional das respostas de saúde local.",
-    resumo: "Acompanhamento da evolução, respostas e entidades envolvidas no Centro de Saúde.",
-    tags: ["saúde", "equipamento", "serviços públicos"],
-    createdAt: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    id: "dossie-iluminacao-publica",
-    titulo: "Iluminação Pública",
-    estado: "ativo",
-    prioridade: "Média",
-    objetivoPolitico: "Mapear pedidos, falhas e respostas sobre iluminação pública.",
-    resumo: "Assunto para organizar ocorrências, pedidos e seguimento sobre iluminação pública.",
-    tags: ["iluminação", "segurança", "freguesias"],
-    createdAt: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    id: "dossie-orcamento-2027",
-    titulo: "Orçamento 2027",
-    estado: "ativo",
-    prioridade: "Alta",
-    objetivoPolitico: "Preparar análise política, técnica e documental do orçamento municipal.",
-    resumo: "Assunto de preparação e acompanhamento do ciclo orçamental de 2027.",
-    tags: ["orçamento", "finanças", "2027"],
-    createdAt: "2026-01-01T00:00:00.000Z",
-  },
-];
-
-function isBrowser() {
-  return typeof window !== "undefined";
-}
-
 function lerDossiesLocais(): Dossie[] {
-  if (!isBrowser()) return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed;
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<Dossie[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function guardarDossiesLocais(dossies: Dossie[]) {
-  if (!isBrowser()) return;
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(dossies));
+  guardarJSONPorUtilizador(STORAGE_KEY, dossies);
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 
 export function listarDossies(): Dossie[] {
-  const locais = lerDossiesLocais();
-  const idsLocais = new Set(locais.map((dossie) => dossie.id));
-  const iniciaisVisiveis = dossiesIniciais.filter((dossie) => !idsLocais.has(dossie.id));
-
-  return [...iniciaisVisiveis, ...locais].sort((a, b) => {
+  return lerDossiesLocais().sort((a, b) => {
     const dataA = a.updatedAt ?? a.createdAt;
     const dataB = b.updatedAt ?? b.createdAt;
     return dataB.localeCompare(dataA);

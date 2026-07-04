@@ -11,11 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DocumentoForm } from "./DocumentoForm";
 
-export function AdicionarDocumentoSheet({
-  assembleiaId,
-}: {
-  assembleiaId: string;
-}) {
+export function AdicionarDocumentoSheet({ assembleiaId }: { assembleiaId: string }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -30,8 +26,7 @@ export function AdicionarDocumentoSheet({
         <SheetHeader className="shrink-0 border-b border-border/70 px-6 py-5">
           <SheetTitle>Adicionar documento</SheetTitle>
           <SheetDescription>
-            Associe um documento a esta assembleia. Apenas metadados são
-            guardados.
+            Associe um documento a esta assembleia. Apenas metadados são guardados.
           </SheetDescription>
         </SheetHeader>
         <DocumentoForm

@@ -1,11 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  Calendar,
-  FileText,
-  Landmark,
-  NotebookText,
-} from "lucide-react";
+import { ArrowRight, Calendar, FileText, Landmark, NotebookText } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/button";
@@ -14,6 +8,8 @@ import { WorkspaceSection } from "@/components/ui/workspace";
 import { formatarData } from "@/lib/mock-data";
 import { useAssembleias } from "@/lib/assembleias-store";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
+import { useDossies } from "@/lib/dossies-store";
+import { primeiroNome, saudacaoPorHora, useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/")({
@@ -22,8 +18,7 @@ export const Route = createFileRoute("/_app/")({
       { title: "Hoje — Tribuno" },
       {
         name: "description",
-        content:
-          "O que precisa de fazer hoje: sessões, documentos e assuntos importantes.",
+        content: "O que precisa de fazer hoje: sessões, documentos e assuntos importantes.",
       },
       { property: "og:title", content: "Hoje — Tribuno" },
       {
@@ -35,13 +30,6 @@ export const Route = createFileRoute("/_app/")({
   component: GabinetePage,
 });
 
-const dossiesAtivos = [
-  { titulo: "Habitação", detalhe: "Acompanhar respostas municipais" },
-  { titulo: "Centro de Saúde", detalhe: "Rever ponto de situação" },
-  { titulo: "Iluminação Pública", detalhe: "Preparar seguimento" },
-  { titulo: "Orçamento 2027", detalhe: "Analisar documentos" },
-];
-
 const agenda = [
   { periodo: "Hoje", texto: "Rever documentos recebidos" },
   { periodo: "Amanhã", texto: "Preparar próxima sessão" },
@@ -49,18 +37,23 @@ const agenda = [
 ];
 
 function GabinetePage() {
+  const { displayName } = useAuth();
   const assembleias = useAssembleias();
+  const dossiesAtivos = useDossies()
+    .filter((dossie) => !dossie.archivedAt)
+    .slice(0, 4);
   const ativas = assembleias.filter((assembleia) => assembleia.estado !== "arquivada");
   const proxima =
     ativas
       .filter((assembleia) => assembleia.estado !== "concluida")
       .sort((a, b) => `${a.data}T${a.hora}`.localeCompare(`${b.data}T${b.hora}`))[0] ??
-    ativas
-      .slice()
-      .sort((a, b) => `${b.data}T${b.hora}`.localeCompare(`${a.data}T${a.hora}`))[0];
+    ativas.slice().sort((a, b) => `${b.data}T${b.hora}`.localeCompare(`${a.data}T${a.hora}`))[0];
 
   const documentos = useDocumentosDaAssembleia(proxima?.id ?? "");
-  const documentosPorAnalisar = Math.max(documentos.length, 6);
+  const documentosPorAnalisar = documentos.length;
+  const acoesImportantes = [proxima, documentosPorAnalisar > 0, dossiesAtivos.length > 0].filter(
+    Boolean,
+  ).length;
 
   return (
     <>
@@ -69,10 +62,12 @@ function GabinetePage() {
         <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8 lg:py-9">
           <header className="max-w-2xl">
             <h1 className="font-display text-3xl font-semibold leading-tight text-foreground sm:text-4xl">
-              Bom dia, Benjamin.
+              {saudacaoPorHora()}, {primeiroNome(displayName)}.
             </h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Hoje tens 3 ações importantes.
+              {acoesImportantes > 0
+                ? `Hoje tens ${acoesImportantes} ${acoesImportantes === 1 ? "ação importante" : "ações importantes"}.`
+                : "Começa por criar a tua primeira sessão ou assunto."}
             </p>
           </header>
 
@@ -84,10 +79,12 @@ function GabinetePage() {
                   Fazer agora
                 </div>
                 <h2 className="line-clamp-2 break-words font-display text-xl font-semibold leading-7 text-foreground sm:text-2xl">
-                  {proxima ? proxima.nome : "Preparar próxima sessão"}
+                  {proxima ? proxima.nome : "Criar primeira sessão"}
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  {documentosPorAnalisar} documentos por analisar antes da preparação.
+                  {proxima
+                    ? `${documentosPorAnalisar} documentos por analisar antes da preparação.`
+                    : "Ainda não existem sessões nesta conta."}
                 </p>
               </div>
 
@@ -101,7 +98,7 @@ function GabinetePage() {
               ) : (
                 <Button asChild size="lg" className="w-full sm:w-auto sm:min-w-36">
                   <Link to="/assembleias">
-                    Abrir sessões
+                    Criar sessão
                     <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
                   </Link>
                 </Button>
@@ -116,7 +113,11 @@ function GabinetePage() {
                   <NextActionCard
                     icon={FileText}
                     title="Rever documentos"
-                    description={`${documentosPorAnalisar} documentos aguardam análise.`}
+                    description={
+                      documentosPorAnalisar > 0
+                        ? `${documentosPorAnalisar} documentos aguardam análise.`
+                        : "Não há documentos por rever."
+                    }
                     to={proxima ? "/assembleias/$id" : "/caixa-de-entrada"}
                     params={proxima ? { id: proxima.id } : undefined}
                   />
@@ -131,19 +132,18 @@ function GabinetePage() {
 
               <WorkspaceSection title="Assuntos em acompanhamento">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {dossiesAtivos.map((dossie) => (
+                  {dossiesAtivos.length === 0 ? (
                     <Link
-                      key={dossie.titulo}
                       to="/dossies"
-                      className="group min-w-0 rounded-2xl border border-border/80 bg-muted/25 p-4 transition-colors hover:bg-muted/40"
+                      className="group min-w-0 rounded-2xl border border-border/80 bg-muted/25 p-4 transition-colors hover:bg-muted/40 sm:col-span-2"
                     >
                       <div className="flex min-w-0 items-start justify-between gap-3">
                         <div className="min-w-0">
                           <h3 className="truncate text-sm font-semibold text-foreground">
-                            {dossie.titulo}
+                            Criar primeiro assunto
                           </h3>
                           <p className="mt-1 truncate text-sm leading-6 text-muted-foreground">
-                            {dossie.detalhe}
+                            Ainda não existem assuntos nesta conta.
                           </p>
                         </div>
                         <ArrowRight
@@ -152,7 +152,30 @@ function GabinetePage() {
                         />
                       </div>
                     </Link>
-                  ))}
+                  ) : (
+                    dossiesAtivos.map((dossie) => (
+                      <Link
+                        key={dossie.id}
+                        to="/dossies"
+                        className="group min-w-0 rounded-2xl border border-border/80 bg-muted/25 p-4 transition-colors hover:bg-muted/40"
+                      >
+                        <div className="flex min-w-0 items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="truncate text-sm font-semibold text-foreground">
+                              {dossie.titulo}
+                            </h3>
+                            <p className="mt-1 truncate text-sm leading-6 text-muted-foreground">
+                              {dossie.resumo || "Assunto em acompanhamento."}
+                            </p>
+                          </div>
+                          <ArrowRight
+                            className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                            strokeWidth={1.75}
+                          />
+                        </div>
+                      </Link>
+                    ))
+                  )}
                 </div>
               </WorkspaceSection>
             </div>
@@ -197,13 +220,7 @@ type NextActionCardProps = {
   params?: Record<string, string>;
 };
 
-function NextActionCard({
-  icon: Icon,
-  title,
-  description,
-  to,
-  params,
-}: NextActionCardProps) {
+function NextActionCard({ icon: Icon, title, description, to, params }: NextActionCardProps) {
   return (
     <Card className="flex min-w-0 flex-col border-border/80 bg-muted/25 p-4 shadow-none transition-colors hover:bg-muted/40">
       <div className="flex min-w-0 items-start gap-3">

@@ -3,33 +3,18 @@ import { listarDossiesAssociadosAAssembleia } from "./dossie-assembleias-store";
 import { listarDossiesAssociadosAoDocumento } from "./dossie-documentos-store";
 import { adicionarEventoAutomaticoTimelineDossie } from "./dossie-timeline-store";
 import type { Documento, EstadoDocumento, TipoDocumento } from "./types";
-import {
-  documentos as mockDocs,
-  getDocumento as getMockDocumento,
-} from "./mock-data";
+import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
 
-const STORAGE_KEY = "tribuno.documents.v1";
+const STORAGE_KEY = "tribuno:documentos";
 const EVENT = "tribuno:documents";
 
-function isBrowser() {
-  return typeof window !== "undefined";
-}
-
 function read(): Documento[] {
-  if (!isBrowser()) return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as Documento[]) : [];
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<Documento[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function write(docs: Documento[]) {
-  if (!isBrowser()) return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+  guardarJSONPorUtilizador(STORAGE_KEY, docs);
   window.dispatchEvent(new Event(EVENT));
 }
 
@@ -134,22 +119,14 @@ export function useDocumentosDaAssembleia(assembleiaId: string): Documento[] {
     };
   }, [assembleiaId]);
 
-  const mocks = mockDocs.filter((d) => d.assembleiaId === assembleiaId);
-  return [...mocks, ...locais].sort((a, b) => b.data.localeCompare(a.data));
+  return locais.sort((a, b) => b.data.localeCompare(a.data));
 }
 
 export function useDocumento(docId: string): Documento | undefined {
-  const [doc, setDoc] = useState<Documento | undefined>(() =>
-    getMockDocumento(docId),
-  );
+  const [doc, setDoc] = useState<Documento | undefined>(() => read().find((d) => d.id === docId));
 
   useEffect(() => {
     const sync = () => {
-      const mock = getMockDocumento(docId);
-      if (mock) {
-        setDoc(mock);
-        return;
-      }
       const local = read().find((d) => d.id === docId);
       setDoc(local);
     };

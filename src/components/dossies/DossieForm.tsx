@@ -67,89 +67,94 @@ export function DossieForm({
     <div className="flex min-h-0 flex-col">
       <div className="grid max-h-[calc(100dvh-11.5rem)] gap-4 overflow-y-auto px-4 py-4 sm:max-h-[calc(100vh-13rem)] sm:px-6 sm:py-5">
         <div className="grid gap-2">
-        <Label htmlFor="dossie-titulo">Título</Label>
-        <Input
-          id="dossie-titulo"
-          value={titulo}
-          onChange={(event) => setTitulo(event.target.value)}
-          placeholder="Ex.: Habitação"
-        />
+          <Label htmlFor="dossie-titulo">Título</Label>
+          <Input
+            id="dossie-titulo"
+            value={titulo}
+            onChange={(event) => setTitulo(event.target.value)}
+            placeholder="Ex.: Habitação"
+          />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
-          <Label>Estado</Label>
-          <Select value={estado} onValueChange={(value) => setEstado(value as EstadoDossie)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecionar estado" />
-            </SelectTrigger>
-            <SelectContent>
-              {estados.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Label>Estado</Label>
+            <Select value={estado} onValueChange={(value) => setEstado(value as EstadoDossie)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecionar estado" />
+              </SelectTrigger>
+              <SelectContent>
+                {estados.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid gap-2">
-          <Label>Prioridade</Label>
-          <Select
-            value={prioridade}
-            onValueChange={(value) => setPrioridade(value as PrioridadeDossie)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecionar prioridade" />
-            </SelectTrigger>
-            <SelectContent>
-              {prioridades.map((item) => (
-                <SelectItem key={item} value={item}>
-                  {item}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Label>Prioridade</Label>
+            <Select
+              value={prioridade}
+              onValueChange={(value) => setPrioridade(value as PrioridadeDossie)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecionar prioridade" />
+              </SelectTrigger>
+              <SelectContent>
+                {prioridades.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
         <div className="grid gap-2">
-        <Label htmlFor="dossie-objetivo">Objetivo</Label>
-        <Textarea
-          id="dossie-objetivo"
-          value={objetivoPolitico}
-          onChange={(event) => setObjetivoPolitico(event.target.value)}
-          placeholder="O que pretende acompanhar ou resolver?"
-          rows={4}
-        />
+          <Label htmlFor="dossie-objetivo">Objetivo</Label>
+          <Textarea
+            id="dossie-objetivo"
+            value={objetivoPolitico}
+            onChange={(event) => setObjetivoPolitico(event.target.value)}
+            placeholder="O que pretende acompanhar ou resolver?"
+            rows={4}
+          />
         </div>
 
         <div className="grid gap-2">
-        <Label htmlFor="dossie-resumo">Resumo</Label>
-        <Textarea
-          id="dossie-resumo"
-          value={resumo}
-          onChange={(event) => setResumo(event.target.value)}
-          placeholder="Resumo curto do tema, problema ou acompanhamento."
-          rows={5}
-        />
+          <Label htmlFor="dossie-resumo">Resumo</Label>
+          <Textarea
+            id="dossie-resumo"
+            value={resumo}
+            onChange={(event) => setResumo(event.target.value)}
+            placeholder="Resumo curto do tema, problema ou acompanhamento."
+            rows={5}
+          />
         </div>
 
         <div className="grid gap-2">
-        <Label htmlFor="dossie-tags">Tags</Label>
-        <Input
-          id="dossie-tags"
-          value={tags}
-          onChange={(event) => setTags(event.target.value)}
-          placeholder="habitação, orçamento, freguesia"
-        />
-        <p className="text-xs text-muted-foreground">Separar tags por vírgulas.</p>
+          <Label htmlFor="dossie-tags">Tags</Label>
+          <Input
+            id="dossie-tags"
+            value={tags}
+            onChange={(event) => setTags(event.target.value)}
+            placeholder="habitação, orçamento, freguesia"
+          />
+          <p className="text-xs text-muted-foreground">Separar tags por vírgulas.</p>
         </div>
       </div>
 
       <div className="shrink-0 border-t border-border/70 bg-background px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex justify-end">
-          <Button type="button" onClick={guardar} disabled={!formularioValido} className="w-full sm:w-auto">
+          <Button
+            type="button"
+            onClick={guardar}
+            disabled={!formularioValido}
+            className="w-full sm:w-auto"
+          >
             {submitLabel}
           </Button>
         </div>

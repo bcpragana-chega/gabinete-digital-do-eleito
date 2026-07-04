@@ -10,13 +10,7 @@ type SectionTitleProps = {
   className?: string;
 };
 
-export function SectionTitle({
-  icon: Icon,
-  titulo,
-  title,
-  actions,
-  className,
-}: SectionTitleProps) {
+export function SectionTitle({ icon: Icon, titulo, title, actions, className }: SectionTitleProps) {
   const content = title ?? titulo;
 
   return (

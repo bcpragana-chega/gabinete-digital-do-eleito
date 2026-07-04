@@ -1,9 +1,4 @@
-import type {
-  Assembleia,
-  Documento,
-  EstadoDocumento,
-  TipoDocumento,
-} from "./types";
+import type { Assembleia, Documento, EstadoDocumento, TipoDocumento } from "./types";
 
 export const assembleias: Assembleia[] = [
   {

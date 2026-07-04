@@ -30,9 +30,7 @@ function HistoricoItem({ assembleia }: { assembleia: ReturnType<typeof useAssemb
         className="block rounded-xl border border-border bg-card p-5 shadow-card hover:shadow-elevated hover:border-foreground/15 transition-all"
       >
         <div className="flex items-center gap-3 mb-2">
-          <span className="text-xs text-muted-foreground">
-            {formatarData(assembleia.data)}
-          </span>
+          <span className="text-xs text-muted-foreground">{formatarData(assembleia.data)}</span>
           <StatusBadge estado={assembleia.estado} />
         </div>
         <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
@@ -61,9 +59,7 @@ function HistoricoPage() {
           <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
             O que aconteceu
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Sessões concluídas e arquivadas.
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">Sessões concluídas e arquivadas.</p>
         </div>
 
         {historico.length === 0 ? (

@@ -1,6 +1,14 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Archive, BookOpen, CheckCircle2, FileText, Inbox, Landmark, NotebookText } from "lucide-react";
+import {
+  Archive,
+  BookOpen,
+  CheckCircle2,
+  FileText,
+  Inbox,
+  Landmark,
+  NotebookText,
+} from "lucide-react";
 import { AdicionarBibliotecaWizard } from "@/components/biblioteca/AdicionarBibliotecaWizard";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/button";
@@ -18,7 +26,6 @@ import { listarDossiesAssociadosAoDocumento } from "@/lib/dossie-documentos-stor
 import { useDossies } from "@/lib/dossies-store";
 import { listarDocumentosLocais } from "@/lib/documentos-store";
 import { obterInboxDocumento, useInboxDocumentos } from "@/lib/inbox-store";
-import { documentos as documentosMock } from "@/lib/mock-data";
 import type { Documento } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -100,10 +107,7 @@ function BibliotecaPage() {
   const assembleias = useAssembleias();
   const dossies = useDossies();
 
-  const documentos = useMemo(
-    () => documentosUnicos([...documentosMock, ...listarDocumentosLocais()]),
-    [inboxItems],
-  );
+  const documentos = documentosUnicos(listarDocumentosLocais());
 
   const documentosComEstado = documentos.map((documento) => ({
     documento,
@@ -217,9 +221,7 @@ function BibliotecaPage() {
                                 <StatusBadge tone="muted" dot={false}>
                                   {documento.tipo}
                                 </StatusBadge>
-                                <StatusBadge tone={estadoTone(estado)}>
-                                  {estado}
-                                </StatusBadge>
+                                <StatusBadge tone={estadoTone(estado)}>{estado}</StatusBadge>
                                 <StatusBadge tone="muted" dot={false}>
                                   {formatarData(documento.data)}
                                 </StatusBadge>
@@ -243,7 +245,12 @@ function BibliotecaPage() {
                           </div>
 
                           {sessao ? (
-                            <Button asChild variant="secondary" size="sm" className="w-full lg:w-auto">
+                            <Button
+                              asChild
+                              variant="secondary"
+                              size="sm"
+                              className="w-full lg:w-auto"
+                            >
                               <Link
                                 to="/assembleias/$id/documentos/$docId"
                                 params={{ id: documento.assembleiaId, docId: documento.id }}
@@ -252,7 +259,13 @@ function BibliotecaPage() {
                               </Link>
                             </Button>
                           ) : (
-                            <Button type="button" variant="secondary" size="sm" disabled className="w-full lg:w-auto">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              disabled
+                              className="w-full lg:w-auto"
+                            >
                               Abrir
                             </Button>
                           )}

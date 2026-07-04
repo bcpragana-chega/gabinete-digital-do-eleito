@@ -1,3 +1,5 @@
+import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
+
 export type NivelPrioridade = "Alta" | "Média" | "Baixa";
 
 export type EstadoPonto = "Por preparar" | "Em preparação" | "Preparado" | "Concluído";
@@ -26,30 +28,19 @@ export type PontoOrdemTrabalhos = {
   tempoEstimado?: number;
 };
 
-const STORAGE_KEY = "tribuno-pontos-ordem-trabalhos";
+const STORAGE_KEY = "tribuno:pontos";
 
 function gerarId() {
   return `ponto-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function lerPontos(): PontoOrdemTrabalhos[] {
-  if (typeof window === "undefined") return [];
-
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-
-  if (!raw) return [];
-
-  try {
-    return JSON.parse(raw) as PontoOrdemTrabalhos[];
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<PontoOrdemTrabalhos[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function guardarPontos(pontos: PontoOrdemTrabalhos[]) {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(pontos));
+  guardarJSONPorUtilizador(STORAGE_KEY, pontos);
 }
 
 export function obterPontosDaAssembleia(assembleiaId: string): PontoOrdemTrabalhos[] {

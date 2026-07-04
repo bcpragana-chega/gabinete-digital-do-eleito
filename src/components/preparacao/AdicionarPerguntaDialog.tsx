@@ -2,10 +2,7 @@ import {
   AdicionarItemPreparacao,
   type CampoPreparacao,
 } from "@/components/preparacao/AdicionarItemPreparacao";
-import {
-  adicionarPergunta,
-  type NivelPrioridade,
-} from "@/lib/preparacao-store";
+import { adicionarPergunta, type NivelPrioridade } from "@/lib/preparacao-store";
 
 type Props = {
   assembleiaId: string;

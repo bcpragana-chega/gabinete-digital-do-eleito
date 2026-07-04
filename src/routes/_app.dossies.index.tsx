@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  Activity,
-  CalendarDays,
-  Folder,
-} from "lucide-react";
+import { Activity, CalendarDays, Folder } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { NovoDossieDialog } from "@/components/dossies/NovoDossieDialog";
 import { StatusBadge } from "@/components/ui/common";
@@ -91,9 +87,7 @@ function DossiesPage() {
         <div className={ds.layout.page}>
           <div className="mb-8 flex flex-col gap-5 sm:mb-10 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-2xl">
-              <h1 className={ds.typography.display}>
-                Assuntos
-              </h1>
+              <h1 className={ds.typography.display}>Assuntos</h1>
               <p className={`mt-2 ${ds.typography.body}`}>
                 Temas acompanhados ao longo do mandato, com estado, objetivo e histórico.
               </p>
@@ -183,9 +177,7 @@ function DossieCard({ dossie }: { dossie: Dossie }) {
                 Arquivado
               </StatusBadge>
             )}
-            <StatusBadge tone={estadoTone(dossie.estado)}>
-              {estadoLabel(dossie.estado)}
-            </StatusBadge>
+            <StatusBadge tone={estadoTone(dossie.estado)}>{estadoLabel(dossie.estado)}</StatusBadge>
             <StatusBadge tone={prioridadeTone(dossie.prioridade)} dot={false}>
               {dossie.prioridade}
             </StatusBadge>
@@ -198,7 +190,9 @@ function DossieCard({ dossie }: { dossie: Dossie }) {
               <CalendarDays className={ds.icon.sm} strokeWidth={1.75} />
               <span className="truncate">Última atividade</span>
             </div>
-            <p className="mt-1 truncate font-medium text-foreground">{formatarAtualizacao(dossie)}</p>
+            <p className="mt-1 truncate font-medium text-foreground">
+              {formatarAtualizacao(dossie)}
+            </p>
           </div>
           <Activity
             className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"

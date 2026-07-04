@@ -34,7 +34,15 @@ import { Textarea } from "@/components/ui/textarea";
 import type { PrioridadeDossie } from "@/lib/types";
 
 const passos = ["Identificar", "Contexto", "Começar"];
-const categorias = ["Habitação", "Saúde", "Mobilidade", "Orçamento", "Educação", "Ambiente", "Outro"];
+const categorias = [
+  "Habitação",
+  "Saúde",
+  "Mobilidade",
+  "Orçamento",
+  "Educação",
+  "Ambiente",
+  "Outro",
+];
 const prioridades: PrioridadeDossie[] = ["Baixa", "Média", "Alta", "Crítica"];
 
 function Progress({ step }: { step: number }) {
@@ -182,7 +190,10 @@ export function NovoAssuntoWizard() {
                 </div>
                 <div className="space-y-2">
                   <Label>Prioridade</Label>
-                  <Select value={prioridade} onValueChange={(value) => setPrioridade(value as PrioridadeDossie)}>
+                  <Select
+                    value={prioridade}
+                    onValueChange={(value) => setPrioridade(value as PrioridadeDossie)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -201,10 +212,7 @@ export function NovoAssuntoWizard() {
 
           {step === 1 && (
             <div className="space-y-5">
-              <StepTitle
-                title="Passo 2 — Contexto"
-                question="Porque é importante este assunto?"
-              />
+              <StepTitle title="Passo 2 — Contexto" question="Porque é importante este assunto?" />
               <div className="grid gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="novo-assunto-resumo">Resumo</Label>
@@ -232,24 +240,27 @@ export function NovoAssuntoWizard() {
 
           {step === 2 && (
             <div className="space-y-5">
-              <StepTitle
-                title="Passo 3 — Começar"
-                question="Queres começar já?"
-              />
+              <StepTitle title="Passo 3 — Começar" question="Queres começar já?" />
               <div className="grid gap-3">
                 <button
                   type="button"
                   onClick={() => setCriarNota((valor) => !valor)}
                   className={[
                     "rounded-2xl border p-4 text-left transition-colors",
-                    criarNota ? "border-foreground/20 bg-muted" : "border-border bg-card hover:bg-muted/60",
+                    criarNota
+                      ? "border-foreground/20 bg-muted"
+                      : "border-border bg-card hover:bg-muted/60",
                   ].join(" ")}
                 >
                   <div className="flex items-start gap-3">
                     <NotebookText className="mt-0.5 h-4 w-4 text-muted-foreground" />
                     <div>
-                      <div className="text-sm font-semibold text-foreground">Criar primeira nota</div>
-                      <div className="mt-1 text-sm text-muted-foreground">Registe já o primeiro apontamento.</div>
+                      <div className="text-sm font-semibold text-foreground">
+                        Criar primeira nota
+                      </div>
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        Registe já o primeiro apontamento.
+                      </div>
                     </div>
                   </div>
                 </button>
@@ -307,7 +318,12 @@ export function NovoAssuntoWizard() {
                 <ChevronRight className="h-4 w-4" />
               </Button>
             ) : (
-              <Button type="button" onClick={criarAssunto} disabled={!dadosValidos} className="w-full sm:w-auto">
+              <Button
+                type="button"
+                onClick={criarAssunto}
+                disabled={!dadosValidos}
+                className="w-full sm:w-auto"
+              >
                 <CheckCircle2 className="h-4 w-4" />
                 Criar Assunto
               </Button>

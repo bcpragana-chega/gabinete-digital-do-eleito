@@ -1,5 +1,5 @@
 import { FileText } from "lucide-react";
-import type { PrioridadeAssembleia } from "@/lib/mock-preparacao";
+import type { PrioridadeAssembleia } from "@/lib/preparacao-store";
 import { EstadoPrioridadeBadge, PrioridadeBadge } from "./badges";
 
 export function PrioridadeCard({ item }: { item: PrioridadeAssembleia }) {
@@ -16,10 +16,7 @@ export function PrioridadeCard({ item }: { item: PrioridadeAssembleia }) {
       {item.documentos.length > 0 && (
         <ul className="mt-4 space-y-1.5">
           {item.documentos.map((doc) => (
-            <li
-              key={doc}
-              className="flex items-start gap-2 text-xs text-muted-foreground"
-            >
+            <li key={doc} className="flex items-start gap-2 text-xs text-muted-foreground">
               <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
               <span className="truncate">{doc}</span>
             </li>

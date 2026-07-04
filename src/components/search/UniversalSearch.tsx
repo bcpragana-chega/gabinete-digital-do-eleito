@@ -23,12 +23,7 @@ import {
   type UniversalSearchResult,
   type UniversalSearchType,
 } from "@/lib/universal-search";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { listarAssembleias } from "@/lib/assembleias-store";
 import { cn } from "@/lib/utils";
 
@@ -143,7 +138,9 @@ export function UniversalSearch() {
     const assembleias = listarAssembleias();
     const assembleiaPreparacao =
       assembleias.find((assembleia) => assembleia.estado === "preparacao") ??
-      assembleias.find((assembleia) => assembleia.estado !== "concluida" && assembleia.estado !== "arquivada") ??
+      assembleias.find(
+        (assembleia) => assembleia.estado !== "concluida" && assembleia.estado !== "arquivada",
+      ) ??
       assembleias[0];
 
     return [
@@ -481,42 +478,42 @@ export function UniversalSearch() {
                 )}
 
                 {paletteGroups.map((group) => {
-                const GroupIcon = icons[group.type];
+                  const GroupIcon = icons[group.type];
 
-                return (
-                  <section key={group.type} className="py-2">
-                    <div className="mb-1 flex items-center gap-2 px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                      <GroupIcon className="h-3.5 w-3.5" />
-                      {group.label}
-                    </div>
-                    <div className="space-y-1">
-                      {group.results.map((result) => {
-                        const resultIndex = paletteItems.findIndex(
-                          (item) =>
-                            item.kind === "result" &&
-                            item.result.type === result.type &&
-                            item.result.id === result.id,
-                        );
-                        const active = resultIndex === activeIndex;
+                  return (
+                    <section key={group.type} className="py-2">
+                      <div className="mb-1 flex items-center gap-2 px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                        <GroupIcon className="h-3.5 w-3.5" />
+                        {group.label}
+                      </div>
+                      <div className="space-y-1">
+                        {group.results.map((result) => {
+                          const resultIndex = paletteItems.findIndex(
+                            (item) =>
+                              item.kind === "result" &&
+                              item.result.type === result.type &&
+                              item.result.id === result.id,
+                          );
+                          const active = resultIndex === activeIndex;
 
-                        return (
-                          <button
-                            key={`${result.type}-${result.id}`}
-                            type="button"
-                            onMouseEnter={() => setActiveIndex(resultIndex)}
-                            onClick={() => openResult(result)}
-                            className={cn(
-                              "flex min-h-14 w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors sm:min-h-12 sm:px-2 sm:py-2.5",
-                              active ? "bg-muted/80" : "hover:bg-muted/60",
-                            )}
-                          >
-                            {renderResultContent(result)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                );
+                          return (
+                            <button
+                              key={`${result.type}-${result.id}`}
+                              type="button"
+                              onMouseEnter={() => setActiveIndex(resultIndex)}
+                              onClick={() => openResult(result)}
+                              className={cn(
+                                "flex min-h-14 w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors sm:min-h-12 sm:px-2 sm:py-2.5",
+                                active ? "bg-muted/80" : "hover:bg-muted/60",
+                              )}
+                            >
+                              {renderResultContent(result)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
                 })}
               </>
             ) : (
@@ -531,7 +528,9 @@ export function UniversalSearch() {
 
           <div className="flex items-center justify-between gap-4 border-t border-border/70 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
             <span>Setas para navegar · Enter abrir · Esc fechar</span>
-            <span className="hidden sm:inline">Preparado para pessoas, entidades e compromissos</span>
+            <span className="hidden sm:inline">
+              Preparado para pessoas, entidades e compromissos
+            </span>
           </div>
         </DialogContent>
       </Dialog>

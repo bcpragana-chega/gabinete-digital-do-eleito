@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as CompletarPerfilRouteImport } from './routes/completar-perfil'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppHistoricoRouteImport } from './routes/_app.historico'
@@ -21,6 +23,7 @@ import { Route as AppAssembleiasIndexRouteImport } from './routes/_app.assemblei
 import { Route as AppDossiesDossieIdRouteImport } from './routes/_app.dossies.$dossieId'
 import { Route as AppAssembleiasIdRouteImport } from './routes/_app.assembleias.$id'
 import { Route as AppAssembleiasIdPreparacaoRouteImport } from './routes/_app.assembleias.$id.preparacao'
+import { Route as AppDossiesDossieIdDocumentosDocumentoIdRouteImport } from './routes/_app.dossies.$dossieId.documentos.$documentoId'
 import { Route as AppAssembleiasIdPreparacaoPontosRouteImport } from './routes/_app.assembleias.$id.preparacao.pontos'
 import { Route as AppAssembleiasIdPreparacaoEstrategiaRouteImport } from './routes/_app.assembleias.$id.preparacao.estrategia'
 import { Route as AppAssembleiasIdPreparacaoDocumentosACriarRouteImport } from './routes/_app.assembleias.$id.preparacao.documentos-a-criar'
@@ -29,6 +32,16 @@ import { Route as AppAssembleiasIdDocumentosDocIdRouteImport } from './routes/_a
 import { Route as AppAssembleiasIdPreparacaoPontosPontoIdRouteImport } from './routes/_app.assembleias.$id.preparacao.pontos.$pontoId'
 import { Route as AppAssembleiasIdPreparacaoPontosPontoIdRascunhosRascunhoIdRouteImport } from './routes/_app.assembleias.$id.preparacao.pontos.$pontoId.rascunhos.$rascunhoId'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompletarPerfilRoute = CompletarPerfilRouteImport.update({
+  id: '/completar-perfil',
+  path: '/completar-perfil',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -89,6 +102,12 @@ const AppAssembleiasIdPreparacaoRoute =
     path: '/preparacao',
     getParentRoute: () => AppAssembleiasIdRoute,
   } as any)
+const AppDossiesDossieIdDocumentosDocumentoIdRoute =
+  AppDossiesDossieIdDocumentosDocumentoIdRouteImport.update({
+    id: '/documentos/$documentoId',
+    path: '/documentos/$documentoId',
+    getParentRoute: () => AppDossiesDossieIdRoute,
+  } as any)
 const AppAssembleiasIdPreparacaoPontosRoute =
   AppAssembleiasIdPreparacaoPontosRouteImport.update({
     id: '/pontos',
@@ -134,13 +153,15 @@ const AppAssembleiasIdPreparacaoPontosPontoIdRascunhosRascunhoIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/completar-perfil': typeof CompletarPerfilRoute
+  '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
   '/biblioteca': typeof AppBibliotecaRoute
   '/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/definicoes': typeof AppDefinicoesRoute
   '/historico': typeof AppHistoricoRoute
   '/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
-  '/dossies/$dossieId': typeof AppDossiesDossieIdRoute
+  '/dossies/$dossieId': typeof AppDossiesDossieIdRouteWithChildren
   '/assembleias/': typeof AppAssembleiasIndexRoute
   '/dossies/': typeof AppDossiesIndexRoute
   '/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRouteWithChildren
@@ -149,10 +170,13 @@ export interface FileRoutesByFullPath {
   '/assembleias/$id/preparacao/documentos-a-criar': typeof AppAssembleiasIdPreparacaoDocumentosACriarRoute
   '/assembleias/$id/preparacao/estrategia': typeof AppAssembleiasIdPreparacaoEstrategiaRoute
   '/assembleias/$id/preparacao/pontos': typeof AppAssembleiasIdPreparacaoPontosRouteWithChildren
+  '/dossies/$dossieId/documentos/$documentoId': typeof AppDossiesDossieIdDocumentosDocumentoIdRoute
   '/assembleias/$id/preparacao/pontos/$pontoId': typeof AppAssembleiasIdPreparacaoPontosPontoIdRouteWithChildren
   '/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId': typeof AppAssembleiasIdPreparacaoPontosPontoIdRascunhosRascunhoIdRoute
 }
 export interface FileRoutesByTo {
+  '/completar-perfil': typeof CompletarPerfilRoute
+  '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
   '/biblioteca': typeof AppBibliotecaRoute
   '/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
@@ -160,7 +184,7 @@ export interface FileRoutesByTo {
   '/historico': typeof AppHistoricoRoute
   '/': typeof AppIndexRoute
   '/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
-  '/dossies/$dossieId': typeof AppDossiesDossieIdRoute
+  '/dossies/$dossieId': typeof AppDossiesDossieIdRouteWithChildren
   '/assembleias': typeof AppAssembleiasIndexRoute
   '/dossies': typeof AppDossiesIndexRoute
   '/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRouteWithChildren
@@ -169,12 +193,15 @@ export interface FileRoutesByTo {
   '/assembleias/$id/preparacao/documentos-a-criar': typeof AppAssembleiasIdPreparacaoDocumentosACriarRoute
   '/assembleias/$id/preparacao/estrategia': typeof AppAssembleiasIdPreparacaoEstrategiaRoute
   '/assembleias/$id/preparacao/pontos': typeof AppAssembleiasIdPreparacaoPontosRouteWithChildren
+  '/dossies/$dossieId/documentos/$documentoId': typeof AppDossiesDossieIdDocumentosDocumentoIdRoute
   '/assembleias/$id/preparacao/pontos/$pontoId': typeof AppAssembleiasIdPreparacaoPontosPontoIdRouteWithChildren
   '/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId': typeof AppAssembleiasIdPreparacaoPontosPontoIdRascunhosRascunhoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/completar-perfil': typeof CompletarPerfilRoute
+  '/login': typeof LoginRoute
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/biblioteca': typeof AppBibliotecaRoute
   '/_app/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
@@ -182,7 +209,7 @@ export interface FileRoutesById {
   '/_app/historico': typeof AppHistoricoRoute
   '/_app/': typeof AppIndexRoute
   '/_app/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
-  '/_app/dossies/$dossieId': typeof AppDossiesDossieIdRoute
+  '/_app/dossies/$dossieId': typeof AppDossiesDossieIdRouteWithChildren
   '/_app/assembleias/': typeof AppAssembleiasIndexRoute
   '/_app/dossies/': typeof AppDossiesIndexRoute
   '/_app/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRouteWithChildren
@@ -191,6 +218,7 @@ export interface FileRoutesById {
   '/_app/assembleias/$id/preparacao/documentos-a-criar': typeof AppAssembleiasIdPreparacaoDocumentosACriarRoute
   '/_app/assembleias/$id/preparacao/estrategia': typeof AppAssembleiasIdPreparacaoEstrategiaRoute
   '/_app/assembleias/$id/preparacao/pontos': typeof AppAssembleiasIdPreparacaoPontosRouteWithChildren
+  '/_app/dossies/$dossieId/documentos/$documentoId': typeof AppDossiesDossieIdDocumentosDocumentoIdRoute
   '/_app/assembleias/$id/preparacao/pontos/$pontoId': typeof AppAssembleiasIdPreparacaoPontosPontoIdRouteWithChildren
   '/_app/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId': typeof AppAssembleiasIdPreparacaoPontosPontoIdRascunhosRascunhoIdRoute
 }
@@ -198,6 +226,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/completar-perfil'
+    | '/login'
     | '/agenda'
     | '/biblioteca'
     | '/caixa-de-entrada'
@@ -213,10 +243,13 @@ export interface FileRouteTypes {
     | '/assembleias/$id/preparacao/documentos-a-criar'
     | '/assembleias/$id/preparacao/estrategia'
     | '/assembleias/$id/preparacao/pontos'
+    | '/dossies/$dossieId/documentos/$documentoId'
     | '/assembleias/$id/preparacao/pontos/$pontoId'
     | '/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/completar-perfil'
+    | '/login'
     | '/agenda'
     | '/biblioteca'
     | '/caixa-de-entrada'
@@ -233,11 +266,14 @@ export interface FileRouteTypes {
     | '/assembleias/$id/preparacao/documentos-a-criar'
     | '/assembleias/$id/preparacao/estrategia'
     | '/assembleias/$id/preparacao/pontos'
+    | '/dossies/$dossieId/documentos/$documentoId'
     | '/assembleias/$id/preparacao/pontos/$pontoId'
     | '/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId'
   id:
     | '__root__'
     | '/_app'
+    | '/completar-perfil'
+    | '/login'
     | '/_app/agenda'
     | '/_app/biblioteca'
     | '/_app/caixa-de-entrada'
@@ -254,16 +290,33 @@ export interface FileRouteTypes {
     | '/_app/assembleias/$id/preparacao/documentos-a-criar'
     | '/_app/assembleias/$id/preparacao/estrategia'
     | '/_app/assembleias/$id/preparacao/pontos'
+    | '/_app/dossies/$dossieId/documentos/$documentoId'
     | '/_app/assembleias/$id/preparacao/pontos/$pontoId'
     | '/_app/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  CompletarPerfilRoute: typeof CompletarPerfilRoute
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/completar-perfil': {
+      id: '/completar-perfil'
+      path: '/completar-perfil'
+      fullPath: '/completar-perfil'
+      preLoaderRoute: typeof CompletarPerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -347,6 +400,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/assembleias/$id/preparacao'
       preLoaderRoute: typeof AppAssembleiasIdPreparacaoRouteImport
       parentRoute: typeof AppAssembleiasIdRoute
+    }
+    '/_app/dossies/$dossieId/documentos/$documentoId': {
+      id: '/_app/dossies/$dossieId/documentos/$documentoId'
+      path: '/documentos/$documentoId'
+      fullPath: '/dossies/$dossieId/documentos/$documentoId'
+      preLoaderRoute: typeof AppDossiesDossieIdDocumentosDocumentoIdRouteImport
+      parentRoute: typeof AppDossiesDossieIdRoute
     }
     '/_app/assembleias/$id/preparacao/pontos': {
       id: '/_app/assembleias/$id/preparacao/pontos'
@@ -467,6 +527,18 @@ const AppAssembleiasIdRouteChildren: AppAssembleiasIdRouteChildren = {
 const AppAssembleiasIdRouteWithChildren =
   AppAssembleiasIdRoute._addFileChildren(AppAssembleiasIdRouteChildren)
 
+interface AppDossiesDossieIdRouteChildren {
+  AppDossiesDossieIdDocumentosDocumentoIdRoute: typeof AppDossiesDossieIdDocumentosDocumentoIdRoute
+}
+
+const AppDossiesDossieIdRouteChildren: AppDossiesDossieIdRouteChildren = {
+  AppDossiesDossieIdDocumentosDocumentoIdRoute:
+    AppDossiesDossieIdDocumentosDocumentoIdRoute,
+}
+
+const AppDossiesDossieIdRouteWithChildren =
+  AppDossiesDossieIdRoute._addFileChildren(AppDossiesDossieIdRouteChildren)
+
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
   AppBibliotecaRoute: typeof AppBibliotecaRoute
@@ -475,7 +547,7 @@ interface AppRouteChildren {
   AppHistoricoRoute: typeof AppHistoricoRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAssembleiasIdRoute: typeof AppAssembleiasIdRouteWithChildren
-  AppDossiesDossieIdRoute: typeof AppDossiesDossieIdRoute
+  AppDossiesDossieIdRoute: typeof AppDossiesDossieIdRouteWithChildren
   AppAssembleiasIndexRoute: typeof AppAssembleiasIndexRoute
   AppDossiesIndexRoute: typeof AppDossiesIndexRoute
 }
@@ -488,7 +560,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppHistoricoRoute: AppHistoricoRoute,
   AppIndexRoute: AppIndexRoute,
   AppAssembleiasIdRoute: AppAssembleiasIdRouteWithChildren,
-  AppDossiesDossieIdRoute: AppDossiesDossieIdRoute,
+  AppDossiesDossieIdRoute: AppDossiesDossieIdRouteWithChildren,
   AppAssembleiasIndexRoute: AppAssembleiasIndexRoute,
   AppDossiesIndexRoute: AppDossiesIndexRoute,
 }
@@ -497,6 +569,8 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  CompletarPerfilRoute: CompletarPerfilRoute,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

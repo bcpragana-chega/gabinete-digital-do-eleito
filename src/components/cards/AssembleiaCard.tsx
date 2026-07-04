@@ -2,10 +2,11 @@ import { Link } from "@tanstack/react-router";
 import { Calendar, MapPin, FileText, ChevronRight } from "lucide-react";
 import type { Assembleia } from "@/lib/types";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatarData, getDocumentosByAssembleia } from "@/lib/mock-data";
+import { formatarData } from "@/lib/mock-data";
+import { listarDocumentosLocais } from "@/lib/documentos-store";
 
 export function AssembleiaCard({ assembleia }: { assembleia: Assembleia }) {
-  const numDocs = getDocumentosByAssembleia(assembleia.id).length;
+  const numDocs = listarDocumentosLocais(assembleia.id).length;
 
   return (
     <Link

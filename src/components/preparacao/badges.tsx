@@ -3,8 +3,8 @@ import type {
   EstadoAcao,
   EstadoPrioridade,
   NivelPrioridade,
-  TipoDocumento,
-} from "@/lib/mock-preparacao";
+  TipoDocumentoPlaneadoPreparacao,
+} from "@/lib/preparacao-store";
 
 const prioridadeStyles: Record<NivelPrioridade, string> = {
   Alta: "bg-status-preparacao/15 text-status-preparacao ring-1 ring-inset ring-status-preparacao/30",
@@ -71,7 +71,7 @@ export function EstadoAcaoBadge({ estado }: { estado: EstadoAcao }) {
   );
 }
 
-export function TipoDocumentoBadge({ tipo }: { tipo: TipoDocumento }) {
+export function TipoDocumentoBadge({ tipo }: { tipo: TipoDocumentoPlaneadoPreparacao }) {
   return (
     <span className="inline-flex items-center rounded-md bg-accent px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider text-accent-foreground">
       {tipo}

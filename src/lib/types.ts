@@ -15,9 +15,20 @@ export type TipoDocumento =
 
 export type EstadoDocumento = "Por rever" | "Revisto" | "Importante" | "Arquivado";
 
-export type TipoDocumentoCriado = "Moção" | "Recomendação" | "Requerimento" | "Declaração de voto";
+export type TipoDocumentoCriado =
+  | "Moção"
+  | "Recomendação"
+  | "Requerimento"
+  | "Declaração de voto"
+  | "Outro documento";
 
-export type EstadoDocumentoCriado = "rascunho" | "em revisão" | "final";
+export type EstadoDocumentoCriado =
+  | "rascunho"
+  | "em revisão"
+  | "final"
+  | "pronto"
+  | "apresentado"
+  | "arquivado";
 
 export type EstadoDossie = "ativo" | "em acompanhamento" | "concluido";
 
@@ -51,8 +62,9 @@ export interface DocumentoCriado {
   tipo: TipoDocumentoCriado;
   titulo: string;
   conteudo: string;
-  pontoId: string;
-  assembleiaId: string;
+  assuntoId?: string;
+  pontoId?: string;
+  assembleiaId?: string;
   estado: EstadoDocumentoCriado;
   createdAt: string;
   updatedAt?: string;

@@ -22,7 +22,11 @@ export function InfoCard({ icon: Icon, title, description, children, className }
             </div>
           )}
           <div className="min-w-0">
-            {title && <h3 className="line-clamp-2 break-words text-sm font-semibold leading-6 text-foreground">{title}</h3>}
+            {title && (
+              <h3 className="line-clamp-2 break-words text-sm font-semibold leading-6 text-foreground">
+                {title}
+              </h3>
+            )}
             {description && (
               <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-muted-foreground">
                 {description}

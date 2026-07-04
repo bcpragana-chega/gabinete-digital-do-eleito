@@ -1,32 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  BookOpen,
-  CalendarDays,
-  Home,
-  Landmark,
-  Settings,
-  Scale,
-  NotebookText,
-} from "lucide-react";
+import { Scale } from "lucide-react";
+import { sidebarFooterItems, sidebarItems } from "@/components/layout/sidebar-config";
 import { cn } from "@/lib/utils";
-
-export const sidebarItems = [
-  { to: "/" as const, label: "Hoje", icon: Home, exact: true },
-  { to: "/dossies" as const, label: "Assuntos", icon: NotebookText, exact: false },
-  { to: "/assembleias" as const, label: "Sessões", icon: Landmark, exact: false },
-  {
-    to: "/biblioteca" as const,
-    label: "Biblioteca",
-    icon: BookOpen,
-    exact: false,
-    aliases: ["/caixa-de-entrada"],
-  },
-  { to: "/agenda" as const, label: "Agenda", icon: CalendarDays, exact: false },
-];
-
-export const sidebarFooterItems = [
-  { to: "/definicoes" as const, label: "Definições", icon: Settings, exact: false },
-];
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -51,9 +26,7 @@ export function AppSidebar() {
           </div>
           <div className="leading-tight">
             <div className="font-display text-base font-semibold">Tribuno</div>
-            <div className="text-xs text-muted-foreground">
-              Apoio ao mandato
-            </div>
+            <div className="text-xs text-muted-foreground">Apoio ao mandato</div>
           </div>
         </div>
       </div>
@@ -106,18 +79,6 @@ export function AppSidebar() {
           );
         })}
       </nav>
-
-      <div className="rounded-2xl border border-border/70 bg-card/70 p-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
-            JM
-          </div>
-          <div className="min-w-0 leading-tight">
-            <div className="truncate text-sm font-semibold">João Martins</div>
-            <div className="truncate text-xs text-muted-foreground">Vereador · CM Aveiro</div>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }

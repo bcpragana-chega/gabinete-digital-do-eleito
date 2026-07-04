@@ -233,7 +233,10 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
 
       <div className="mt-5 space-y-5">
         {aCriar && (
-          <InfoCard title="Novo acontecimento" description="Regista algo importante para este assunto.">
+          <InfoCard
+            title="Novo acontecimento"
+            description="Regista algo importante para este assunto."
+          >
             {renderFormulario(novoEvento, atualizarNovo)}
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <Button
@@ -248,7 +251,12 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
                 <X className="mr-2 h-4 w-4" />
                 Cancelar
               </Button>
-              <Button type="button" size="sm" onClick={criarEvento} disabled={!eventoValido(novoEvento)}>
+              <Button
+                type="button"
+                size="sm"
+                onClick={criarEvento}
+                disabled={!eventoValido(novoEvento)}
+              >
                 <Save className="mr-2 h-4 w-4" />
                 Guardar acontecimento
               </Button>
@@ -288,7 +296,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
                       <div className="mt-4 flex flex-wrap justify-end gap-2">
                         <Button
                           type="button"
-                            variant="ghost"
+                          variant="ghost"
                           size="sm"
                           onClick={() => {
                             setEventoEmEdicao(null);

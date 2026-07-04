@@ -6,13 +6,7 @@ type Props = {
   onChange: (value: string) => void;
 };
 
-export function StrategyField({
-  label,
-  value,
-  placeholder,
-  rows = 4,
-  onChange,
-}: Props) {
+export function StrategyField({ label, value, placeholder, rows = 4, onChange }: Props) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
       <label className="block font-display text-base font-semibold tracking-tight text-foreground mb-2">

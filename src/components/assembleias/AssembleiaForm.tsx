@@ -34,9 +34,7 @@ export function AssembleiaForm({
   const [data, setData] = useState(initialValues?.data ?? "");
   const [hora, setHora] = useState(initialValues?.hora ?? "");
   const [local, setLocal] = useState(initialValues?.local ?? "");
-  const [estado, setEstado] = useState<EstadoAssembleia>(
-    initialValues?.estado ?? "preparacao",
-  );
+  const [estado, setEstado] = useState<EstadoAssembleia>(initialValues?.estado ?? "preparacao");
 
   const formularioValido = Boolean(nome.trim() && data && hora && local.trim());
 
@@ -56,57 +54,57 @@ export function AssembleiaForm({
     <div className="flex min-h-0 flex-col">
       <div className="grid max-h-[calc(100dvh-11.5rem)] gap-4 overflow-y-auto px-4 py-4 sm:max-h-[calc(100vh-13rem)] sm:px-6 sm:py-5">
         <div className="grid gap-2">
-        <Label htmlFor="nome">Título</Label>
-        <Input
-          id="nome"
-          value={nome}
-          onChange={(event) => setNome(event.target.value)}
-          placeholder="Ex.: Sessão ordinária de setembro"
-        />
+          <Label htmlFor="nome">Título</Label>
+          <Input
+            id="nome"
+            value={nome}
+            onChange={(event) => setNome(event.target.value)}
+            placeholder="Ex.: Sessão ordinária de setembro"
+          />
         </div>
 
         <div className="grid gap-2">
-        <Label htmlFor="data">Data</Label>
-        <Input
-          id="data"
-          type="date"
-          value={data}
-          onChange={(event) => setData(event.target.value)}
-        />
+          <Label htmlFor="data">Data</Label>
+          <Input
+            id="data"
+            type="date"
+            value={data}
+            onChange={(event) => setData(event.target.value)}
+          />
         </div>
 
         <div className="grid gap-2">
-        <Label htmlFor="hora">Hora</Label>
-        <Input
-          id="hora"
-          type="time"
-          value={hora}
-          onChange={(event) => setHora(event.target.value)}
-        />
+          <Label htmlFor="hora">Hora</Label>
+          <Input
+            id="hora"
+            type="time"
+            value={hora}
+            onChange={(event) => setHora(event.target.value)}
+          />
         </div>
 
         <div className="grid gap-2">
-        <Label htmlFor="local">Local</Label>
-        <Input
-          id="local"
-          value={local}
-          onChange={(event) => setLocal(event.target.value)}
-          placeholder="Ex.: Centro Cultural D. Dinis"
-        />
+          <Label htmlFor="local">Local</Label>
+          <Input
+            id="local"
+            value={local}
+            onChange={(event) => setLocal(event.target.value)}
+            placeholder="Ex.: Centro Cultural D. Dinis"
+          />
         </div>
 
         <div className="grid gap-2">
-        <Label>Estado</Label>
-        <Select value={estado} onValueChange={(value) => setEstado(value as EstadoAssembleia)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecionar estado" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="preparacao">Preparação</SelectItem>
-            <SelectItem value="analise">Em análise</SelectItem>
-            <SelectItem value="concluida">Concluída</SelectItem>
-          </SelectContent>
-        </Select>
+          <Label>Estado</Label>
+          <Select value={estado} onValueChange={(value) => setEstado(value as EstadoAssembleia)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecionar estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="preparacao">Preparação</SelectItem>
+              <SelectItem value="analise">Em análise</SelectItem>
+              <SelectItem value="concluida">Concluída</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

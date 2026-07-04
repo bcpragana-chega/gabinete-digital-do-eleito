@@ -1,6 +1,6 @@
 import { CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { AcaoPendente } from "@/lib/mock-preparacao";
+import type { AcaoPendente } from "@/lib/preparacao-store";
 import { EstadoAcaoBadge } from "./badges";
 
 export function AcaoCard({ item }: { item: AcaoPendente }) {

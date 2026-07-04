@@ -1,3 +1,5 @@
+import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
+
 export type NivelPrioridade = "Alta" | "Média" | "Baixa";
 
 export type EstadoPrioridade = "Por preparar" | "Preparado" | "Acompanhar";
@@ -44,7 +46,7 @@ export type DocumentoPlaneadoPreparacao = {
   prioridade: NivelPrioridade;
 };
 
-const STORAGE_KEY = "tribuno-preparacao";
+const STORAGE_KEY = "tribuno:preparacao";
 
 type PreparacaoStore = {
   prioridades: PrioridadeAssembleia[];
@@ -65,23 +67,11 @@ function gerarId(prefixo: string) {
 }
 
 function lerStore(): PreparacaoStore {
-  if (typeof window === "undefined") return storeVazio;
-
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-
-  if (!raw) return storeVazio;
-
-  try {
-    return JSON.parse(raw) as PreparacaoStore;
-  } catch {
-    return storeVazio;
-  }
+  return lerJSONPorUtilizador<PreparacaoStore>(STORAGE_KEY, storeVazio);
 }
 
 function guardarStore(store: PreparacaoStore) {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  guardarJSONPorUtilizador(STORAGE_KEY, store);
 }
 
 export function obterPreparacaoDaAssembleia(assembleiaId: string) {
@@ -91,9 +81,7 @@ export function obterPreparacaoDaAssembleia(assembleiaId: string) {
     prioridades: store.prioridades.filter((item) => item.assembleiaId === assembleiaId),
     perguntas: store.perguntas.filter((item) => item.assembleiaId === assembleiaId),
     acoes: store.acoes.filter((item) => item.assembleiaId === assembleiaId),
-    documentosACriar: store.documentosACriar.filter(
-      (item) => item.assembleiaId === assembleiaId,
-    ),
+    documentosACriar: store.documentosACriar.filter((item) => item.assembleiaId === assembleiaId),
   };
 }
 

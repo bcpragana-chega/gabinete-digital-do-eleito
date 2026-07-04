@@ -10,10 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  AssembleiaForm,
-  type AssembleiaFormValues,
-} from "@/components/assembleias/AssembleiaForm";
+import { AssembleiaForm, type AssembleiaFormValues } from "@/components/assembleias/AssembleiaForm";
 
 type EditarAssembleiaDialogProps = {
   assembleia: Assembleia;

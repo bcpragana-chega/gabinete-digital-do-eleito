@@ -1,3 +1,5 @@
+import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
+
 export type EstrategiaSessao = {
   assembleiaId: string;
   objetivoPolitico: string;
@@ -7,7 +9,7 @@ export type EstrategiaSessao = {
   notasLivres: string;
 };
 
-const STORAGE_KEY = "tribuno-estrategia-sessao";
+const STORAGE_KEY = "tribuno:estrategia";
 
 const estrategiaVazia = (assembleiaId: string): EstrategiaSessao => ({
   assembleiaId,
@@ -19,32 +21,17 @@ const estrategiaVazia = (assembleiaId: string): EstrategiaSessao => ({
 });
 
 function lerTodasEstrategias(): EstrategiaSessao[] {
-  if (typeof window === "undefined") return [];
-
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-
-  if (!raw) return [];
-
-  try {
-    return JSON.parse(raw) as EstrategiaSessao[];
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<EstrategiaSessao[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function guardarTodasEstrategias(estrategias: EstrategiaSessao[]) {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(estrategias));
+  guardarJSONPorUtilizador(STORAGE_KEY, estrategias);
 }
 
-export function obterEstrategiaDaAssembleia(
-  assembleiaId: string,
-): EstrategiaSessao {
+export function obterEstrategiaDaAssembleia(assembleiaId: string): EstrategiaSessao {
   const estrategias = lerTodasEstrategias();
-  const estrategia = estrategias.find(
-    (item) => item.assembleiaId === assembleiaId,
-  );
+  const estrategia = estrategias.find((item) => item.assembleiaId === assembleiaId);
 
   return estrategia ?? estrategiaVazia(assembleiaId);
 }
@@ -60,9 +47,7 @@ export function guardarEstrategiaDaAssembleia(
     ...data,
   };
 
-  const restantes = estrategias.filter(
-    (item) => item.assembleiaId !== assembleiaId,
-  );
+  const restantes = estrategias.filter((item) => item.assembleiaId !== assembleiaId);
 
   guardarTodasEstrategias([novaEstrategia, ...restantes]);
 

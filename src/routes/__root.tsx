@@ -88,11 +88,31 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { property: "og:title", content: "Tribuno — Apoio ao mandato para eleitos locais" },
       { name: "twitter:title", content: "Tribuno — Apoio ao mandato para eleitos locais" },
-      { name: "description", content: "Tribuno helps elected officials organize sessions, documents and mandate information." },
-      { property: "og:description", content: "Tribuno helps elected officials organize sessions, documents and mandate information." },
-      { name: "twitter:description", content: "Tribuno helps elected officials organize sessions, documents and mandate information." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ce3f9e1f-02aa-4a46-a59e-7d320f501c9f/id-preview-09b3d9bf--9ba95df2-3e44-4080-bc8e-f8a5f3eb0d85.lovable.app-1782391277988.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ce3f9e1f-02aa-4a46-a59e-7d320f501c9f/id-preview-09b3d9bf--9ba95df2-3e44-4080-bc8e-f8a5f3eb0d85.lovable.app-1782391277988.png" },
+      {
+        name: "description",
+        content:
+          "Tribuno helps elected officials organize sessions, documents and mandate information.",
+      },
+      {
+        property: "og:description",
+        content:
+          "Tribuno helps elected officials organize sessions, documents and mandate information.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Tribuno helps elected officials organize sessions, documents and mandate information.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ce3f9e1f-02aa-4a46-a59e-7d320f501c9f/id-preview-09b3d9bf--9ba95df2-3e44-4080-bc8e-f8a5f3eb0d85.lovable.app-1782391277988.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ce3f9e1f-02aa-4a46-a59e-7d320f501c9f/id-preview-09b3d9bf--9ba95df2-3e44-4080-bc8e-f8a5f3eb0d85.lovable.app-1782391277988.png",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

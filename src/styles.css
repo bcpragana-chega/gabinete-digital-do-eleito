@@ -50,7 +50,8 @@
   --color-status-alerta: var(--status-alerta);
   --color-status-alerta-foreground: var(--status-alerta-foreground);
 
-  --shadow-card: 0 1px 2px 0 oklch(0.2 0.02 250 / 0.035), 0 14px 34px -30px oklch(0.2 0.02 250 / 0.18);
+  --shadow-card:
+    0 1px 2px 0 oklch(0.2 0.02 250 / 0.035), 0 14px 34px -30px oklch(0.2 0.02 250 / 0.18);
   --shadow-elevated: 0 20px 48px -34px oklch(0.2 0.02 250 / 0.28);
 }
 
@@ -121,7 +122,12 @@
     color: var(--color-foreground);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
     letter-spacing: 0;
   }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   CalendarDays,
   ChevronLeft,
@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getAssembleia, formatarData, documentos as documentosMock } from "@/lib/mock-data";
+import { formatarData } from "@/lib/mock-data";
+import { useAssembleia } from "@/lib/assembleias-store";
 import { listarDocumentosLocais, useDocumento } from "@/lib/documentos-store";
 import {
   criarRelacaoTribuno,
@@ -31,14 +32,9 @@ import {
 import type { Documento, RelacaoTribuno } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/assembleias/$id/documentos/$docId")({
-  loader: ({ params }) => {
-    const assembleia = getAssembleia(params.id);
-    if (!assembleia) throw notFound();
-    return { assembleia };
-  },
-  head: ({ loaderData }) => ({
+  head: () => ({
     meta: [
-      { title: `${loaderData?.assembleia.nome ?? "Documento"} — Tribuno` },
+      { title: "Documento — Tribuno" },
       {
         name: "description",
         content: "Detalhe do documento da assembleia municipal.",
@@ -70,14 +66,11 @@ function outroDocumentoId(relacao: RelacaoTribuno, documentoId: string) {
 
 function DocumentoPage() {
   const { id, docId } = Route.useParams();
-  const { assembleia } = Route.useLoaderData();
+  const assembleia = useAssembleia(id);
   const documento = useDocumento(docId);
   const [documentoParaAssociar, setDocumentoParaAssociar] = useState("");
   const relacoesDoDocumento = useRelacoesPorObjeto("documento", docId);
-  const documentosBiblioteca = useMemo(
-    () => documentosUnicos([...documentosMock, ...listarDocumentosLocais()]),
-    [],
-  );
+  const documentosBiblioteca = useMemo(() => documentosUnicos(listarDocumentosLocais()), []);
 
   const relacoesDocumentos = useMemo(
     () => relacoesDoDocumento.filter(isRelacaoEntreDocumentos),
@@ -145,7 +138,9 @@ function DocumentoPage() {
       <TopBar
         breadcrumb={
           <span>
-            <Link to="/assembleias" className="hover:text-foreground transition-colors">Sessões</Link>
+            <Link to="/assembleias" className="hover:text-foreground transition-colors">
+              Sessões
+            </Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
             <Link
               to="/assembleias/$id"
@@ -155,9 +150,7 @@ function DocumentoPage() {
               {assembleia.nome}
             </Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
-            <span className="text-foreground truncate">
-              {documento?.tipo ?? "Documento"}
-            </span>
+            <span className="text-foreground truncate">{documento?.tipo ?? "Documento"}</span>
           </span>
         }
       />
@@ -194,12 +187,8 @@ function DocumentoPage() {
                   </h1>
                   <p className="mt-2 text-sm text-muted-foreground">
                     Data do documento: {formatarData(documento.data)}
-                    {typeof documento.paginas === "number"
-                      ? ` · ${documento.paginas} páginas`
-                      : ""}
-                    {documento.ficheiroNome
-                      ? ` · ${documento.ficheiroNome}`
-                      : ""}
+                    {typeof documento.paginas === "number" ? ` · ${documento.paginas} páginas` : ""}
+                    {documento.ficheiroNome ? ` · ${documento.ficheiroNome}` : ""}
                   </p>
                   {documento.notas && (
                     <p className="mt-3 text-sm text-foreground/80 whitespace-pre-line">

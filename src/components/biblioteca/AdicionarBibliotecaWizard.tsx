@@ -222,7 +222,10 @@ export function AdicionarBibliotecaWizard() {
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
           {step === 0 && (
             <div className="space-y-5">
-              <StepTitle title="Passo 1 — Escolher documento" question="Que documento queres adicionar?" />
+              <StepTitle
+                title="Passo 1 — Escolher documento"
+                question="Que documento queres adicionar?"
+              />
               <div className="grid gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="biblioteca-titulo">Título do documento</Label>
@@ -283,7 +286,10 @@ export function AdicionarBibliotecaWizard() {
                 </div>
                 <div className="space-y-2">
                   <Label>Estado inicial</Label>
-                  <Select value={estado} onValueChange={(value) => setEstado(value as EstadoInicial)}>
+                  <Select
+                    value={estado}
+                    onValueChange={(value) => setEstado(value as EstadoInicial)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -302,7 +308,10 @@ export function AdicionarBibliotecaWizard() {
 
           {step === 2 && (
             <div className="space-y-5">
-              <StepTitle title="Passo 3 — Ligar ao trabalho" question="Este documento está ligado a algum trabalho?" />
+              <StepTitle
+                title="Passo 3 — Ligar ao trabalho"
+                question="Este documento está ligado a algum trabalho?"
+              />
               <div className="grid gap-4">
                 <div className="space-y-2">
                   <Label>Ligação</Label>
@@ -361,23 +370,35 @@ export function AdicionarBibliotecaWizard() {
 
           {step === 3 && (
             <div className="space-y-5">
-              <StepTitle title="Passo 4 — Revisão" question="Confirma antes de adicionar à Biblioteca." />
+              <StepTitle
+                title="Passo 4 — Revisão"
+                question="Confirma antes de adicionar à Biblioteca."
+              />
               <div className="grid gap-3 sm:grid-cols-2">
                 <InfoCard icon={FileText} title="Título" description={titulo || "Por preencher"} />
                 <InfoCard icon={FileText} title="Tipo" description={tipo} />
                 <InfoCard icon={CheckCircle2} title="Estado" description={estado} />
                 <InfoCard icon={Landmark} title="Ligação" description={ligacao} />
                 {ficheiroNome && (
-                  <InfoCard icon={FileText} title="Ficheiro" description={ficheiroNome} className="sm:col-span-2" />
+                  <InfoCard
+                    icon={FileText}
+                    title="Ficheiro"
+                    description={ficheiroNome}
+                    className="sm:col-span-2"
+                  />
                 )}
                 {(precisaAssunto || precisaSessao) && (
                   <InfoCard
                     icon={NotebookText}
                     title="Ligado a"
-                    description={[
-                      dossies.find((dossie) => dossie.id === dossieId)?.titulo,
-                      assembleias.find((assembleia) => assembleia.id === assembleiaId)?.nome,
-                    ].filter(Boolean).join(" · ") || "Sem seleção"}
+                    description={
+                      [
+                        dossies.find((dossie) => dossie.id === dossieId)?.titulo,
+                        assembleias.find((assembleia) => assembleia.id === assembleiaId)?.nome,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "Sem seleção"
+                    }
                     className="sm:col-span-2"
                   />
                 )}
@@ -399,12 +420,22 @@ export function AdicionarBibliotecaWizard() {
               Voltar
             </Button>
             {step < passos.length - 1 ? (
-              <Button type="button" onClick={avancar} disabled={step === 0 && !dadosValidos} className="w-full sm:w-auto">
+              <Button
+                type="button"
+                onClick={avancar}
+                disabled={step === 0 && !dadosValidos}
+                className="w-full sm:w-auto"
+              >
                 Seguinte
                 <ChevronRight className="h-4 w-4" />
               </Button>
             ) : (
-              <Button type="button" onClick={adicionar} disabled={!dadosValidos} className="w-full sm:w-auto">
+              <Button
+                type="button"
+                onClick={adicionar}
+                disabled={!dadosValidos}
+                className="w-full sm:w-auto"
+              >
                 <CheckCircle2 className="h-4 w-4" />
                 Adicionar à Biblioteca
               </Button>

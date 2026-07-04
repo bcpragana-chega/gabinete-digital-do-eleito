@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { DossieTimelineEvento, TipoEventoTimelineDossie } from "./types";
+import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
 
-const STORAGE_KEY = "tribuno.dossie-timeline.v1";
+const STORAGE_KEY = "tribuno:timeline";
 const EVENT_NAME = "tribuno:dossie-timeline";
 
 export type DossieTimelineEventoInput = {
@@ -15,10 +16,6 @@ export type DossieTimelineEventoInput = {
   origemHref?: string;
 };
 
-function isBrowser() {
-  return typeof window !== "undefined";
-}
-
 function gerarId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -28,25 +25,12 @@ function gerarId() {
 }
 
 function lerEventosLocais(): DossieTimelineEvento[] {
-  if (!isBrowser()) return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed;
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<DossieTimelineEvento[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function guardarEventosLocais(eventos: DossieTimelineEvento[]) {
-  if (!isBrowser()) return;
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(eventos));
+  guardarJSONPorUtilizador(STORAGE_KEY, eventos);
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 

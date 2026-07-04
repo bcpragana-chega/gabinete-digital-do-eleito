@@ -6,11 +6,7 @@ type UseAutoSaveOptions<T> = {
   onSave: (value: T) => void;
 };
 
-export function useAutoSave<T>({
-  initialValue,
-  delay = 500,
-  onSave,
-}: UseAutoSaveOptions<T>) {
+export function useAutoSave<T>({ initialValue, delay = 500, onSave }: UseAutoSaveOptions<T>) {
   const [value, setValue] = useState<T>(initialValue);
   const firstRender = useRef(true);
 

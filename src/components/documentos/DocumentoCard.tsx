@@ -21,14 +21,10 @@ export function DocumentoCard({ documento }: { documento: Documento }) {
           </span>
           <DocumentoEstadoBadge estado={documento.estado} />
         </div>
-        <div className="mt-0.5 font-medium text-foreground truncate">
-          {documento.titulo}
-        </div>
+        <div className="mt-0.5 font-medium text-foreground truncate">{documento.titulo}</div>
         <div className="mt-0.5 text-xs text-muted-foreground">
           {formatarDataCurta(documento.data)}
-          {typeof documento.paginas === "number"
-            ? ` · ${documento.paginas} páginas`
-            : ""}
+          {typeof documento.paginas === "number" ? ` · ${documento.paginas} páginas` : ""}
         </div>
       </div>
       <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />

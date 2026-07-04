@@ -6,8 +6,9 @@ import {
   removerRelacaoTribunoPorObjetos,
 } from "./relacoes-store";
 import type { DossieAssembleiaRelacionada } from "./types";
+import { lerJSONPorUtilizador } from "./user-storage";
 
-const STORAGE_KEY = "tribuno.dossie-assembleias.v1";
+const STORAGE_KEY = "tribuno:dossie-assembleias";
 const EVENT_NAME = "tribuno:dossie-assembleias";
 const RELACOES_EVENT_NAME = "tribuno:relacoes";
 
@@ -16,19 +17,8 @@ function isBrowser() {
 }
 
 function lerRelacoesLegadas(): DossieAssembleiaRelacionada[] {
-  if (!isBrowser()) return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed;
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<DossieAssembleiaRelacionada[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function relacaoId(dossieId: string, assembleiaId: string) {
@@ -74,10 +64,7 @@ function relacoesDoDossie(dossieId: string): DossieAssembleiaRelacionada[] {
         relacao.tipoRelacao === "discutido_em",
     )
     .forEach((relacao) =>
-      porChave.set(
-        relacao.origemId,
-        mapearRelacao(dossieId, relacao.origemId, relacao.createdAt),
-      ),
+      porChave.set(relacao.origemId, mapearRelacao(dossieId, relacao.origemId, relacao.createdAt)),
     );
 
   return Array.from(porChave.values());
@@ -111,8 +98,7 @@ function relacoesDaAssembleia(assembleiaId: string): DossieAssembleiaRelacionada
 }
 
 export function listarAssembleiasDoDossie(dossieId: string): DossieAssembleiaRelacionada[] {
-  return relacoesDoDossie(dossieId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return relacoesDoDossie(dossieId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export function listarDossiesAssociadosAAssembleia(

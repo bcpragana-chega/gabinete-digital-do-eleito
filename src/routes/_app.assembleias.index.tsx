@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { ds } from "@/components/ui/design-system";
 import { useAssembleias } from "@/lib/assembleias-store";
 import { listarDocumentosLocais } from "@/lib/documentos-store";
-import { formatarData, getDocumentosByAssembleia } from "@/lib/mock-data";
+import { formatarData } from "@/lib/mock-data";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
 import type { Assembleia, EstadoAssembleia } from "@/lib/types";
 
@@ -19,8 +19,7 @@ export const Route = createFileRoute("/_app/assembleias/")({
       { title: "Sessões — Tribuno" },
       {
         name: "description",
-        content:
-          "Lista de sessões em preparação, em análise e concluídas.",
+        content: "Lista de sessões em preparação, em análise e concluídas.",
       },
       { property: "og:title", content: "Sessões — Tribuno" },
       {
@@ -58,7 +57,9 @@ function estadoTone(estado: EstadoAssembleia) {
 function AssembleiasPage() {
   const assembleias = useAssembleias();
   const [filtroAtivo, setFiltroAtivo] = useState<FiltroId>("todas");
-  const assembleiasNaoArquivadas = assembleias.filter((assembleia) => assembleia.estado !== "arquivada");
+  const assembleiasNaoArquivadas = assembleias.filter(
+    (assembleia) => assembleia.estado !== "arquivada",
+  );
 
   const assembleiasVisiveis = assembleias
     .filter((assembleia) => assembleia.estado !== "arquivada")
@@ -84,9 +85,7 @@ function AssembleiasPage() {
         <div className={ds.layout.page}>
           <div className="mb-8 flex flex-col gap-5 sm:mb-10 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-2xl">
-              <h1 className={ds.typography.display}>
-                Sessões
-              </h1>
+              <h1 className={ds.typography.display}>Sessões</h1>
               <p className={`mt-2 ${ds.typography.body}`}>
                 Reuniões concretas para preparar documentos, pontos e estratégia.
               </p>
@@ -143,8 +142,7 @@ function AssembleiasPage() {
 }
 
 function AssembleiaWorkspaceCard({ assembleia }: { assembleia: Assembleia }) {
-  const documentos =
-    getDocumentosByAssembleia(assembleia.id).length + listarDocumentosLocais(assembleia.id).length;
+  const documentos = listarDocumentosLocais(assembleia.id).length;
   const pontos = obterPontosDaAssembleia(assembleia.id).length;
 
   return (

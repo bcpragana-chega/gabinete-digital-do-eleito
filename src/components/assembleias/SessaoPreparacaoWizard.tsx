@@ -40,10 +40,8 @@ import {
   listarDocumentosACriarDaAssembleia,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
-import {
-  guardarEstrategiaDaAssembleia,
-  type EstrategiaSessao,
-} from "@/lib/estrategia-store";
+import { guardarEstrategiaDaAssembleia, type EstrategiaSessao } from "@/lib/estrategia-store";
+import { useDossies } from "@/lib/dossies-store";
 import {
   marcarInboxDocumentoComoTratado,
   obterInboxDocumento,
@@ -54,6 +52,7 @@ import type {
   Assembleia,
   Documento,
   DocumentoCriado,
+  Dossie,
   TipoDocumentoCriado,
 } from "@/lib/types";
 
@@ -68,14 +67,7 @@ type SessaoPreparacaoWizardProps = {
   onPontosChange: () => void;
 };
 
-const passos = [
-  "Dados",
-  "Documentos",
-  "Pontos",
-  "Estratégia",
-  "Documentos",
-  "Revisão",
-];
+const passos = ["Dados", "Documentos", "Pontos", "Estratégia", "Documentos", "Revisão"];
 
 const tiposDocumentoACriar: TipoDocumentoCriado[] = [
   "Moção",
@@ -141,11 +133,17 @@ export function SessaoPreparacaoWizard({
   estrategia,
   onPontosChange,
 }: SessaoPreparacaoWizardProps) {
-  const inboxItems = useInboxDocumentos();
+  useInboxDocumentos();
+  const todosAssuntos = useDossies();
+  const assuntos = useMemo(
+    () => todosAssuntos.filter((assunto) => !assunto.archivedAt),
+    [todosAssuntos],
+  );
   const [step, setStep] = useState(0);
   const [estrategiaForm, setEstrategiaForm] = useState(estrategia);
   const [rascunhos, setRascunhos] = useState(documentosACriar);
   const [tipoRascunho, setTipoRascunho] = useState<TipoDocumentoCriado>("Moção");
+  const [assuntoRascunhoId, setAssuntoRascunhoId] = useState("");
   const [pontoRascunhoId, setPontoRascunhoId] = useState("");
   const [tituloRascunho, setTituloRascunho] = useState("");
 
@@ -155,8 +153,9 @@ export function SessaoPreparacaoWizard({
     setStep(0);
     setEstrategiaForm(estrategia);
     setRascunhos(listarDocumentosACriarDaAssembleia(assembleia.id));
+    setAssuntoRascunhoId(assuntos[0]?.id ?? "");
     setPontoRascunhoId(pontos[0]?.id ?? "");
-  }, [assembleia.id, estrategia, open, pontos]);
+  }, [assembleia.id, assuntos, estrategia, open, pontos]);
 
   useEffect(() => {
     if (!open) return;
@@ -166,10 +165,8 @@ export function SessaoPreparacaoWizard({
     return subscreverDocumentosACriar(atualizar);
   }, [assembleia.id, open]);
 
-  const documentosAnalisados = useMemo(
-    () =>
-      documentos.filter((documento) => obterInboxDocumento(documento.id).estado === "Tratado"),
-    [documentos, inboxItems],
+  const documentosAnalisados = documentos.filter(
+    (documento) => obterInboxDocumento(documento.id).estado === "Tratado",
   );
   const pontosPreparados = pontos.filter(pontoPreparado);
   const estrategiaPreenchida = [
@@ -200,9 +197,10 @@ export function SessaoPreparacaoWizard({
 
   function criarRascunho() {
     const pontoId = pontoRascunhoId || pontos[0]?.id;
-    if (!pontoId || !tituloRascunho.trim()) return;
+    if (!pontoId || !assuntoRascunhoId || !tituloRascunho.trim()) return;
 
     const novo = adicionarDocumentoACriarRascunho({
+      assuntoId: assuntoRascunhoId,
       assembleiaId: assembleia.id,
       pontoId,
       tipo: tipoRascunho,
@@ -229,24 +227,22 @@ export function SessaoPreparacaoWizard({
       <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-none flex-col gap-0 rounded-none border-border bg-background p-0 sm:h-[92dvh] sm:max-h-[92dvh] sm:w-[min(1040px,calc(100vw-2rem))] sm:rounded-3xl">
         <DialogHeader className="shrink-0 border-b border-border/70 px-5 py-4 text-left sm:px-7">
           <DialogTitle>Preparar Sessão</DialogTitle>
-          <DialogDescription>
-            Um passo de cada vez. Pode voltar quando precisar.
-          </DialogDescription>
+          <DialogDescription>Um passo de cada vez. Pode voltar quando precisar.</DialogDescription>
           <div className="pt-4">
             <Progress activeStep={step} />
           </div>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
-          {step === 0 && (
-            <WizardStepDados assembleia={assembleia} />
-          )}
+          {step === 0 && <WizardStepDados assembleia={assembleia} />}
 
           {step === 1 && (
             <WizardStepDocumentos
               assembleiaId={assembleia.id}
               documentos={documentos}
-              documentosAnalisadosIds={new Set(documentosAnalisados.map((documento) => documento.id))}
+              documentosAnalisadosIds={
+                new Set(documentosAnalisados.map((documento) => documento.id))
+              }
               onMarcarAnalisado={(documentoId) => marcarInboxDocumentoComoTratado(documentoId)}
             />
           )}
@@ -260,22 +256,22 @@ export function SessaoPreparacaoWizard({
           )}
 
           {step === 3 && (
-            <WizardStepEstrategia
-              estrategia={estrategiaForm}
-              onChange={setEstrategiaForm}
-            />
+            <WizardStepEstrategia estrategia={estrategiaForm} onChange={setEstrategiaForm} />
           )}
 
           {step === 4 && (
             <WizardStepDocumentosCriar
               assembleiaId={assembleia.id}
+              assuntos={assuntos}
               pontos={pontos}
               rascunhos={rascunhos}
               tipo={tipoRascunho}
               titulo={tituloRascunho}
+              assuntoId={assuntoRascunhoId}
               pontoId={pontoRascunhoId}
               onTipoChange={setTipoRascunho}
               onTituloChange={setTituloRascunho}
+              onAssuntoChange={setAssuntoRascunhoId}
               onPontoChange={setPontoRascunhoId}
               onCriar={criarRascunho}
             />
@@ -309,7 +305,12 @@ export function SessaoPreparacaoWizard({
 
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               {step === 3 && (
-                <Button type="button" variant="secondary" onClick={guardarEstrategia} className="w-full sm:w-auto">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={guardarEstrategia}
+                  className="w-full sm:w-auto"
+                >
                   Guardar
                 </Button>
               )}
@@ -528,24 +529,30 @@ function WizardStepEstrategia({
 
 function WizardStepDocumentosCriar({
   assembleiaId,
+  assuntos,
   pontos,
   rascunhos,
   tipo,
   titulo,
+  assuntoId,
   pontoId,
   onTipoChange,
   onTituloChange,
+  onAssuntoChange,
   onPontoChange,
   onCriar,
 }: {
   assembleiaId: string;
+  assuntos: Dossie[];
   pontos: PontoOrdemTrabalhos[];
   rascunhos: DocumentoCriado[];
   tipo: TipoDocumentoCriado;
   titulo: string;
+  assuntoId: string;
   pontoId: string;
   onTipoChange: (tipo: TipoDocumentoCriado) => void;
   onTituloChange: (titulo: string) => void;
+  onAssuntoChange: (assuntoId: string) => void;
   onPontoChange: (pontoId: string) => void;
   onCriar: () => void;
 }) {
@@ -554,10 +561,13 @@ function WizardStepDocumentosCriar({
       <StepTitle title="Passo 5 — Documentos a Criar" question="Que documentos queres preparar?" />
 
       <div className="rounded-2xl border border-border bg-card p-4">
-        <div className="grid gap-3 lg:grid-cols-[180px_minmax(0,1fr)_minmax(0,1.3fr)_auto] lg:items-end">
+        <div className="grid gap-3 lg:grid-cols-[180px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_auto] lg:items-end">
           <div className="space-y-2">
             <Label>Tipo</Label>
-            <Select value={tipo} onValueChange={(valor) => onTipoChange(valor as TipoDocumentoCriado)}>
+            <Select
+              value={tipo}
+              onValueChange={(valor) => onTipoChange(valor as TipoDocumentoCriado)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -565,6 +575,26 @@ function WizardStepDocumentosCriar({
                 {tiposDocumentoACriar.map((opcao) => (
                   <SelectItem key={opcao} value={opcao}>
                     {opcao}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Assunto de origem</Label>
+            <Select
+              value={assuntoId}
+              onValueChange={onAssuntoChange}
+              disabled={assuntos.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Escolher assunto" />
+              </SelectTrigger>
+              <SelectContent>
+                {assuntos.map((assunto) => (
+                  <SelectItem key={assunto.id} value={assunto.id}>
+                    {assunto.titulo}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -600,7 +630,7 @@ function WizardStepDocumentosCriar({
           <Button
             type="button"
             onClick={onCriar}
-            disabled={pontos.length === 0 || titulo.trim().length === 0}
+            disabled={assuntos.length === 0 || pontos.length === 0 || titulo.trim().length === 0}
             className="w-full lg:w-auto"
           >
             <Plus className="h-4 w-4" />
@@ -613,6 +643,13 @@ function WizardStepDocumentosCriar({
         <InfoCard
           title="Adicione primeiro um ponto"
           description="Os documentos a criar ficam ligados a um ponto da ordem de trabalhos."
+        />
+      )}
+
+      {assuntos.length === 0 && (
+        <InfoCard
+          title="Crie primeiro um assunto"
+          description="Novos documentos devem nascer de um assunto para manter contexto e histórico."
         />
       )}
 
@@ -633,16 +670,25 @@ function WizardStepDocumentosCriar({
               description={rascunho.estado}
               actions={
                 <Button asChild variant="secondary" size="sm">
-                  <Link
-                    to="/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId"
-                    params={{
-                      id: assembleiaId,
-                      pontoId: rascunho.pontoId,
-                      rascunhoId: rascunho.id,
-                    }}
-                  >
-                    Abrir
-                  </Link>
+                  {rascunho.assuntoId ? (
+                    <Link
+                      to="/dossies/$dossieId/documentos/$documentoId"
+                      params={{ dossieId: rascunho.assuntoId, documentoId: rascunho.id }}
+                    >
+                      Abrir
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId"
+                      params={{
+                        id: assembleiaId,
+                        pontoId: rascunho.pontoId ?? "",
+                        rascunhoId: rascunho.id,
+                      }}
+                    >
+                      Abrir
+                    </Link>
+                  )}
                 </Button>
               }
             />

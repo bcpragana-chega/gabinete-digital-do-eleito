@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Assembleia, EstadoAssembleia } from "./types";
-import { assembleias as mockAssembleias } from "./mock-data";
+import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
 
-const STORAGE_KEY = "tribuno.assembleias.v1";
+const STORAGE_KEY = "tribuno:assembleias";
 const EVENT_NAME = "tribuno:assembleias";
 
 type NovaAssembleiaInput = {
@@ -15,39 +15,18 @@ type NovaAssembleiaInput = {
 
 type EditarAssembleiaInput = NovaAssembleiaInput;
 
-function isBrowser() {
-  return typeof window !== "undefined";
-}
-
 function lerAssembleiasLocais(): Assembleia[] {
-  if (!isBrowser()) return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed;
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<Assembleia[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function guardarAssembleiasLocais(assembleias: Assembleia[]) {
-  if (!isBrowser()) return;
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(assembleias));
+  guardarJSONPorUtilizador(STORAGE_KEY, assembleias);
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 
 export function listarAssembleias(): Assembleia[] {
-  const locais = lerAssembleiasLocais();
-
-  const todas = [...mockAssembleias, ...locais];
-
-  return todas.sort((a, b) => {
+  return lerAssembleiasLocais().sort((a, b) => {
     const dataA = `${a.data}T${a.hora || "00:00"}`;
     const dataB = `${b.data}T${b.hora || "00:00"}`;
 

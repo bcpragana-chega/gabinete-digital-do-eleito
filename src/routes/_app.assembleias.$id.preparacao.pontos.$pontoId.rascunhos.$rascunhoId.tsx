@@ -20,6 +20,7 @@ import {
   obterDocumentoACriarPorId,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
+import { adicionarEventoHistorico } from "@/lib/historico-store";
 import { obterPontoPorId, type PontoOrdemTrabalhos } from "@/lib/pontos-store";
 import type { DocumentoCriado, EstadoDocumentoCriado } from "@/lib/types";
 
@@ -85,6 +86,12 @@ function RascunhoDocumentoPage() {
 
     if (atualizado) {
       setRascunho(atualizado);
+      adicionarEventoHistorico({
+        pontoId,
+        tipo: "documento-criado",
+        acao: "Documento editado",
+        descricao: `Documento "${atualizado.titulo}" editado.`,
+      });
       setGuardado(true);
       window.setTimeout(() => setGuardado(false), 1600);
     }
@@ -137,7 +144,9 @@ function RascunhoDocumentoPage() {
       <TopBar
         breadcrumb={
           <span>
-            <Link to="/assembleias" className="hover:text-foreground transition-colors">Sessões</Link>
+            <Link to="/assembleias" className="hover:text-foreground transition-colors">
+              Sessões
+            </Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
             <Link
               to="/assembleias/$id"

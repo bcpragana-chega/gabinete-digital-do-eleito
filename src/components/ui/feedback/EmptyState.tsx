@@ -32,12 +32,13 @@ export function EmptyState({
   }
 
   return (
-    <section className={cn("rounded-2xl border border-dashed border-border/70 bg-background p-8", className)}>
-      {title && (
-        <h2 className="font-display text-xl font-semibold text-foreground">
-          {title}
-        </h2>
+    <section
+      className={cn(
+        "rounded-2xl border border-dashed border-border/70 bg-background p-8",
+        className,
       )}
+    >
+      {title && <h2 className="font-display text-xl font-semibold text-foreground">{title}</h2>}
       {description && <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-5">{action}</div>}
     </section>

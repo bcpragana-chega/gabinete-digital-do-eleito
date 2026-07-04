@@ -1,11 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  createFileRoute,
-  Link,
-  Outlet,
-  useNavigate,
-  useRouterState,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowRight, ChevronLeft, ListOrdered } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { AdicionarPontoDialog } from "@/components/preparacao/AdicionarPontoDialog";
@@ -14,9 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { useAssembleia } from "@/lib/assembleias-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
 
-export const Route = createFileRoute(
-  "/_app/assembleias/$id/preparacao/pontos",
-)({
+export const Route = createFileRoute("/_app/assembleias/$id/preparacao/pontos")({
   head: () => ({
     meta: [
       { title: "Pontos — Preparação — Tribuno" },
@@ -124,9 +116,7 @@ function PreparacaoPontosPage() {
                   </div>
 
                   {ponto.descricao && (
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      {ponto.descricao}
-                    </p>
+                    <p className="mt-3 text-sm text-muted-foreground">{ponto.descricao}</p>
                   )}
                 </article>
               </button>

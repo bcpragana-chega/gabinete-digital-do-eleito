@@ -1,6 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { LogOut } from "lucide-react";
+import { PerfilEleitoForm } from "@/components/auth/PerfilEleitoForm";
+import { UserAvatar } from "@/components/auth/UserAvatar";
 import { TopBar } from "@/components/layout/TopBar";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { WorkspaceSection } from "@/components/ui/workspace";
+import { logout, useAuth } from "@/lib/auth-store";
+import { obterContextoInstitucional } from "@/lib/perfil-contexto";
 
 export const Route = createFileRoute("/_app/definicoes")({
   head: () => ({
@@ -16,100 +23,62 @@ export const Route = createFileRoute("/_app/definicoes")({
 });
 
 function DefinicoesPage() {
+  const { user, perfil, displayName } = useAuth();
+  const contexto = obterContextoInstitucional(perfil);
+
   return (
     <>
       <TopBar breadcrumb="Definições" />
-      <main className="px-8 py-10 max-w-3xl">
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
-            Definições
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Configure o seu perfil e preferências do gabinete digital.
-          </p>
-        </div>
+      <main className="min-h-screen bg-background">
+        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+          <div className="mb-8">
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+              Definições
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Edite o perfil institucional usado para personalizar o Tribuno.
+            </p>
+          </div>
 
-        <div className="space-y-6">
-          <Section titulo="Perfil do eleito">
-            <Field label="Nome" value="João Martins" />
-            <Field label="Cargo" value="Vereador" />
-            <Field label="Email institucional" value="joao.martins@cm-aveiro.pt" />
-          </Section>
+          <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <Card className="h-fit p-5 shadow-none">
+              <div className="flex items-center gap-3">
+                <UserAvatar user={user} perfil={perfil} className="h-12 w-12" />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-foreground">
+                    {displayName}
+                  </div>
+                  <div className="truncate text-sm text-muted-foreground">{user?.email}</div>
+                </div>
+              </div>
 
-          <Section titulo="Autarquia">
-            <Field label="Município" value="Câmara Municipal de Aveiro" />
-            <Field label="Mandato" value="2025 — 2029" />
-            <Field label="Grupo municipal" value="Independente" />
-          </Section>
+              <dl className="mt-5 space-y-3 text-sm">
+                <PerfilInfo label="Cargo" value={contexto.designacaoCargo} />
+                <PerfilInfo label="Órgão" value={contexto.nomeOrgao} />
+                <PerfilInfo label="Sessões" value={contexto.tipoSessaoPlural} />
+              </dl>
 
-          <Section titulo="Preferências">
-            <Toggle
-              label="Notificações por email"
-              hint="Receber alertas sobre novos documentos"
-              defaultOn
-            />
-            <Toggle
-              label="Resumo semanal"
-              hint="Receber um resumo das assembleias toda a segunda-feira"
-              defaultOn
-            />
-            <Toggle label="Modo compacto" hint="Reduzir o espaçamento da interface" />
-          </Section>
+              <Button type="button" variant="secondary" className="mt-5 w-full" onClick={logout}>
+                <LogOut className="h-4 w-4" />
+                Terminar sessão
+              </Button>
+            </Card>
+
+            <WorkspaceSection title="Perfil do Eleito">
+              <PerfilEleitoForm user={user} perfil={perfil} />
+            </WorkspaceSection>
+          </div>
         </div>
       </main>
     </>
   );
 }
 
-function Section({ titulo, children }: { titulo: string; children: ReactNode }) {
+function PerfilInfo({ label, value }: { label: string; value: string }) {
   return (
-    <section className="rounded-xl border border-border bg-card shadow-card">
-      <div className="px-6 py-4 border-b border-border">
-        <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
-          {titulo}
-        </h2>
-      </div>
-      <div className="divide-y divide-border">{children}</div>
-    </section>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-6 py-4">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-foreground">{value}</span>
-    </div>
-  );
-}
-
-function Toggle({
-  label,
-  hint,
-  defaultOn = false,
-}: {
-  label: string;
-  hint?: string;
-  defaultOn?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-6 py-4">
-      <div>
-        <div className="text-sm font-medium text-foreground">{label}</div>
-        {hint && <div className="text-xs text-muted-foreground mt-0.5">{hint}</div>}
-      </div>
-      <div
-        className={`h-5 w-9 rounded-full p-0.5 transition-colors ${
-          defaultOn ? "bg-primary" : "bg-muted"
-        }`}
-        aria-hidden
-      >
-        <div
-          className={`h-4 w-4 rounded-full bg-card shadow transition-transform ${
-            defaultOn ? "translate-x-4" : "translate-x-0"
-          }`}
-        />
-      </div>
+    <div className="flex items-center justify-between gap-3">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="truncate font-medium text-foreground">{value}</dd>
     </div>
   );
 }

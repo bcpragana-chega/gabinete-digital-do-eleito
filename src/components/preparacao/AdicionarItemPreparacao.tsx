@@ -78,7 +78,12 @@ export function AdicionarItemPreparacao({
 
   if (!aberto) {
     return (
-      <Button size="sm" variant="secondary" onClick={() => setAberto(true)} className="w-full sm:w-auto">
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={() => setAberto(true)}
+        className="w-full sm:w-auto"
+      >
         <Plus className="mr-2 h-4 w-4" />
         {tituloBotao}
       </Button>
@@ -91,24 +96,18 @@ export function AdicionarItemPreparacao({
         <h3 className="font-display text-base font-semibold tracking-tight text-foreground">
           {tituloFormulario}
         </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {descricaoFormulario}
-        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{descricaoFormulario}</p>
       </div>
 
       <div className="space-y-3">
         {campos.map((campo) => (
           <div key={campo.nome}>
-            <label className="mb-1 block text-xs font-medium text-foreground">
-              {campo.label}
-            </label>
+            <label className="mb-1 block text-xs font-medium text-foreground">{campo.label}</label>
 
             {campo.tipo === "text" && (
               <input
                 value={valores[campo.nome] ?? ""}
-                onChange={(event) =>
-                  atualizarCampo(campo.nome, event.target.value)
-                }
+                onChange={(event) => atualizarCampo(campo.nome, event.target.value)}
                 placeholder={campo.placeholder}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
               />
@@ -117,9 +116,7 @@ export function AdicionarItemPreparacao({
             {campo.tipo === "textarea" && (
               <textarea
                 value={valores[campo.nome] ?? ""}
-                onChange={(event) =>
-                  atualizarCampo(campo.nome, event.target.value)
-                }
+                onChange={(event) => atualizarCampo(campo.nome, event.target.value)}
                 placeholder={campo.placeholder}
                 rows={campo.rows ?? 4}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
@@ -129,9 +126,7 @@ export function AdicionarItemPreparacao({
             {campo.tipo === "select" && (
               <select
                 value={valores[campo.nome] ?? ""}
-                onChange={(event) =>
-                  atualizarCampo(campo.nome, event.target.value)
-                }
+                onChange={(event) => atualizarCampo(campo.nome, event.target.value)}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
               >
                 {campo.opcoes.map((opcao) => (

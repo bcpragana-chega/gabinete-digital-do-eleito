@@ -2,10 +2,7 @@ import {
   AdicionarItemPreparacao,
   type CampoPreparacao,
 } from "@/components/preparacao/AdicionarItemPreparacao";
-import {
-  adicionarPonto,
-  type NivelPrioridade,
-} from "@/lib/pontos-store";
+import { adicionarPonto, type NivelPrioridade } from "@/lib/pontos-store";
 
 type Props = {
   assembleiaId: string;
@@ -60,9 +57,7 @@ export function AdicionarPontoDialog({ assembleiaId, onAdicionar }: Props) {
           titulo: valores.titulo.trim(),
           descricao: valores.descricao.trim(),
           prioridade: valores.prioridade as NivelPrioridade,
-          tempoEstimado: valores.tempoEstimado
-            ? Number(valores.tempoEstimado)
-            : undefined,
+          tempoEstimado: valores.tempoEstimado ? Number(valores.tempoEstimado) : undefined,
         });
 
         onAdicionar();

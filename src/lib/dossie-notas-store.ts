@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
 import { adicionarEventoAutomaticoTimelineDossie } from "./dossie-timeline-store";
 import type { DossieNota } from "./types";
+import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
 
-const STORAGE_KEY = "tribuno.dossie-notas.v1";
+const STORAGE_KEY = "tribuno:notas";
 const EVENT_NAME = "tribuno:dossie-notas";
-
-function isBrowser() {
-  return typeof window !== "undefined";
-}
 
 function gerarId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -18,25 +15,12 @@ function gerarId() {
 }
 
 function lerNotasLocais(): DossieNota[] {
-  if (!isBrowser()) return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed;
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<DossieNota[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function guardarNotasLocais(notas: DossieNota[]) {
-  if (!isBrowser()) return;
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notas));
+  guardarJSONPorUtilizador(STORAGE_KEY, notas);
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 

@@ -1,10 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  createFileRoute,
-  Link,
-  Outlet,
-  useRouterState,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
   Clock,
@@ -40,11 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Timeline, TimelineItem } from "@/components/ui/timeline";
-import {
-  WorkspaceHeader,
-  WorkspaceLayout,
-  WorkspaceSection,
-} from "@/components/ui/workspace";
+import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
 import { listarDocumentosACriarDaAssembleia } from "@/lib/documentos-a-criar-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
@@ -63,8 +54,7 @@ export const Route = createFileRoute("/_app/assembleias/$id")({
       { title: "Sessão — Tribuno" },
       {
         name: "description",
-        content:
-          "Preparação da sessão: documentos, pontos, estratégia e rascunhos.",
+        content: "Preparação da sessão: documentos, pontos, estratégia e rascunhos.",
       },
     ],
   }),
@@ -126,8 +116,7 @@ function AssembleiaDetailPage() {
   );
 
   const assuntosDisponiveis = useMemo(
-    () =>
-      dossies.filter((dossie) => !dossie.archivedAt && !assuntosDaSessaoIds.has(dossie.id)),
+    () => dossies.filter((dossie) => !dossie.archivedAt && !assuntosDaSessaoIds.has(dossie.id)),
     [assuntosDaSessaoIds, dossies],
   );
 
@@ -144,9 +133,7 @@ function AssembleiaDetailPage() {
         <main className="min-h-screen bg-transparent">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
             <Button asChild variant="ghost" size="sm" className="mb-6">
-              <Link to="/assembleias">
-                Todas as sessões
-              </Link>
+              <Link to="/assembleias">Todas as sessões</Link>
             </Button>
             <EmptyState
               title="Sessão não encontrada"
@@ -227,12 +214,23 @@ function AssembleiaDetailPage() {
                 className="p-4 sm:p-7"
                 actions={
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
-                    <Button type="button" size="sm" onClick={() => setWizardAberto(true)} className="w-full sm:w-auto">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setWizardAberto(true)}
+                      className="w-full sm:w-auto"
+                    >
                       Preparar Sessão
                     </Button>
                     <EditarAssembleiaDialog assembleia={assembleia} />
                     {!estaArquivada && (
-                      <Button type="button" variant="secondary" size="sm" onClick={arquivar} className="w-full sm:w-auto">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={arquivar}
+                        className="w-full sm:w-auto"
+                      >
                         <Archive className="mr-2 h-4 w-4" />
                         {confirmarArquivo ? "Confirmar arquivo" : "Arquivar"}
                       </Button>
@@ -258,7 +256,9 @@ function AssembleiaDetailPage() {
               >
                 {confirmarArquivo && (
                   <p className="mt-4 text-sm text-muted-foreground">
-                    Clique novamente em <span className="font-medium text-foreground">Confirmar arquivo</span> para arquivar esta sessão.
+                    Clique novamente em{" "}
+                    <span className="font-medium text-foreground">Confirmar arquivo</span> para
+                    arquivar esta sessão.
                   </p>
                 )}
               </WorkspaceHeader>
@@ -272,7 +272,10 @@ function AssembleiaDetailPage() {
                     description="Resumo rápido do que ainda falta preparar."
                   />
                   <div className="mt-5 space-y-3">
-                    <InfoCard title="Data" description={`${formatarData(assembleia.data)} · ${assembleia.hora}`} />
+                    <InfoCard
+                      title="Data"
+                      description={`${formatarData(assembleia.data)} · ${assembleia.hora}`}
+                    />
                     <InfoCard title="Local" description={assembleia.local} />
                     <InfoCard
                       title="Preparação"
@@ -290,7 +293,11 @@ function AssembleiaDetailPage() {
                 description="Data, hora e local da reunião."
               />
               <div className="mt-5 grid gap-3 md:grid-cols-3">
-                <InfoCard icon={CalendarDays} title="Data" description={formatarData(assembleia.data)} />
+                <InfoCard
+                  icon={CalendarDays}
+                  title="Data"
+                  description={formatarData(assembleia.data)}
+                />
                 <InfoCard icon={Clock} title="Hora" description={assembleia.hora} />
                 <InfoCard icon={MapPin} title="Local" description={assembleia.local} />
               </div>
@@ -363,7 +370,9 @@ function AssembleiaDetailPage() {
                 />
                 <InfoCard
                   title="Mensagem principal"
-                  description={estrategia.mensagemPrincipal || "Ainda sem mensagem principal definida."}
+                  description={
+                    estrategia.mensagemPrincipal || "Ainda sem mensagem principal definida."
+                  }
                 />
                 {!estrategiaTemConteudo && (
                   <InfoCard
@@ -407,7 +416,9 @@ function AssembleiaDetailPage() {
                       key={ponto.id}
                       icon={ListChecks}
                       title={`${ponto.numero}. ${ponto.titulo}`}
-                      description={ponto.descricao || ponto.objetivoPolitico || "Ponto por preparar."}
+                      description={
+                        ponto.descricao || ponto.objetivoPolitico || "Ponto por preparar."
+                      }
                       meta={`${ponto.estado} · ${ponto.prioridade}`}
                       action={
                         <Button asChild variant="secondary" size="sm">
@@ -566,7 +577,10 @@ function AssembleiaDetailPage() {
                 description="Documentos, pessoas, entidades e compromissos ligados à sessão."
               />
               <div className="mt-5 grid gap-3 md:grid-cols-2">
-                <InfoCard title="Compromissos" description="Preparado para acompanhamento futuro." />
+                <InfoCard
+                  title="Compromissos"
+                  description="Preparado para acompanhamento futuro."
+                />
                 <InfoCard title="Outras ligações" description="Preparado para relações futuras." />
               </div>
             </WorkspaceSection>

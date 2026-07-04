@@ -1,10 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ChevronLeft,
-  FileText,
-  ListChecks,
-  SearchCheck,
-} from "lucide-react";
+import { ChevronLeft, FileText, ListChecks, SearchCheck } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { DocumentoCard } from "@/components/documentos/DocumentoCard";
 import { AdicionarDocumentoSheet } from "@/components/documentos/AdicionarDocumentoSheet";
@@ -14,9 +9,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
 import { useAssembleia } from "@/lib/assembleias-store";
 
-export const Route = createFileRoute(
-  "/_app/assembleias/$id/preparacao/documentos",
-)({
+export const Route = createFileRoute("/_app/assembleias/$id/preparacao/documentos")({
   head: () => ({
     meta: [
       { title: "Documentos — Preparação — Tribuno" },
@@ -61,10 +54,9 @@ function PreparacaoDocumentosPage() {
       <TopBar
         breadcrumb={
           <span>
-            <Link
-              to="/assembleias"
-              className="hover:text-foreground transition-colors"
-            >Sessões</Link>
+            <Link to="/assembleias" className="hover:text-foreground transition-colors">
+              Sessões
+            </Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
             <Link
               to="/assembleias/$id"

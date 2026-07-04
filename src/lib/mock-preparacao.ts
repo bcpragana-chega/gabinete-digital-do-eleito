@@ -47,10 +47,7 @@ export const prioridadesMock: PrioridadeAssembleia[] = [
     prioridade: "Alta",
     descricao:
       "Confrontar o executivo com o atraso na execução do Plano Plurianual de Investimentos, em particular nas rubricas de mobilidade e habitação.",
-    documentos: [
-      "Relatório de execução do PPI — 1.º semestre",
-      "Mapa de compromissos plurianuais",
-    ],
+    documentos: ["Relatório de execução do PPI — 1.º semestre", "Mapa de compromissos plurianuais"],
     estado: "Por preparar",
   },
   {

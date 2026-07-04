@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { adicionarEventoAutomaticoTimelineDossie } from "./dossie-timeline-store";
 import type { CategoriaRelacionadoDossie, DossieRelacionado } from "./types";
+import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
 
-const STORAGE_KEY = "tribuno.dossie-relacionados.v1";
+const STORAGE_KEY = "tribuno:relacionados";
 const EVENT_NAME = "tribuno:dossie-relacionados";
 
 export type DossieRelacionadoInput = {
@@ -11,10 +12,6 @@ export type DossieRelacionadoInput = {
   descricao: string;
   tipo: string;
 };
-
-function isBrowser() {
-  return typeof window !== "undefined";
-}
 
 function gerarId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -25,25 +22,12 @@ function gerarId() {
 }
 
 function lerRelacionadosLocais(): DossieRelacionado[] {
-  if (!isBrowser()) return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed;
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<DossieRelacionado[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function guardarRelacionadosLocais(relacionados: DossieRelacionado[]) {
-  if (!isBrowser()) return;
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(relacionados));
+  guardarJSONPorUtilizador(STORAGE_KEY, relacionados);
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 

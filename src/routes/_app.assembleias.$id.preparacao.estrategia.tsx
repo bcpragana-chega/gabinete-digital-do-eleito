@@ -13,16 +13,13 @@ import {
   type EstrategiaSessao,
 } from "@/lib/estrategia-store";
 
-export const Route = createFileRoute(
-  "/_app/assembleias/$id/preparacao/estrategia",
-)({
+export const Route = createFileRoute("/_app/assembleias/$id/preparacao/estrategia")({
   head: () => ({
     meta: [
       { title: "Estratégia — Preparação — Tribuno" },
       {
         name: "description",
-        content:
-          "Briefing político da sessão: objetivo, mensagem principal, riscos e notas.",
+        content: "Briefing político da sessão: objetivo, mensagem principal, riscos e notas.",
       },
     ],
   }),
@@ -33,10 +30,7 @@ function PreparacaoEstrategiaPage() {
   const { id } = Route.useParams();
   const assembleia = useAssembleia(id);
 
-  const estrategiaInicial = useMemo(
-    () => obterEstrategiaDaAssembleia(id),
-    [id],
-  );
+  const estrategiaInicial = useMemo(() => obterEstrategiaDaAssembleia(id), [id]);
 
   const guardarEstrategia = useCallback(
     (value: EstrategiaSessao) => {
@@ -57,10 +51,7 @@ function PreparacaoEstrategiaPage() {
     onSave: guardarEstrategia,
   });
 
-  function atualizarCampo(
-    campo: keyof Omit<EstrategiaSessao, "assembleiaId">,
-    valor: string,
-  ) {
+  function atualizarCampo(campo: keyof Omit<EstrategiaSessao, "assembleiaId">, valor: string) {
     setEstrategia((atual) => ({
       ...atual,
       [campo]: valor,
@@ -94,10 +85,9 @@ function PreparacaoEstrategiaPage() {
       <TopBar
         breadcrumb={
           <span>
-            <Link
-              to="/assembleias"
-              className="hover:text-foreground transition-colors"
-            >Sessões</Link>
+            <Link to="/assembleias" className="hover:text-foreground transition-colors">
+              Sessões
+            </Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
             <Link
               to="/assembleias/$id"
@@ -162,9 +152,7 @@ function PreparacaoEstrategiaPage() {
             label="Adversários previsíveis"
             value={estrategia.adversariosPrevisiveis}
             placeholder="Ex: Quem pode tentar desviar o debate, que argumentos podem usar e como responder."
-            onChange={(valor) =>
-              atualizarCampo("adversariosPrevisiveis", valor)
-            }
+            onChange={(valor) => atualizarCampo("adversariosPrevisiveis", valor)}
           />
 
           <StrategyField

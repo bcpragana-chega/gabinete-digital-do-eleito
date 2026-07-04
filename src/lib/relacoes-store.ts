@@ -5,8 +5,9 @@ import type {
   TipoObjetoTribuno,
   TipoRelacaoTribuno,
 } from "./types";
+import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
 
-const STORAGE_KEY = "tribuno.relacoes.v1";
+const STORAGE_KEY = "tribuno:relacoes";
 const EVENT_NAME = "tribuno:relacoes";
 
 export type RelacaoTribunoInput = {
@@ -16,10 +17,6 @@ export type RelacaoTribunoInput = {
   destinoId: string;
   tipoRelacao: TipoRelacaoTribuno;
 };
-
-function isBrowser() {
-  return typeof window !== "undefined";
-}
 
 function gerarId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -32,36 +29,23 @@ function gerarId() {
 function relacaoValida(relacao: Partial<RelacaoTribuno>): relacao is RelacaoTribuno {
   return Boolean(
     relacao.id &&
-      relacao.origemTipo &&
-      relacao.origemId &&
-      relacao.destinoTipo &&
-      relacao.destinoId &&
-      relacao.tipoRelacao &&
-      relacao.createdAt &&
-      relacao.updatedAt,
+    relacao.origemTipo &&
+    relacao.origemId &&
+    relacao.destinoTipo &&
+    relacao.destinoId &&
+    relacao.tipoRelacao &&
+    relacao.createdAt &&
+    relacao.updatedAt,
   );
 }
 
 function lerRelacoesLocais(): RelacaoTribuno[] {
-  if (!isBrowser()) return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed.filter(relacaoValida);
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<RelacaoTribuno[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed.filter(relacaoValida) : [];
 }
 
 function guardarRelacoesLocais(relacoes: RelacaoTribuno[]) {
-  if (!isBrowser()) return;
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(relacoes));
+  guardarJSONPorUtilizador(STORAGE_KEY, relacoes);
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 
@@ -86,10 +70,7 @@ export function listarRelacoesTribuno(): RelacaoTribuno[] {
   return lerRelacoesLocais().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export function listarRelacoesPorObjeto(
-  tipo: TipoObjetoTribuno,
-  id: string,
-): RelacaoTribuno[] {
+export function listarRelacoesPorObjeto(tipo: TipoObjetoTribuno, id: string): RelacaoTribuno[] {
   return listarRelacoesTribuno().filter((relacao) => envolveObjeto(relacao, { tipo, id }));
 }
 
@@ -127,10 +108,7 @@ export function removerRelacaoTribunoPorObjetos(input: RelacaoTribunoInput) {
   guardarRelacoesLocais(lerRelacoesLocais().filter((relacao) => !mesmaRelacao(relacao, input)));
 }
 
-export function useRelacoesPorObjeto(
-  tipo: TipoObjetoTribuno,
-  id: string,
-): RelacaoTribuno[] {
+export function useRelacoesPorObjeto(tipo: TipoObjetoTribuno, id: string): RelacaoTribuno[] {
   const [relacoes, setRelacoes] = useState<RelacaoTribuno[]>([]);
 
   useEffect(() => {

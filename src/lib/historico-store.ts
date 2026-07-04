@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { HistoricoEvento, TipoHistoricoEvento } from "./types";
+import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
 
-const STORAGE_KEY = "tribuno.historico-pontos.v1";
+const STORAGE_KEY = "tribuno:historico";
 const EVENT_NAME = "tribuno:historico-pontos";
 const COALESCE_MS = 60_000;
 
@@ -13,10 +14,6 @@ export type HistoricoEventoInput = {
   autor?: string;
 };
 
-function isBrowser() {
-  return typeof window !== "undefined";
-}
-
 function gerarId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -26,25 +23,12 @@ function gerarId() {
 }
 
 function lerHistorico(): HistoricoEvento[] {
-  if (!isBrowser()) return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed;
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<HistoricoEvento[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function guardarHistorico(eventos: HistoricoEvento[]) {
-  if (!isBrowser()) return;
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(eventos));
+  guardarJSONPorUtilizador(STORAGE_KEY, eventos);
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 

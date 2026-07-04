@@ -34,13 +34,7 @@ type StatusBadgeProps = {
   className?: string;
 };
 
-export function StatusBadge({
-  estado,
-  tone,
-  children,
-  dot = true,
-  className,
-}: StatusBadgeProps) {
+export function StatusBadge({ estado, tone, children, dot = true, className }: StatusBadgeProps) {
   const content = children ?? (estado ? labels[estado] : null);
   const style = tone ? toneStyles[tone] : estado ? styles[estado] : toneStyles.muted;
 

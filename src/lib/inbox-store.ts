@@ -2,34 +2,18 @@ import { useEffect, useState } from "react";
 import { listarDossiesAssociadosAoDocumento } from "./dossie-documentos-store";
 import { adicionarEventoAutomaticoTimelineDossie } from "./dossie-timeline-store";
 import type { DocumentoInboxItem, EstadoInboxDocumento } from "./types";
+import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
 
-const STORAGE_KEY = "tribuno.inbox.v1";
+const STORAGE_KEY = "tribuno:inbox";
 const EVENT_NAME = "tribuno:inbox";
 
-function isBrowser() {
-  return typeof window !== "undefined";
-}
-
 function lerInboxLocal(): DocumentoInboxItem[] {
-  if (!isBrowser()) return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed;
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<DocumentoInboxItem[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function guardarInboxLocal(items: DocumentoInboxItem[]) {
-  if (!isBrowser()) return;
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  guardarJSONPorUtilizador(STORAGE_KEY, items);
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 
@@ -67,10 +51,7 @@ export function obterInboxDocumento(documentoId: string): DocumentoInboxItem {
   return obterOuCriarItem(documentoId);
 }
 
-export function definirEstadoInboxDocumento(
-  documentoId: string,
-  estado: EstadoInboxDocumento,
-) {
+export function definirEstadoInboxDocumento(documentoId: string, estado: EstadoInboxDocumento) {
   return atualizarItem(documentoId, { estado });
 }
 

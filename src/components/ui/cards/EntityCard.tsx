@@ -25,7 +25,12 @@ export function EntityCard({
   className,
 }: EntityCardProps) {
   return (
-    <Card className={cn("min-w-0 border-border/80 bg-muted/25 p-4 shadow-none transition-colors hover:bg-muted/40", className)}>
+    <Card
+      className={cn(
+        "min-w-0 border-border/80 bg-muted/25 p-4 shadow-none transition-colors hover:bg-muted/40",
+        className,
+      )}
+    >
       <div className="flex min-w-0 items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           {Icon && (
@@ -39,13 +44,19 @@ export function EntityCard({
                 {eyebrow}
               </div>
             )}
-            <h3 className="mt-1 line-clamp-2 break-words text-sm font-semibold leading-6 text-foreground">{title}</h3>
+            <h3 className="mt-1 line-clamp-2 break-words text-sm font-semibold leading-6 text-foreground">
+              {title}
+            </h3>
             {description && (
               <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-muted-foreground">
                 {description}
               </p>
             )}
-            {meta && <div className="mt-3 line-clamp-2 break-words text-xs text-muted-foreground">{meta}</div>}
+            {meta && (
+              <div className="mt-3 line-clamp-2 break-words text-xs text-muted-foreground">
+                {meta}
+              </div>
+            )}
           </div>
         </div>
         {actions && <div className="shrink-0">{actions}</div>}

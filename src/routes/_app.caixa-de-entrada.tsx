@@ -1,13 +1,5 @@
-import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  Archive,
-  CheckCircle2,
-  FileText,
-  Inbox,
-  Landmark,
-  NotebookText,
-} from "lucide-react";
+import { Archive, CheckCircle2, FileText, Inbox, Landmark, NotebookText } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { EntityCard, MetricCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
@@ -38,7 +30,6 @@ import {
   obterInboxDocumento,
   useInboxDocumentos,
 } from "@/lib/inbox-store";
-import { documentos as documentosMock } from "@/lib/mock-data";
 import type { Documento, EstadoInboxDocumento } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/caixa-de-entrada")({
@@ -81,10 +72,7 @@ function CaixaDeEntradaPage() {
   const dossies = useDossies().filter((dossie) => !dossie.archivedAt);
   const assembleias = useAssembleias().filter((assembleia) => assembleia.estado !== "arquivada");
 
-  const documentos = useMemo(
-    () => documentosUnicos([...documentosMock, ...listarDocumentosLocais()]),
-    [inboxItems],
-  );
+  const documentos = documentosUnicos(listarDocumentosLocais());
 
   const documentosComEstado = documentos.map((documento) => ({
     documento,
@@ -131,7 +119,7 @@ function CaixaDeEntradaPage() {
             <WorkspaceSection>
               <SectionTitle
                 icon={Inbox}
-                  title="Documentos por tratar"
+                title="Documentos por tratar"
                 description="Dê destino a cada documento."
               />
 
@@ -149,7 +137,9 @@ function CaixaDeEntradaPage() {
                       icon={FileText}
                       eyebrow="Documento"
                       title={documento.titulo}
-                      description={documento.notas || documento.ficheiroNome || "Documento por organizar."}
+                      description={
+                        documento.notas || documento.ficheiroNome || "Documento por organizar."
+                      }
                       className="min-w-0 overflow-hidden"
                       meta={
                         <div className="flex flex-wrap gap-2">
@@ -183,7 +173,12 @@ function CaixaDeEntradaPage() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
+                          <Button
+                            asChild
+                            variant="secondary"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                          >
                             <Link to="/dossies">
                               <NotebookText className="mr-2 h-4 w-4" />
                               Assuntos
@@ -209,7 +204,12 @@ function CaixaDeEntradaPage() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
+                          <Button
+                            asChild
+                            variant="secondary"
+                            size="sm"
+                            className="w-full sm:w-auto"
+                          >
                             <Link to="/assembleias">
                               <Landmark className="mr-2 h-4 w-4" />
                               Sessões

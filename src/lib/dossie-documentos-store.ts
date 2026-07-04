@@ -6,8 +6,9 @@ import {
   removerRelacaoTribunoPorObjetos,
 } from "./relacoes-store";
 import type { DossieDocumentoRelacionado } from "./types";
+import { lerJSONPorUtilizador } from "./user-storage";
 
-const STORAGE_KEY = "tribuno.dossie-documentos.v1";
+const STORAGE_KEY = "tribuno:dossie-documentos";
 const EVENT_NAME = "tribuno:dossie-documentos";
 const RELACOES_EVENT_NAME = "tribuno:relacoes";
 
@@ -16,19 +17,8 @@ function isBrowser() {
 }
 
 function lerRelacoesLegadas(): DossieDocumentoRelacionado[] {
-  if (!isBrowser()) return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed;
-  } catch {
-    return [];
-  }
+  const parsed = lerJSONPorUtilizador<DossieDocumentoRelacionado[]>(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function relacaoId(dossieId: string, documentoId: string) {
@@ -111,11 +101,12 @@ function relacoesDoDocumento(documentoId: string): DossieDocumentoRelacionado[] 
 }
 
 export function listarDocumentosDoDossie(dossieId: string): DossieDocumentoRelacionado[] {
-  return relacoesDoDossie(dossieId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return relacoesDoDossie(dossieId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export function listarDossiesAssociadosAoDocumento(documentoId: string): DossieDocumentoRelacionado[] {
+export function listarDossiesAssociadosAoDocumento(
+  documentoId: string,
+): DossieDocumentoRelacionado[] {
   return relacoesDoDocumento(documentoId);
 }
 

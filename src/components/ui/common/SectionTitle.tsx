@@ -29,7 +29,9 @@ export function SectionTitle({
           <h2 className="font-display text-base font-semibold leading-6 text-foreground">
             {title}
           </h2>
-          {description && <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>}
+          {description && (
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+          )}
         </div>
       </div>
       {actions && <div className="shrink-0">{actions}</div>}

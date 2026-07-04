@@ -52,7 +52,6 @@ import {
 } from "@/lib/relacoes-store";
 import { listarAssembleias } from "@/lib/assembleias-store";
 import { listarDocumentosLocais } from "@/lib/documentos-store";
-import { documentos as documentosMock } from "@/lib/mock-data";
 import type {
   Assembleia,
   CategoriaRelacionadoDossie,
@@ -170,7 +169,7 @@ function useDocumentosExistentes() {
 
   useEffect(() => {
     const atualizar = () => {
-      setDocumentos(documentosUnicos([...documentosMock, ...listarDocumentosLocais()]));
+      setDocumentos(documentosUnicos(listarDocumentosLocais()));
     };
 
     atualizar();
@@ -401,7 +400,10 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
       <div className="grid gap-4 rounded-2xl border border-border/70 bg-background p-4">
         <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
           <div className="min-w-0 space-y-2">
-            <label className="text-xs font-medium text-muted-foreground" htmlFor={`${config.value}-nome`}>
+            <label
+              className="text-xs font-medium text-muted-foreground"
+              htmlFor={`${config.value}-nome`}
+            >
               Nome / título
             </label>
             <Input
@@ -412,7 +414,10 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
             />
           </div>
           <div className="min-w-0 space-y-2">
-            <label className="text-xs font-medium text-muted-foreground" htmlFor={`${config.value}-tipo`}>
+            <label
+              className="text-xs font-medium text-muted-foreground"
+              htmlFor={`${config.value}-tipo`}
+            >
               Tipo
             </label>
             <Input
@@ -425,7 +430,10 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground" htmlFor={`${config.value}-descricao`}>
+          <label
+            className="text-xs font-medium text-muted-foreground"
+            htmlFor={`${config.value}-descricao`}
+          >
             Descrição curta
           </label>
           <Textarea
@@ -618,7 +626,12 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
             </p>
           </div>
           {!estaACriar && (
-            <Button type="button" variant="secondary" size="sm" onClick={() => iniciarCriacao(config.value)}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => iniciarCriacao(config.value)}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Adicionar manual
             </Button>
@@ -700,11 +713,21 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                   meta={`${item.tipo} · ${itemMeta(item)}`}
                   actions={
                     <>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => iniciarEdicao(item)}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => iniciarEdicao(item)}
+                      >
                         <Pencil className="mr-2 h-4 w-4" />
                         Editar
                       </Button>
-                      <Button type="button" variant="secondary" size="sm" onClick={() => apagarItem(item)}>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => apagarItem(item)}
+                      >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Apagar
                       </Button>
@@ -743,13 +766,20 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                 </StatusBadge>
               </div>
               <div className="mt-4 min-w-0">
-                <h3 className="line-clamp-1 text-base font-semibold text-foreground">{config.label}</h3>
+                <h3 className="line-clamp-1 text-base font-semibold text-foreground">
+                  {config.label}
+                </h3>
                 <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
                   {config.description}
                 </p>
               </div>
               <div className="mt-auto flex justify-end pt-5">
-                <Button type="button" variant="secondary" size="sm" onClick={() => abrirCategoria(config.value)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => abrirCategoria(config.value)}
+                >
                   Gerir
                 </Button>
               </div>
@@ -817,7 +847,9 @@ function ManagementBlock({
     <section className="rounded-2xl border border-border/70 bg-card p-5">
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        {description && <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>}
+        {description && (
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+        )}
       </div>
       {children}
     </section>
@@ -844,7 +876,9 @@ function RelatedItem({
           <Icon className="h-4 w-4" strokeWidth={1.75} />
         </div>
         <div className="min-w-0">
-          <h4 className="line-clamp-2 break-words text-sm font-semibold leading-6 text-foreground">{title}</h4>
+          <h4 className="line-clamp-2 break-words text-sm font-semibold leading-6 text-foreground">
+            {title}
+          </h4>
           {description && (
             <p className="mt-1 line-clamp-2 break-words text-sm leading-6 text-muted-foreground">
               {description}

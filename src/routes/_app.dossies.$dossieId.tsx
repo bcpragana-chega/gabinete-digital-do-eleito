@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { EditarDossieDialog } from "@/components/dossies/EditarDossieDialog";
+import { DossieDocumentosCriadosSection } from "@/components/dossies/DossieDocumentosCriadosSection";
 import { DossieNotasSection } from "@/components/dossies/DossieNotasSection";
 import { DossieRelacionadosSection } from "@/components/dossies/DossieRelacionadosSection";
 import { DossieTimelineSection } from "@/components/dossies/DossieTimelineSection";
@@ -20,11 +21,7 @@ import { EmptyState } from "@/components/ui/feedback";
 import { Breadcrumb } from "@/components/ui/navigation";
 import { Button } from "@/components/ui/button";
 import { Timeline, TimelineItem } from "@/components/ui/timeline";
-import {
-  WorkspaceHeader,
-  WorkspaceLayout,
-  WorkspaceSection,
-} from "@/components/ui/workspace";
+import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
 import { arquivarDossie, useDossie } from "@/lib/dossies-store";
 import type { Dossie, EstadoDossie, PrioridadeDossie } from "@/lib/types";
 
@@ -150,7 +147,13 @@ function DossieDetalhePage() {
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
                     {!arquivado && <EditarDossieDialog dossie={dossie} />}
                     {!arquivado && (
-                      <Button type="button" variant="secondary" size="sm" onClick={arquivar} className="w-full sm:w-auto">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={arquivar}
+                        className="w-full sm:w-auto"
+                      >
                         <Archive className="mr-2 h-4 w-4" />
                         Arquivar
                       </Button>
@@ -198,10 +201,7 @@ function DossieDetalhePage() {
                 <WorkspaceSection>
                   <SectionTitle icon={Clock3} title="Estado do assunto" />
                   <div className="mt-5 space-y-3">
-                    <InfoCard
-                      title="Última atualização"
-                      description={ultimaAtualizacao}
-                    />
+                    <InfoCard title="Última atualização" description={ultimaAtualizacao} />
                     <InfoCard
                       title="Memória do assunto"
                       description="Notas, acontecimentos e ligações guardam o histórico do tema."
@@ -263,6 +263,8 @@ function DossieDetalhePage() {
             </WorkspaceSection>
 
             <DossieTimelineSection dossieId={dossie.id} />
+
+            <DossieDocumentosCriadosSection dossieId={dossie.id} />
 
             <DossieRelacionadosSection dossieId={dossie.id} />
 

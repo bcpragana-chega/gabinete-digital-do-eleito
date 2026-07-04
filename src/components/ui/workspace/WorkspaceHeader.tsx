@@ -24,7 +24,9 @@ export function WorkspaceHeader({
   className,
 }: WorkspaceHeaderProps) {
   return (
-    <section className={cn("rounded-2xl border border-border bg-card p-4 shadow-card sm:p-7", className)}>
+    <section
+      className={cn("rounded-2xl border border-border bg-card p-4 shadow-card sm:p-7", className)}
+    >
       <div className="flex flex-col items-stretch gap-5 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-6">
         <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
           {Icon && (
@@ -35,15 +37,15 @@ export function WorkspaceHeader({
 
           <div className="min-w-0 flex-1">
             {eyebrow && (
-              <div className="text-xs font-medium uppercase text-muted-foreground">
-                {eyebrow}
-              </div>
+              <div className="text-xs font-medium uppercase text-muted-foreground">{eyebrow}</div>
             )}
             <h1 className="mt-1 break-words font-display text-2xl font-semibold text-foreground md:text-3xl">
               {title}
             </h1>
             {description && (
-              <div className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</div>
+              <div className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                {description}
+              </div>
             )}
             {meta && <div className="mt-4 flex flex-wrap gap-2">{meta}</div>}
             {children}

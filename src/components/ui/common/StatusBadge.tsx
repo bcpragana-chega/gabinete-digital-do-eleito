@@ -19,12 +19,7 @@ type StatusBadgeProps = {
   className?: string;
 };
 
-export function StatusBadge({
-  children,
-  tone = "muted",
-  dot = true,
-  className,
-}: StatusBadgeProps) {
+export function StatusBadge({ children, tone = "muted", dot = true, className }: StatusBadgeProps) {
   return (
     <span
       className={cn(

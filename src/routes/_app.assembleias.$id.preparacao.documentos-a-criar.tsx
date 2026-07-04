@@ -67,7 +67,9 @@ function DocumentosACriarPage() {
       <TopBar
         breadcrumb={
           <span>
-            <Link to="/assembleias" className="hover:text-foreground transition-colors">Sessões</Link>
+            <Link to="/assembleias" className="hover:text-foreground transition-colors">
+              Sessões
+            </Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
             <Link
               to="/assembleias/$id"
@@ -155,12 +157,28 @@ function DocumentoACriarCentralCard({
           </h2>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            {ponto ? `Ponto ${ponto.numero} · ${ponto.titulo}` : "Documento geral da assembleia"}
+            {ponto
+              ? `Ponto ${ponto.numero} · ${ponto.titulo}`
+              : rascunho.assuntoId
+                ? "Documento vindo de um assunto"
+                : "Documento geral da assembleia"}
           </p>
         </div>
       </div>
     </article>
   );
+
+  if (rascunho.assuntoId) {
+    return (
+      <Link
+        to="/dossies/$dossieId/documentos/$documentoId"
+        params={{ dossieId: rascunho.assuntoId, documentoId: rascunho.id }}
+        className="block"
+      >
+        {content}
+      </Link>
+    );
+  }
 
   if (!ponto) {
     return content;
