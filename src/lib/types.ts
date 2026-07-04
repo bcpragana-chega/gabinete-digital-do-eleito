@@ -9,6 +9,7 @@ export type TipoDocumento =
   | "PPI"
   | "Relatório"
   | "Regulamento"
+  | "Contrato"
   | "Proposta"
   | "Declaração de voto"
   | "Outro";

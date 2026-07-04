@@ -10,6 +10,7 @@ import {
   ListChecks,
   Plus,
   ShieldAlert,
+  Trash2,
 } from "lucide-react";
 import { adicionarAssembleia } from "@/lib/assembleias-store";
 import { adicionarDocumento } from "@/lib/documentos-store";
@@ -44,6 +45,8 @@ type DocumentoTemporario = {
   data: string;
   estado: EstadoDocumento;
   notas: string;
+  ficheiroNome?: string;
+  ficheiroTipo?: string;
 };
 
 type PontoTemporario = {
@@ -59,9 +62,10 @@ const tiposSessao = ["Ordinária", "Extraordinária", "Reunião de câmara", "Ou
 const tiposDocumento: TipoDocumento[] = [
   "Convocatória",
   "Ata",
-  "Proposta",
+  "Orçamento",
   "Relatório",
   "Regulamento",
+  "Contrato",
   "Outro",
 ];
 
@@ -71,6 +75,17 @@ function gerarId() {
 
 function hoje() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function novoDocumentoTemporario(): DocumentoTemporario {
+  return {
+    id: "",
+    titulo: "",
+    tipo: "Convocatória",
+    data: hoje(),
+    estado: "Por rever",
+    notas: "",
+  };
 }
 
 function Progress({ step }: { step: number }) {
@@ -119,14 +134,8 @@ export function NovaSessaoWizard() {
   const [hora, setHora] = useState("");
   const [local, setLocal] = useState("");
   const [documentos, setDocumentos] = useState<DocumentoTemporario[]>([]);
-  const [documento, setDocumento] = useState<DocumentoTemporario>({
-    id: "",
-    titulo: "",
-    tipo: "Convocatória",
-    data: hoje(),
-    estado: "Por rever",
-    notas: "",
-  });
+  const [documentoEmEdicao, setDocumentoEmEdicao] = useState(false);
+  const [documento, setDocumento] = useState<DocumentoTemporario>(() => novoDocumentoTemporario());
   const [pontos, setPontos] = useState<PontoTemporario[]>([]);
   const [ponto, setPonto] = useState<PontoTemporario>({
     id: "",
@@ -149,14 +158,8 @@ export function NovaSessaoWizard() {
     setHora("");
     setLocal("");
     setDocumentos([]);
-    setDocumento({
-      id: "",
-      titulo: "",
-      tipo: "Convocatória",
-      data: hoje(),
-      estado: "Por rever",
-      notas: "",
-    });
+    setDocumentoEmEdicao(false);
+    setDocumento(novoDocumentoTemporario());
     setPontos([]);
     setPonto({ id: "", titulo: "", descricao: "", prioridade: "Média" });
     setObjetivoPolitico("");
@@ -164,20 +167,29 @@ export function NovaSessaoWizard() {
     setRiscos("");
   }
 
-  function adicionarDocumentoTemporario() {
-    if (!documento.titulo.trim()) return;
+  function abrirFormularioDocumento() {
+    setDocumento(novoDocumentoTemporario());
+    setDocumentoEmEdicao(true);
+  }
+
+  function fecharFormularioDocumento() {
+    setDocumento(novoDocumentoTemporario());
+    setDocumentoEmEdicao(false);
+  }
+
+  function guardarDocumentoTemporario() {
+    if (!documento.titulo.trim()) return false;
+
     setDocumentos((atuais) => [
       ...atuais,
       { ...documento, id: gerarId(), titulo: documento.titulo.trim() },
     ]);
-    setDocumento({
-      id: "",
-      titulo: "",
-      tipo: "Convocatória",
-      data: hoje(),
-      estado: "Por rever",
-      notas: "",
-    });
+    fecharFormularioDocumento();
+    return true;
+  }
+
+  function removerDocumentoTemporario(id: string) {
+    setDocumentos((atuais) => atuais.filter((item) => item.id !== id));
   }
 
   function adicionarPontoTemporario() {
@@ -205,6 +217,8 @@ export function NovaSessaoWizard() {
         data: item.data || data,
         estado: item.estado,
         notas: item.notas.trim() || undefined,
+        ficheiroNome: item.ficheiroNome,
+        ficheiroTipo: item.ficheiroTipo,
       });
     });
 
@@ -233,6 +247,9 @@ export function NovaSessaoWizard() {
 
   function avancar() {
     if (step === 0 && !dadosValidos) return;
+    if (step === 1 && documentoEmEdicao && documento.titulo.trim()) {
+      guardarDocumentoTemporario();
+    }
     setStep((atual) => Math.min(atual + 1, passos.length - 1));
   }
 
@@ -329,67 +346,114 @@ export function NovaSessaoWizard() {
           {step === 1 && (
             <div className="space-y-5">
               <StepTitle title="Passo 2 — Documentos" question="Quer adicionar documentos agora?" />
-              <div className="rounded-2xl border border-border bg-card p-4">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label>Título do documento</Label>
-                    <Input
-                      value={documento.titulo}
-                      onChange={(event) =>
-                        setDocumento({ ...documento, titulo: event.target.value })
-                      }
-                      placeholder="Ex.: Convocatória"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tipo</Label>
-                    <Select
-                      value={documento.tipo}
-                      onValueChange={(value) =>
-                        setDocumento({ ...documento, tipo: value as TipoDocumento })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tiposDocumento.map((tipo) => (
-                          <SelectItem key={tipo} value={tipo}>
-                            {tipo}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Data</Label>
-                    <Input
-                      type="date"
-                      value={documento.data}
-                      onChange={(event) => setDocumento({ ...documento, data: event.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label>Notas</Label>
-                    <Textarea
-                      value={documento.notas}
-                      onChange={(event) =>
-                        setDocumento({ ...documento, notas: event.target.value })
-                      }
-                      rows={2}
-                      placeholder="Opcional"
-                    />
-                  </div>
-                </div>
+
+              {!documentoEmEdicao && (
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={adicionarDocumentoTemporario}
-                  className="mt-4 w-full sm:w-auto"
+                  onClick={abrirFormularioDocumento}
+                  className="w-full sm:w-auto"
                 >
+                  <Plus className="h-4 w-4" />
                   Adicionar documento
                 </Button>
-              </div>
+              )}
+
+              {documentoEmEdicao && (
+                <div className="rounded-2xl border border-border bg-card p-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="novo-documento-titulo">Título do documento</Label>
+                      <Input
+                        id="novo-documento-titulo"
+                        value={documento.titulo}
+                        onChange={(event) =>
+                          setDocumento({ ...documento, titulo: event.target.value })
+                        }
+                        placeholder="Ex.: Convocatória"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <Select
+                        value={documento.tipo}
+                        onValueChange={(value) =>
+                          setDocumento({ ...documento, tipo: value as TipoDocumento })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tiposDocumento.map((tipo) => (
+                            <SelectItem key={tipo} value={tipo}>
+                              {tipo}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="novo-documento-data">Data</Label>
+                      <Input
+                        id="novo-documento-data"
+                        type="date"
+                        value={documento.data}
+                        onChange={(event) =>
+                          setDocumento({ ...documento, data: event.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="novo-documento-ficheiro">Ficheiro</Label>
+                      <Input
+                        id="novo-documento-ficheiro"
+                        type="file"
+                        onChange={(event) => {
+                          const ficheiro = event.target.files?.[0];
+                          setDocumento({
+                            ...documento,
+                            ficheiroNome: ficheiro?.name,
+                            ficheiroTipo: ficheiro?.type,
+                          });
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="novo-documento-notas">Notas</Label>
+                      <Textarea
+                        id="novo-documento-notas"
+                        value={documento.notas}
+                        onChange={(event) =>
+                          setDocumento({ ...documento, notas: event.target.value })
+                        }
+                        rows={2}
+                        placeholder="Opcional"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={fecharFormularioDocumento}
+                      className="w-full sm:w-auto"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={guardarDocumentoTemporario}
+                      disabled={!documento.titulo.trim()}
+                      className="w-full sm:w-auto"
+                    >
+                      Guardar documento
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid gap-3">
                 {documentos.length === 0 ? (
                   <InfoCard
@@ -399,12 +463,32 @@ export function NovaSessaoWizard() {
                   />
                 ) : (
                   documentos.map((item) => (
-                    <EntityCard
+                    <div
                       key={item.id}
-                      icon={FileText}
-                      title={item.titulo}
-                      description={item.tipo}
-                    />
+                      className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="flex min-w-0 items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                          <FileText className="h-4 w-4" strokeWidth={1.75} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate font-medium text-foreground">{item.titulo}</div>
+                          <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                            {[item.tipo, item.ficheiroNome, item.notas].filter(Boolean).join(" · ")}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => removerDocumentoTemporario(item.id)}
+                        className="w-full text-destructive hover:text-destructive sm:w-auto"
+                        aria-label={`Remover ${item.titulo}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Remover
+                      </Button>
+                    </div>
                   ))
                 )}
               </div>
