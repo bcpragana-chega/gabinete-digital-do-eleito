@@ -144,6 +144,7 @@ function AssembleiasPage() {
 function AssembleiaWorkspaceCard({ assembleia }: { assembleia: Assembleia }) {
   const documentos = listarDocumentosLocais(assembleia.id).length;
   const pontos = obterPontosDaAssembleia(assembleia.id).length;
+  const acaoPrincipal = sessaoJaPassou(assembleia.data) ? "Editar" : "Preparar";
 
   return (
     <Link to="/assembleias/$id" params={{ id: assembleia.id }} className="group block min-w-0">
@@ -195,10 +196,22 @@ function AssembleiaWorkspaceCard({ assembleia }: { assembleia: Assembleia }) {
             </span>
           </div>
           <span className="font-medium text-foreground transition-transform group-hover:translate-x-0.5">
-            Abrir
+            {acaoPrincipal}
           </span>
         </div>
       </Card>
     </Link>
   );
+}
+
+function sessaoJaPassou(data: string) {
+  const [ano, mes, dia] = data.split("-").map(Number);
+
+  if (!ano || !mes || !dia) return false;
+
+  const dataSessao = new Date(ano, mes - 1, dia);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  return dataSessao.getTime() < hoje.getTime();
 }

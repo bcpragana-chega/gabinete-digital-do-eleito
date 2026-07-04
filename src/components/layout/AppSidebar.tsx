@@ -1,21 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Scale } from "lucide-react";
-import { sidebarFooterItems, sidebarItems } from "@/components/layout/sidebar-config";
+import {
+  isSidebarItemActive,
+  sidebarFooterItems,
+  sidebarItems,
+} from "@/components/layout/sidebar-config";
 import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-
-  const isActive = (item: (typeof sidebarItems | typeof sidebarFooterItems)[number]) => {
-    const activeMain = item.exact
-      ? pathname === item.to
-      : pathname === item.to || pathname.startsWith(item.to + "/");
-    const activeAlias =
-      "aliases" in item &&
-      item.aliases?.some((alias) => pathname === alias || pathname.startsWith(alias + "/"));
-
-    return activeMain || activeAlias;
-  };
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border/60 bg-background/95 p-3 text-foreground md:flex">
@@ -37,7 +30,7 @@ export function AppSidebar() {
         </div>
         {sidebarItems.map((item) => {
           const Icon = item.icon;
-          const active = isActive(item);
+          const active = isSidebarItemActive(pathname, item);
 
           return (
             <Link
@@ -60,7 +53,7 @@ export function AppSidebar() {
       <nav className="mb-3 space-y-1 border-t border-border/60 pt-3">
         {sidebarFooterItems.map((item) => {
           const Icon = item.icon;
-          const active = isActive(item);
+          const active = isSidebarItemActive(pathname, item);
 
           return (
             <Link

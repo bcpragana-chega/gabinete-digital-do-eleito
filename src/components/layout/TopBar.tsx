@@ -3,7 +3,11 @@ import { LogOut, Menu, Scale } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { UserAvatar } from "@/components/auth/UserAvatar";
-import { sidebarFooterItems, sidebarItems } from "@/components/layout/sidebar-config";
+import {
+  isSidebarItemActive,
+  sidebarFooterItems,
+  sidebarItems,
+} from "@/components/layout/sidebar-config";
 import { UniversalSearch } from "@/components/search/UniversalSearch";
 import { logout, useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
@@ -15,17 +19,6 @@ export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, perfil, displayName } = useAuth();
   const mobileTitle = typeof breadcrumb === "string" ? breadcrumb : "Tribuno";
-
-  const isActive = (item: (typeof sidebarItems | typeof sidebarFooterItems)[number]) => {
-    const activeMain = item.exact
-      ? pathname === item.to
-      : pathname === item.to || pathname.startsWith(item.to + "/");
-    const activeAlias =
-      "aliases" in item &&
-      item.aliases?.some((alias) => pathname === alias || pathname.startsWith(alias + "/"));
-
-    return activeMain || activeAlias;
-  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/45 bg-background/90 backdrop-blur-xl">
@@ -72,7 +65,7 @@ export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
 
                   {sidebarItems.map((item) => {
                     const Icon = item.icon;
-                    const active = isActive(item);
+                    const active = isSidebarItemActive(pathname, item);
 
                     return (
                       <Link
@@ -96,7 +89,7 @@ export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
                 <div className="border-t border-border/60 px-3 py-3">
                   {sidebarFooterItems.map((item) => {
                     const Icon = item.icon;
-                    const active = isActive(item);
+                    const active = isSidebarItemActive(pathname, item);
 
                     return (
                       <Link
