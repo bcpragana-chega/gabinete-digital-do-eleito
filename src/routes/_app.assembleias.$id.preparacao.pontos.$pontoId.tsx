@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { StrategyField } from "@/components/estrategia/StrategyField";
+import { TimelineHistorico } from "@/components/preparacao/TimelineHistorico";
 import { ActionCard, InfoCard, MetricCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
@@ -50,6 +51,7 @@ import {
   removerRelacaoTribunoPorObjetos,
   useRelacoesPorObjeto,
 } from "@/lib/relacoes-store";
+import { adicionarEventoHistorico } from "@/lib/historico-store";
 import { documentos as documentosMock } from "@/lib/mock-data";
 import type { Documento, DocumentoCriado, Dossie, RelacaoTribuno, TipoDocumentoCriado } from "@/lib/types";
 
@@ -131,6 +133,45 @@ function PreparacaoPontoDetalhePage() {
     (campos: CamposPreparacaoPonto) => {
       if (!ponto) return;
       atualizarPonto(ponto.id, campos);
+
+      const estrategiaAntes = [
+        ponto.descricao,
+        ponto.objetivoPolitico,
+        ponto.riscos,
+        ponto.linhaIntervencao,
+      ].some((valor) => valor.trim().length > 0);
+      const estrategiaDepois = [
+        campos.descricao,
+        campos.objetivoPolitico,
+        campos.riscos,
+        campos.linhaIntervencao,
+      ].some((valor) => valor.trim().length > 0);
+      const estrategiaAlterada =
+        ponto.descricao !== campos.descricao ||
+        ponto.objetivoPolitico !== campos.objetivoPolitico ||
+        ponto.riscos !== campos.riscos ||
+        ponto.linhaIntervencao !== campos.linhaIntervencao;
+
+      if (estrategiaAlterada && estrategiaDepois) {
+        adicionarEventoHistorico({
+          pontoId: ponto.id,
+          tipo: "estrategia",
+          acao: estrategiaAntes ? "Estratégia editada" : "Estratégia criada",
+          descricao: estrategiaAntes ? "Estratégia editada." : "Estratégia criada.",
+        });
+      }
+
+      if (ponto.notasInternas !== campos.notasInternas) {
+        const antes = ponto.notasInternas.trim();
+        const depois = campos.notasInternas.trim();
+
+        adicionarEventoHistorico({
+          pontoId: ponto.id,
+          tipo: "nota",
+          acao: !antes && depois ? "Nota criada" : antes && !depois ? "Nota eliminada" : "Nota editada",
+          descricao: !antes && depois ? "Nota criada." : antes && !depois ? "Nota eliminada." : "Nota editada.",
+        });
+      }
     },
     [ponto],
   );
@@ -252,6 +293,7 @@ function PreparacaoPontoDetalhePage() {
 
   function associarDocumentoAoPonto() {
     if (!documentoParaAssociar) return;
+    const documento = documentosBiblioteca.find((item) => item.id === documentoParaAssociar);
 
     criarRelacaoTribuno({
       origemTipo: "ponto",
@@ -259,6 +301,14 @@ function PreparacaoPontoDetalhePage() {
       destinoTipo: "documento",
       destinoId: documentoParaAssociar,
       tipoRelacao: "usado_em",
+    });
+    adicionarEventoHistorico({
+      pontoId,
+      tipo: "documento",
+      acao: "Documento adicionado",
+      descricao: documento
+        ? `Documento "${documento.titulo}" adicionado.`
+        : "Documento adicionado.",
     });
     setDocumentoParaAssociar("");
   }
@@ -273,6 +323,12 @@ function PreparacaoPontoDetalhePage() {
       destinoTipo: "documento",
       destinoId: documento.id,
       tipoRelacao: "usado_em",
+    });
+    adicionarEventoHistorico({
+      pontoId,
+      tipo: "documento",
+      acao: "Documento removido",
+      descricao: `Documento "${documento.titulo}" removido.`,
     });
 
     if (documentosAssociadosIds.includes(documento.id)) {
@@ -519,6 +575,8 @@ function PreparacaoPontoDetalhePage() {
                 />
               </div>
             </WorkspaceSection>
+
+            <TimelineHistorico pontoId={ponto.id} />
           </WorkspaceLayout>
         </div>
       </main>
@@ -826,12 +884,18 @@ function DocumentosACriarSection({
 
     if (!tituloLimpo) return;
 
-    adicionarDocumentoACriarRascunho({
+    const rascunho = adicionarDocumentoACriarRascunho({
       tipo,
       titulo: tituloLimpo,
       conteudo: conteudoLimpo || "Rascunho inicial.",
       pontoId,
       assembleiaId,
+    });
+    adicionarEventoHistorico({
+      pontoId,
+      tipo: "documento-criado",
+      acao: "Documento criado",
+      descricao: `Documento "${rascunho.titulo}" criado (${rascunho.tipo}).`,
     });
 
     onCriarRascunho();

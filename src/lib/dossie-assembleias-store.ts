@@ -1,23 +1,21 @@
 import { useEffect, useState } from "react";
 import { adicionarEventoAutomaticoTimelineDossie } from "./dossie-timeline-store";
+import {
+  criarRelacaoTribuno,
+  listarRelacoesPorObjeto,
+  removerRelacaoTribunoPorObjetos,
+} from "./relacoes-store";
 import type { DossieAssembleiaRelacionada } from "./types";
 
 const STORAGE_KEY = "tribuno.dossie-assembleias.v1";
 const EVENT_NAME = "tribuno:dossie-assembleias";
+const RELACOES_EVENT_NAME = "tribuno:relacoes";
 
 function isBrowser() {
   return typeof window !== "undefined";
 }
 
-function gerarId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function lerRelacoesLocais(): DossieAssembleiaRelacionada[] {
+function lerRelacoesLegadas(): DossieAssembleiaRelacionada[] {
   if (!isBrowser()) return [];
 
   try {
@@ -33,44 +31,114 @@ function lerRelacoesLocais(): DossieAssembleiaRelacionada[] {
   }
 }
 
-function guardarRelacoesLocais(relacoes: DossieAssembleiaRelacionada[]) {
-  if (!isBrowser()) return;
+function relacaoId(dossieId: string, assembleiaId: string) {
+  return `relacao-sessao-assunto-${assembleiaId}-${dossieId}`;
+}
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(relacoes));
-  window.dispatchEvent(new Event(EVENT_NAME));
+function mapearRelacao(dossieId: string, assembleiaId: string, createdAt?: string) {
+  return {
+    id: relacaoId(dossieId, assembleiaId),
+    dossieId,
+    assembleiaId,
+    createdAt: createdAt ?? new Date().toISOString(),
+  };
+}
+
+function migrarRelacoesLegadas() {
+  lerRelacoesLegadas().forEach((relacao) => {
+    criarRelacaoTribuno({
+      origemTipo: "sessao",
+      origemId: relacao.assembleiaId,
+      destinoTipo: "assunto",
+      destinoId: relacao.dossieId,
+      tipoRelacao: "discutido_em",
+    });
+  });
+}
+
+function relacoesDoDossie(dossieId: string): DossieAssembleiaRelacionada[] {
+  migrarRelacoesLegadas();
+
+  const porChave = new Map<string, DossieAssembleiaRelacionada>();
+
+  lerRelacoesLegadas()
+    .filter((relacao) => relacao.dossieId === dossieId)
+    .forEach((relacao) => porChave.set(relacao.assembleiaId, relacao));
+
+  listarRelacoesPorObjeto("assunto", dossieId)
+    .filter(
+      (relacao) =>
+        relacao.origemTipo === "sessao" &&
+        relacao.destinoTipo === "assunto" &&
+        relacao.destinoId === dossieId &&
+        relacao.tipoRelacao === "discutido_em",
+    )
+    .forEach((relacao) =>
+      porChave.set(
+        relacao.origemId,
+        mapearRelacao(dossieId, relacao.origemId, relacao.createdAt),
+      ),
+    );
+
+  return Array.from(porChave.values());
+}
+
+function relacoesDaAssembleia(assembleiaId: string): DossieAssembleiaRelacionada[] {
+  migrarRelacoesLegadas();
+
+  const porChave = new Map<string, DossieAssembleiaRelacionada>();
+
+  lerRelacoesLegadas()
+    .filter((relacao) => relacao.assembleiaId === assembleiaId)
+    .forEach((relacao) => porChave.set(relacao.dossieId, relacao));
+
+  listarRelacoesPorObjeto("sessao", assembleiaId)
+    .filter(
+      (relacao) =>
+        relacao.origemTipo === "sessao" &&
+        relacao.origemId === assembleiaId &&
+        relacao.destinoTipo === "assunto" &&
+        relacao.tipoRelacao === "discutido_em",
+    )
+    .forEach((relacao) =>
+      porChave.set(
+        relacao.destinoId,
+        mapearRelacao(relacao.destinoId, assembleiaId, relacao.createdAt),
+      ),
+    );
+
+  return Array.from(porChave.values());
 }
 
 export function listarAssembleiasDoDossie(dossieId: string): DossieAssembleiaRelacionada[] {
-  return lerRelacoesLocais()
-    .filter((relacao) => relacao.dossieId === dossieId)
+  return relacoesDoDossie(dossieId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export function listarDossiesAssociadosAAssembleia(
   assembleiaId: string,
 ): DossieAssembleiaRelacionada[] {
-  return lerRelacoesLocais().filter((relacao) => relacao.assembleiaId === assembleiaId);
+  return relacoesDaAssembleia(assembleiaId);
 }
 
 export function associarAssembleiaAoDossie(
   dossieId: string,
   assembleiaId: string,
 ): DossieAssembleiaRelacionada | undefined {
-  const relacoes = lerRelacoesLocais();
-  const existente = relacoes.find(
-    (relacao) => relacao.dossieId === dossieId && relacao.assembleiaId === assembleiaId,
+  const existente = listarAssembleiasDoDossie(dossieId).find(
+    (relacao) => relacao.assembleiaId === assembleiaId,
   );
 
   if (existente) return existente;
 
-  const relacao: DossieAssembleiaRelacionada = {
-    id: `dossie-assembleia-${gerarId()}`,
-    dossieId,
-    assembleiaId,
-    createdAt: new Date().toISOString(),
-  };
+  const relacaoGenerica = criarRelacaoTribuno({
+    origemTipo: "sessao",
+    origemId: assembleiaId,
+    destinoTipo: "assunto",
+    destinoId: dossieId,
+    tipoRelacao: "discutido_em",
+  });
 
-  guardarRelacoesLocais([...relacoes, relacao]);
   adicionarEventoAutomaticoTimelineDossie(dossieId, {
     titulo: "Sessão ligada",
     descricao: "Uma sessão existente foi ligada a este assunto.",
@@ -80,15 +148,21 @@ export function associarAssembleiaAoDossie(
     origemHref: `/assembleias/${assembleiaId}`,
   });
 
-  return relacao;
+  if (isBrowser()) window.dispatchEvent(new Event(EVENT_NAME));
+
+  return mapearRelacao(dossieId, assembleiaId, relacaoGenerica.createdAt);
 }
 
 export function desassociarAssembleiaDoDossie(dossieId: string, assembleiaId: string) {
-  guardarRelacoesLocais(
-    lerRelacoesLocais().filter(
-      (relacao) => !(relacao.dossieId === dossieId && relacao.assembleiaId === assembleiaId),
-    ),
-  );
+  removerRelacaoTribunoPorObjetos({
+    origemTipo: "sessao",
+    origemId: assembleiaId,
+    destinoTipo: "assunto",
+    destinoId: dossieId,
+    tipoRelacao: "discutido_em",
+  });
+
+  if (isBrowser()) window.dispatchEvent(new Event(EVENT_NAME));
 }
 
 export function useAssembleiasDoDossie(dossieId: string): DossieAssembleiaRelacionada[] {
@@ -102,10 +176,12 @@ export function useAssembleiasDoDossie(dossieId: string): DossieAssembleiaRelaci
     atualizar();
 
     window.addEventListener(EVENT_NAME, atualizar);
+    window.addEventListener(RELACOES_EVENT_NAME, atualizar);
     window.addEventListener("storage", atualizar);
 
     return () => {
       window.removeEventListener(EVENT_NAME, atualizar);
+      window.removeEventListener(RELACOES_EVENT_NAME, atualizar);
       window.removeEventListener("storage", atualizar);
     };
   }, [dossieId]);

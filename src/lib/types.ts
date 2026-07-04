@@ -167,6 +167,25 @@ export interface RelacaoTribuno {
   updatedAt: string;
 }
 
+export type TipoHistoricoEvento =
+  | "documento"
+  | "nota"
+  | "estrategia"
+  | "posicao"
+  | "pergunta"
+  | "documento-criado"
+  | "ia";
+
+export interface HistoricoEvento {
+  id: string;
+  pontoId: string;
+  data: string;
+  tipo: TipoHistoricoEvento;
+  acao: string;
+  descricao: string;
+  autor: string;
+}
+
 export type EstadoInboxDocumento = "Novo" | "Em análise" | "Tratado";
 
 export interface DocumentoInboxItem {
