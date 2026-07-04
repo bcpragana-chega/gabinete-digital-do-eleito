@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bell, LogOut, Menu, Scale } from "lucide-react";
+import { LogOut, Menu, Scale } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { UserAvatar } from "@/components/auth/UserAvatar";
@@ -131,15 +131,6 @@ export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
 
         <div className="flex min-w-0 shrink-0 items-center gap-1.5 md:gap-2">
           <UniversalSearch />
-
-          <button
-            type="button"
-            className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-transparent text-muted-foreground transition-colors hover:border-border/70 hover:bg-muted/60 hover:text-foreground md:h-9 md:w-9 md:rounded-xl"
-            aria-label="Notificações"
-          >
-            <Bell className="h-4 w-4" strokeWidth={1.75} />
-            <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-status-alerta-foreground" />
-          </button>
 
           <span className="max-w-20 truncate text-sm font-medium text-foreground sm:max-w-36 md:max-w-44 xl:max-w-60">
             {displayName}
