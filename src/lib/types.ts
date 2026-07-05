@@ -54,14 +54,32 @@ export interface Documento {
   id: string;
   assembleiaId: string;
   titulo: string;
+  descricao?: string;
   tipo: TipoDocumento;
   data: string;
   estado: EstadoDocumento;
+  origem?: string;
+  origemTipo?: string;
+  origemRef?: string;
+  storageBucket?: string;
+  storagePath?: string;
   ficheiroNome?: string;
   ficheiroTipo?: string;
+  ficheiroTamanho?: number;
   paginas?: number;
+  checksum?: string;
+  textoExtraido?: string;
+  resumo?: string;
   notas?: string;
+  tags?: string[];
+  assuntoOrigemId?: string;
+  assembleiaOrigemId?: string;
+  pontoOrigemId?: string;
+  recebidoEm?: string;
+  analisadoEm?: string;
+  archivedAt?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface DocumentoCriado {

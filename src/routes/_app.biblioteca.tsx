@@ -24,7 +24,7 @@ import {
 import { useAssembleias } from "@/lib/assembleias-store";
 import { listarDossiesAssociadosAoDocumento } from "@/lib/dossie-documentos-store";
 import { useDossies } from "@/lib/dossies-store";
-import { listarDocumentosLocais } from "@/lib/documentos-store";
+import { useDocumentos } from "@/lib/documentos-store";
 import { obterInboxDocumento, useInboxDocumentos } from "@/lib/inbox-store";
 import type { Documento } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -107,7 +107,7 @@ function BibliotecaPage() {
   const assembleias = useAssembleias();
   const dossies = useDossies();
 
-  const documentos = documentosUnicos(listarDocumentosLocais());
+  const documentos = documentosUnicos(useDocumentos());
 
   const documentosComEstado = documentos.map((documento) => ({
     documento,

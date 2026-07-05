@@ -21,7 +21,7 @@ import {
 import { useAssembleias } from "@/lib/assembleias-store";
 import { associarDocumentoAoDossie } from "@/lib/dossie-documentos-store";
 import { useDossies } from "@/lib/dossies-store";
-import { listarDocumentosLocais } from "@/lib/documentos-store";
+import { useDocumentos } from "@/lib/documentos-store";
 import {
   arquivarInboxDocumento,
   associarInboxDocumentoAAssembleia,
@@ -72,7 +72,7 @@ function CaixaDeEntradaPage() {
   const dossies = useDossies().filter((dossie) => !dossie.archivedAt);
   const assembleias = useAssembleias().filter((assembleia) => assembleia.estado !== "arquivada");
 
-  const documentos = documentosUnicos(listarDocumentosLocais());
+  const documentos = documentosUnicos(useDocumentos());
 
   const documentosComEstado = documentos.map((documento) => ({
     documento,

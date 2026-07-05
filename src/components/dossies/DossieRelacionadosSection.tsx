@@ -51,7 +51,7 @@ import {
   useRelacoesPorObjeto,
 } from "@/lib/relacoes-store";
 import { listarAssembleias } from "@/lib/assembleias-store";
-import { listarDocumentosLocais } from "@/lib/documentos-store";
+import { useDocumentos } from "@/lib/documentos-store";
 import type {
   Assembleia,
   CategoriaRelacionadoDossie,
@@ -165,20 +165,7 @@ function assembleiasUnicas(assembleias: Assembleia[]) {
 }
 
 function useDocumentosExistentes() {
-  const [documentos, setDocumentos] = useState<Documento[]>([]);
-
-  useEffect(() => {
-    const atualizar = () => {
-      setDocumentos(documentosUnicos(listarDocumentosLocais()));
-    };
-
-    atualizar();
-    window.addEventListener("storage", atualizar);
-
-    return () => window.removeEventListener("storage", atualizar);
-  }, []);
-
-  return documentos;
+  return documentosUnicos(useDocumentos());
 }
 
 function useAssembleiasExistentes() {

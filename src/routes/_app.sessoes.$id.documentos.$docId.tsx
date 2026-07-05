@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { formatarData } from "@/lib/mock-data";
 import { useAssembleia } from "@/lib/assembleias-store";
-import { listarDocumentosLocais, useDocumento } from "@/lib/documentos-store";
+import { useDocumento, useDocumentos } from "@/lib/documentos-store";
 import {
   criarRelacaoTribuno,
   removerRelacaoTribunoPorObjetos,
@@ -68,9 +68,10 @@ function DocumentoPage() {
   const { id, docId } = Route.useParams();
   const assembleia = useAssembleia(id);
   const documento = useDocumento(docId);
+  const documentos = useDocumentos();
   const [documentoParaAssociar, setDocumentoParaAssociar] = useState("");
   const relacoesDoDocumento = useRelacoesPorObjeto("documento", docId);
-  const documentosBiblioteca = useMemo(() => documentosUnicos(listarDocumentosLocais()), []);
+  const documentosBiblioteca = useMemo(() => documentosUnicos(documentos), [documentos]);
 
   const relacoesDocumentos = useMemo(
     () => relacoesDoDocumento.filter(isRelacaoEntreDocumentos),
