@@ -87,12 +87,25 @@ export interface DocumentoCriado {
   tipo: TipoDocumentoCriado;
   titulo: string;
   conteudo: string;
+  conteudoJson?: unknown;
+  formatoConteudo?: string;
+  resumo?: string;
+  notas?: string;
+  tags?: string[];
+  origem?: string;
+  origemPrompt?: string;
+  iaModelo?: string;
+  iaMetadata?: unknown;
   assuntoId?: string;
   pontoId?: string;
   assembleiaId?: string;
+  documentoFinalId?: string;
   estado: EstadoDocumentoCriado;
   createdAt: string;
   updatedAt?: string;
+  archivedAt?: string;
+  finalizadoEm?: string;
+  apresentadoEm?: string;
 }
 
 export interface Dossie {

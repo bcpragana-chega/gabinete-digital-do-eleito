@@ -171,32 +171,16 @@ function toRow(userId: string, documento: Documento): DocumentoRow {
 }
 
 async function obterSupabaseUserIdValido(userId?: string) {
-  console.info("[DOCUMENTOS DIAG] Sessão Supabase: início", {
-    supabaseConfigurado: isSupabaseConfigured(),
-    storeUserId: userId,
-  });
-
-  if (!isSupabaseConfigured()) {
-    console.warn("[DOCUMENTOS DIAG] Sessão Supabase: Supabase não configurado");
-    return undefined;
-  }
+  if (!isSupabaseConfigured()) return undefined;
 
   const supabase = getSupabaseClient();
-  if (!supabase) {
-    console.warn("[DOCUMENTOS DIAG] Sessão Supabase: cliente Supabase indisponível");
-    return undefined;
-  }
+  if (!supabase) return undefined;
 
   const { data, error } = await withSupabaseTimeout(
     supabase.auth.getUser(),
     "DOCUMENTOS_GET_USER",
     8000,
   );
-
-  console.info("[DOCUMENTOS DIAG] Sessão Supabase: getUser concluído", {
-    supabaseUserId: data.user?.id,
-    error,
-  });
 
   if (error || !data.user?.id) {
     console.warn("[Tribuno] Sem sessão Supabase válida para sincronizar Documentos.", error);
@@ -244,32 +228,13 @@ export async function carregarDocumentosRemotos() {
 }
 
 export async function guardarDocumentoRemoto(userId: string, documento: Documento) {
-  console.info("[DOCUMENTOS DIAG] PASSO 3 documentos-repository foi chamado", {
-    storeUserId: userId,
-    documento,
-  });
-
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
-  if (!supabaseUserId) {
-    console.warn("[DOCUMENTOS DIAG] PASSO 3 parado: sem supabaseUserId válido");
-    return;
-  }
+  if (!supabaseUserId) return;
 
   const supabase = getSupabaseClient();
-  if (!supabase) {
-    console.warn("[DOCUMENTOS DIAG] PASSO 3 parado: cliente Supabase indisponível");
-    return;
-  }
+  if (!supabase) return;
 
   const row = toRow(supabaseUserId, documento);
-
-  console.info("[DOCUMENTOS DIAG] PASSO 4 payload enviado para Supabase", {
-    tabela: "documentos",
-    operacao: "upsert",
-    payload: row,
-  });
-
-  console.info("[DOCUMENTOS DIAG] PASSO 7 vai executar upsert em public.documentos");
 
   const response = await withSupabaseTimeout(
     supabase
@@ -281,23 +246,7 @@ export async function guardarDocumentoRemoto(userId: string, documento: Document
     "DOCUMENTOS_UPSERT",
   );
 
-  console.info("[DOCUMENTOS DIAG] PASSO 5 resposta completa do Supabase", {
-    data: response.data,
-    error: response.error,
-    status: response.status,
-    statusText: response.statusText,
-  });
-
-  if (response.error) {
-    console.error("[DOCUMENTOS DIAG] PASSO 6 erro completo do Supabase/PostgREST", {
-      message: response.error.message,
-      details: response.error.details,
-      hint: response.error.hint,
-      code: response.error.code,
-      error: response.error,
-    });
-    throw response.error;
-  }
+  if (response.error) throw response.error;
 }
 
 export async function apagarDocumentoRemoto(id: string) {

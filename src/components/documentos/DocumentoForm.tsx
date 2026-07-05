@@ -53,17 +53,6 @@ export function DocumentoForm({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    console.info("[DOCUMENTOS DIAG] PASSO 1 formulário Adicionar Documento submetido", {
-      origem: "DocumentoForm",
-      assembleiaId,
-      titulo,
-      tipo,
-      data,
-      estado,
-      temFicheiroNome: Boolean(ficheiroNome),
-      ficheiroTipo,
-    });
-
     if (!titulo.trim()) {
       setErro("O título é obrigatório.");
       return;

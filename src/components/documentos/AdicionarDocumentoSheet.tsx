@@ -17,16 +17,7 @@ export function AdicionarDocumentoSheet({ assembleiaId }: { assembleiaId: string
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button
-          size="sm"
-          className="w-full gap-1.5 sm:w-auto"
-          onClick={() => {
-            console.info("[DOCUMENTOS DIAG] PASSO 1 botão Adicionar Documento foi clicado", {
-              origem: "AdicionarDocumentoSheet",
-              assembleiaId,
-            });
-          }}
-        >
+        <Button size="sm" className="w-full gap-1.5 sm:w-auto">
           <Plus className="h-4 w-4" />
           Adicionar documento
         </Button>

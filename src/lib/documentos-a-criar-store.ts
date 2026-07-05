@@ -1,19 +1,66 @@
 import type { DocumentoCriado } from "@/lib/types";
 import { listarDossiesAssociadosAAssembleia } from "@/lib/dossie-assembleias-store";
 import { adicionarEventoAutomaticoTimelineDossie } from "@/lib/dossie-timeline-store";
-import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "@/lib/user-storage";
+import {
+  carregarDocumentosCriadosLocais,
+  carregarDocumentosCriadosRemotos,
+  guardarDocumentoCriadoRemoto,
+  guardarDocumentosCriadosLocais,
+} from "@/lib/documentos-criados-repository";
+import { obterUserIdAtual } from "@/lib/user-storage";
 
-const STORAGE_KEY = "tribuno:documentos-a-criar";
 const EVENT = "tribuno:documentos-a-criar";
+let remoteLoadPromise: Promise<void> | undefined;
 
 function lerDocumentos(): DocumentoCriado[] {
-  const parsed = lerJSONPorUtilizador<DocumentoCriado[]>(STORAGE_KEY, []);
-  return Array.isArray(parsed) ? parsed : [];
+  void carregarDocumentosCriadosRemotosSeDisponivel();
+  return carregarDocumentosCriadosLocais();
 }
 
 function guardarDocumentos(documentos: DocumentoCriado[]) {
-  guardarJSONPorUtilizador(STORAGE_KEY, documentos);
+  guardarDocumentosCriadosLocais(documentos);
   window.dispatchEvent(new Event(EVENT));
+}
+
+function mergeDocumentos(local: DocumentoCriado[], remoto: DocumentoCriado[]) {
+  const porId = new Map<string, DocumentoCriado>();
+  local.forEach((documento) => porId.set(documento.id, documento));
+  remoto.forEach((documento) => {
+    const localAtual = porId.get(documento.id);
+    porId.set(documento.id, localAtual ? { ...localAtual, ...documento } : documento);
+  });
+  return Array.from(porId.values());
+}
+
+function guardarDocumentoRemotamente(documento: DocumentoCriado) {
+  const userId = obterUserIdAtual();
+  if (!userId) return;
+
+  guardarDocumentoCriadoRemoto(userId, documento).catch((error) => {
+    console.warn("[Tribuno] Não foi possível sincronizar o documento a criar no Supabase.", error);
+  });
+}
+
+export function carregarDocumentosCriadosRemotosSeDisponivel() {
+  if (remoteLoadPromise) return remoteLoadPromise;
+
+  remoteLoadPromise = carregarDocumentosCriadosRemotos()
+    .then((remotos) => {
+      if (!remotos) return;
+
+      const locais = carregarDocumentosCriadosLocais();
+      if (remotos.length === 0 && locais.length > 0) return;
+
+      guardarDocumentos(mergeDocumentos(locais, remotos));
+    })
+    .catch((error) => {
+      console.warn("[Tribuno] Não foi possível carregar documentos a criar do Supabase.", error);
+    })
+    .finally(() => {
+      remoteLoadPromise = undefined;
+    });
+
+  return remoteLoadPromise;
 }
 
 function gerarId() {
@@ -106,10 +153,14 @@ export function adicionarDocumentoACriarRascunho(
     id: gerarId(),
     estado: "rascunho",
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    origem: data.origem ?? "manual",
+    formatoConteudo: data.formatoConteudo ?? "plain_text",
     ...data,
   };
 
   guardarDocumentos([novoDocumento, ...documentos]);
+  guardarDocumentoRemotamente(novoDocumento);
   registarDocumentoACriarNaTimeline(novoDocumento, "criado");
 
   return novoDocumento;
@@ -139,7 +190,10 @@ export function atualizarDocumentoACriarRascunho(
   guardarDocumentos(documentosAtualizados);
 
   const atualizado = documentosAtualizados.find((documento) => documento.id === rascunhoId);
-  if (atualizado) registarDocumentoACriarNaTimeline(atualizado, "editado");
+  if (atualizado) {
+    guardarDocumentoRemotamente(atualizado);
+    registarDocumentoACriarNaTimeline(atualizado, "editado");
+  }
 
   return atualizado;
 }
