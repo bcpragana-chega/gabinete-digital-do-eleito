@@ -138,11 +138,24 @@ export function DocumentoPreview({ documento }: { documento: Documento }) {
       </div>
 
       <div className="h-[70dvh] min-h-[520px] bg-muted/40 sm:h-[760px]">
-        <iframe
+        <object
           title={documento.titulo}
-          src={`${previewUrl}#toolbar=1&navpanes=0`}
-          className="h-full w-full border-0"
-        />
+          data={`${previewUrl}#toolbar=1&navpanes=0`}
+          type="application/pdf"
+          className="h-full w-full"
+        >
+          <div className="flex h-full flex-col items-center justify-center gap-3 px-5 text-center">
+            <p className="text-sm text-muted-foreground">
+              Este navegador não conseguiu mostrar o PDF dentro da página.
+            </p>
+            <Button asChild variant="secondary" size="sm">
+              <a href={previewUrl} target="_blank" rel="noreferrer">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Abrir PDF
+              </a>
+            </Button>
+          </div>
+        </object>
       </div>
     </div>
   );

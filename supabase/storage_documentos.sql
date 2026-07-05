@@ -17,8 +17,13 @@ for select
 to authenticated
 using (
   bucket_id = 'documentos'
-  and (storage.foldername(name))[1] = 'documentos'
-  and auth.uid()::text = (storage.foldername(name))[2]
+  and (
+    auth.uid()::text = (storage.foldername(name))[1]
+    or (
+      (storage.foldername(name))[1] in ('documentos', 'documents')
+      and auth.uid()::text = (storage.foldername(name))[2]
+    )
+  )
 );
 
 drop policy if exists "documentos_storage_insert_own" on storage.objects;
@@ -28,8 +33,13 @@ for insert
 to authenticated
 with check (
   bucket_id = 'documentos'
-  and (storage.foldername(name))[1] = 'documentos'
-  and auth.uid()::text = (storage.foldername(name))[2]
+  and (
+    auth.uid()::text = (storage.foldername(name))[1]
+    or (
+      (storage.foldername(name))[1] in ('documentos', 'documents')
+      and auth.uid()::text = (storage.foldername(name))[2]
+    )
+  )
 );
 
 drop policy if exists "documentos_storage_update_own" on storage.objects;
@@ -39,13 +49,23 @@ for update
 to authenticated
 using (
   bucket_id = 'documentos'
-  and (storage.foldername(name))[1] = 'documentos'
-  and auth.uid()::text = (storage.foldername(name))[2]
+  and (
+    auth.uid()::text = (storage.foldername(name))[1]
+    or (
+      (storage.foldername(name))[1] in ('documentos', 'documents')
+      and auth.uid()::text = (storage.foldername(name))[2]
+    )
+  )
 )
 with check (
   bucket_id = 'documentos'
-  and (storage.foldername(name))[1] = 'documentos'
-  and auth.uid()::text = (storage.foldername(name))[2]
+  and (
+    auth.uid()::text = (storage.foldername(name))[1]
+    or (
+      (storage.foldername(name))[1] in ('documentos', 'documents')
+      and auth.uid()::text = (storage.foldername(name))[2]
+    )
+  )
 );
 
 drop policy if exists "documentos_storage_delete_own" on storage.objects;
@@ -55,6 +75,11 @@ for delete
 to authenticated
 using (
   bucket_id = 'documentos'
-  and (storage.foldername(name))[1] = 'documentos'
-  and auth.uid()::text = (storage.foldername(name))[2]
+  and (
+    auth.uid()::text = (storage.foldername(name))[1]
+    or (
+      (storage.foldername(name))[1] in ('documentos', 'documents')
+      and auth.uid()::text = (storage.foldername(name))[2]
+    )
+  )
 );

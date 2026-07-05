@@ -253,6 +253,22 @@ export async function carregarDocumentosRemotos() {
   return (data ?? []).map((row) => fromRow(row as DocumentoRow));
 }
 
+export async function carregarDocumentoRemotoPorId(id: string) {
+  const supabaseUserId = await obterSupabaseUserIdValido();
+  if (!supabaseUserId) return undefined;
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return undefined;
+
+  const { data, error } = await withSupabaseTimeout(
+    supabase.from("documentos").select("*").eq("id", id).maybeSingle(),
+    "DOCUMENTOS_SELECT_BY_ID",
+  );
+
+  if (error) throw error;
+  return data ? fromRow(data as DocumentoRow) : undefined;
+}
+
 export async function guardarDocumentoRemoto(userId: string, documento: Documento) {
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) return;

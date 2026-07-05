@@ -3,6 +3,7 @@ import { listarDossiesAssociadosAAssembleia } from "./dossie-assembleias-store";
 import { listarDossiesAssociadosAoDocumento } from "./dossie-documentos-store";
 import { adicionarEventoAutomaticoTimelineDossie } from "./dossie-timeline-store";
 import {
+  carregarDocumentoRemotoPorId,
   carregarDocumentosLocais,
   carregarDocumentosRemotos,
   guardarDocumentoRemoto,
@@ -268,15 +269,44 @@ export function useDocumento(docId: string): Documento | undefined {
   const [doc, setDoc] = useState<Documento | undefined>(() => read().find((d) => d.id === docId));
 
   useEffect(() => {
+    let ativo = true;
+
     const sync = () => {
       const local = read().find((d) => d.id === docId);
-      setDoc(local);
+      if (ativo) setDoc(local);
     };
+
+    async function carregarRemotoDireto() {
+      try {
+        await carregarDocumentosRemotosSeDisponivel();
+
+        const local = read().find((d) => d.id === docId);
+        if (local?.storagePath) return;
+
+        const remoto = await carregarDocumentoRemotoPorId(docId);
+        if (!ativo || !remoto) return;
+
+        const documentos = read();
+        const existe = documentos.some((documento) => documento.id === docId);
+        const atualizados = existe
+          ? documentos.map((documento) =>
+              documento.id === docId ? { ...documento, ...remoto } : documento,
+            )
+          : [...documentos, remoto];
+
+        write(atualizados);
+        setDoc((atual) => (atual ? { ...atual, ...remoto } : remoto));
+      } catch (error) {
+        console.warn("[Tribuno] Não foi possível carregar o documento remoto.", error);
+      }
+    }
+
     sync();
-    void carregarDocumentosRemotosSeDisponivel();
+    void carregarRemotoDireto();
     window.addEventListener(EVENT, sync);
     window.addEventListener("storage", sync);
     return () => {
+      ativo = false;
       window.removeEventListener(EVENT, sync);
       window.removeEventListener("storage", sync);
     };
