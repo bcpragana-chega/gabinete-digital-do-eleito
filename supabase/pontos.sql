@@ -61,3 +61,4 @@ on public.pontos
 for delete
 to authenticated
 using (user_id = auth.uid());
+
