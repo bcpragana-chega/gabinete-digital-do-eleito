@@ -2,6 +2,10 @@ import type { DocumentoCriado } from "@/lib/types";
 import { listarDossiesAssociadosAAssembleia } from "@/lib/dossie-assembleias-store";
 import { adicionarEventoAutomaticoTimelineDossie } from "@/lib/dossie-timeline-store";
 import {
+  criarConteudoInicialInstitucional,
+  isTipoDocumentoInstitucional,
+} from "@/lib/documentos-institucionais";
+import {
   carregarDocumentosCriadosLocais,
   carregarDocumentosCriadosRemotos,
   guardarDocumentoCriadoRemoto,
@@ -85,116 +89,8 @@ export function criarConteudoInicialDocumento(documento: {
   const titulo = documento.titulo.trim() || "[Título do documento]";
   const base = notaBase(documento.conteudo);
 
-  if (documento.tipo === "Moção") {
-    return `# ${titulo}
-
-## Enquadramento
-
-[Identificar o problema, contexto político e relevância para a população.]
-
-## Fundamentação
-
-Considerando que:
-
-1. [Primeiro fundamento.]
-2. [Segundo fundamento.]
-3. [Terceiro fundamento.]
-
-## Deliberação / Proposta
-
-Assim, os eleitos propõem que a assembleia delibere:
-
-1. [Medida ou posição a aprovar.]
-2. [Ação a recomendar ou solicitar.]
-3. [Entidade responsável ou destinatária.]
-
-## Notas de preparação
-
-${base}
-
-## Local e data
-
-[Local], [data]
-
-## Assinatura
-
-[Nome e cargo]`;
-  }
-
-  if (documento.tipo === "Recomendação") {
-    return `# ${titulo}
-
-## Contexto
-
-[Descrever a situação que justifica esta recomendação.]
-
-## Problema identificado
-
-[Explicar de forma clara o problema, impacto e urgência.]
-
-## Recomendação
-
-Recomenda-se que:
-
-1. [Primeira recomendação.]
-2. [Segunda recomendação.]
-3. [Prazo, acompanhamento ou entidade responsável.]
-
-## Justificação
-
-[Explicar por que razão esta recomendação é adequada e exequível.]
-
-## Notas de preparação
-
-${base}
-
-## Local e data
-
-[Local], [data]
-
-## Assinatura
-
-[Nome e cargo]`;
-  }
-
-  if (documento.tipo === "Requerimento") {
-    return `# ${titulo}
-
-## Destinatário
-
-[Identificar a entidade ou órgão a quem é dirigido o requerimento.]
-
-## Assunto
-
-${titulo}
-
-## Enquadramento
-
-[Explicar o contexto e a razão do pedido de informação.]
-
-## Pedido
-
-Requer-se que sejam prestadas as seguintes informações:
-
-1. [Pergunta ou pedido de documento.]
-2. [Pergunta ou pedido de esclarecimento.]
-3. [Prazo, detalhe ou formato pretendido.]
-
-## Fundamentação
-
-[Indicar a relevância pública, política ou legal do pedido.]
-
-## Notas de preparação
-
-${base}
-
-## Local e data
-
-[Local], [data]
-
-## Assinatura
-
-[Nome e cargo]`;
+  if (isTipoDocumentoInstitucional(documento.tipo)) {
+    return criarConteudoInicialInstitucional(documento.tipo, titulo, base);
   }
 
   if (documento.tipo === "Declaração de voto") {

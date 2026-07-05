@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Download, FileText, Link2, Save, X } from "lucide-react";
+import { ArrowLeft, Download, FileDown, FileText, Link2, Save, X } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
@@ -24,7 +24,10 @@ import {
   obterDocumentoACriarGlobal,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
-import { exportarDocumentoCriadoPDF } from "@/lib/documentos-criados-export";
+import {
+  exportarDocumentoCriadoPDF,
+  exportarDocumentoCriadoWord,
+} from "@/lib/documentos-criados-export";
 import { adicionarEventoAutomaticoTimelineDossie } from "@/lib/dossie-timeline-store";
 import { adicionarEventoHistorico } from "@/lib/historico-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
@@ -197,6 +200,31 @@ function DocumentoDoAssuntoPage() {
         pontoId,
       },
       {
+        assembleia,
+        assunto: dossie?.titulo,
+        sessao: assembleia?.nome,
+        ponto: ponto ? `Ponto ${ponto.numero} · ${ponto.titulo}` : undefined,
+      },
+    );
+  }
+
+  function exportarWord() {
+    if (!documento) return;
+
+    const assembleia = assembleias.find((item) => item.id === assembleiaId);
+    const ponto = pontosDaSessao.find((item) => item.id === pontoId);
+
+    exportarDocumentoCriadoWord(
+      {
+        ...documento,
+        titulo: titulo.trim() || documento.titulo,
+        conteudo,
+        estado,
+        assembleiaId,
+        pontoId,
+      },
+      {
+        assembleia,
         assunto: dossie?.titulo,
         sessao: assembleia?.nome,
         ponto: ponto ? `Ponto ${ponto.numero} · ${ponto.titulo}` : undefined,
@@ -288,6 +316,15 @@ function DocumentoDoAssuntoPage() {
                     >
                       <Download className="mr-2 h-4 w-4" />
                       Exportar PDF
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={exportarWord}
+                      disabled={!documento}
+                    >
+                      <FileDown className="mr-2 h-4 w-4" />
+                      Exportar Word
                     </Button>
                     <Button type="button" onClick={guardar} disabled={!titulo.trim()}>
                       <Save className="mr-2 h-4 w-4" />

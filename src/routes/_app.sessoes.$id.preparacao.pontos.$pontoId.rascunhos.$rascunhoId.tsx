@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeft, Download, Eye, FilePlus2, Pencil } from "lucide-react";
+import { ChevronLeft, Download, Eye, FileDown, FilePlus2, Pencil } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -22,7 +22,10 @@ import {
   obterDocumentoACriarPorId,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
-import { exportarDocumentoCriadoPDF } from "@/lib/documentos-criados-export";
+import {
+  exportarDocumentoCriadoPDF,
+  exportarDocumentoCriadoWord,
+} from "@/lib/documentos-criados-export";
 import { adicionarEventoHistorico } from "@/lib/historico-store";
 import { obterPontoPorId, type PontoOrdemTrabalhos } from "@/lib/pontos-store";
 import type { DocumentoCriado, EstadoDocumentoCriado } from "@/lib/types";
@@ -125,6 +128,25 @@ function RascunhoDocumentoPage() {
         estado,
       },
       {
+        assembleia,
+        sessao: assembleia?.nome,
+        ponto: ponto ? `Ponto ${ponto.numero} · ${ponto.titulo}` : "Ponto da ordem de trabalhos",
+      },
+    );
+  }
+
+  function exportarWord() {
+    if (!rascunho) return;
+
+    exportarDocumentoCriadoWord(
+      {
+        ...rascunho,
+        titulo: titulo.trim() || rascunho.titulo,
+        conteudo,
+        estado,
+      },
+      {
+        assembleia,
         sessao: assembleia?.nome,
         ponto: ponto ? `Ponto ${ponto.numero} · ${ponto.titulo}` : "Ponto da ordem de trabalhos",
       },
@@ -256,6 +278,15 @@ function RascunhoDocumentoPage() {
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Exportar PDF
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={exportarWord}
+                  disabled={!rascunho}
+                >
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Exportar Word
                 </Button>
                 <Button type="button" onClick={guardarAlteracoes} disabled={!titulo.trim()}>
                   Guardar alterações

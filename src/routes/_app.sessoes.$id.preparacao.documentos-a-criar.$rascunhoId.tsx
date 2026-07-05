@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Download, FilePlus2, Save } from "lucide-react";
+import { ArrowLeft, Download, FileDown, FilePlus2, Save } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/feedback";
@@ -22,7 +22,10 @@ import {
   obterDocumentoACriarGlobal,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
-import { exportarDocumentoCriadoPDF } from "@/lib/documentos-criados-export";
+import {
+  exportarDocumentoCriadoPDF,
+  exportarDocumentoCriadoWord,
+} from "@/lib/documentos-criados-export";
 import type { DocumentoCriado, EstadoDocumentoCriado } from "@/lib/types";
 
 const estadosDocumento: EstadoDocumentoCriado[] = [
@@ -123,6 +126,25 @@ function DocumentoACriarDaSessaoPage() {
         assembleiaId: id,
       },
       {
+        assembleia,
+        sessao: assembleia?.nome,
+      },
+    );
+  }
+
+  function exportarWord() {
+    if (!rascunho) return;
+
+    exportarDocumentoCriadoWord(
+      {
+        ...rascunho,
+        titulo: titulo.trim() || rascunho.titulo,
+        conteudo,
+        estado,
+        assembleiaId: id,
+      },
+      {
+        assembleia,
         sessao: assembleia?.nome,
       },
     );
@@ -193,6 +215,10 @@ function DocumentoACriarDaSessaoPage() {
             <Button type="button" variant="secondary" onClick={exportarPDF} disabled={!rascunho}>
               <Download className="mr-2 h-4 w-4" />
               Exportar PDF
+            </Button>
+            <Button type="button" variant="secondary" onClick={exportarWord} disabled={!rascunho}>
+              <FileDown className="mr-2 h-4 w-4" />
+              Exportar Word
             </Button>
             <Button type="button" onClick={guardarAlteracoes} disabled={!titulo.trim()}>
               <Save className="mr-2 h-4 w-4" />
