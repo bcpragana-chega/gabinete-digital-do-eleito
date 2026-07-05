@@ -172,7 +172,7 @@ export function DocumentosACriarSection({
                 <Button asChild size="sm" variant="secondary">
                   {rascunho.assuntoId ? (
                     <Link
-                      to="/dossies/$dossieId/documentos/$documentoId"
+                      to="/assuntos/$dossieId/documentos/$documentoId"
                       params={{
                         dossieId: rascunho.assuntoId,
                         documentoId: rascunho.id,
@@ -182,7 +182,7 @@ export function DocumentosACriarSection({
                     </Link>
                   ) : (
                     <Link
-                      to="/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId"
+                      to="/sessoes/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId"
                       params={{
                         id: assembleiaId,
                         pontoId,

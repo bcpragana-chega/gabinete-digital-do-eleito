@@ -156,7 +156,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
               action={
                 <Button asChild size="sm" variant="secondary">
                   <Link
-                    to="/dossies/$dossieId/documentos/$documentoId"
+                    to="/assuntos/$dossieId/documentos/$documentoId"
                     params={{ dossieId, documentoId: documento.id }}
                   >
                     Abrir

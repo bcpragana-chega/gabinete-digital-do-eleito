@@ -90,14 +90,14 @@ function GabinetePage() {
 
               {proxima ? (
                 <Button asChild size="lg" className="w-full sm:w-auto sm:min-w-36">
-                  <Link to="/assembleias/$id" params={{ id: proxima.id }}>
+                  <Link to="/sessoes/$id" params={{ id: proxima.id }}>
                     Continuar
                     <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
                   </Link>
                 </Button>
               ) : (
                 <Button asChild size="lg" className="w-full sm:w-auto sm:min-w-36">
-                  <Link to="/assembleias">
+                  <Link to="/sessoes">
                     Criar sessão
                     <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
                   </Link>
@@ -118,14 +118,14 @@ function GabinetePage() {
                         ? `${documentosPorAnalisar} documentos aguardam análise.`
                         : "Não há documentos por rever."
                     }
-                    to={proxima ? "/assembleias/$id" : "/caixa-de-entrada"}
+                    to={proxima ? "/sessoes/$id" : "/caixa-de-entrada"}
                     params={proxima ? { id: proxima.id } : undefined}
                   />
                   <NextActionCard
                     icon={NotebookText}
                     title="Atualizar assunto"
                     description="Registar evolução num tema em acompanhamento."
-                    to="/dossies"
+                    to="/assuntos"
                   />
                 </div>
               </WorkspaceSection>
@@ -134,7 +134,7 @@ function GabinetePage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {dossiesAtivos.length === 0 ? (
                     <Link
-                      to="/dossies"
+                      to="/assuntos"
                       className="group min-w-0 rounded-2xl border border-border/80 bg-muted/25 p-4 transition-colors hover:bg-muted/40 sm:col-span-2"
                     >
                       <div className="flex min-w-0 items-start justify-between gap-3">
@@ -156,7 +156,7 @@ function GabinetePage() {
                     dossiesAtivos.map((dossie) => (
                       <Link
                         key={dossie.id}
-                        to="/dossies"
+                        to="/assuntos"
                         className="group min-w-0 rounded-2xl border border-border/80 bg-muted/25 p-4 transition-colors hover:bg-muted/40"
                       >
                         <div className="flex min-w-0 items-start justify-between gap-3">

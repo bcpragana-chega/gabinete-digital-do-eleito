@@ -242,7 +242,7 @@ export function NovaSessaoWizard() {
 
     setOpen(false);
     reset();
-    navigate({ to: "/assembleias/$id", params: { id: sessao.id } });
+    navigate({ to: "/sessoes/$id", params: { id: sessao.id } });
   }
 
   function avancar() {

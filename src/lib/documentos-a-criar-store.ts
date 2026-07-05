@@ -26,12 +26,12 @@ function gerarId() {
 
 function hrefRascunho(documento: DocumentoCriado) {
   if (documento.assuntoId) {
-    return `/dossies/${documento.assuntoId}/documentos/${documento.id}`;
+    return `/assuntos/${documento.assuntoId}/documentos/${documento.id}`;
   }
 
   if (!documento.assembleiaId || !documento.pontoId) return undefined;
 
-  return `/assembleias/${documento.assembleiaId}/preparacao/pontos/${documento.pontoId}/rascunhos/${documento.id}`;
+  return `/sessoes/${documento.assembleiaId}/preparacao/pontos/${documento.pontoId}/rascunhos/${documento.id}`;
 }
 
 function registarDocumentoACriarNaTimeline(documento: DocumentoCriado, acao: "criado" | "editado") {

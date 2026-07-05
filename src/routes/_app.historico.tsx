@@ -25,7 +25,7 @@ function HistoricoItem({ assembleia }: { assembleia: ReturnType<typeof useAssemb
     <li className="mb-6 ml-6">
       <span className="absolute -left-1.5 mt-2 h-3 w-3 rounded-full border-2 border-background bg-primary" />
       <Link
-        to="/assembleias/$id"
+        to="/sessoes/$id"
         params={{ id: assembleia.id }}
         className="block rounded-xl border border-border bg-card p-5 shadow-card hover:shadow-elevated hover:border-foreground/15 transition-all"
       >

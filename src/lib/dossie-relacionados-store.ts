@@ -63,7 +63,7 @@ export function adicionarRelacionadoDossie(
       tipo: "compromisso",
       origemTipo: "compromisso",
       origemId: relacionado.id,
-      origemHref: `/dossies/${dossieId}`,
+      origemHref: `/assuntos/${dossieId}`,
     });
   }
 

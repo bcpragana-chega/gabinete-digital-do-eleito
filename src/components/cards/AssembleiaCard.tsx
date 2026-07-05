@@ -10,7 +10,7 @@ export function AssembleiaCard({ assembleia }: { assembleia: Assembleia }) {
 
   return (
     <Link
-      to="/assembleias/$id"
+      to="/sessoes/$id"
       params={{ id: assembleia.id }}
       className="group block rounded-xl border border-border bg-card p-5 shadow-card transition-all hover:shadow-elevated hover:border-foreground/15"
     >

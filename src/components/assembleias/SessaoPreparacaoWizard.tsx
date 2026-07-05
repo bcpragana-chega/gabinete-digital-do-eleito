@@ -461,7 +461,7 @@ function WizardStepPontos({
                 actions={
                   <Button asChild variant="secondary" size="sm">
                     <Link
-                      to="/assembleias/$id/preparacao/pontos/$pontoId"
+                      to="/sessoes/$id/preparacao/pontos/$pontoId"
                       params={{ id: assembleiaId, pontoId: ponto.id }}
                     >
                       Abrir
@@ -672,14 +672,14 @@ function WizardStepDocumentosCriar({
                 <Button asChild variant="secondary" size="sm">
                   {rascunho.assuntoId ? (
                     <Link
-                      to="/dossies/$dossieId/documentos/$documentoId"
+                      to="/assuntos/$dossieId/documentos/$documentoId"
                       params={{ dossieId: rascunho.assuntoId, documentoId: rascunho.id }}
                     >
                       Abrir
                     </Link>
                   ) : (
                     <Link
-                      to="/assembleias/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId"
+                      to="/sessoes/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId"
                       params={{
                         id: assembleiaId,
                         pontoId: rascunho.pontoId ?? "",

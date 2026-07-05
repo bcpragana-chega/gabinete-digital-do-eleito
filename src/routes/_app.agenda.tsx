@@ -80,7 +80,7 @@ function AgendaPage() {
                       }
                       actions={
                         <Button asChild variant="secondary" size="sm">
-                          <Link to="/assembleias/$id" params={{ id: assembleia.id }}>
+                          <Link to="/sessoes/$id" params={{ id: assembleia.id }}>
                             Abrir
                           </Link>
                         </Button>

@@ -131,7 +131,7 @@ export function associarAssembleiaAoDossie(
     tipo: "assembleia",
     origemTipo: "assembleia",
     origemId: assembleiaId,
-    origemHref: `/assembleias/${assembleiaId}`,
+    origemHref: `/sessoes/${assembleiaId}`,
   });
 
   if (isBrowser()) window.dispatchEvent(new Event(EVENT_NAME));

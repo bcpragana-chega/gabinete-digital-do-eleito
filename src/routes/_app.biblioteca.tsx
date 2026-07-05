@@ -252,7 +252,7 @@ function BibliotecaPage() {
                               className="w-full lg:w-auto"
                             >
                               <Link
-                                to="/assembleias/$id/documentos/$docId"
+                                to="/sessoes/$id/documentos/$docId"
                                 params={{ id: documento.assembleiaId, docId: documento.id }}
                               >
                                 Abrir

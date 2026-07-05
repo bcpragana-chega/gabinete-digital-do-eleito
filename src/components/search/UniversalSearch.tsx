@@ -149,7 +149,7 @@ export function UniversalSearch() {
         title: "Criar assunto",
         description: "Abrir Assuntos para criar um novo tema de acompanhamento.",
         icon: Plus,
-        href: "/dossies",
+        href: "/assuntos",
         terms: ["criar dossie", "novo dossie", "dossie"],
       },
       {
@@ -157,7 +157,7 @@ export function UniversalSearch() {
         title: "Criar sessão",
         description: "Abrir Sessões para registar uma nova sessão.",
         icon: Plus,
-        href: "/assembleias",
+        href: "/sessoes",
         terms: ["criar assembleia", "nova assembleia", "assembleia"],
       },
       {
@@ -165,7 +165,7 @@ export function UniversalSearch() {
         title: "Abrir assuntos",
         description: "Ver todos os assuntos ativos e arquivados.",
         icon: NotebookText,
-        href: "/dossies",
+        href: "/assuntos",
         terms: ["abrir dossies", "dossies", "temas"],
       },
       {
@@ -173,7 +173,7 @@ export function UniversalSearch() {
         title: "Abrir sessões",
         description: "Ver a lista de sessões do mandato.",
         icon: CalendarDays,
-        href: "/assembleias",
+        href: "/sessoes",
         terms: ["abrir assembleias", "assembleias", "sessoes"],
       },
       {
@@ -199,9 +199,7 @@ export function UniversalSearch() {
           ? `Continuar a preparação de ${assembleiaPreparacao.nome}.`
           : "Abrir sessões para escolher uma preparação.",
         icon: PlayCircle,
-        href: assembleiaPreparacao
-          ? `/assembleias/${assembleiaPreparacao.id}/preparacao`
-          : "/assembleias",
+        href: assembleiaPreparacao ? `/sessoes/${assembleiaPreparacao.id}/preparacao` : "/sessoes",
         terms: ["continuar preparacao", "preparacao", "retomar", "proxima assembleia"],
       },
     ];

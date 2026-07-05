@@ -59,7 +59,7 @@ export function adicionarNotaDossie(dossieId: string, conteudo: string): DossieN
     tipo: "nota",
     origemTipo: "nota",
     origemId: nota.id,
-    origemHref: `/dossies/${dossieId}`,
+    origemHref: `/assuntos/${dossieId}`,
   });
 
   return nota;
@@ -87,7 +87,7 @@ export function editarNotaDossie(id: string, conteudo: string): DossieNota | und
       tipo: "nota",
       origemTipo: "nota",
       origemId: notaAtualizada.id,
-      origemHref: `/dossies/${notaAtualizada.dossieId}`,
+      origemHref: `/assuntos/${notaAtualizada.dossieId}`,
     });
   }
 

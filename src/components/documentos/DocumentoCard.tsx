@@ -7,7 +7,7 @@ import { DocumentoEstadoBadge } from "./DocumentoEstadoBadge";
 export function DocumentoCard({ documento }: { documento: Documento }) {
   return (
     <Link
-      to="/assembleias/$id/documentos/$docId"
+      to="/sessoes/$id/documentos/$docId"
       params={{ id: documento.assembleiaId, docId: documento.id }}
       className="group flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-card transition-all hover:shadow-elevated hover:border-foreground/15"
     >

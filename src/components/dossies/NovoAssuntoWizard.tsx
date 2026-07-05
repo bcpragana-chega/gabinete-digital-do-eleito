@@ -129,7 +129,7 @@ export function NovoAssuntoWizard() {
 
     setOpen(false);
     reset();
-    navigate({ to: "/dossies/$dossieId", params: { dossieId: assunto.id } });
+    navigate({ to: "/assuntos/$dossieId", params: { dossieId: assunto.id } });
   }
 
   return (

@@ -19,7 +19,7 @@ function write(docs: Documento[]) {
 }
 
 function hrefDocumento(documento: Documento) {
-  return `/assembleias/${documento.assembleiaId}/documentos/${documento.id}`;
+  return `/sessoes/${documento.assembleiaId}/documentos/${documento.id}`;
 }
 
 function registarDocumentoCriadoNaTimeline(documento: Documento) {

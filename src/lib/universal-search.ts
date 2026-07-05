@@ -86,7 +86,7 @@ function buildIndex(): UniversalSearchResult[] {
       title: assembleia.nome,
       description: assembleia.local,
       meta: `${assembleia.data}${assembleia.hora ? ` · ${assembleia.hora}` : ""}`,
-      href: `/assembleias/${assembleia.id}`,
+      href: `/sessoes/${assembleia.id}`,
       terms: [assembleia.nome, assembleia.local, assembleia.estado, assembleia.data],
     }),
   );
@@ -98,7 +98,7 @@ function buildIndex(): UniversalSearchResult[] {
       title: dossie.titulo,
       description: dossie.resumo,
       meta: dossie.prioridade,
-      href: `/dossies/${dossie.id}`,
+      href: `/assuntos/${dossie.id}`,
       terms: [
         dossie.titulo,
         dossie.resumo,
@@ -117,7 +117,7 @@ function buildIndex(): UniversalSearchResult[] {
       title: documento.titulo,
       description: documento.notas || documento.tipo,
       meta: documento.estado,
-      href: `/assembleias/${documento.assembleiaId}/documentos/${documento.id}`,
+      href: `/sessoes/${documento.assembleiaId}/documentos/${documento.id}`,
       terms: [
         documento.titulo,
         documento.tipo,
@@ -138,7 +138,7 @@ function buildIndex(): UniversalSearchResult[] {
       title: dossie ? `Nota · ${dossie.titulo}` : "Nota de assunto",
       description: nota.conteudo,
       meta: dossie?.titulo,
-      href: `/dossies/${nota.dossieId}`,
+      href: `/assuntos/${nota.dossieId}`,
       terms: [nota.conteudo, dossie?.titulo ?? "", dossie?.resumo ?? "", ...(dossie?.tags ?? [])],
     };
   });
@@ -152,7 +152,7 @@ function buildIndex(): UniversalSearchResult[] {
       title: evento.titulo,
       description: evento.descricao,
       meta: dossie ? `${dossie.titulo} · ${evento.tipo}` : evento.tipo,
-      href: `/dossies/${evento.dossieId}`,
+      href: `/assuntos/${evento.dossieId}`,
       terms: [
         evento.titulo,
         evento.descricao,

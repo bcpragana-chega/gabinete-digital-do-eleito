@@ -2,8 +2,8 @@ import { BookOpen, CalendarDays, Home, Landmark, NotebookText, Settings } from "
 
 export const sidebarItems = [
   { to: "/" as const, label: "Hoje", icon: Home, exact: true },
-  { to: "/dossies/" as const, label: "Assuntos", icon: NotebookText, exact: false },
-  { to: "/assembleias/" as const, label: "Sessões", icon: Landmark, exact: false },
+  { to: "/assuntos" as const, label: "Assuntos", icon: NotebookText, exact: false },
+  { to: "/sessoes" as const, label: "Sessões", icon: Landmark, exact: false },
   {
     to: "/biblioteca" as const,
     label: "Biblioteca",

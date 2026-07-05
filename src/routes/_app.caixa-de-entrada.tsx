@@ -179,7 +179,7 @@ function CaixaDeEntradaPage() {
                             size="sm"
                             className="w-full sm:w-auto"
                           >
-                            <Link to="/dossies">
+                            <Link to="/assuntos">
                               <NotebookText className="mr-2 h-4 w-4" />
                               Assuntos
                             </Link>
@@ -210,7 +210,7 @@ function CaixaDeEntradaPage() {
                             size="sm"
                             className="w-full sm:w-auto"
                           >
-                            <Link to="/assembleias">
+                            <Link to="/sessoes">
                               <Landmark className="mr-2 h-4 w-4" />
                               Sessões
                             </Link>
