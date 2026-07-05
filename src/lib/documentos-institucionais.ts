@@ -32,6 +32,17 @@ const tiposInstitucionais: TipoDocumentoInstitucional[] = [
   "Requerimento",
 ];
 
+const secoesPorTipo: Record<TipoDocumentoInstitucional, string[]> = {
+  Moção: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "PROPOSTA / DELIBERAÇÃO"],
+  Recomendação: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "RECOMENDAÇÃO"],
+  Requerimento: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "REQUERIMENTO"],
+};
+
+export type SecaoDocumentoInstitucional = {
+  titulo: string;
+  conteudo: string;
+};
+
 export function isTipoDocumentoInstitucional(
   tipo: TipoDocumentoCriado,
 ): tipo is TipoDocumentoInstitucional {
@@ -149,13 +160,12 @@ export function criarConteudoInicialInstitucional(
   contexto?: ContextoDocumentoInstitucional,
 ) {
   const dados = obterDadosInstitucionais(contexto);
-  const tituloSeguro = titulo.trim() || "[Título do documento]";
-  const notasPreparacao = notas?.trim() || "[Escrever aqui notas de preparação.]";
+  const notasPreparacao = notas?.trim();
 
   if (tipo === "Moção") {
     return `## ENQUADRAMENTO
 
-[Descrever de forma objetiva o contexto institucional, social ou político que justifica a apresentação da moção.]
+${notasPreparacao || "[Descrever de forma objetiva o contexto institucional, social ou político que justifica a apresentação da moção.]"}
 
 ## FUNDAMENTAÇÃO
 
@@ -173,11 +183,7 @@ ${dados.entidadeDeliberativa} delibera:
 1. [Primeira deliberação ou posição a aprovar.]
 2. [Segunda deliberação, recomendação ou compromisso institucional.]
 3. [Terceira deliberação, entidade destinatária ou medida de acompanhamento.]
-4. [Forma de comunicação, execução ou remessa da presente moção.]
-
-## NOTAS DE PREPARAÇÃO
-
-${notasPreparacao}`;
+4. [Forma de comunicação, execução ou remessa da presente moção.]`;
   }
 
   if (tipo === "Recomendação") {
@@ -200,11 +206,7 @@ recomenda-se ao Executivo competente que:
 
 1. [Primeira medida recomendada.]
 2. [Segunda medida recomendada.]
-3. [Prazo, forma de acompanhamento ou entidade responsável.]
-
-## NOTAS DE PREPARAÇÃO
-
-${notasPreparacao}`;
+3. [Prazo, forma de acompanhamento ou entidade responsável.]`;
   }
 
   return `## ENQUADRAMENTO
@@ -226,11 +228,7 @@ requer-se ao Executivo competente que informe:
 
 1. [Primeira informação, documento ou esclarecimento requerido.]
 2. [Segunda informação, documento ou esclarecimento requerido.]
-3. [Prazo, detalhe, formato ou entidade responsável pela resposta.]
-
-## NOTAS DE PREPARAÇÃO
-
-${notasPreparacao}`;
+3. [Prazo, detalhe, formato ou entidade responsável pela resposta.]`;
 }
 
 function removerTituloMarkdown(conteudo: string, titulo: string) {
@@ -243,6 +241,78 @@ function removerTituloMarkdown(conteudo: string, titulo: string) {
   }
 
   return conteudo.trim();
+}
+
+export function obterSecoesDocumentoInstitucional(
+  tipo: TipoDocumentoInstitucional,
+  conteudo: string,
+): SecaoDocumentoInstitucional[] {
+  const secoesEsperadas = secoesPorTipo[tipo];
+  const secoes = new Map<string, string[]>();
+  let secaoAtual: string | undefined;
+
+  for (const linhaOriginal of removerTituloMarkdown(conteudo, "").split(/\r?\n/)) {
+    const linha = linhaOriginal.trimEnd();
+
+    if (linha.trim().startsWith("## ")) {
+      const titulo = linha.trim().slice(3).trim().toLocaleUpperCase("pt-PT");
+      secaoAtual = secoesEsperadas.includes(titulo) ? titulo : undefined;
+      if (secaoAtual && !secoes.has(secaoAtual)) secoes.set(secaoAtual, []);
+      continue;
+    }
+
+    if (!secaoAtual) continue;
+    secoes.get(secaoAtual)?.push(linha);
+  }
+
+  const defaults = criarConteudoInicialInstitucional(tipo, "");
+
+  return secoesEsperadas.map((titulo) => ({
+    titulo,
+    conteudo:
+      secoes
+        .get(titulo)
+        ?.join("\n")
+        .trim() ||
+      obterSecoesDocumentoInstitucionalSemFallback(tipo, defaults).find(
+        (secao) => secao.titulo === titulo,
+      )?.conteudo ||
+      "",
+  }));
+}
+
+function obterSecoesDocumentoInstitucionalSemFallback(
+  tipo: TipoDocumentoInstitucional,
+  conteudo: string,
+): SecaoDocumentoInstitucional[] {
+  const secoesEsperadas = secoesPorTipo[tipo];
+  const secoes = new Map<string, string[]>();
+  let secaoAtual: string | undefined;
+
+  for (const linhaOriginal of conteudo.split(/\r?\n/)) {
+    const linha = linhaOriginal.trimEnd();
+
+    if (linha.trim().startsWith("## ")) {
+      const titulo = linha.trim().slice(3).trim().toLocaleUpperCase("pt-PT");
+      secaoAtual = secoesEsperadas.includes(titulo) ? titulo : undefined;
+      if (secaoAtual && !secoes.has(secaoAtual)) secoes.set(secaoAtual, []);
+      continue;
+    }
+
+    if (!secaoAtual) continue;
+    secoes.get(secaoAtual)?.push(linha);
+  }
+
+  return secoesEsperadas.map((titulo) => ({
+    titulo,
+    conteudo: secoes.get(titulo)?.join("\n").trim() || "",
+  }));
+}
+
+export function serializarSecoesDocumentoInstitucional(secoes: SecaoDocumentoInstitucional[]) {
+  return secoes
+    .map((secao) => `## ${secao.titulo}\n\n${secao.conteudo.trim()}`)
+    .join("\n\n");
 }
 
 function renderMarkdownInstitucional(markdown: string) {
@@ -418,7 +488,11 @@ export function criarHtmlDocumentoInstitucional(
 ) {
   const dados = obterDadosInstitucionais(contexto);
   const titulo = documento.titulo.trim() || "Documento sem título";
-  const conteudo = removerTituloMarkdown(documento.conteudo || "", titulo);
+  const conteudo = isTipoDocumentoInstitucional(documento.tipo)
+    ? serializarSecoesDocumentoInstitucional(
+        obterSecoesDocumentoInstitucional(documento.tipo, documento.conteudo || ""),
+      )
+    : removerTituloMarkdown(documento.conteudo || "", titulo);
   const tipo = capitalizarTipo(documento.tipo);
 
   return `<!doctype html>

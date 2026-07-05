@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronLeft, Download, Eye, FileDown, FilePlus2, Pencil } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
+import { InstitutionalDocumentEditor } from "@/components/documentos/InstitutionalDocumentEditor";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ import {
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
 } from "@/lib/documentos-criados-export";
+import { isTipoDocumentoInstitucional } from "@/lib/documentos-institucionais";
 import { adicionarEventoHistorico } from "@/lib/historico-store";
 import { obterPontoPorId, type PontoOrdemTrabalhos } from "@/lib/pontos-store";
 import type { DocumentoCriado, EstadoDocumentoCriado } from "@/lib/types";
@@ -323,16 +325,44 @@ function RascunhoDocumentoPage() {
                 </div>
               </div>
 
-              <div className="mt-4">
-                <label className="mb-1 block text-xs font-medium text-foreground">Conteúdo</label>
-                <Textarea
-                  value={conteudo}
-                  onChange={(event) => setConteudo(event.target.value)}
-                  rows={16}
-                  className="min-h-[360px]"
-                />
-              </div>
+              {rascunho && isTipoDocumentoInstitucional(rascunho.tipo) ? (
+                <div className="mt-5">
+                  <InstitutionalDocumentEditor
+                    tipo={rascunho.tipo}
+                    titulo={titulo}
+                    conteudo={conteudo}
+                    contexto={{
+                      assembleia,
+                      sessao: assembleia.nome,
+                      ponto: ponto ? `Ponto ${ponto.numero} · ${ponto.titulo}` : undefined,
+                    }}
+                    onConteudoChange={setConteudo}
+                  />
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <label className="mb-1 block text-xs font-medium text-foreground">Conteúdo</label>
+                  <Textarea
+                    value={conteudo}
+                    onChange={(event) => setConteudo(event.target.value)}
+                    rows={16}
+                    className="min-h-[360px]"
+                  />
+                </div>
+              )}
             </>
+          ) : rascunho && isTipoDocumentoInstitucional(rascunho.tipo) ? (
+            <InstitutionalDocumentEditor
+              tipo={rascunho.tipo}
+              titulo={titulo}
+              conteudo={conteudo}
+              contexto={{
+                assembleia,
+                sessao: assembleia.nome,
+                ponto: ponto ? `Ponto ${ponto.numero} · ${ponto.titulo}` : undefined,
+              }}
+              readOnly
+            />
           ) : (
             <RascunhoPreview
               tipo={rascunho?.tipo ?? "Documento"}

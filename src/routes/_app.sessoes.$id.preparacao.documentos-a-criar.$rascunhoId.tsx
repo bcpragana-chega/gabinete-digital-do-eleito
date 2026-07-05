@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Download, FileDown, FilePlus2, Save } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
+import { InstitutionalDocumentEditor } from "@/components/documentos/InstitutionalDocumentEditor";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ import {
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
 } from "@/lib/documentos-criados-export";
+import { isTipoDocumentoInstitucional } from "@/lib/documentos-institucionais";
 import type { DocumentoCriado, EstadoDocumentoCriado } from "@/lib/types";
 
 const estadosDocumento: EstadoDocumentoCriado[] = [
@@ -252,15 +254,27 @@ function DocumentoACriarDaSessaoPage() {
             </div>
           </div>
 
-          <div className="mt-4">
-            <label className="mb-1 block text-xs font-medium text-foreground">Conteúdo</label>
-            <Textarea
-              value={conteudo}
-              onChange={(event) => setConteudo(event.target.value)}
-              rows={18}
-              className="min-h-[420px]"
-            />
-          </div>
+          {rascunho && isTipoDocumentoInstitucional(rascunho.tipo) ? (
+            <div className="mt-5">
+              <InstitutionalDocumentEditor
+                tipo={rascunho.tipo}
+                titulo={titulo}
+                conteudo={conteudo}
+                contexto={{ assembleia, sessao: assembleia.nome }}
+                onConteudoChange={setConteudo}
+              />
+            </div>
+          ) : (
+            <div className="mt-4">
+              <label className="mb-1 block text-xs font-medium text-foreground">Conteúdo</label>
+              <Textarea
+                value={conteudo}
+                onChange={(event) => setConteudo(event.target.value)}
+                rows={18}
+                className="min-h-[420px]"
+              />
+            </div>
+          )}
         </section>
       </main>
     </>

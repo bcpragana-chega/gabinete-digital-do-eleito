@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Download, FileDown, FileText, Link2, Save, X } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
+import { InstitutionalDocumentEditor } from "@/components/documentos/InstitutionalDocumentEditor";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
 import { Breadcrumb } from "@/components/ui/navigation";
@@ -28,6 +29,7 @@ import {
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
 } from "@/lib/documentos-criados-export";
+import { isTipoDocumentoInstitucional } from "@/lib/documentos-institucionais";
 import { adicionarEventoAutomaticoTimelineDossie } from "@/lib/dossie-timeline-store";
 import { adicionarEventoHistorico } from "@/lib/historico-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
@@ -444,15 +446,36 @@ function DocumentoDoAssuntoPage() {
                 </div>
               </div>
 
-              <div className="mt-4">
-                <label className="mb-1 block text-xs font-medium text-foreground">Conteúdo</label>
-                <Textarea
-                  value={conteudo}
-                  onChange={(event) => setConteudo(event.target.value)}
-                  rows={18}
-                  className="min-h-[420px]"
-                />
-              </div>
+              {documento && isTipoDocumentoInstitucional(documento.tipo) ? (
+                <div className="mt-5">
+                  <InstitutionalDocumentEditor
+                    tipo={documento.tipo}
+                    titulo={titulo}
+                    conteudo={conteudo}
+                    contexto={{
+                      assembleia: assembleias.find((item) => item.id === assembleiaId),
+                      assunto: dossie.titulo,
+                      sessao: assembleias.find((item) => item.id === assembleiaId)?.nome,
+                      ponto: pontosDaSessao.find((item) => item.id === pontoId)
+                        ? `Ponto ${pontosDaSessao.find((item) => item.id === pontoId)?.numero} · ${
+                            pontosDaSessao.find((item) => item.id === pontoId)?.titulo
+                          }`
+                        : undefined,
+                    }}
+                    onConteudoChange={setConteudo}
+                  />
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <label className="mb-1 block text-xs font-medium text-foreground">Conteúdo</label>
+                  <Textarea
+                    value={conteudo}
+                    onChange={(event) => setConteudo(event.target.value)}
+                    rows={18}
+                    className="min-h-[420px]"
+                  />
+                </div>
+              )}
             </WorkspaceSection>
           </WorkspaceLayout>
         </div>
