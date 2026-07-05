@@ -72,12 +72,44 @@ export const orgaosEleito: OrgaoEleito[] = [
   "Outro",
 ];
 
+function textoSeguro(valor: unknown) {
+  return typeof valor === "string" ? valor.trim() : "";
+}
+
+function cargoSeguro(valor: unknown): CargoEleito {
+  return typeof valor === "string" && cargosEleito.includes(valor as CargoEleito)
+    ? (valor as CargoEleito)
+    : "Outro";
+}
+
+function orgaoSeguro(valor: unknown): OrgaoEleito {
+  return typeof valor === "string" && orgaosEleito.includes(valor as OrgaoEleito)
+    ? (valor as OrgaoEleito)
+    : "Outro";
+}
+
+export function normalizarPerfilEleito(perfil?: Partial<PerfilEleito> | null) {
+  if (!perfil || typeof perfil !== "object") return undefined;
+
+  const assinaturaInstitucional = textoSeguro(perfil.assinaturaInstitucional);
+
+  return {
+    nomeInstitucional: textoSeguro(perfil.nomeInstitucional),
+    cargo: cargoSeguro(perfil.cargo),
+    orgao: orgaoSeguro(perfil.orgao),
+    organizacao: textoSeguro(perfil.organizacao),
+    territorio: textoSeguro(perfil.territorio),
+    assinaturaInstitucional: assinaturaInstitucional || undefined,
+    updatedAt: textoSeguro(perfil.updatedAt) || new Date().toISOString(),
+  } satisfies PerfilEleito;
+}
+
 function isBrowser() {
   return typeof window !== "undefined";
 }
 
 function lerPerfilDoStorage(userId?: string): PerfilEleito | undefined {
-  return carregarPerfilLocal(userId);
+  return normalizarPerfilEleito(carregarPerfilLocal(userId));
 }
 
 function lerAuthState(): AuthState {
@@ -94,24 +126,26 @@ function lerAuthState(): AuthState {
 }
 
 function normalizarAuthState(state: AuthState): AuthState {
-  if (!state.user?.id || !state.perfil) return state;
+  if (!state.user?.id) return state;
+
+  const perfilNormalizado = normalizarPerfilEleito(state.perfil);
+  if (!perfilNormalizado) return state;
 
   const perfisPorUserId = { ...state.perfisPorUserId };
+  const perfilDoUser = normalizarPerfilEleito(perfisPorUserId[state.user.id]) ?? perfilNormalizado;
 
-  if (!perfisPorUserId[state.user.id]) {
-    perfisPorUserId[state.user.id] = state.perfil;
-  }
+  perfisPorUserId[state.user.id] = perfilDoUser;
 
   return {
     ...state,
-    perfil: perfisPorUserId[state.user.id],
+    perfil: perfilDoUser,
     perfisPorUserId,
   };
 }
 
 function obterPerfilDoUser(state: AuthState, user = state.user) {
   if (!user?.id) return undefined;
-  return lerPerfilDoStorage(user.id) ?? state.perfisPorUserId?.[user.id];
+  return normalizarPerfilEleito(lerPerfilDoStorage(user.id) ?? state.perfisPorUserId?.[user.id]);
 }
 
 function guardarAuthState(state: AuthState) {
@@ -150,7 +184,7 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
           googleSub: user.id,
           supabaseUserId: supabaseUser.id,
         };
-        perfilRemoto = await carregarPerfilHibrido(userAutenticado.id);
+        perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userAutenticado.id));
       }
     } catch (error) {
       console.warn("[Tribuno] Login Supabase indisponível; a usar fallback local.", error);
@@ -169,10 +203,14 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
 export async function guardarPerfilEleito(perfil: Omit<PerfilEleito, "updatedAt">) {
   const state = lerAuthState();
   const userId = state.user?.id;
-  const perfilAtualizado: PerfilEleito = {
+  const perfilAtualizado = normalizarPerfilEleito({
     ...perfil,
     updatedAt: new Date().toISOString(),
-  };
+  });
+
+  if (!perfilAtualizado) {
+    throw new Error("Perfil inválido.");
+  }
 
   guardarAuthState({
     ...state,
@@ -200,25 +238,29 @@ export function logout() {
 }
 
 export function perfilCompleto(perfil?: PerfilEleito) {
+  const perfilNormalizado = normalizarPerfilEleito(perfil);
+
   return Boolean(
-    perfil?.nomeInstitucional.trim() &&
-    perfil.cargo &&
-    perfil.orgao &&
-    perfil.organizacao.trim() &&
-    perfil.territorio.trim(),
+    perfilNormalizado?.nomeInstitucional &&
+    perfilNormalizado.cargo &&
+    perfilNormalizado.orgao &&
+    perfilNormalizado.organizacao &&
+    perfilNormalizado.territorio,
   );
 }
 
 export function nomeVisivel(user?: AuthUser, perfil?: PerfilEleito) {
-  return perfil?.nomeInstitucional.trim() || user?.nome.trim() || "Utilizador";
+  return (
+    normalizarPerfilEleito(perfil)?.nomeInstitucional || textoSeguro(user?.nome) || "Utilizador"
+  );
 }
 
-export function primeiroNome(nome: string) {
-  return nome.trim().split(/\s+/)[0] || "Utilizador";
+export function primeiroNome(nome?: string) {
+  return textoSeguro(nome).split(/\s+/)[0] || "Utilizador";
 }
 
 export function iniciais(nome?: string) {
-  const partes = (nome || "Utilizador").trim().split(/\s+/).filter(Boolean);
+  const partes = (textoSeguro(nome) || "Utilizador").split(/\s+/).filter(Boolean);
   const letras = partes.slice(0, 2).map((parte) => parte[0]?.toUpperCase());
   return letras.join("") || "U";
 }
@@ -246,7 +288,7 @@ export function useAuth() {
 
       if (!userId || perfilCompleto(perfilAtual)) return stateAtual;
 
-      const perfilRemoto = await carregarPerfilHibrido(userId);
+      const perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userId));
       if (!perfilRemoto) return stateAtual;
 
       const nextState = {

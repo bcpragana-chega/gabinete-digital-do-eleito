@@ -4,41 +4,78 @@ import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 
 type ProfileRow = {
   user_id: string;
-  nome_institucional: string;
-  cargo: PerfilEleito["cargo"];
-  orgao: PerfilEleito["orgao"];
-  organizacao: string;
-  territorio: string;
+  nome_institucional: string | null;
+  cargo: PerfilEleito["cargo"] | null;
+  orgao: PerfilEleito["orgao"] | null;
+  organizacao: string | null;
+  territorio: string | null;
   assinatura_institucional: string | null;
-  updated_at: string;
+  updated_at: string | null;
 };
+
+const cargosPermitidos: PerfilEleito["cargo"][] = [
+  "Membro da Assembleia de Freguesia",
+  "Presidente da Junta de Freguesia",
+  "Secretário da Junta de Freguesia",
+  "Tesoureiro da Junta de Freguesia",
+  "Membro da Assembleia Municipal",
+  "Vereador",
+  "Deputado Municipal",
+  "Outro",
+];
+
+const orgaosPermitidos: PerfilEleito["orgao"][] = [
+  "Assembleia de Freguesia",
+  "Junta de Freguesia",
+  "Assembleia Municipal",
+  "Câmara Municipal",
+  "Outro",
+];
 
 function profileKey(userId: string) {
   return userScopedKey("tribuno:perfil", userId);
 }
 
+function textoSeguro(valor: unknown) {
+  return typeof valor === "string" ? valor.trim() : "";
+}
+
+function cargoSeguro(valor: unknown): PerfilEleito["cargo"] {
+  return typeof valor === "string" && cargosPermitidos.includes(valor as PerfilEleito["cargo"])
+    ? (valor as PerfilEleito["cargo"])
+    : "Outro";
+}
+
+function orgaoSeguro(valor: unknown): PerfilEleito["orgao"] {
+  return typeof valor === "string" && orgaosPermitidos.includes(valor as PerfilEleito["orgao"])
+    ? (valor as PerfilEleito["orgao"])
+    : "Outro";
+}
+
 function fromRow(row: ProfileRow): PerfilEleito {
+  const assinaturaInstitucional = textoSeguro(row.assinatura_institucional);
+
   return {
-    nomeInstitucional: row.nome_institucional,
-    cargo: row.cargo,
-    orgao: row.orgao,
-    organizacao: row.organizacao,
-    territorio: row.territorio,
-    assinaturaInstitucional: row.assinatura_institucional ?? undefined,
-    updatedAt: row.updated_at,
+    nomeInstitucional: textoSeguro(row.nome_institucional),
+    cargo: cargoSeguro(row.cargo),
+    orgao: orgaoSeguro(row.orgao),
+    organizacao: textoSeguro(row.organizacao),
+    territorio: textoSeguro(row.territorio),
+    assinaturaInstitucional: assinaturaInstitucional || undefined,
+    updatedAt: textoSeguro(row.updated_at) || new Date().toISOString(),
   };
 }
 
 function toRow(userId: string, perfil: PerfilEleito): ProfileRow {
   return {
     user_id: userId,
-    nome_institucional: perfil.nomeInstitucional,
-    cargo: perfil.cargo,
-    orgao: perfil.orgao,
-    organizacao: perfil.organizacao,
-    territorio: perfil.territorio,
-    assinatura_institucional: perfil.assinaturaInstitucional || null,
-    updated_at: perfil.updatedAt,
+    nome_institucional: textoSeguro(perfil.nomeInstitucional),
+    cargo: cargoSeguro(perfil.cargo),
+    orgao: orgaoSeguro(perfil.orgao),
+    organizacao: textoSeguro(perfil.organizacao),
+    territorio: textoSeguro(perfil.territorio),
+    assinatura_institucional: textoSeguro(perfil.assinaturaInstitucional) || null,
+    updated_at: textoSeguro(perfil.updatedAt) || new Date().toISOString(),
   };
 }
 

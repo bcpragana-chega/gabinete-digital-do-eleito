@@ -16,6 +16,7 @@ import {
   cargosEleito,
   guardarPerfilEleito,
   nomeVisivel,
+  normalizarPerfilEleito,
   orgaosEleito,
   type AuthUser,
   type CargoEleito,
@@ -36,18 +37,24 @@ export function PerfilEleitoForm({
   submitLabel = "Guardar perfil",
   onSaved,
 }: PerfilEleitoFormProps) {
-  const nomeInicial = useMemo(() => nomeVisivel(user, perfil), [perfil, user]);
+  const perfilNormalizado = useMemo(() => normalizarPerfilEleito(perfil), [perfil]);
+  const nomeInicial = useMemo(
+    () => nomeVisivel(user, perfilNormalizado),
+    [perfilNormalizado, user],
+  );
   const [nomeInstitucional, setNomeInstitucional] = useState(
-    perfil?.nomeInstitucional || nomeInicial,
+    perfilNormalizado?.nomeInstitucional || nomeInicial,
   );
   const [cargo, setCargo] = useState<CargoEleito>(
-    perfil?.cargo || "Membro da Assembleia Municipal",
+    perfilNormalizado?.cargo || "Membro da Assembleia Municipal",
   );
-  const [orgao, setOrgao] = useState<OrgaoEleito>(perfil?.orgao || "Assembleia Municipal");
-  const [organizacao, setOrganizacao] = useState(perfil?.organizacao || "");
-  const [territorio, setTerritorio] = useState(perfil?.territorio || "");
+  const [orgao, setOrgao] = useState<OrgaoEleito>(
+    perfilNormalizado?.orgao || "Assembleia Municipal",
+  );
+  const [organizacao, setOrganizacao] = useState(perfilNormalizado?.organizacao || "");
+  const [territorio, setTerritorio] = useState(perfilNormalizado?.territorio || "");
   const [assinaturaInstitucional, setAssinaturaInstitucional] = useState(
-    perfil?.assinaturaInstitucional || "",
+    perfilNormalizado?.assinaturaInstitucional || "",
   );
   const [aGuardar, setAGuardar] = useState(false);
   const [nomeEditadoManualmente, setNomeEditadoManualmente] = useState(false);
@@ -56,7 +63,7 @@ export function PerfilEleitoForm({
   useEffect(() => {
     if (nomeEditadoManualmente) return;
 
-    const nomeGuardado = perfil?.nomeInstitucional?.trim();
+    const nomeGuardado = perfilNormalizado?.nomeInstitucional;
 
     if (nomeGuardado) {
       setNomeInstitucional(nomeGuardado);
@@ -66,7 +73,7 @@ export function PerfilEleitoForm({
     if (nomeInicial.trim()) {
       setNomeInstitucional(nomeInicial);
     }
-  }, [nomeEditadoManualmente, nomeInicial, perfil?.nomeInstitucional]);
+  }, [nomeEditadoManualmente, nomeInicial, perfilNormalizado?.nomeInstitucional]);
 
   const podeGuardar = Boolean(
     nomeInstitucional.trim() && cargo && orgao && organizacao.trim() && territorio.trim(),
@@ -103,7 +110,7 @@ export function PerfilEleitoForm({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4 rounded-2xl border border-border bg-muted/25 p-4">
-        <UserAvatar user={user} perfil={perfil} className="h-12 w-12" />
+        <UserAvatar user={user} perfil={perfilNormalizado} className="h-12 w-12" />
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-foreground">
             {user?.nome || "Conta autenticada"}
