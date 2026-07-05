@@ -1,4 +1,11 @@
 import { useEffect, useState } from "react";
+import {
+  carregarPerfilHibrido,
+  carregarPerfilLocal,
+  guardarPerfilHibrido,
+} from "@/lib/profile-repository";
+import { readJSON, writeJSON } from "@/lib/storage-provider";
+import { iniciarSessaoSupabaseComGoogleCredential, terminarSessaoSupabase } from "@/lib/supabase";
 
 export type CargoEleito =
   | "Membro da Assembleia de Freguesia"
@@ -23,6 +30,8 @@ export type AuthUser = {
   email: string;
   avatarUrl?: string;
   provider: "google" | "local-dev";
+  googleSub?: string;
+  supabaseUserId?: string;
 };
 
 export type PerfilEleito = {
@@ -67,43 +76,15 @@ function isBrowser() {
   return typeof window !== "undefined";
 }
 
-function normalizarUserId(value: string) {
-  return value
-    .trim()
-    .toLocaleLowerCase("pt-PT")
-    .replace(/[^a-z0-9@._-]/gi, "_");
-}
-
-function chavePerfil(userId: string) {
-  return `tribuno:perfil:${normalizarUserId(userId)}`;
-}
-
 function lerPerfilDoStorage(userId?: string): PerfilEleito | undefined {
-  if (!isBrowser() || !userId) return undefined;
-
-  try {
-    const raw = window.localStorage.getItem(chavePerfil(userId));
-    if (!raw) return undefined;
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? (parsed as PerfilEleito) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function guardarPerfilNoStorage(userId: string, perfil: PerfilEleito) {
-  if (!isBrowser()) return;
-  window.localStorage.setItem(chavePerfil(userId), JSON.stringify(perfil));
+  return carregarPerfilLocal(userId);
 }
 
 function lerAuthState(): AuthState {
   if (!isBrowser()) return {};
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-
-    const parsed = JSON.parse(raw);
+    const parsed = readJSON<AuthState | undefined>(STORAGE_KEY, undefined);
     if (!parsed || typeof parsed !== "object") return {};
 
     return normalizarAuthState(parsed as AuthState);
@@ -136,7 +117,7 @@ function obterPerfilDoUser(state: AuthState, user = state.user) {
 function guardarAuthState(state: AuthState) {
   if (!isBrowser()) return;
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  writeJSON(STORAGE_KEY, state);
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 
@@ -144,18 +125,48 @@ export function obterAuthState() {
   return lerAuthState();
 }
 
-export function loginComGoogle(user: AuthUser) {
+export async function loginComGoogle(user: AuthUser, googleCredential?: string) {
   const state = lerAuthState();
+  let userAutenticado = user;
+  let perfilRemoto: PerfilEleito | undefined;
+
+  if (googleCredential && user.provider === "google") {
+    try {
+      const supabaseUser = await iniciarSessaoSupabaseComGoogleCredential(googleCredential);
+
+      if (supabaseUser?.id) {
+        userAutenticado = {
+          ...user,
+          id: supabaseUser.id,
+          email: supabaseUser.email || user.email,
+          nome:
+            (supabaseUser.user_metadata?.full_name as string | undefined) ||
+            (supabaseUser.user_metadata?.name as string | undefined) ||
+            user.nome,
+          avatarUrl:
+            (supabaseUser.user_metadata?.avatar_url as string | undefined) ||
+            (supabaseUser.user_metadata?.picture as string | undefined) ||
+            user.avatarUrl,
+          googleSub: user.id,
+          supabaseUserId: supabaseUser.id,
+        };
+        perfilRemoto = await carregarPerfilHibrido(userAutenticado.id);
+      }
+    } catch (error) {
+      console.warn("[Tribuno] Login Supabase indisponível; a usar fallback local.", error);
+    }
+  }
+
   const nextState = {
     ...state,
-    user,
-    perfil: obterPerfilDoUser(state, user),
+    user: userAutenticado,
+    perfil: perfilRemoto ?? obterPerfilDoUser(state, userAutenticado),
   };
   guardarAuthState(nextState);
   return nextState;
 }
 
-export function guardarPerfilEleito(perfil: Omit<PerfilEleito, "updatedAt">) {
+export async function guardarPerfilEleito(perfil: Omit<PerfilEleito, "updatedAt">) {
   const state = lerAuthState();
   const userId = state.user?.id;
   const perfilAtualizado: PerfilEleito = {
@@ -174,13 +185,15 @@ export function guardarPerfilEleito(perfil: Omit<PerfilEleito, "updatedAt">) {
       : state.perfisPorUserId,
   });
 
-  if (userId) guardarPerfilNoStorage(userId, perfilAtualizado);
+  if (userId) await guardarPerfilHibrido(userId, perfilAtualizado);
 
   return perfilAtualizado;
 }
 
 export function logout() {
   if (!isBrowser()) return;
+
+  void terminarSessaoSupabase();
 
   const state = lerAuthState();
   guardarAuthState({ perfisPorUserId: state.perfisPorUserId });
@@ -224,16 +237,58 @@ export function useAuth() {
   const perfil = obterPerfilDoUser(state);
 
   useEffect(() => {
-    function atualizar() {
-      setState(lerAuthState());
+    let cancelled = false;
+    let updateId = 0;
+
+    async function carregarPerfilAntesDeInicializar(stateAtual: AuthState) {
+      const userId = stateAtual.user?.id;
+      const perfilAtual = obterPerfilDoUser(stateAtual);
+
+      if (!userId || perfilCompleto(perfilAtual)) return stateAtual;
+
+      const perfilRemoto = await carregarPerfilHibrido(userId);
+      if (!perfilRemoto) return stateAtual;
+
+      const nextState = {
+        ...stateAtual,
+        perfil: perfilRemoto,
+        perfisPorUserId: {
+          ...stateAtual.perfisPorUserId,
+          [userId]: perfilRemoto,
+        },
+      };
+
+      guardarAuthState(nextState);
+      return nextState;
+    }
+
+    async function atualizar() {
+      const currentUpdateId = ++updateId;
+      const stateAtual = lerAuthState();
+      setInitialized(false);
+      setState(stateAtual);
+
+      const nextState = await carregarPerfilAntesDeInicializar(stateAtual);
+      if (cancelled || currentUpdateId !== updateId) return;
+
+      const latestState = lerAuthState();
+      setState({
+        ...latestState,
+        ...nextState,
+        perfisPorUserId: {
+          ...latestState.perfisPorUserId,
+          ...nextState.perfisPorUserId,
+        },
+      });
       setInitialized(true);
     }
 
-    atualizar();
+    void atualizar();
     window.addEventListener(EVENT_NAME, atualizar);
     window.addEventListener("storage", atualizar);
 
     return () => {
+      cancelled = true;
       window.removeEventListener(EVENT_NAME, atualizar);
       window.removeEventListener("storage", atualizar);
     };

@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import type { Dossie, EstadoDossie, PrioridadeDossie } from "./types";
-import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
+import {
+  carregarAssuntosLocais,
+  carregarAssuntosRemotos,
+  apagarAssuntoRemoto,
+  guardarAssuntoRemoto,
+  guardarAssuntosLocais,
+} from "@/lib/assuntos-repository";
+import { obterUserIdAtual } from "@/lib/user-storage";
 
-const STORAGE_KEY = "tribuno:assuntos";
 const EVENT_NAME = "tribuno:dossies";
 
 export type DossieInput = {
@@ -15,13 +21,42 @@ export type DossieInput = {
 };
 
 function lerDossiesLocais(): Dossie[] {
-  const parsed = lerJSONPorUtilizador<Dossie[]>(STORAGE_KEY, []);
-  return Array.isArray(parsed) ? parsed : [];
+  return carregarAssuntosLocais();
+}
+
+function emitirAtualizacaoDossies() {
+  window.dispatchEvent(new Event(EVENT_NAME));
 }
 
 function guardarDossiesLocais(dossies: Dossie[]) {
-  guardarJSONPorUtilizador(STORAGE_KEY, dossies);
-  window.dispatchEvent(new Event(EVENT_NAME));
+  guardarAssuntosLocais(dossies);
+  emitirAtualizacaoDossies();
+}
+
+function guardarDossieRemotamente(dossie: Dossie) {
+  const userId = obterUserIdAtual();
+  if (!userId) return;
+
+  void guardarAssuntoRemoto(userId, dossie).catch((error) => {
+    console.warn("[Tribuno] Assunto guardado localmente, mas falhou no Supabase.", error);
+  });
+}
+
+function apagarDossieRemotamente(id: string) {
+  void apagarAssuntoRemoto(id).catch((error) => {
+    console.warn("[Tribuno] Assunto apagado localmente, mas falhou no Supabase.", error);
+  });
+}
+
+async function carregarDossiesRemotosSeDisponivel() {
+  try {
+    const remotos = await carregarAssuntosRemotos();
+    if (!remotos) return;
+
+    guardarDossiesLocais(remotos);
+  } catch (error) {
+    console.warn("[Tribuno] Não foi possível carregar assuntos do Supabase.", error);
+  }
 }
 
 export function listarDossies(): Dossie[] {
@@ -47,6 +82,7 @@ export function adicionarDossie(input: DossieInput): Dossie {
 
   const atuais = lerDossiesLocais();
   guardarDossiesLocais([...atuais, novo]);
+  guardarDossieRemotamente(novo);
 
   return novo;
 }
@@ -64,8 +100,10 @@ export function editarDossie(id: string, input: DossieInput): Dossie | undefined
   );
 
   guardarDossiesLocais(atualizados);
+  const atualizado = atualizados.find((dossie) => dossie.id === id);
+  if (atualizado) guardarDossieRemotamente(atualizado);
 
-  return atualizados.find((dossie) => dossie.id === id);
+  return atualizado;
 }
 
 export function arquivarDossie(id: string): Dossie | undefined {
@@ -83,8 +121,22 @@ export function arquivarDossie(id: string): Dossie | undefined {
   );
 
   guardarDossiesLocais(atualizados);
+  const atualizado = atualizados.find((dossie) => dossie.id === id);
+  if (atualizado) guardarDossieRemotamente(atualizado);
 
-  return atualizados.find((dossie) => dossie.id === id);
+  return atualizado;
+}
+
+export function apagarDossie(id: string): boolean {
+  const todos = listarDossies();
+  const atualizados = todos.filter((dossie) => dossie.id !== id);
+
+  if (atualizados.length === todos.length) return false;
+
+  guardarDossiesLocais(atualizados);
+  apagarDossieRemotamente(id);
+
+  return true;
 }
 
 export function useDossies(): Dossie[] {
@@ -96,6 +148,7 @@ export function useDossies(): Dossie[] {
     };
 
     atualizar();
+    void carregarDossiesRemotosSeDisponivel();
 
     window.addEventListener(EVENT_NAME, atualizar);
     window.addEventListener("storage", atualizar);

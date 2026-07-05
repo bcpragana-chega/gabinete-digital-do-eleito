@@ -58,6 +58,8 @@ function decodeJwtPayload(token: string) {
   return JSON.parse(json) as {
     sub: string;
     name?: string;
+    given_name?: string;
+    family_name?: string;
     email?: string;
     picture?: string;
   };
@@ -65,10 +67,15 @@ function decodeJwtPayload(token: string) {
 
 function userFromCredential(credential: string): AuthUser {
   const payload = decodeJwtPayload(credential);
+  const nomeGoogle =
+    payload.name ||
+    [payload.given_name, payload.family_name].filter(Boolean).join(" ").trim() ||
+    payload.email ||
+    "Utilizador";
 
   return {
     id: payload.sub,
-    nome: payload.name || payload.email || "Utilizador",
+    nome: nomeGoogle,
     email: payload.email || "",
     avatarUrl: payload.picture,
     provider: "google",
@@ -93,6 +100,7 @@ function LoginPage() {
   const { initialized, isAuthenticated, perfil } = useAuth();
   const buttonRef = useRef<HTMLDivElement>(null);
   const [erro, setErro] = useState("");
+  const [aEntrar, setAEntrar] = useState(false);
   const [origin, setOrigin] = useState("origem atual");
   const rawGoogleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const googleClientId = typeof rawGoogleClientId === "string" ? rawGoogleClientId.trim() : "";
@@ -131,16 +139,22 @@ function LoginPage() {
 
       window.google.accounts.id.initialize({
         client_id: googleClientId,
-        callback: (response) => {
+        callback: async (response) => {
           try {
+            setAEntrar(true);
             if (!response.credential) throw new Error("A Google não devolveu credencial.");
-            const authState = loginComGoogle(userFromCredential(response.credential));
+            const authState = await loginComGoogle(
+              userFromCredential(response.credential),
+              response.credential,
+            );
             navigate({
               to: perfilCompleto(authState.perfil) ? "/" : "/completar-perfil",
               replace: true,
             });
           } catch (error) {
             setErro(error instanceof Error ? error.message : "Não foi possível iniciar sessão.");
+          } finally {
+            setAEntrar(false);
           }
         },
       });
@@ -171,8 +185,8 @@ function LoginPage() {
     document.head.appendChild(script);
   }, [googleClientId, googleClientIdStatus, navigate]);
 
-  function entrarModoLocal() {
-    const authState = loginComGoogle({
+  async function entrarModoLocal() {
+    const authState = await loginComGoogle({
       id: "local-dev-user",
       nome: "Utilizador",
       email: "utilizador@tribuno.local",
@@ -209,6 +223,9 @@ function LoginPage() {
         {googleClientIdStatus === "loaded" ? (
           <div className="space-y-4">
             <div ref={buttonRef} className="flex justify-center" />
+            {aEntrar && (
+              <p className="text-center text-sm text-muted-foreground">A carregar o perfil...</p>
+            )}
             <p className="text-center text-xs leading-5 text-muted-foreground">
               Se a Google bloquear o acesso, confirme que a origem{" "}
               <span className="font-medium text-foreground">{origin}</span> está autorizada em

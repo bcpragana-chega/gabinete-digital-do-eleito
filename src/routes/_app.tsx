@@ -2,6 +2,7 @@ import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { perfilCompleto, useAuth } from "@/lib/auth-store";
+import { obterStorageStatus } from "@/lib/storage-provider";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -10,6 +11,7 @@ export const Route = createFileRoute("/_app")({
 function AppLayout() {
   const navigate = useNavigate();
   const { initialized, isAuthenticated, perfil } = useAuth();
+  const storageStatus = obterStorageStatus();
 
   useEffect(() => {
     if (!initialized) return;
@@ -36,6 +38,11 @@ function AppLayout() {
     <div className="min-h-screen overflow-x-hidden bg-background">
       <AppSidebar />
       <div className="min-w-0 md:pl-60">
+        {!storageStatus.isRemote && (
+          <div className="border-b border-amber-200/70 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900 md:px-6">
+            {storageStatus.message}
+          </div>
+        )}
         <Outlet />
       </div>
     </div>

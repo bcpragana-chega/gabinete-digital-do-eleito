@@ -1,8 +1,5 @@
 import { obterAuthState } from "@/lib/auth-store";
-
-function isBrowser() {
-  return typeof window !== "undefined";
-}
+import { readJSON, userScopedKey, writeJSON } from "@/lib/storage-provider";
 
 function normalizarUserId(value: string) {
   return value
@@ -19,31 +16,21 @@ export function obterUserIdAtual(): string | undefined {
 
 export function chavePorUtilizador(baseKey: string): string | undefined {
   const userId = obterUserIdAtual();
-  return userId ? `${baseKey}:${userId}` : undefined;
+  return userScopedKey(baseKey, userId);
 }
 
 export function lerJSONPorUtilizador<T>(baseKey: string, fallback: T): T {
-  if (!isBrowser()) return fallback;
-
   const key = chavePorUtilizador(baseKey);
   if (!key) return fallback;
 
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+  return readJSON<T>(key, fallback);
 }
 
 export function guardarJSONPorUtilizador<T>(baseKey: string, value: T) {
-  if (!isBrowser()) return;
-
   const key = chavePorUtilizador(baseKey);
   if (!key) return;
 
-  window.localStorage.setItem(key, JSON.stringify(value));
+  writeJSON(key, value);
 }
 
 export function chavePerfilPorUtilizador(userId: string) {

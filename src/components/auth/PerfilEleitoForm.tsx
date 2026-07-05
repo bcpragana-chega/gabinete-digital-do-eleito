@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Save } from "lucide-react";
 import { UserAvatar } from "@/components/auth/UserAvatar";
 import { Button } from "@/components/ui/button";
@@ -49,23 +49,45 @@ export function PerfilEleitoForm({
   const [assinaturaInstitucional, setAssinaturaInstitucional] = useState(
     perfil?.assinaturaInstitucional || "",
   );
+  const [aGuardar, setAGuardar] = useState(false);
+  const [nomeEditadoManualmente, setNomeEditadoManualmente] = useState(false);
+
+  useEffect(() => {
+    if (nomeEditadoManualmente) return;
+
+    const nomeGuardado = perfil?.nomeInstitucional?.trim();
+
+    if (nomeGuardado) {
+      setNomeInstitucional(nomeGuardado);
+      return;
+    }
+
+    if (nomeInicial.trim()) {
+      setNomeInstitucional(nomeInicial);
+    }
+  }, [nomeEditadoManualmente, nomeInicial, perfil?.nomeInstitucional]);
 
   const podeGuardar = Boolean(
     nomeInstitucional.trim() && cargo && orgao && organizacao.trim() && territorio.trim(),
   );
 
-  function guardar() {
-    if (!podeGuardar) return;
+  async function guardar() {
+    if (!podeGuardar || aGuardar) return;
 
-    const atualizado = guardarPerfilEleito({
-      nomeInstitucional: nomeInstitucional.trim(),
-      cargo,
-      orgao,
-      organizacao: organizacao.trim(),
-      territorio: territorio.trim(),
-      assinaturaInstitucional: assinaturaInstitucional.trim(),
-    });
-    onSaved?.(atualizado);
+    setAGuardar(true);
+    try {
+      const atualizado = await guardarPerfilEleito({
+        nomeInstitucional: nomeInstitucional.trim(),
+        cargo,
+        orgao,
+        organizacao: organizacao.trim(),
+        territorio: territorio.trim(),
+        assinaturaInstitucional: assinaturaInstitucional.trim(),
+      });
+      onSaved?.(atualizado);
+    } finally {
+      setAGuardar(false);
+    }
   }
 
   return (
@@ -88,7 +110,10 @@ export function PerfilEleitoForm({
           <Input
             id="perfil-nome"
             value={nomeInstitucional}
-            onChange={(event) => setNomeInstitucional(event.target.value)}
+            onChange={(event) => {
+              setNomeEditadoManualmente(true);
+              setNomeInstitucional(event.target.value);
+            }}
             placeholder="Ex: Nome institucional"
           />
         </div>
@@ -158,9 +183,9 @@ export function PerfilEleitoForm({
       </div>
 
       <div className="flex justify-end">
-        <Button type="button" onClick={guardar} disabled={!podeGuardar}>
+        <Button type="button" onClick={guardar} disabled={!podeGuardar || aGuardar}>
           <Save className="h-4 w-4" />
-          {submitLabel}
+          {aGuardar ? "A guardar..." : submitLabel}
         </Button>
       </div>
     </div>
