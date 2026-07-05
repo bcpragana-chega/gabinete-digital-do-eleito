@@ -84,6 +84,18 @@ type AlertItem = {
   params?: Record<string, string>;
 };
 
+type PriorityMission = {
+  title: string;
+  text: string;
+  button: string;
+  to: string;
+  params?: Record<string, string>;
+  dueDate?: string;
+  indicator: "deadline" | "now" | "priority";
+  progress: number;
+  meta: Array<{ icon: LucideIcon; text: string }>;
+};
+
 function GabinetePage() {
   const assembleias = useAssembleias();
   const documentos = useDocumentos();
@@ -100,6 +112,9 @@ function GabinetePage() {
 
   const dossiesAtivos = useMemo(() => dossies.filter((dossie) => !dossie.archivedAt), [dossies]);
   const documentosPorRever = documentosDaProxima.filter(
+    (documento) => documento.estado === "Por rever" || documento.estado === "Importante",
+  );
+  const documentosGlobaisPorRever = documentos.filter(
     (documento) => documento.estado === "Por rever" || documento.estado === "Importante",
   );
   const pontosPorPreparar = pontosDaProxima.filter((ponto) => ponto.estado !== "Preparado");
@@ -126,6 +141,15 @@ function GabinetePage() {
     pontosDaProxima,
     rascunhosDaProxima,
   });
+  const mission = criarMissaoPrioritaria({
+    proxima,
+    assembleias: ativas,
+    documentos,
+    documentosPorRever: documentosGlobaisPorRever,
+    pontosPorPreparar,
+    rascunhosAbertos,
+    progress,
+  });
   const metrics = criarMetricas({ ativas, documentos, rascunhosDaProxima, dossies });
   const activity = criarAtividade({ documentos, rascunhosDaProxima, dossiesAtivos });
 
@@ -138,9 +162,8 @@ function GabinetePage() {
 
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.38fr)_minmax(360px,0.98fr)_minmax(330px,0.86fr)]">
             <MissionCard
-              proxima={proxima}
-              progress={progress}
-              documentosPorRever={documentosPorRever.length}
+              mission={mission}
+              documentosPorRever={documentosGlobaisPorRever.length}
               pontosPorPreparar={pontosPorPreparar.length}
               rascunhosAbertos={rascunhosAbertos.length}
             />
@@ -203,30 +226,27 @@ function AnalysisBanner({
 }
 
 function MissionCard({
-  proxima,
-  progress,
+  mission,
   documentosPorRever,
   pontosPorPreparar,
   rascunhosAbertos,
 }: {
-  proxima?: Assembleia;
-  progress: number;
+  mission: PriorityMission;
   documentosPorRever: number;
   pontosPorPreparar: number;
   rascunhosAbertos: number;
 }) {
-  const dias = proxima ? Math.max(diasAte(proxima.data), 0) : undefined;
+  const dias = mission.dueDate ? Math.max(diasAte(mission.dueDate), 0) : undefined;
   const steps = [
-    { label: "Convocatória", helper: proxima ? "Concluído" : "Em falta", done: Boolean(proxima) },
-    {
-      label: "Ordem de trabalhos",
-      helper: pontosPorPreparar > 0 ? `${pontosPorPreparar} por preparar` : "Concluído",
-      done: pontosPorPreparar === 0,
-    },
     {
       label: "Documentos",
       helper: documentosPorRever > 0 ? `${documentosPorRever} por analisar` : "Concluído",
       done: documentosPorRever === 0,
+    },
+    {
+      label: "Ordem de trabalhos",
+      helper: pontosPorPreparar > 0 ? `${pontosPorPreparar} por preparar` : "Concluído",
+      done: pontosPorPreparar === 0,
     },
     {
       label: "Estratégia",
@@ -249,42 +269,37 @@ function MissionCard({
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-normal text-[#48d678]">
-              Próxima missão
+              Missão prioritária
             </p>
             <h2 className="mt-3 max-w-[520px] text-[1.65rem] font-semibold leading-[1.13] text-white sm:text-[2rem]">
-              {proxima ? proxima.nome : "Criar a primeira sessão"}
+              {mission.title}
             </h2>
-            {proxima ? (
+            <p className="mt-3 max-w-[520px] text-sm leading-6 text-white/78">{mission.text}</p>
+            {mission.meta.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/88">
-                <span className="inline-flex items-center gap-2">
-                  <Calendar className="h-4 w-4" strokeWidth={1.75} />
-                  {formatarData(proxima.data)}
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <Clock3 className="h-4 w-4" strokeWidth={1.75} />
-                  {proxima.hora}
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <MapPin className="h-4 w-4" strokeWidth={1.75} />
-                  {proxima.local || "Local por definir"}
-                </span>
+                {mission.meta.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <span key={item.text} className="inline-flex items-center gap-2">
+                      <Icon className="h-4 w-4" strokeWidth={1.75} />
+                      {item.text}
+                    </span>
+                  );
+                })}
               </div>
-            ) : (
-              <p className="mt-4 max-w-md text-sm leading-6 text-white/78">
-                Define data, hora e local para começar a preparar o trabalho do mandato.
-              </p>
             )}
           </div>
 
           <div className="hidden shrink-0 sm:block">
-            <MissionRing days={dias} progress={progress} />
+            <MissionRing indicator={mission.indicator} days={dias} progress={mission.progress} />
           </div>
         </div>
 
         <div className="mt-auto pt-6">
           <div className="mb-3 flex items-center justify-between text-sm font-semibold">
-            <span>Preparação</span>
-            <span>{progress}%</span>
+            <span>Prioridade</span>
+            <span>{mission.progress}%</span>
           </div>
           <div className="grid grid-cols-5 gap-1.5">
             {[0, 1, 2, 3, 4].map((segment) => (
@@ -292,7 +307,7 @@ function MissionCard({
                 key={segment}
                 className={cn(
                   "h-2 rounded-full",
-                  segment < Math.ceil(progress / 20) ? "bg-[#38d66b]" : "bg-white/14",
+                  segment < Math.ceil(mission.progress / 20) ? "bg-[#38d66b]" : "bg-white/14",
                 )}
               />
             ))}
@@ -328,23 +343,11 @@ function MissionCard({
               size="lg"
               className="h-12 rounded-xl bg-white px-8 text-sm font-semibold text-[#071127] hover:bg-white/92"
             >
-              <Link
-                to={proxima ? "/sessoes/$id/preparacao" : "/sessoes"}
-                params={proxima ? { id: proxima.id } : undefined}
-              >
-                {proxima ? "Continuar preparação" : "Criar sessão"}
+              <Link to={mission.to as never} params={mission.params as never}>
+                {mission.button}
                 <ArrowRight className="h-4 w-4" strokeWidth={1.85} />
               </Link>
             </Button>
-            {proxima && (
-              <Link
-                to="/sessoes/$id"
-                params={{ id: proxima.id }}
-                className="text-sm font-semibold text-white/95 hover:text-white"
-              >
-                Ver detalhes da sessão
-              </Link>
-            )}
           </div>
         </div>
       </div>
@@ -352,7 +355,20 @@ function MissionCard({
   );
 }
 
-function MissionRing({ days, progress }: { days?: number; progress: number }) {
+function MissionRing({
+  indicator,
+  days,
+  progress,
+}: {
+  indicator: PriorityMission["indicator"];
+  days?: number;
+  progress: number;
+}) {
+  const hasDeadline = indicator === "deadline" && typeof days === "number";
+  const label = hasDeadline ? "Faltam" : indicator === "now" ? "Fazer" : "Nível";
+  const value = hasDeadline ? String(days) : indicator === "now" ? "Agora" : "Alta";
+  const helper = hasDeadline ? "dias" : indicator === "now" ? "" : "prioridade";
+
   return (
     <div
       className="flex h-[90px] w-[90px] items-center justify-center rounded-full p-1.5"
@@ -361,9 +377,16 @@ function MissionRing({ days, progress }: { days?: number; progress: number }) {
       }}
     >
       <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#0a314c]/95 text-center">
-        <span className="text-[11px] leading-4 text-white/72">Faltam</span>
-        <span className="text-[1.65rem] font-semibold leading-none text-white">{days ?? "—"}</span>
-        <span className="mt-1 text-[11px] leading-4 text-white/72">dias</span>
+        <span className="text-[11px] leading-4 text-white/72">{label}</span>
+        <span
+          className={cn(
+            "font-semibold leading-none text-white",
+            hasDeadline ? "text-[1.65rem]" : "text-base",
+          )}
+        >
+          {value}
+        </span>
+        {helper && <span className="mt-1 text-[11px] leading-4 text-white/72">{helper}</span>}
       </div>
     </div>
   );
@@ -783,6 +806,150 @@ function calcularProgressoPreparacao({
   ];
 
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+}
+
+function criarMissaoPrioritaria({
+  proxima,
+  assembleias,
+  documentos,
+  documentosPorRever,
+  pontosPorPreparar,
+  rascunhosAbertos,
+  progress,
+}: {
+  proxima?: Assembleia;
+  assembleias: Assembleia[];
+  documentos: Documento[];
+  documentosPorRever: Documento[];
+  pontosPorPreparar: PontoOrdemTrabalhos[];
+  rascunhosAbertos: DocumentoCriado[];
+  progress: number;
+}): PriorityMission {
+  const diasProxima = proxima ? diasAte(proxima.data) : undefined;
+  const sessaoEmPrazo =
+    proxima && typeof diasProxima === "number" && diasProxima >= 0 && diasProxima <= 15;
+  const intervencao = pontosPorPreparar[0];
+  const iniciativaSemResposta = rascunhosAbertos.find(
+    (documento) => documento.tipo === "Recomendação" || documento.tipo === "Requerimento",
+  );
+  const documentoRecente = obterDocumentoRecenteAposUltimaSessao(documentos, assembleias);
+
+  if (documentosPorRever.length > 0) {
+    return {
+      title: "Analisar documentos",
+      text: "Tens documentos recebidos que ainda precisam de revisão.",
+      button: "Rever documentos",
+      to: "/biblioteca",
+      indicator: "now",
+      progress: 80,
+      meta: [
+        {
+          icon: FileText,
+          text: `${documentosPorRever.length} ${documentosPorRever.length === 1 ? "documento por rever" : "documentos por rever"}`,
+        },
+      ],
+    };
+  }
+
+  if (sessaoEmPrazo) {
+    return {
+      title: "Preparar sessão",
+      text: "Há uma sessão próxima que precisa de preparação.",
+      button: "Continuar preparação",
+      to: "/sessoes/$id/preparacao",
+      params: { id: proxima.id },
+      dueDate: proxima.data,
+      indicator: "deadline",
+      progress,
+      meta: [
+        { icon: Calendar, text: formatarData(proxima.data) },
+        { icon: Clock3, text: proxima.hora },
+        { icon: MapPin, text: proxima.local || "Local por definir" },
+      ],
+    };
+  }
+
+  if (intervencao && proxima) {
+    return {
+      title: "Preparar intervenção",
+      text: "Ainda existem pontos que podem precisar da tua intervenção.",
+      button: "Preparar intervenção",
+      to: "/sessoes/$id/preparacao/pontos/$pontoId",
+      params: { id: proxima.id, pontoId: intervencao.id },
+      indicator: "priority",
+      progress: 65,
+      meta: [
+        { icon: Mic2, text: `Ponto ${intervencao.numero}` },
+        { icon: FileText, text: intervencao.titulo },
+      ],
+    };
+  }
+
+  if (iniciativaSemResposta) {
+    return {
+      title: "Acompanhar resposta",
+      text: "Há iniciativas que ainda aguardam resposta.",
+      button: "Ver acompanhamento",
+      to: proxima ? "/sessoes/$id/preparacao/documentos-a-criar" : "/assuntos",
+      params: proxima ? { id: proxima.id } : undefined,
+      indicator: "priority",
+      progress: 55,
+      meta: [
+        { icon: FileCheck2, text: iniciativaSemResposta.tipo },
+        { icon: FileText, text: iniciativaSemResposta.titulo },
+      ],
+    };
+  }
+
+  if (documentoRecente) {
+    return {
+      title: "Rever ata",
+      text: "Existe documentação recente que merece revisão.",
+      button: "Rever ata",
+      to: "/biblioteca/documentos/$docId",
+      params: { docId: documentoRecente.id },
+      indicator: "now",
+      progress: 50,
+      meta: [
+        { icon: FileText, text: documentoRecente.titulo },
+        { icon: Calendar, text: formatarData(documentoRecente.data) },
+      ],
+    };
+  }
+
+  return {
+    title: "Organizar mandato",
+    text: "Cria ou atualiza sessões, documentos e assuntos para manter o teu mandato organizado.",
+    button: "Começar",
+    to: "/sessoes",
+    indicator: "priority",
+    progress: 30,
+    meta: [
+      { icon: Landmark, text: "Sessões" },
+      { icon: Folder, text: "Documentos e assuntos" },
+    ],
+  };
+}
+
+function obterDocumentoRecenteAposUltimaSessao(documentos: Documento[], assembleias: Assembleia[]) {
+  const ultimaSessao = assembleias
+    .filter((assembleia) => assembleia.estado === "concluida")
+    .sort((a, b) =>
+      `${b.data}T${b.hora || "00:00"}`.localeCompare(`${a.data}T${a.hora || "00:00"}`),
+    )[0];
+
+  if (!ultimaSessao) {
+    return documentos.find((documento) => documento.tipo === "Ata");
+  }
+
+  const dataUltimaSessao = new Date(
+    `${ultimaSessao.data}T${ultimaSessao.hora || "00:00"}`,
+  ).getTime();
+
+  return documentos.find((documento) => {
+    const dataDocumento = new Date(documento.createdAt || `${documento.data}T00:00:00`).getTime();
+    return documento.tipo === "Ata" && dataDocumento >= dataUltimaSessao;
+  });
 }
 
 function criarTarefas({
