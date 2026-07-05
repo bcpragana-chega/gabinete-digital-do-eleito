@@ -9,20 +9,20 @@ import {
   sidebarItems,
 } from "@/components/layout/sidebar-config";
 import { UniversalSearch } from "@/components/search/UniversalSearch";
-import { logout, useAuth } from "@/lib/auth-store";
+import { logout, primeiroNome, saudacaoPorHora, useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
+export function TopBar({ breadcrumb: _breadcrumb }: { breadcrumb?: ReactNode }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, perfil, displayName } = useAuth();
-  const mobileTitle = typeof breadcrumb === "string" ? breadcrumb : "Tribuno";
+  const greetingName = nomeTopBar(displayName, user?.nome, perfil?.nomeInstitucional);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/45 bg-background/90 backdrop-blur-xl">
-      <div className="flex h-12 items-center justify-between gap-3 px-4 md:h-14 md:px-6">
+      <div className="flex h-16 items-center justify-between gap-3 px-4 md:h-20 md:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Sheet open={menuAberto} onOpenChange={setMenuAberto}>
             <SheetTrigger asChild>
@@ -113,21 +113,18 @@ export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
             </SheetContent>
           </Sheet>
 
-          <div className="min-w-0 truncate font-display text-base font-semibold text-foreground md:hidden">
-            {mobileTitle}
-          </div>
-
-          <div className="hidden min-w-0 truncate text-sm font-medium text-muted-foreground md:block">
-            {breadcrumb}
+          <div className="min-w-0 leading-tight">
+            <div className="truncate font-display text-xl font-bold leading-6 text-foreground sm:text-2xl lg:text-[1.65rem] lg:leading-8">
+              {saudacaoPorHora()}, {greetingName}
+            </div>
+            <div className="mt-0.5 truncate text-[13px] leading-5 text-muted-foreground sm:text-sm">
+              Vamos preparar a próxima sessão.
+            </div>
           </div>
         </div>
 
         <div className="flex min-w-0 shrink-0 items-center gap-1.5 md:gap-2">
           <UniversalSearch />
-
-          <span className="max-w-20 truncate text-sm font-medium text-foreground sm:max-w-36 md:max-w-44 xl:max-w-60">
-            {displayName}
-          </span>
 
           <Link
             to="/definicoes"
@@ -156,4 +153,12 @@ export function TopBar({ breadcrumb }: { breadcrumb?: ReactNode }) {
       </div>
     </header>
   );
+}
+
+function nomeTopBar(...nomes: Array<string | undefined>) {
+  const nome = nomes
+    .map((valor) => valor?.trim())
+    .find((valor) => valor && valor.toLocaleLowerCase("pt-PT") !== "eleito");
+
+  return primeiroNome(nome || "Utilizador");
 }
