@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Download, FileDown, FileText, Link2, Save, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Copy,
+  Download,
+  Eye,
+  FileDown,
+  FileText,
+  Link2,
+  Pencil,
+  Save,
+  X,
+} from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { InstitutionalDocumentEditor } from "@/components/documentos/InstitutionalDocumentEditor";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
@@ -29,7 +40,12 @@ import {
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
 } from "@/lib/documentos-criados-export";
-import { isTipoDocumentoInstitucional } from "@/lib/documentos-institucionais";
+import {
+  isTipoDocumentoInstitucional,
+  obterDadosInstitucionais,
+  obterSecoesDocumentoInstitucional,
+  type ContextoDocumentoInstitucional,
+} from "@/lib/documentos-institucionais";
 import { adicionarEventoAutomaticoTimelineDossie } from "@/lib/dossie-timeline-store";
 import { adicionarEventoHistorico } from "@/lib/historico-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
@@ -44,6 +60,8 @@ const estados: EstadoDocumentoCriado[] = [
   "apresentado",
   "arquivado",
 ];
+
+type ModoDocumento = "visualizar" | "editar";
 
 export const Route = createFileRoute("/_app/assuntos/$dossieId/documentos/$documentoId")({
   head: () => ({
@@ -64,6 +82,38 @@ function estadoLabel(estado: EstadoDocumentoCriado) {
   return estado.charAt(0).toUpperCase() + estado.slice(1);
 }
 
+function textoInstitucionalParaCopiar(
+  tipo: Extract<DocumentoCriado["tipo"], "Moção" | "Recomendação" | "Requerimento">,
+  titulo: string,
+  conteudo: string,
+  contexto: ContextoDocumentoInstitucional,
+) {
+  const dados = obterDadosInstitucionais(contexto);
+  const secoes = obterSecoesDocumentoInstitucional(tipo, conteudo);
+
+  return [
+    dados.nomeOrgao.toLocaleUpperCase("pt-PT"),
+    tipo.toLocaleUpperCase("pt-PT"),
+    titulo.toLocaleUpperCase("pt-PT"),
+    ...secoes.flatMap((secao) => [secao.titulo, secao.conteudo]),
+    `${dados.local}, ${dados.data}`,
+    "Proponente:",
+    dados.nomeEleito,
+    dados.grupoPolitico,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+function limparSintaxeMarkdownVisivel(conteudo: string) {
+  return conteudo
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*/g, "")
+    .replace(/\*\*\*/g, "")
+    .replace(/^---+$/gm, "")
+    .trim();
+}
+
 function DocumentoDoAssuntoPage() {
   const { dossieId, documentoId } = Route.useParams();
   const dossie = useDossie(dossieId);
@@ -76,6 +126,8 @@ function DocumentoDoAssuntoPage() {
   const [assembleiaId, setAssembleiaId] = useState<string | undefined>();
   const [pontoId, setPontoId] = useState<string | undefined>();
   const [guardado, setGuardado] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+  const [modo, setModo] = useState<ModoDocumento>("visualizar");
 
   useEffect(() => {
     let ativo = true;
@@ -114,6 +166,25 @@ function DocumentoDoAssuntoPage() {
   const pontosDaSessao = useMemo(
     () => (assembleiaId ? obterPontosDaAssembleia(assembleiaId) : []),
     [assembleiaId],
+  );
+  const assembleiaSelecionada = useMemo(
+    () => assembleias.find((item) => item.id === assembleiaId),
+    [assembleiaId, assembleias],
+  );
+  const pontoSelecionado = useMemo(
+    () => pontosDaSessao.find((item) => item.id === pontoId),
+    [pontoId, pontosDaSessao],
+  );
+  const contextoDocumento: ContextoDocumentoInstitucional = useMemo(
+    () => ({
+      assembleia: assembleiaSelecionada,
+      assunto: dossie?.titulo,
+      sessao: assembleiaSelecionada?.nome,
+      ponto: pontoSelecionado
+        ? `Ponto ${pontoSelecionado.numero} · ${pontoSelecionado.titulo}`
+        : undefined,
+    }),
+    [assembleiaSelecionada, dossie?.titulo, pontoSelecionado],
   );
 
   function registarEvento(tituloEvento: string, descricao: string, proximoPontoId?: string) {
@@ -189,9 +260,6 @@ function DocumentoDoAssuntoPage() {
   function exportarPDF() {
     if (!documento) return;
 
-    const assembleia = assembleias.find((item) => item.id === assembleiaId);
-    const ponto = pontosDaSessao.find((item) => item.id === pontoId);
-
     exportarDocumentoCriadoPDF(
       {
         ...documento,
@@ -201,20 +269,12 @@ function DocumentoDoAssuntoPage() {
         assembleiaId,
         pontoId,
       },
-      {
-        assembleia,
-        assunto: dossie?.titulo,
-        sessao: assembleia?.nome,
-        ponto: ponto ? `Ponto ${ponto.numero} · ${ponto.titulo}` : undefined,
-      },
+      contextoDocumento,
     );
   }
 
   function exportarWord() {
     if (!documento) return;
-
-    const assembleia = assembleias.find((item) => item.id === assembleiaId);
-    const ponto = pontosDaSessao.find((item) => item.id === pontoId);
 
     exportarDocumentoCriadoWord(
       {
@@ -225,13 +285,24 @@ function DocumentoDoAssuntoPage() {
         assembleiaId,
         pontoId,
       },
-      {
-        assembleia,
-        assunto: dossie?.titulo,
-        sessao: assembleia?.nome,
-        ponto: ponto ? `Ponto ${ponto.numero} · ${ponto.titulo}` : undefined,
-      },
+      contextoDocumento,
     );
+  }
+
+  async function copiarTexto() {
+    if (!documento) return;
+
+    const tituloDocumento = titulo.trim() || documento.titulo;
+    const texto = isTipoDocumentoInstitucional(documento.tipo)
+      ? textoInstitucionalParaCopiar(documento.tipo, tituloDocumento, conteudo, contextoDocumento)
+      : [tituloDocumento, limparSintaxeMarkdownVisivel(conteudo)].filter(Boolean).join("\n\n");
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(texto);
+    }
+
+    setCopiado(true);
+    window.setTimeout(() => setCopiado(false), 1600);
   }
 
   function escolherAssembleia(proximoId: string) {
@@ -307,9 +378,41 @@ function DocumentoDoAssuntoPage() {
                 }
                 actions={
                   <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    {guardado && (
-                      <span className="text-xs text-muted-foreground">Alterações guardadas</span>
+                    {(guardado || copiado) && (
+                      <span className="text-xs text-muted-foreground">
+                        {copiado ? "Texto copiado" : "Alterações guardadas"}
+                      </span>
                     )}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        setModo((modoAtual) =>
+                          modoAtual === "visualizar" ? "editar" : "visualizar",
+                        )
+                      }
+                      disabled={!documento}
+                    >
+                      {modo === "visualizar" ? (
+                        <Pencil className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Eye className="mr-2 h-4 w-4" />
+                      )}
+                      {modo === "visualizar" ? "Editar" : "Visualizar"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={copiarTexto}
+                      disabled={!documento}
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copiar texto
+                    </Button>
+                    <Button type="button" onClick={guardar} disabled={!titulo.trim()}>
+                      <Save className="mr-2 h-4 w-4" />
+                      Guardar
+                    </Button>
                     <Button
                       type="button"
                       variant="secondary"
@@ -317,7 +420,7 @@ function DocumentoDoAssuntoPage() {
                       disabled={!documento}
                     >
                       <Download className="mr-2 h-4 w-4" />
-                      Exportar PDF
+                      Descarregar PDF
                     </Button>
                     <Button
                       type="button"
@@ -327,10 +430,6 @@ function DocumentoDoAssuntoPage() {
                     >
                       <FileDown className="mr-2 h-4 w-4" />
                       Exportar Word
-                    </Button>
-                    <Button type="button" onClick={guardar} disabled={!titulo.trim()}>
-                      <Save className="mr-2 h-4 w-4" />
-                      Guardar
                     </Button>
                   </div>
                 }
@@ -417,34 +516,40 @@ function DocumentoDoAssuntoPage() {
               <SectionTitle
                 icon={FileText}
                 title="Documento"
-                description="Edite o conteúdo e o estado do rascunho."
+                description={
+                  modo === "visualizar"
+                    ? "Visualização institucional pronta para entregar."
+                    : "Edite o conteúdo e o estado do rascunho."
+                }
               />
 
-              <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-foreground">Título</label>
-                  <Input value={titulo} onChange={(event) => setTitulo(event.target.value)} />
-                </div>
+              {modo === "editar" && (
+                <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-foreground">Título</label>
+                    <Input value={titulo} onChange={(event) => setTitulo(event.target.value)} />
+                  </div>
 
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-foreground">Estado</label>
-                  <Select
-                    value={estado}
-                    onValueChange={(value) => setEstado(value as EstadoDocumentoCriado)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {estados.map((opcao) => (
-                        <SelectItem key={opcao} value={opcao}>
-                          {estadoLabel(opcao)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-foreground">Estado</label>
+                    <Select
+                      value={estado}
+                      onValueChange={(value) => setEstado(value as EstadoDocumentoCriado)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {estados.map((opcao) => (
+                          <SelectItem key={opcao} value={opcao}>
+                            {estadoLabel(opcao)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {documento && isTipoDocumentoInstitucional(documento.tipo) ? (
                 <div className="mt-5">
@@ -452,28 +557,40 @@ function DocumentoDoAssuntoPage() {
                     tipo={documento.tipo}
                     titulo={titulo}
                     conteudo={conteudo}
-                    contexto={{
-                      assembleia: assembleias.find((item) => item.id === assembleiaId),
-                      assunto: dossie.titulo,
-                      sessao: assembleias.find((item) => item.id === assembleiaId)?.nome,
-                      ponto: pontosDaSessao.find((item) => item.id === pontoId)
-                        ? `Ponto ${pontosDaSessao.find((item) => item.id === pontoId)?.numero} · ${
-                            pontosDaSessao.find((item) => item.id === pontoId)?.titulo
-                          }`
-                        : undefined,
-                    }}
-                    onConteudoChange={setConteudo}
+                    contexto={contextoDocumento}
+                    readOnly={modo === "visualizar"}
+                    onConteudoChange={modo === "editar" ? setConteudo : undefined}
                   />
                 </div>
               ) : (
                 <div className="mt-4">
-                  <label className="mb-1 block text-xs font-medium text-foreground">Conteúdo</label>
-                  <Textarea
-                    value={conteudo}
-                    onChange={(event) => setConteudo(event.target.value)}
-                    rows={18}
-                    className="min-h-[420px]"
-                  />
+                  {modo === "editar" ? (
+                    <>
+                      <label className="mb-1 block text-xs font-medium text-foreground">
+                        Conteúdo
+                      </label>
+                      <Textarea
+                        value={conteudo}
+                        onChange={(event) => setConteudo(event.target.value)}
+                        rows={18}
+                        className="min-h-[420px]"
+                      />
+                    </>
+                  ) : (
+                    <article className="mx-auto min-h-[640px] max-w-3xl border border-border bg-white px-8 py-10 font-serif text-[15px] leading-7 text-slate-950 shadow-card md:px-14 md:py-12">
+                      <header className="border-b border-slate-300 pb-6 text-center">
+                        <div className="font-sans text-lg font-extrabold uppercase tracking-[0.14em]">
+                          {documento?.tipo ?? "Documento"}
+                        </div>
+                        <h2 className="mt-5 font-sans text-2xl font-extrabold uppercase leading-tight">
+                          {titulo || "Documento sem título"}
+                        </h2>
+                      </header>
+                      <section className="mt-8 whitespace-pre-line text-justify">
+                        {limparSintaxeMarkdownVisivel(conteudo) || "Documento por preencher."}
+                      </section>
+                    </article>
+                  )}
                 </div>
               )}
             </WorkspaceSection>

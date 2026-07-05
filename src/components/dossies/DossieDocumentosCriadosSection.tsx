@@ -152,8 +152,8 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
               key={documento.id}
               icon={FileText}
               title={documento.titulo}
-              description={documento.conteudo}
-              meta={`${documento.tipo} · ${metaAssociacao(documento)}`}
+              description={metaAssociacao(documento)}
+              meta={documento.tipo}
               action={
                 <Button asChild size="sm" variant="secondary">
                   <Link
