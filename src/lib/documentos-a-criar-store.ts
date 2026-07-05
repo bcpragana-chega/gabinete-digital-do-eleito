@@ -77,7 +77,7 @@ function notaBase(conteudo?: string) {
   return limpo;
 }
 
-function criarConteudoInicialDocumento(documento: {
+export function criarConteudoInicialDocumento(documento: {
   tipo: DocumentoCriado["tipo"];
   titulo: string;
   conteudo?: string;
@@ -289,7 +289,11 @@ function hrefRascunho(documento: DocumentoCriado) {
     return `/assuntos/${documento.assuntoId}/documentos/${documento.id}`;
   }
 
-  if (!documento.assembleiaId || !documento.pontoId) return undefined;
+  if (!documento.assembleiaId) return undefined;
+
+  if (!documento.pontoId) {
+    return `/sessoes/${documento.assembleiaId}/preparacao/documentos-a-criar/${documento.id}`;
+  }
 
   return `/sessoes/${documento.assembleiaId}/preparacao/pontos/${documento.pontoId}/rascunhos/${documento.id}`;
 }

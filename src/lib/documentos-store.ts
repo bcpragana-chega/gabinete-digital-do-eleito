@@ -8,6 +8,7 @@ import {
   guardarDocumentoRemoto,
   guardarDocumentosLocais,
 } from "./documentos-repository";
+import { uploadDocumentoPDF } from "./documentos-storage";
 import type { Documento, EstadoDocumento, TipoDocumento } from "./types";
 import { obterUserIdAtual } from "./user-storage";
 
@@ -106,26 +107,68 @@ export interface NovoDocumentoInput {
   tipo: TipoDocumento;
   data: string;
   estado: EstadoDocumento;
+  origem?: string;
   ficheiroNome?: string;
   ficheiroTipo?: string;
+  ficheiroTamanho?: number;
   notas?: string;
 }
 
-export function adicionarDocumento(input: NovoDocumentoInput): Documento {
+function criarDocumento(input: NovoDocumentoInput, id = crypto.randomUUID()): Documento {
   const agora = new Date().toISOString();
-  const doc: Documento = {
-    id: crypto.randomUUID(),
+  return {
+    id,
     createdAt: agora,
     updatedAt: agora,
     assembleiaOrigemId: input.assembleiaId !== "biblioteca" ? input.assembleiaId : undefined,
     ...input,
   };
+}
+
+function persistirDocumento(doc: Documento) {
   const docs = read();
   docs.push(doc);
   write(docs);
   guardarDocumentoRemotamente(doc);
   registarDocumentoCriadoNaTimeline(doc);
+}
+
+export function adicionarDocumento(input: NovoDocumentoInput): Documento {
+  const doc = criarDocumento(input);
+  persistirDocumento(doc);
   return doc;
+}
+
+export async function adicionarDocumentoComUpload(
+  input: NovoDocumentoInput & { ficheiro?: File },
+): Promise<Documento> {
+  const id = crypto.randomUUID();
+  const { ficheiro, ...metadata } = input;
+  let camposUpload: Partial<Documento> = {};
+
+  if (ficheiro) {
+    camposUpload = await uploadDocumentoPDF(id, ficheiro);
+  }
+
+  const doc = criarDocumento(
+    {
+      ...metadata,
+      origem: ficheiro ? "upload" : metadata.origem,
+      ficheiroNome: camposUpload.ficheiroNome ?? metadata.ficheiroNome,
+      ficheiroTipo: camposUpload.ficheiroTipo ?? metadata.ficheiroTipo,
+      ficheiroTamanho: camposUpload.ficheiroTamanho ?? metadata.ficheiroTamanho,
+    },
+    id,
+  );
+
+  const documentoComStorage: Documento = {
+    ...doc,
+    storageBucket: camposUpload.storageBucket,
+    storagePath: camposUpload.storagePath,
+  };
+
+  persistirDocumento(documentoComStorage);
+  return documentoComStorage;
 }
 
 export function editarDocumento(

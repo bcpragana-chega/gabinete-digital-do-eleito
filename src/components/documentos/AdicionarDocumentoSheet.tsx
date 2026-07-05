@@ -26,7 +26,7 @@ export function AdicionarDocumentoSheet({ assembleiaId }: { assembleiaId: string
         <SheetHeader className="shrink-0 border-b border-border/70 px-6 py-5">
           <SheetTitle>Adicionar documento</SheetTitle>
           <SheetDescription>
-            Associe um documento a esta assembleia. Apenas metadados são guardados.
+            Associe um PDF a esta assembleia para consulta posterior.
           </SheetDescription>
         </SheetHeader>
         <DocumentoForm

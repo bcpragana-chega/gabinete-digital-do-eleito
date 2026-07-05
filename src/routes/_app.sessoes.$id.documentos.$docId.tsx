@@ -227,7 +227,7 @@ function DocumentoPage() {
                   Pré-visualização
                 </h2>
               </div>
-              <DocumentoPreview ficheiroNome={documento.ficheiroNome} />
+              <DocumentoPreview documento={documento} />
             </section>
 
             <div className="grid gap-5 lg:grid-cols-3">

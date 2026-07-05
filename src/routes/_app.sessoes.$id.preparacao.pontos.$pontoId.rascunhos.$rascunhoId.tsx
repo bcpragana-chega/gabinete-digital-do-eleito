@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeft, Eye, FilePlus2, Pencil } from "lucide-react";
+import { ChevronLeft, Download, Eye, FilePlus2, Pencil } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -17,9 +17,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAssembleia } from "@/lib/assembleias-store";
 import {
   atualizarDocumentoACriarRascunho,
+  carregarDocumentosCriadosRemotosSeDisponivel,
+  criarConteudoInicialDocumento,
   obterDocumentoACriarPorId,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
+import { exportarDocumentoCriadoPDF } from "@/lib/documentos-criados-export";
 import { adicionarEventoHistorico } from "@/lib/historico-store";
 import { obterPontoPorId, type PontoOrdemTrabalhos } from "@/lib/pontos-store";
 import type { DocumentoCriado, EstadoDocumentoCriado } from "@/lib/types";
@@ -55,7 +58,11 @@ function RascunhoDocumentoPage() {
   const [guardado, setGuardado] = useState(false);
 
   useEffect(() => {
+    let ativo = true;
+
     function carregar() {
+      if (!ativo) return;
+
       const proximoPonto = obterPontoPorId(id, pontoId);
       const proximoRascunho = obterDocumentoACriarPorId(id, pontoId, rascunhoId);
 
@@ -64,15 +71,25 @@ function RascunhoDocumentoPage() {
 
       if (proximoRascunho) {
         setTitulo(proximoRascunho.titulo);
-        setConteudo(proximoRascunho.conteudo);
+        setConteudo(
+          proximoRascunho.conteudo?.trim()
+            ? proximoRascunho.conteudo
+            : criarConteudoInicialDocumento(proximoRascunho),
+        );
         setEstado(proximoRascunho.estado);
       }
 
       setCarregou(true);
     }
 
-    carregar();
-    return subscreverDocumentosACriar(carregar);
+    setCarregou(false);
+    void carregarDocumentosCriadosRemotosSeDisponivel().finally(carregar);
+    const unsubscribe = subscreverDocumentosACriar(carregar);
+
+    return () => {
+      ativo = false;
+      unsubscribe();
+    };
   }, [id, pontoId, rascunhoId]);
 
   function guardarAlteracoes() {
@@ -95,6 +112,23 @@ function RascunhoDocumentoPage() {
       setGuardado(true);
       window.setTimeout(() => setGuardado(false), 1600);
     }
+  }
+
+  function exportarPDF() {
+    if (!rascunho) return;
+
+    exportarDocumentoCriadoPDF(
+      {
+        ...rascunho,
+        titulo: titulo.trim() || rascunho.titulo,
+        conteudo,
+        estado,
+      },
+      {
+        sessao: assembleia?.nome,
+        ponto: ponto ? `Ponto ${ponto.numero} · ${ponto.titulo}` : "Ponto da ordem de trabalhos",
+      },
+    );
   }
 
   if (!assembleia) {
@@ -214,6 +248,15 @@ function RascunhoDocumentoPage() {
                 {guardado && (
                   <span className="text-xs text-muted-foreground">Alterações guardadas</span>
                 )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={exportarPDF}
+                  disabled={!rascunho}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar PDF
+                </Button>
                 <Button type="button" onClick={guardarAlteracoes} disabled={!titulo.trim()}>
                   Guardar alterações
                 </Button>

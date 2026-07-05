@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, FileText, Link2, Save, X } from "lucide-react";
+import { ArrowLeft, Download, FileText, Link2, Save, X } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
@@ -19,9 +19,12 @@ import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components
 import { useAssembleias } from "@/lib/assembleias-store";
 import {
   atualizarDocumentoACriarRascunho,
+  carregarDocumentosCriadosRemotosSeDisponivel,
+  criarConteudoInicialDocumento,
   obterDocumentoACriarGlobal,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
+import { exportarDocumentoCriadoPDF } from "@/lib/documentos-criados-export";
 import { adicionarEventoAutomaticoTimelineDossie } from "@/lib/dossie-timeline-store";
 import { adicionarEventoHistorico } from "@/lib/historico-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
@@ -70,7 +73,11 @@ function DocumentoDoAssuntoPage() {
   const [guardado, setGuardado] = useState(false);
 
   useEffect(() => {
+    let ativo = true;
+
     function carregar() {
+      if (!ativo) return;
+
       const proximo = obterDocumentoACriarGlobal(documentoId);
       const pertenceAoAssunto = proximo?.assuntoId === dossieId;
 
@@ -78,7 +85,9 @@ function DocumentoDoAssuntoPage() {
 
       if (proximo && pertenceAoAssunto) {
         setTitulo(proximo.titulo);
-        setConteudo(proximo.conteudo);
+        setConteudo(
+          proximo.conteudo?.trim() ? proximo.conteudo : criarConteudoInicialDocumento(proximo),
+        );
         setEstado(proximo.estado);
         setAssembleiaId(proximo.assembleiaId);
         setPontoId(proximo.pontoId);
@@ -87,8 +96,14 @@ function DocumentoDoAssuntoPage() {
       setCarregou(true);
     }
 
-    carregar();
-    return subscreverDocumentosACriar(carregar);
+    setCarregou(false);
+    void carregarDocumentosCriadosRemotosSeDisponivel().finally(carregar);
+    const unsubscribe = subscreverDocumentosACriar(carregar);
+
+    return () => {
+      ativo = false;
+      unsubscribe();
+    };
   }, [documentoId, dossieId]);
 
   const pontosDaSessao = useMemo(
@@ -164,6 +179,29 @@ function DocumentoDoAssuntoPage() {
     if (estado === "apresentado" && antesEstado !== "apresentado") {
       registarEvento("Documento marcado como apresentado", atualizado.titulo, pontoId);
     }
+  }
+
+  function exportarPDF() {
+    if (!documento) return;
+
+    const assembleia = assembleias.find((item) => item.id === assembleiaId);
+    const ponto = pontosDaSessao.find((item) => item.id === pontoId);
+
+    exportarDocumentoCriadoPDF(
+      {
+        ...documento,
+        titulo: titulo.trim() || documento.titulo,
+        conteudo,
+        estado,
+        assembleiaId,
+        pontoId,
+      },
+      {
+        assunto: dossie?.titulo,
+        sessao: assembleia?.nome,
+        ponto: ponto ? `Ponto ${ponto.numero} · ${ponto.titulo}` : undefined,
+      },
+    );
   }
 
   function escolherAssembleia(proximoId: string) {
@@ -242,6 +280,15 @@ function DocumentoDoAssuntoPage() {
                     {guardado && (
                       <span className="text-xs text-muted-foreground">Alterações guardadas</span>
                     )}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={exportarPDF}
+                      disabled={!documento}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar PDF
+                    </Button>
                     <Button type="button" onClick={guardar} disabled={!titulo.trim()}>
                       <Save className="mr-2 h-4 w-4" />
                       Guardar

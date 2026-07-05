@@ -128,6 +128,7 @@ function DocumentosACriarPage() {
             {rascunhos.map((rascunho) => (
               <DocumentoACriarCentralCard
                 key={rascunho.id}
+                assembleiaId={id}
                 rascunho={rascunho}
                 ponto={pontosPorId.get(rascunho.pontoId)}
               />
@@ -140,9 +141,11 @@ function DocumentosACriarPage() {
 }
 
 function DocumentoACriarCentralCard({
+  assembleiaId,
   rascunho,
   ponto,
 }: {
+  assembleiaId: string;
   rascunho: DocumentoCriado;
   ponto?: PontoOrdemTrabalhos;
 }) {
@@ -190,14 +193,25 @@ function DocumentoACriarCentralCard({
   }
 
   if (!ponto) {
-    return content;
+    return (
+      <Link
+        to="/sessoes/$id/preparacao/documentos-a-criar/$rascunhoId"
+        params={{
+          id: assembleiaId,
+          rascunhoId: rascunho.id,
+        }}
+        className="block"
+      >
+        {content}
+      </Link>
+    );
   }
 
   return (
     <Link
       to="/sessoes/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId"
       params={{
-        id: rascunho.assembleiaId,
+        id: assembleiaId,
         pontoId: ponto.id,
         rascunhoId: rascunho.id,
       }}

@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { EstadoDocumento, TipoDocumento } from "@/lib/types";
-import { adicionarDocumento, type NovoDocumentoInput } from "@/lib/documentos-store";
+import { adicionarDocumentoComUpload, type NovoDocumentoInput } from "@/lib/documentos-store";
 
 const tipos: TipoDocumento[] = [
   "Convocatória",
@@ -48,15 +48,27 @@ export function DocumentoForm({
   const [estado, setEstado] = useState<EstadoDocumento>("Por rever");
   const [ficheiroNome, setFicheiroNome] = useState<string | undefined>();
   const [ficheiroTipo, setFicheiroTipo] = useState<string | undefined>();
+  const [ficheiro, setFicheiro] = useState<File | undefined>();
   const [notas, setNotas] = useState("");
   const [erro, setErro] = useState<string | null>(null);
+  const [aGuardar, setAGuardar] = useState(false);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!titulo.trim()) {
       setErro("O título é obrigatório.");
       return;
     }
+
+    if (
+      ficheiro &&
+      ficheiro.type !== "application/pdf" &&
+      !ficheiro.name.toLowerCase().endsWith(".pdf")
+    ) {
+      setErro("Nesta fase só é possível adicionar ficheiros PDF.");
+      return;
+    }
+
     const input: NovoDocumentoInput = {
       assembleiaId,
       titulo: titulo.trim(),
@@ -65,10 +77,25 @@ export function DocumentoForm({
       estado,
       ficheiroNome,
       ficheiroTipo,
+      ficheiroTamanho: ficheiro?.size,
       notas: notas.trim() || undefined,
     };
-    adicionarDocumento(input);
-    onSaved();
+
+    try {
+      setErro(null);
+      setAGuardar(true);
+      await adicionarDocumentoComUpload({ ...input, ficheiro });
+      onSaved();
+    } catch (error) {
+      console.warn("[Tribuno] Não foi possível adicionar o documento.", error);
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível guardar o documento. Tente novamente.",
+      );
+    } finally {
+      setAGuardar(false);
+    }
   }
 
   return (
@@ -135,14 +162,16 @@ export function DocumentoForm({
           <Input
             id="doc-ficheiro"
             type="file"
+            accept="application/pdf,.pdf"
             onChange={(e) => {
               const f = e.target.files?.[0];
+              setFicheiro(f);
               setFicheiroNome(f?.name);
               setFicheiroTipo(f?.type);
             }}
           />
           <p className="text-xs text-muted-foreground">
-            Apenas o nome do ficheiro é guardado nesta fase.
+            O PDF fica guardado em segurança para consulta posterior.
           </p>
         </div>
 
@@ -164,7 +193,9 @@ export function DocumentoForm({
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancelar
         </Button>
-        <Button type="submit">Guardar documento</Button>
+        <Button type="submit" disabled={aGuardar}>
+          {aGuardar ? "A guardar..." : "Guardar documento"}
+        </Button>
       </div>
     </form>
   );

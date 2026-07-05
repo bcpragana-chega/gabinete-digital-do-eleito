@@ -91,3 +91,51 @@ create policy "documentos_delete_own"
 on public.documentos
 for delete
 using (auth.uid() = user_id);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('documentos', 'documentos', false, 52428800, array['application/pdf'])
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "documentos_storage_select_own" on storage.objects;
+create policy "documentos_storage_select_own"
+on storage.objects
+for select
+using (
+  bucket_id = 'documentos'
+  and auth.uid()::text = (storage.foldername(name))[1]
+);
+
+drop policy if exists "documentos_storage_insert_own" on storage.objects;
+create policy "documentos_storage_insert_own"
+on storage.objects
+for insert
+with check (
+  bucket_id = 'documentos'
+  and auth.uid()::text = (storage.foldername(name))[1]
+);
+
+drop policy if exists "documentos_storage_update_own" on storage.objects;
+create policy "documentos_storage_update_own"
+on storage.objects
+for update
+using (
+  bucket_id = 'documentos'
+  and auth.uid()::text = (storage.foldername(name))[1]
+)
+with check (
+  bucket_id = 'documentos'
+  and auth.uid()::text = (storage.foldername(name))[1]
+);
+
+drop policy if exists "documentos_storage_delete_own" on storage.objects;
+create policy "documentos_storage_delete_own"
+on storage.objects
+for delete
+using (
+  bucket_id = 'documentos'
+  and auth.uid()::text = (storage.foldername(name))[1]
+);

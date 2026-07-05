@@ -11,7 +11,7 @@ import {
 import { useAssembleias } from "@/lib/assembleias-store";
 import { associarDocumentoAoDossie } from "@/lib/dossie-documentos-store";
 import { useDossies } from "@/lib/dossies-store";
-import { adicionarDocumento } from "@/lib/documentos-store";
+import { adicionarDocumentoComUpload } from "@/lib/documentos-store";
 import {
   arquivarInboxDocumento,
   associarInboxDocumentoAAssembleia,
@@ -128,11 +128,14 @@ export function AdicionarBibliotecaWizard() {
   const [descricao, setDescricao] = useState("");
   const [ficheiroNome, setFicheiroNome] = useState<string | undefined>();
   const [ficheiroTipo, setFicheiroTipo] = useState<string | undefined>();
+  const [ficheiro, setFicheiro] = useState<File | undefined>();
   const [tipo, setTipo] = useState<TipoBiblioteca>("Outro");
   const [estado, setEstado] = useState<EstadoInicial>("Por tratar");
   const [ligacao, setLigacao] = useState<Ligacao>("Nenhum por agora");
   const [dossieId, setDossieId] = useState("");
   const [assembleiaId, setAssembleiaId] = useState("");
+  const [aGuardar, setAGuardar] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   const dadosValidos = titulo.trim().length > 0;
   const precisaAssunto = ligacao === "Assunto" || ligacao === "Ambos";
@@ -144,11 +147,14 @@ export function AdicionarBibliotecaWizard() {
     setDescricao("");
     setFicheiroNome(undefined);
     setFicheiroTipo(undefined);
+    setFicheiro(undefined);
     setTipo("Outro");
     setEstado("Por tratar");
     setLigacao("Nenhum por agora");
     setDossieId("");
     setAssembleiaId("");
+    setAGuardar(false);
+    setErro(null);
   }
 
   function avancar() {
@@ -156,19 +162,45 @@ export function AdicionarBibliotecaWizard() {
     setStep((atual) => Math.min(atual + 1, passos.length - 1));
   }
 
-  function adicionar() {
+  async function adicionar() {
     if (!dadosValidos) return;
 
-    const documento = adicionarDocumento({
-      assembleiaId: precisaSessao && assembleiaId ? assembleiaId : "biblioteca",
-      titulo: titulo.trim(),
-      tipo: mapearTipoDocumento(tipo),
-      data: hoje(),
-      estado: mapearEstadoDocumento(estado),
-      ficheiroNome,
-      ficheiroTipo,
-      notas: [`[Biblioteca: ${tipo}]`, descricao.trim()].filter(Boolean).join("\n"),
-    });
+    if (
+      ficheiro &&
+      ficheiro.type !== "application/pdf" &&
+      !ficheiro.name.toLowerCase().endsWith(".pdf")
+    ) {
+      setErro("Nesta fase só é possível adicionar ficheiros PDF.");
+      return;
+    }
+
+    let documento;
+
+    try {
+      setErro(null);
+      setAGuardar(true);
+      documento = await adicionarDocumentoComUpload({
+        assembleiaId: precisaSessao && assembleiaId ? assembleiaId : "biblioteca",
+        titulo: titulo.trim(),
+        tipo: mapearTipoDocumento(tipo),
+        data: hoje(),
+        estado: mapearEstadoDocumento(estado),
+        ficheiroNome,
+        ficheiroTipo,
+        ficheiroTamanho: ficheiro?.size,
+        ficheiro,
+        notas: [`[Biblioteca: ${tipo}]`, descricao.trim()].filter(Boolean).join("\n"),
+      });
+    } catch (error) {
+      console.warn("[Tribuno] Não foi possível adicionar o documento à Biblioteca.", error);
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível guardar o documento. Tente novamente.",
+      );
+      setAGuardar(false);
+      return;
+    }
 
     if (precisaAssunto && dossieId) {
       associarDocumentoAoDossie(dossieId, documento.id);
@@ -241,14 +273,16 @@ export function AdicionarBibliotecaWizard() {
                   <Input
                     id="biblioteca-ficheiro"
                     type="file"
+                    accept="application/pdf,.pdf"
                     onChange={(event) => {
                       const file = event.target.files?.[0];
+                      setFicheiro(file);
                       setFicheiroNome(file?.name);
                       setFicheiroTipo(file?.type);
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Nesta fase é guardado apenas o nome do ficheiro e os metadados.
+                    O PDF fica guardado em segurança para consulta posterior.
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -407,6 +441,12 @@ export function AdicionarBibliotecaWizard() {
           )}
         </div>
 
+        {erro && (
+          <p className="border-t border-border/70 px-5 pt-3 text-sm text-destructive sm:px-7">
+            {erro}
+          </p>
+        )}
+
         <div className="shrink-0 border-t border-border/70 bg-card px-5 py-4 sm:px-7">
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Button
@@ -433,11 +473,11 @@ export function AdicionarBibliotecaWizard() {
               <Button
                 type="button"
                 onClick={adicionar}
-                disabled={!dadosValidos}
+                disabled={!dadosValidos || aGuardar}
                 className="w-full sm:w-auto"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                Adicionar à Biblioteca
+                {aGuardar ? "A guardar..." : "Adicionar à Biblioteca"}
               </Button>
             )}
           </div>
