@@ -115,7 +115,8 @@ export function TopBar({ breadcrumb: _breadcrumb }: { breadcrumb?: ReactNode }) 
 
           <div className="min-w-0 leading-tight">
             <div className="truncate font-display text-xl font-bold leading-6 text-foreground sm:text-2xl lg:text-[1.65rem] lg:leading-8">
-              {saudacaoPorHora()}, {greetingName}
+              {saudacaoPorHora()}, {greetingName}{" "}
+              <span className="inline-block align-baseline text-[0.9em]">👋</span>
             </div>
             <div className="mt-0.5 truncate text-[13px] leading-5 text-muted-foreground sm:text-sm">
               Vamos preparar a próxima sessão.

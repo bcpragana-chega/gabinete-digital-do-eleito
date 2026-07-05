@@ -350,8 +350,8 @@ export function UniversalSearch() {
       <div ref={containerRef} className="relative hidden lg:block">
         <div
           className={cn(
-            "flex h-10 w-[20rem] max-w-[20rem] items-center gap-2 rounded-full border border-border/50 bg-muted/45 px-3 text-muted-foreground transition-all",
-            focused && "border-ring/30 bg-card text-foreground ring-2 ring-ring/5",
+            "flex h-10 w-[20rem] max-w-[20rem] items-center gap-2 rounded-full border border-border/50 bg-white px-3 text-muted-foreground transition-all",
+            focused && "border-ring/30 bg-white text-foreground ring-2 ring-ring/5",
           )}
         >
           <Search className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={1.75} />

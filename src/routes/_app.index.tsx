@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowRight,
-  Bot,
   Calendar,
   Check,
   ChevronRight,
@@ -158,8 +157,6 @@ function GabinetePage() {
       <TopBar />
       <main className="min-h-screen bg-[#fbfcfe]">
         <div className="mx-auto flex max-w-[1504px] flex-col gap-5 px-4 pb-6 pt-4 sm:px-6 lg:px-8">
-          <AnalysisBanner opportunities={Math.max(tasks.length - 1, 0)} proxima={proxima} />
-
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.38fr)_minmax(360px,0.98fr)_minmax(330px,0.86fr)]">
             <MissionCard
               mission={mission}
@@ -181,47 +178,6 @@ function GabinetePage() {
         </div>
       </main>
     </>
-  );
-}
-
-function AnalysisBanner({
-  opportunities,
-  proxima,
-}: {
-  opportunities: number;
-  proxima?: Assembleia;
-}) {
-  return (
-    <Card className="rounded-[14px] border-[#dde6f2] bg-white px-4 py-2 shadow-[0_8px_28px_rgba(15,23,42,0.035)]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#dfe7f2] bg-[#f6f9fd] text-[#173354]">
-            <Bot className="h-4 w-4" strokeWidth={1.75} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-[#071127]">Tribuno</p>
-            <p className="mt-1 truncate text-sm text-[#263b62]">
-              Analisei os documentos recebidos e encontrei oportunidades para a próxima sessão.
-              {opportunities > 0 ? ` ${opportunities} pontos merecem atenção.` : ""}
-            </p>
-          </div>
-        </div>
-
-        <Button
-          asChild
-          variant="secondary"
-          className="h-10 w-full rounded-2xl border-[#dfe7f2] bg-white px-5 text-[#071127] shadow-none sm:w-auto"
-        >
-          <Link
-            to={proxima ? "/sessoes/$id/preparacao" : "/sessoes"}
-            params={proxima ? { id: proxima.id } : undefined}
-          >
-            Ver análise
-            <ArrowRight className="h-4 w-4" strokeWidth={1.85} />
-          </Link>
-        </Button>
-      </div>
-    </Card>
   );
 }
 
