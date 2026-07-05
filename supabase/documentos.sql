@@ -106,7 +106,8 @@ on storage.objects
 for select
 using (
   bucket_id = 'documentos'
-  and auth.uid()::text = (storage.foldername(name))[1]
+  and (storage.foldername(name))[1] = 'documents'
+  and auth.uid()::text = (storage.foldername(name))[2]
 );
 
 drop policy if exists "documentos_storage_insert_own" on storage.objects;
@@ -115,7 +116,8 @@ on storage.objects
 for insert
 with check (
   bucket_id = 'documentos'
-  and auth.uid()::text = (storage.foldername(name))[1]
+  and (storage.foldername(name))[1] = 'documents'
+  and auth.uid()::text = (storage.foldername(name))[2]
 );
 
 drop policy if exists "documentos_storage_update_own" on storage.objects;
@@ -124,11 +126,13 @@ on storage.objects
 for update
 using (
   bucket_id = 'documentos'
-  and auth.uid()::text = (storage.foldername(name))[1]
+  and (storage.foldername(name))[1] = 'documents'
+  and auth.uid()::text = (storage.foldername(name))[2]
 )
 with check (
   bucket_id = 'documentos'
-  and auth.uid()::text = (storage.foldername(name))[1]
+  and (storage.foldername(name))[1] = 'documents'
+  and auth.uid()::text = (storage.foldername(name))[2]
 );
 
 drop policy if exists "documentos_storage_delete_own" on storage.objects;
@@ -137,5 +141,6 @@ on storage.objects
 for delete
 using (
   bucket_id = 'documentos'
-  and auth.uid()::text = (storage.foldername(name))[1]
+  and (storage.foldername(name))[1] = 'documents'
+  and auth.uid()::text = (storage.foldername(name))[2]
 );

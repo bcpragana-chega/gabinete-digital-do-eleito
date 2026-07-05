@@ -113,7 +113,7 @@ export async function uploadDocumentoPDF(documentoId: string, file: File) {
     );
   }
 
-  const path = `${supabaseUserId}/${documentoId}/${Date.now()}-${limparNomeFicheiro(file.name)}`;
+  const path = `documents/${supabaseUserId}/${documentoId}/${Date.now()}-${limparNomeFicheiro(file.name)}`;
 
   console.info("[Tribuno Documentos] Upload PDF iniciado", {
     passo: "STORAGE_UPLOAD_PAYLOAD",
@@ -149,7 +149,7 @@ export async function uploadDocumentoPDF(documentoId: string, file: File) {
       sessionUserId: diagnosticoSessao.sessionUserId,
       authUserId: diagnosticoSessao.authUserId,
       policyEsperada:
-        "bucket_id = 'documentos' and auth.uid()::text = (storage.foldername(name))[1]",
+        "bucket_id = 'documentos' and (storage.foldername(name))[1] = 'documents' and auth.uid()::text = (storage.foldername(name))[2]",
       error,
     });
 
