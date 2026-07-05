@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import type { Assembleia, EstadoAssembleia } from "./types";
-import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
+import {
+  apagarAssembleiaRemota,
+  carregarAssembleiasLocais,
+  carregarAssembleiasRemotas,
+  guardarAssembleiaRemota,
+  guardarAssembleiasLocais as persistirAssembleiasLocais,
+} from "@/lib/assembleias-repository";
+import { obterUserIdAtual } from "@/lib/user-storage";
 
-const STORAGE_KEY = "tribuno:assembleias";
 const EVENT_NAME = "tribuno:assembleias";
 
 type NovaAssembleiaInput = {
@@ -16,13 +22,38 @@ type NovaAssembleiaInput = {
 type EditarAssembleiaInput = NovaAssembleiaInput;
 
 function lerAssembleiasLocais(): Assembleia[] {
-  const parsed = lerJSONPorUtilizador<Assembleia[]>(STORAGE_KEY, []);
-  return Array.isArray(parsed) ? parsed : [];
+  return carregarAssembleiasLocais();
 }
 
 function guardarAssembleiasLocais(assembleias: Assembleia[]) {
-  guardarJSONPorUtilizador(STORAGE_KEY, assembleias);
+  persistirAssembleiasLocais(assembleias);
   window.dispatchEvent(new Event(EVENT_NAME));
+}
+
+function guardarAssembleiaRemotamente(assembleia: Assembleia) {
+  const userId = obterUserIdAtual();
+  if (!userId) return;
+
+  void guardarAssembleiaRemota(userId, assembleia).catch((error) => {
+    console.warn("[Tribuno] Sessão guardada localmente, mas falhou no Supabase.", error);
+  });
+}
+
+function apagarAssembleiaRemotamente(id: string) {
+  void apagarAssembleiaRemota(id).catch((error) => {
+    console.warn("[Tribuno] Sessão apagada localmente, mas falhou no Supabase.", error);
+  });
+}
+
+async function carregarAssembleiasRemotasSeDisponivel() {
+  try {
+    const remotas = await carregarAssembleiasRemotas();
+    if (!remotas) return;
+
+    guardarAssembleiasLocais(remotas);
+  } catch (error) {
+    console.warn("[Tribuno] Não foi possível carregar sessões do Supabase.", error);
+  }
 }
 
 export function listarAssembleias(): Assembleia[] {
@@ -39,6 +70,7 @@ export function obterAssembleia(id: string): Assembleia | undefined {
 }
 
 export function adicionarAssembleia(input: NovaAssembleiaInput): Assembleia {
+  const agora = new Date().toISOString();
   const nova: Assembleia = {
     id: `asm-${crypto.randomUUID()}`,
     nome: input.nome,
@@ -46,10 +78,13 @@ export function adicionarAssembleia(input: NovaAssembleiaInput): Assembleia {
     hora: input.hora,
     local: input.local,
     estado: input.estado,
+    createdAt: agora,
+    updatedAt: agora,
   };
 
   const atuais = lerAssembleiasLocais();
   guardarAssembleiasLocais([...atuais, nova]);
+  guardarAssembleiaRemotamente(nova);
 
   return nova;
 }
@@ -66,30 +101,50 @@ export function editarAssembleia(id: string, input: EditarAssembleiaInput): Asse
           hora: input.hora,
           local: input.local,
           estado: input.estado,
+          updatedAt: new Date().toISOString(),
         }
       : assembleia,
   );
 
   guardarAssembleiasLocais(atualizadas);
+  const atualizada = atualizadas.find((assembleia) => assembleia.id === id);
+  if (atualizada) guardarAssembleiaRemotamente(atualizada);
 
-  return atualizadas.find((assembleia) => assembleia.id === id);
+  return atualizada;
 }
 
 export function arquivarAssembleia(id: string): Assembleia | undefined {
   const atuais = lerAssembleiasLocais();
+  const agora = new Date().toISOString();
 
   const atualizadas = atuais.map((assembleia) =>
     assembleia.id === id
       ? {
           ...assembleia,
           estado: "arquivada" as EstadoAssembleia,
+          archivedAt: agora,
+          updatedAt: agora,
         }
       : assembleia,
   );
 
   guardarAssembleiasLocais(atualizadas);
+  const atualizada = atualizadas.find((assembleia) => assembleia.id === id);
+  if (atualizada) guardarAssembleiaRemotamente(atualizada);
 
-  return atualizadas.find((assembleia) => assembleia.id === id);
+  return atualizada;
+}
+
+export function apagarAssembleia(id: string): boolean {
+  const atuais = lerAssembleiasLocais();
+  const atualizadas = atuais.filter((assembleia) => assembleia.id !== id);
+
+  if (atualizadas.length === atuais.length) return false;
+
+  guardarAssembleiasLocais(atualizadas);
+  apagarAssembleiaRemotamente(id);
+
+  return true;
 }
 
 export function useAssembleias(): Assembleia[] {
@@ -101,6 +156,7 @@ export function useAssembleias(): Assembleia[] {
     };
 
     atualizar();
+    void carregarAssembleiasRemotasSeDisponivel();
 
     window.addEventListener(EVENT_NAME, atualizar);
     window.addEventListener("storage", atualizar);

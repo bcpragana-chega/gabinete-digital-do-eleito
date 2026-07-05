@@ -38,10 +38,16 @@ export type PrioridadeDossie = "Baixa" | "Média" | "Alta" | "Crítica";
 export interface Assembleia {
   id: string;
   nome: string;
+  tipo?: string;
+  orgao?: string;
   data: string;
   hora: string;
   local: string;
   estado: EstadoAssembleia;
+  notas?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  archivedAt?: string;
 }
 
 export interface Documento {
