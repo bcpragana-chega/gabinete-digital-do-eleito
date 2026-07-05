@@ -10,7 +10,11 @@ import {
   listarDocumentosACriarDaAssembleia,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
-import { obterPontosDaAssembleia, type PontoOrdemTrabalhos } from "@/lib/pontos-store";
+import {
+  carregarPontosRemotosSeDisponivel,
+  obterPontosDaAssembleia,
+  type PontoOrdemTrabalhos,
+} from "@/lib/pontos-store";
 import type { DocumentoCriado } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/sessoes/$id/preparacao/documentos-a-criar")({
@@ -30,11 +34,16 @@ function DocumentosACriarPage() {
   const { id } = Route.useParams();
   const assembleia = useAssembleia(id);
   const [rascunhos, setRascunhos] = useState<DocumentoCriado[]>([]);
+  const [versaoPontos, setVersaoPontos] = useState(0);
 
-  const pontos = useMemo(() => obterPontosDaAssembleia(id), [id]);
+  const pontos = useMemo(() => obterPontosDaAssembleia(id), [id, versaoPontos]);
   const pontosPorId = useMemo(() => new Map(pontos.map((ponto) => [ponto.id, ponto])), [pontos]);
 
   useEffect(() => {
+    void carregarPontosRemotosSeDisponivel().finally(() => {
+      setVersaoPontos((valor) => valor + 1);
+    });
+
     function carregarRascunhos() {
       setRascunhos(listarDocumentosACriarDaAssembleia(id));
     }

@@ -1,4 +1,11 @@
-import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
+import {
+  apagarPontoRemoto,
+  carregarPontosLocais,
+  carregarPontosRemotos,
+  guardarPontoRemoto,
+  guardarPontosLocais as persistirPontosLocais,
+} from "@/lib/pontos-repository";
+import { obterUserIdAtual } from "@/lib/user-storage";
 
 export type NivelPrioridade = "Alta" | "Média" | "Baixa";
 
@@ -26,21 +33,63 @@ export type PontoOrdemTrabalhos = {
   acoes: string[];
   documentosACriar: string[];
   tempoEstimado?: number;
+  archivedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
-const STORAGE_KEY = "tribuno:pontos";
+const EVENT_NAME = "tribuno:pontos";
 
 function gerarId() {
   return `ponto-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function lerPontos(): PontoOrdemTrabalhos[] {
-  const parsed = lerJSONPorUtilizador<PontoOrdemTrabalhos[]>(STORAGE_KEY, []);
-  return Array.isArray(parsed) ? parsed : [];
+  return carregarPontosLocais();
 }
 
 function guardarPontos(pontos: PontoOrdemTrabalhos[]) {
-  guardarJSONPorUtilizador(STORAGE_KEY, pontos);
+  persistirPontosLocais(pontos);
+  window.dispatchEvent(new Event(EVENT_NAME));
+}
+
+function guardarPontoRemotamente(ponto: PontoOrdemTrabalhos) {
+  const userId = obterUserIdAtual();
+  if (!userId) return;
+
+  void guardarPontoRemoto(userId, ponto).catch((error) => {
+    console.warn("[Tribuno] Ponto guardado localmente, mas falhou no Supabase.", error);
+  });
+}
+
+function apagarPontoRemotamente(id: string) {
+  void apagarPontoRemoto(id).catch((error) => {
+    console.warn("[Tribuno] Ponto apagado localmente, mas falhou no Supabase.", error);
+  });
+}
+
+export async function carregarPontosRemotosSeDisponivel() {
+  try {
+    const remotos = await carregarPontosRemotos();
+    if (!remotos) return;
+
+    const locais = lerPontos();
+    if (remotos.length === 0 && locais.length > 0) return;
+
+    const locaisPorId = new Map(locais.map((ponto) => [ponto.id, ponto]));
+    const hidratados = remotos.map((remoto) => ({
+      ...remoto,
+      documentos: locaisPorId.get(remoto.id)?.documentos ?? remoto.documentos,
+      perguntas: locaisPorId.get(remoto.id)?.perguntas ?? remoto.perguntas,
+      acoes: locaisPorId.get(remoto.id)?.acoes ?? remoto.acoes,
+      documentosACriar: locaisPorId.get(remoto.id)?.documentosACriar ?? remoto.documentosACriar,
+      notas: locaisPorId.get(remoto.id)?.notas ?? remoto.notas,
+    }));
+
+    guardarPontos(hidratados);
+  } catch (error) {
+    console.warn("[Tribuno] Não foi possível carregar pontos do Supabase.", error);
+  }
 }
 
 export function obterPontosDaAssembleia(assembleiaId: string): PontoOrdemTrabalhos[] {
@@ -64,6 +113,7 @@ export function adicionarPonto(
 ) {
   const pontos = lerPontos();
   const pontosDaAssembleia = pontos.filter((ponto) => ponto.assembleiaId === assembleiaId);
+  const agora = new Date().toISOString();
 
   const proximoNumero =
     pontosDaAssembleia.length > 0
@@ -90,9 +140,12 @@ export function adicionarPonto(
     acoes: [],
     documentosACriar: [],
     tempoEstimado: data.tempoEstimado,
+    createdAt: agora,
+    updatedAt: agora,
   };
 
   guardarPontos([novoPonto, ...pontos]);
+  guardarPontoRemotamente(novoPonto);
 
   return novoPonto;
 }
@@ -108,17 +161,21 @@ export function atualizarPonto(
       ? {
           ...ponto,
           ...data,
+          updatedAt: new Date().toISOString(),
         }
       : ponto,
   );
 
   guardarPontos(pontosAtualizados);
+  const atualizado = pontosAtualizados.find((ponto) => ponto.id === pontoId);
+  if (atualizado) guardarPontoRemotamente(atualizado);
 
-  return pontosAtualizados.find((ponto) => ponto.id === pontoId);
+  return atualizado;
 }
 
 export function removerPonto(id: string) {
   const pontos = lerPontos();
 
   guardarPontos(pontos.filter((ponto) => ponto.id !== id));
+  apagarPontoRemotamente(id);
 }

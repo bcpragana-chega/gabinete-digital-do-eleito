@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowRight, ChevronLeft, ListOrdered } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
@@ -6,7 +6,7 @@ import { AdicionarPontoDialog } from "@/components/preparacao/AdicionarPontoDial
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useAssembleia } from "@/lib/assembleias-store";
-import { obterPontosDaAssembleia } from "@/lib/pontos-store";
+import { carregarPontosRemotosSeDisponivel, obterPontosDaAssembleia } from "@/lib/pontos-store";
 
 export const Route = createFileRoute("/_app/sessoes/$id/preparacao/pontos")({
   head: () => ({
@@ -31,6 +31,12 @@ function PreparacaoPontosPage() {
   const pontos = useMemo(() => obterPontosDaAssembleia(id), [id, versao]);
 
   const isSubRoute = pathname.includes(`/sessoes/${id}/preparacao/pontos/`);
+
+  useEffect(() => {
+    void carregarPontosRemotosSeDisponivel().finally(() => {
+      setVersao((valor) => valor + 1);
+    });
+  }, []);
 
   function atualizarPontos() {
     setVersao((valor) => valor + 1);

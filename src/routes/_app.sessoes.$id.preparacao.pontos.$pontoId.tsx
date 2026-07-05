@@ -24,7 +24,12 @@ import {
 } from "@/lib/documentos-a-criar-store";
 import { useDossies } from "@/lib/dossies-store";
 import { listarDocumentosLocais } from "@/lib/documentos-store";
-import { atualizarPonto, obterPontoPorId, type PontoOrdemTrabalhos } from "@/lib/pontos-store";
+import {
+  atualizarPonto,
+  carregarPontosRemotosSeDisponivel,
+  obterPontoPorId,
+  type PontoOrdemTrabalhos,
+} from "@/lib/pontos-store";
 import { obterPreparacaoDaAssembleia } from "@/lib/preparacao-store";
 import {
   criarRelacaoTribuno,
@@ -79,10 +84,17 @@ function PreparacaoPontoDetalhePage() {
   const assembleia = useAssembleia(id);
   const dossies = useDossies();
   const relacoesDoPonto = useRelacoesPorObjeto("ponto", pontoId);
+  const [versaoPonto, setVersaoPonto] = useState(0);
 
-  const ponto = useMemo(() => obterPontoPorId(id, pontoId), [id, pontoId]);
+  const ponto = useMemo(() => obterPontoPorId(id, pontoId), [id, pontoId, versaoPonto]);
   const preparacao = useMemo(() => obterPreparacaoDaAssembleia(id), [id]);
   const documentosBiblioteca = useMemo(() => documentosUnicos(listarDocumentosLocais()), []);
+
+  useEffect(() => {
+    void carregarPontosRemotosSeDisponivel().finally(() => {
+      setVersaoPonto((valor) => valor + 1);
+    });
+  }, []);
 
   const camposIniciais = useMemo<CamposPreparacaoPonto>(
     () => ({

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
@@ -38,7 +38,7 @@ import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
 import { listarDocumentosACriarDaAssembleia } from "@/lib/documentos-a-criar-store";
-import { obterPontosDaAssembleia } from "@/lib/pontos-store";
+import { carregarPontosRemotosSeDisponivel, obterPontosDaAssembleia } from "@/lib/pontos-store";
 import { obterEstrategiaDaAssembleia } from "@/lib/estrategia-store";
 import { useDossies } from "@/lib/dossies-store";
 import {
@@ -98,6 +98,12 @@ function AssembleiaDetailPage() {
   const [confirmarArquivo, setConfirmarArquivo] = useState(false);
   const [wizardAberto, setWizardAberto] = useState(false);
   const [assuntoParaAssociar, setAssuntoParaAssociar] = useState("");
+
+  useEffect(() => {
+    void carregarPontosRemotosSeDisponivel().finally(() => {
+      setVersaoPontos((valor) => valor + 1);
+    });
+  }, []);
 
   const relacoesAssuntos = useMemo(
     () => relacoesDaSessao.filter((relacao) => isRelacaoSessaoAssunto(relacao, id)),
