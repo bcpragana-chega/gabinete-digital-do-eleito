@@ -244,31 +244,19 @@ function BibliotecaPage() {
                             </div>
                           </div>
 
-                          {sessao ? (
-                            <Button
-                              asChild
-                              variant="secondary"
-                              size="sm"
-                              className="w-full lg:w-auto"
-                            >
-                              <Link
-                                to="/sessoes/$id/documentos/$docId"
-                                params={{ id: documento.assembleiaId, docId: documento.id }}
-                              >
-                                Abrir
-                              </Link>
-                            </Button>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              disabled
-                              className="w-full lg:w-auto"
+                          <Button
+                            asChild
+                            variant="secondary"
+                            size="sm"
+                            className="w-full lg:w-auto"
+                          >
+                            <Link
+                              to="/biblioteca/documentos/$docId"
+                              params={{ docId: documento.id }}
                             >
                               Abrir
-                            </Button>
-                          )}
+                            </Link>
+                          </Button>
                         </div>
                       </article>
                     );

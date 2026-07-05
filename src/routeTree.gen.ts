@@ -27,6 +27,7 @@ import { Route as AppDossiesDossieIdRouteImport } from './routes/_app.dossies.$d
 import { Route as AppAssuntosDossieIdRouteImport } from './routes/_app.assuntos.$dossieId'
 import { Route as AppAssembleiasIdRouteImport } from './routes/_app.assembleias.$id'
 import { Route as AppSessoesIdPreparacaoRouteImport } from './routes/_app.sessoes.$id.preparacao'
+import { Route as AppBibliotecaDocumentosDocIdRouteImport } from './routes/_app.biblioteca.documentos.$docId'
 import { Route as AppAssembleiasIdPreparacaoRouteImport } from './routes/_app.assembleias.$id.preparacao'
 import { Route as AppSessoesIdPreparacaoPontosRouteImport } from './routes/_app.sessoes.$id.preparacao.pontos'
 import { Route as AppSessoesIdPreparacaoEstrategiaRouteImport } from './routes/_app.sessoes.$id.preparacao.estrategia'
@@ -135,6 +136,12 @@ const AppSessoesIdPreparacaoRoute = AppSessoesIdPreparacaoRouteImport.update({
   path: '/preparacao',
   getParentRoute: () => AppSessoesIdRoute,
 } as any)
+const AppBibliotecaDocumentosDocIdRoute =
+  AppBibliotecaDocumentosDocIdRouteImport.update({
+    id: '/documentos/$docId',
+    path: '/documentos/$docId',
+    getParentRoute: () => AppBibliotecaRoute,
+  } as any)
 const AppAssembleiasIdPreparacaoRoute =
   AppAssembleiasIdPreparacaoRouteImport.update({
     id: '/preparacao',
@@ -249,7 +256,7 @@ export interface FileRoutesByFullPath {
   '/completar-perfil': typeof CompletarPerfilRoute
   '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
-  '/biblioteca': typeof AppBibliotecaRoute
+  '/biblioteca': typeof AppBibliotecaRouteWithChildren
   '/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/definicoes': typeof AppDefinicoesRoute
   '/historico': typeof AppHistoricoRoute
@@ -262,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/dossies/': typeof AppDossiesIndexRoute
   '/sessoes/': typeof AppSessoesIndexRoute
   '/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRouteWithChildren
+  '/biblioteca/documentos/$docId': typeof AppBibliotecaDocumentosDocIdRoute
   '/sessoes/$id/preparacao': typeof AppSessoesIdPreparacaoRouteWithChildren
   '/assembleias/$id/documentos/$docId': typeof AppAssembleiasIdDocumentosDocIdRoute
   '/assembleias/$id/preparacao/documentos': typeof AppAssembleiasIdPreparacaoDocumentosRoute
@@ -285,7 +293,7 @@ export interface FileRoutesByTo {
   '/completar-perfil': typeof CompletarPerfilRoute
   '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
-  '/biblioteca': typeof AppBibliotecaRoute
+  '/biblioteca': typeof AppBibliotecaRouteWithChildren
   '/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/definicoes': typeof AppDefinicoesRoute
   '/historico': typeof AppHistoricoRoute
@@ -299,6 +307,7 @@ export interface FileRoutesByTo {
   '/dossies': typeof AppDossiesIndexRoute
   '/sessoes': typeof AppSessoesIndexRoute
   '/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRouteWithChildren
+  '/biblioteca/documentos/$docId': typeof AppBibliotecaDocumentosDocIdRoute
   '/sessoes/$id/preparacao': typeof AppSessoesIdPreparacaoRouteWithChildren
   '/assembleias/$id/documentos/$docId': typeof AppAssembleiasIdDocumentosDocIdRoute
   '/assembleias/$id/preparacao/documentos': typeof AppAssembleiasIdPreparacaoDocumentosRoute
@@ -324,7 +333,7 @@ export interface FileRoutesById {
   '/completar-perfil': typeof CompletarPerfilRoute
   '/login': typeof LoginRoute
   '/_app/agenda': typeof AppAgendaRoute
-  '/_app/biblioteca': typeof AppBibliotecaRoute
+  '/_app/biblioteca': typeof AppBibliotecaRouteWithChildren
   '/_app/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/_app/definicoes': typeof AppDefinicoesRoute
   '/_app/historico': typeof AppHistoricoRoute
@@ -338,6 +347,7 @@ export interface FileRoutesById {
   '/_app/dossies/': typeof AppDossiesIndexRoute
   '/_app/sessoes/': typeof AppSessoesIndexRoute
   '/_app/assembleias/$id/preparacao': typeof AppAssembleiasIdPreparacaoRouteWithChildren
+  '/_app/biblioteca/documentos/$docId': typeof AppBibliotecaDocumentosDocIdRoute
   '/_app/sessoes/$id/preparacao': typeof AppSessoesIdPreparacaoRouteWithChildren
   '/_app/assembleias/$id/documentos/$docId': typeof AppAssembleiasIdDocumentosDocIdRoute
   '/_app/assembleias/$id/preparacao/documentos': typeof AppAssembleiasIdPreparacaoDocumentosRoute
@@ -377,6 +387,7 @@ export interface FileRouteTypes {
     | '/dossies/'
     | '/sessoes/'
     | '/assembleias/$id/preparacao'
+    | '/biblioteca/documentos/$docId'
     | '/sessoes/$id/preparacao'
     | '/assembleias/$id/documentos/$docId'
     | '/assembleias/$id/preparacao/documentos'
@@ -414,6 +425,7 @@ export interface FileRouteTypes {
     | '/dossies'
     | '/sessoes'
     | '/assembleias/$id/preparacao'
+    | '/biblioteca/documentos/$docId'
     | '/sessoes/$id/preparacao'
     | '/assembleias/$id/documentos/$docId'
     | '/assembleias/$id/preparacao/documentos'
@@ -452,6 +464,7 @@ export interface FileRouteTypes {
     | '/_app/dossies/'
     | '/_app/sessoes/'
     | '/_app/assembleias/$id/preparacao'
+    | '/_app/biblioteca/documentos/$docId'
     | '/_app/sessoes/$id/preparacao'
     | '/_app/assembleias/$id/documentos/$docId'
     | '/_app/assembleias/$id/preparacao/documentos'
@@ -606,6 +619,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSessoesIdPreparacaoRouteImport
       parentRoute: typeof AppSessoesIdRoute
     }
+    '/_app/biblioteca/documentos/$docId': {
+      id: '/_app/biblioteca/documentos/$docId'
+      path: '/documentos/$docId'
+      fullPath: '/biblioteca/documentos/$docId'
+      preLoaderRoute: typeof AppBibliotecaDocumentosDocIdRouteImport
+      parentRoute: typeof AppBibliotecaRoute
+    }
     '/_app/assembleias/$id/preparacao': {
       id: '/_app/assembleias/$id/preparacao'
       path: '/preparacao'
@@ -734,6 +754,18 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AppBibliotecaRouteChildren {
+  AppBibliotecaDocumentosDocIdRoute: typeof AppBibliotecaDocumentosDocIdRoute
+}
+
+const AppBibliotecaRouteChildren: AppBibliotecaRouteChildren = {
+  AppBibliotecaDocumentosDocIdRoute: AppBibliotecaDocumentosDocIdRoute,
+}
+
+const AppBibliotecaRouteWithChildren = AppBibliotecaRoute._addFileChildren(
+  AppBibliotecaRouteChildren,
+)
 
 interface AppAssembleiasIdPreparacaoPontosPontoIdRouteChildren {
   AppAssembleiasIdPreparacaoPontosPontoIdRascunhosRascunhoIdRoute: typeof AppAssembleiasIdPreparacaoPontosPontoIdRascunhosRascunhoIdRoute
@@ -911,7 +943,7 @@ const AppSessoesIdRouteWithChildren = AppSessoesIdRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
-  AppBibliotecaRoute: typeof AppBibliotecaRoute
+  AppBibliotecaRoute: typeof AppBibliotecaRouteWithChildren
   AppCaixaDeEntradaRoute: typeof AppCaixaDeEntradaRoute
   AppDefinicoesRoute: typeof AppDefinicoesRoute
   AppHistoricoRoute: typeof AppHistoricoRoute
@@ -928,7 +960,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
-  AppBibliotecaRoute: AppBibliotecaRoute,
+  AppBibliotecaRoute: AppBibliotecaRouteWithChildren,
   AppCaixaDeEntradaRoute: AppCaixaDeEntradaRoute,
   AppDefinicoesRoute: AppDefinicoesRoute,
   AppHistoricoRoute: AppHistoricoRoute,

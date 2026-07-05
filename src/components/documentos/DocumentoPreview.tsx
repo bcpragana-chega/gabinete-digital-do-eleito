@@ -90,9 +90,7 @@ export function DocumentoPreview({ documento }: { documento: Documento }) {
   if (estado === "empty") {
     return (
       <DocumentoPreviewShell ficheiroNome={documento.ficheiroNome}>
-        <p className="text-sm text-muted-foreground">
-          Este documento ainda não tem ficheiro PDF associado.
-        </p>
+        <p className="text-sm text-muted-foreground">Ficheiro ainda não disponível.</p>
         <p className="mt-2 text-xs font-medium text-muted-foreground">
           {erroCodigo ?? "STORAGE_PATH_AUSENTE"}
         </p>

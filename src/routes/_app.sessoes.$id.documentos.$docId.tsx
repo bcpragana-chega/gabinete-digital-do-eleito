@@ -66,7 +66,11 @@ function outroDocumentoId(relacao: RelacaoTribuno, documentoId: string) {
 
 function DocumentoPage() {
   const { id, docId } = Route.useParams();
-  const assembleia = useAssembleia(id);
+  return <DocumentoDetalhePage contextoId={id} docId={docId} />;
+}
+
+export function DocumentoDetalhePage({ contextoId, docId }: { contextoId: string; docId: string }) {
+  const assembleia = useAssembleia(contextoId);
   const documento = useDocumento(docId);
   const documentos = useDocumentos();
   const [documentoParaAssociar, setDocumentoParaAssociar] = useState("");
@@ -98,7 +102,8 @@ function DocumentoPage() {
       ),
     [docId, documentosBiblioteca, documentosLigadosIds],
   );
-  const isDocumentoBiblioteca = id === "biblioteca" || documento?.assembleiaId === "biblioteca";
+  const isDocumentoBiblioteca =
+    contextoId === "biblioteca" || documento?.assembleiaId === "biblioteca";
   const nomeContexto = assembleia?.nome ?? (isDocumentoBiblioteca ? "Biblioteca" : "Sessão");
 
   function associarDocumento() {
@@ -141,22 +146,24 @@ function DocumentoPage() {
       <TopBar
         breadcrumb={
           <span>
-            <Link to="/sessoes" className="hover:text-foreground transition-colors">
-              Sessões
-            </Link>
-            <span className="mx-2 text-muted-foreground/60">/</span>
             {isDocumentoBiblioteca ? (
               <Link to="/biblioteca" className="hover:text-foreground transition-colors">
                 Biblioteca
               </Link>
             ) : (
-              <Link
-                to="/sessoes/$id"
-                params={{ id }}
-                className="hover:text-foreground transition-colors"
-              >
-                {nomeContexto}
-              </Link>
+              <>
+                <Link to="/sessoes" className="hover:text-foreground transition-colors">
+                  Sessões
+                </Link>
+                <span className="mx-2 text-muted-foreground/60">/</span>
+                <Link
+                  to="/sessoes/$id"
+                  params={{ id: contextoId }}
+                  className="hover:text-foreground transition-colors"
+                >
+                  {nomeContexto}
+                </Link>
+              </>
             )}
             <span className="mx-2 text-muted-foreground/60">/</span>
             <span className="text-foreground truncate">{documento?.tipo ?? "Documento"}</span>
@@ -175,7 +182,7 @@ function DocumentoPage() {
         ) : (
           <Link
             to="/sessoes/$id"
-            params={{ id }}
+            params={{ id: contextoId }}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
