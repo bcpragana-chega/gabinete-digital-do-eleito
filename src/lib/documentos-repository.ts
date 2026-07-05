@@ -87,9 +87,13 @@ function idSessaoReal(documento: Documento) {
 }
 
 function fromRow(row: DocumentoRow): Documento {
+  const assembleiaId =
+    row.assembleia_origem_id ??
+    (row.origem_tipo === "sessao" && row.origem_ref ? row.origem_ref : "biblioteca");
+
   return {
     id: row.id,
-    assembleiaId: row.assembleia_origem_id ?? "biblioteca",
+    assembleiaId,
     titulo: textoSeguro(row.titulo),
     descricao: textoSeguro(row.descricao) || undefined,
     tipo: tipoSeguro(row.tipo),
@@ -124,6 +128,14 @@ function toRow(userId: string, documento: Documento): DocumentoRow {
   const agora = new Date().toISOString();
   const createdAt = documento.createdAt ?? agora;
   const updatedAt = documento.updatedAt ?? agora;
+  const assembleiaOrigemId = idSessaoReal(documento);
+  const assuntoOrigemId = textoSeguro(documento.assuntoOrigemId) || null;
+  const pontoOrigemId = textoSeguro(documento.pontoOrigemId) || null;
+  const origemTipo =
+    textoSeguro(documento.origemTipo) ||
+    (assembleiaOrigemId ? "sessao" : assuntoOrigemId ? "assunto" : pontoOrigemId ? "ponto" : "");
+  const origemRef =
+    textoSeguro(documento.origemRef) || assembleiaOrigemId || assuntoOrigemId || pontoOrigemId;
 
   return {
     id: documento.id,
@@ -133,8 +145,8 @@ function toRow(userId: string, documento: Documento): DocumentoRow {
     tipo: tipoSeguro(documento.tipo),
     estado: estadoParaRemoto(documento.estado),
     origem: textoSeguro(documento.origem) || (documento.ficheiroNome ? "upload" : "manual"),
-    origem_tipo: textoSeguro(documento.origemTipo) || null,
-    origem_ref: textoSeguro(documento.origemRef) || null,
+    origem_tipo: origemTipo || null,
+    origem_ref: origemRef || null,
     storage_bucket: textoSeguro(documento.storageBucket) || null,
     storage_path: textoSeguro(documento.storagePath) || null,
     ficheiro_nome: textoSeguro(documento.ficheiroNome) || null,
@@ -146,9 +158,9 @@ function toRow(userId: string, documento: Documento): DocumentoRow {
     resumo: textoSeguro(documento.resumo) || null,
     notas: textoSeguro(documento.notas) || null,
     tags: Array.isArray(documento.tags) ? documento.tags : [],
-    assunto_origem_id: textoSeguro(documento.assuntoOrigemId) || null,
-    assembleia_origem_id: idSessaoReal(documento),
-    ponto_origem_id: textoSeguro(documento.pontoOrigemId) || null,
+    assunto_origem_id: assuntoOrigemId,
+    assembleia_origem_id: assembleiaOrigemId,
+    ponto_origem_id: pontoOrigemId,
     data_documento: textoSeguro(documento.data) || null,
     recebido_em: documento.recebidoEm ?? null,
     analisado_em: documento.analisadoEm ?? null,
@@ -156,6 +168,19 @@ function toRow(userId: string, documento: Documento): DocumentoRow {
     created_at: createdAt,
     updated_at: updatedAt,
   };
+}
+
+function semChavesOpcionais(row: DocumentoRow): DocumentoRow {
+  return {
+    ...row,
+    assunto_origem_id: null,
+    assembleia_origem_id: null,
+    ponto_origem_id: null,
+  };
+}
+
+function isErroChaveEstrangeira(error: { code?: string; message?: string }) {
+  return error.code === "23503" || error.message?.toLowerCase().includes("foreign key");
 }
 
 async function obterSupabaseUserIdValido(userId?: string) {
@@ -221,15 +246,41 @@ export async function guardarDocumentoRemoto(userId: string, documento: Document
 
   const supabase = getSupabaseClient();
   if (!supabase) return;
+  const row = toRow(supabaseUserId, documento);
 
   const { error } = await withSupabaseTimeout(
-    supabase.from("documentos").upsert(toRow(supabaseUserId, documento), {
+    supabase.from("documentos").upsert(row, {
       onConflict: "id",
     }),
     "DOCUMENTOS_UPSERT",
   );
 
-  if (error) throw error;
+  if (!error) return;
+
+  if (isErroChaveEstrangeira(error)) {
+    console.warn(
+      "[Tribuno] Documento guardado sem chaves opcionais porque o contexto remoto ainda não existe.",
+      {
+        documentoId: documento.id,
+        assuntoOrigemId: row.assunto_origem_id,
+        assembleiaOrigemId: row.assembleia_origem_id,
+        pontoOrigemId: row.ponto_origem_id,
+        error,
+      },
+    );
+
+    const { error: retryError } = await withSupabaseTimeout(
+      supabase.from("documentos").upsert(semChavesOpcionais(row), {
+        onConflict: "id",
+      }),
+      "DOCUMENTOS_UPSERT_SEM_FKS",
+    );
+
+    if (retryError) throw retryError;
+    return;
+  }
+
+  throw error;
 }
 
 export async function apagarDocumentoRemoto(id: string) {

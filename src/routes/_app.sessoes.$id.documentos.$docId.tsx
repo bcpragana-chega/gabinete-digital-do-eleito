@@ -98,6 +98,8 @@ function DocumentoPage() {
       ),
     [docId, documentosBiblioteca, documentosLigadosIds],
   );
+  const isDocumentoBiblioteca = id === "biblioteca" || documento?.assembleiaId === "biblioteca";
+  const nomeContexto = assembleia?.nome ?? (isDocumentoBiblioteca ? "Biblioteca" : "Sessão");
 
   function associarDocumento() {
     if (!documentoParaAssociar || documentoParaAssociar === docId) return;
@@ -143,27 +145,43 @@ function DocumentoPage() {
               Sessões
             </Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
-            <Link
-              to="/sessoes/$id"
-              params={{ id }}
-              className="hover:text-foreground transition-colors"
-            >
-              {assembleia.nome}
-            </Link>
+            {isDocumentoBiblioteca ? (
+              <Link to="/biblioteca" className="hover:text-foreground transition-colors">
+                Biblioteca
+              </Link>
+            ) : (
+              <Link
+                to="/sessoes/$id"
+                params={{ id }}
+                className="hover:text-foreground transition-colors"
+              >
+                {nomeContexto}
+              </Link>
+            )}
             <span className="mx-2 text-muted-foreground/60">/</span>
             <span className="text-foreground truncate">{documento?.tipo ?? "Documento"}</span>
           </span>
         }
       />
       <main className="px-8 py-10 max-w-7xl">
-        <Link
-          to="/sessoes/$id"
-          params={{ id }}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
-        >
-          <ChevronLeft className="h-3.5 w-3.5" />
-          Voltar à assembleia
-        </Link>
+        {isDocumentoBiblioteca ? (
+          <Link
+            to="/biblioteca"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Voltar à Biblioteca
+          </Link>
+        ) : (
+          <Link
+            to="/sessoes/$id"
+            params={{ id }}
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Voltar à sessão
+          </Link>
+        )}
 
         {!documento ? (
           <section className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-muted-foreground">
