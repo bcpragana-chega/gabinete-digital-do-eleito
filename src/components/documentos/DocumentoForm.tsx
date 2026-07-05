@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import type { EstadoDocumento, TipoDocumento } from "@/lib/types";
 import { adicionarDocumentoComUpload, type NovoDocumentoInput } from "@/lib/documentos-store";
+import { DocumentoStorageErro } from "@/lib/documentos-storage";
 
 const tipos: TipoDocumento[] = [
   "Convocatória",
@@ -89,9 +90,11 @@ export function DocumentoForm({
     } catch (error) {
       console.warn("[Tribuno] Não foi possível adicionar o documento.", error);
       setErro(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível guardar o documento. Tente novamente.",
+        error instanceof DocumentoStorageErro
+          ? `${error.codigo}: ${error.message}`
+          : error instanceof Error
+            ? error.message
+            : "Não foi possível guardar o documento. Tente novamente.",
       );
     } finally {
       setAGuardar(false);

@@ -1,7 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Download, ExternalLink, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { criarUrlAssinadaDocumento } from "@/lib/documentos-storage";
+import {
+  criarUrlAssinadaDocumento,
+  DocumentoStorageErro,
+  type DocumentoStorageErroCodigo,
+} from "@/lib/documentos-storage";
 import type { Documento } from "@/lib/types";
 
 type EstadoPreview = "idle" | "loading" | "ready" | "empty" | "error";
@@ -10,13 +14,22 @@ export function DocumentoPreview({ documento }: { documento: Documento }) {
   const [estado, setEstado] = useState<EstadoPreview>("idle");
   const [previewUrl, setPreviewUrl] = useState<string | undefined>();
   const [downloadUrl, setDownloadUrl] = useState<string | undefined>();
+  const [erroCodigo, setErroCodigo] = useState<DocumentoStorageErroCodigo | undefined>();
 
   useEffect(() => {
     let ativo = true;
 
     async function carregar() {
+      console.info("[Tribuno Documentos] Preview PDF iniciado", {
+        documentoId: documento.id,
+        storageBucket: documento.storageBucket,
+        storagePath: documento.storagePath,
+        ficheiroNome: documento.ficheiroNome,
+      });
+
       if (!documento.storagePath) {
         setEstado("empty");
+        setErroCodigo("STORAGE_PATH_AUSENTE");
         setPreviewUrl(undefined);
         setDownloadUrl(undefined);
         return;
@@ -34,16 +47,25 @@ export function DocumentoPreview({ documento }: { documento: Documento }) {
         if (!ativo) return;
 
         if (!signedPreviewUrl) {
-          setEstado("empty");
+          setErroCodigo("PDF_URL_INVALIDA");
+          setEstado("error");
           return;
         }
 
+        console.info("[Tribuno Documentos] URL assinada do PDF gerada", {
+          documentoId: documento.id,
+          storagePath: documento.storagePath,
+          temPreviewUrl: Boolean(signedPreviewUrl),
+        });
+
         setPreviewUrl(signedPreviewUrl);
         setDownloadUrl(signedDownloadUrl ?? signedPreviewUrl);
+        setErroCodigo(undefined);
         setEstado("ready");
       } catch (error) {
         console.warn("[Tribuno] Não foi possível obter o PDF do documento.", error);
         if (!ativo) return;
+        setErroCodigo(error instanceof DocumentoStorageErro ? error.codigo : "PDF_URL_INVALIDA");
         setPreviewUrl(undefined);
         setDownloadUrl(undefined);
         setEstado("error");
@@ -55,7 +77,7 @@ export function DocumentoPreview({ documento }: { documento: Documento }) {
     return () => {
       ativo = false;
     };
-  }, [documento.ficheiroNome, documento.storagePath]);
+  }, [documento.ficheiroNome, documento.id, documento.storageBucket, documento.storagePath]);
 
   if (estado === "loading" || estado === "idle") {
     return (
@@ -71,6 +93,9 @@ export function DocumentoPreview({ documento }: { documento: Documento }) {
         <p className="text-sm text-muted-foreground">
           Este documento ainda não tem ficheiro PDF associado.
         </p>
+        <p className="mt-2 text-xs font-medium text-muted-foreground">
+          {erroCodigo ?? "STORAGE_PATH_AUSENTE"}
+        </p>
       </DocumentoPreviewShell>
     );
   }
@@ -80,6 +105,9 @@ export function DocumentoPreview({ documento }: { documento: Documento }) {
       <DocumentoPreviewShell ficheiroNome={documento.ficheiroNome}>
         <p className="text-sm text-muted-foreground">
           Não foi possível carregar o ficheiro. Pode ter sido removido ou expirado.
+        </p>
+        <p className="mt-2 text-xs font-medium text-muted-foreground">
+          {erroCodigo ?? "PDF_URL_INVALIDA"}
         </p>
       </DocumentoPreviewShell>
     );

@@ -36,11 +36,18 @@ function mergeDocumentos(local: Documento[], remoto: Documento[]) {
 
 function guardarDocumentoRemotamente(documento: Documento) {
   const userId = obterUserIdAtual();
-  if (!userId) return;
+  if (!userId) return Promise.resolve();
 
-  guardarDocumentoRemoto(userId, documento).catch((error) => {
+  return guardarDocumentoRemoto(userId, documento).catch((error) => {
     console.warn("[Tribuno] Não foi possível sincronizar o documento no Supabase.", error);
   });
+}
+
+async function guardarDocumentoRemotamenteObrigatorio(documento: Documento) {
+  const userId = obterUserIdAtual();
+  if (!userId) return;
+
+  await guardarDocumentoRemoto(userId, documento);
 }
 
 export function carregarDocumentosRemotosSeDisponivel() {
@@ -129,7 +136,7 @@ function persistirDocumento(doc: Documento) {
   const docs = read();
   docs.push(doc);
   write(docs);
-  guardarDocumentoRemotamente(doc);
+  void guardarDocumentoRemotamente(doc);
   registarDocumentoCriadoNaTimeline(doc);
 }
 
@@ -167,7 +174,22 @@ export async function adicionarDocumentoComUpload(
     storagePath: camposUpload.storagePath,
   };
 
-  persistirDocumento(documentoComStorage);
+  const docs = read();
+  docs.push(documentoComStorage);
+  write(docs);
+
+  if (ficheiro) {
+    console.info("[Tribuno Documentos] A guardar metadados remotos do PDF", {
+      documentoId: documentoComStorage.id,
+      storageBucket: documentoComStorage.storageBucket,
+      storagePath: documentoComStorage.storagePath,
+    });
+    await guardarDocumentoRemotamenteObrigatorio(documentoComStorage);
+  } else {
+    void guardarDocumentoRemotamente(documentoComStorage);
+  }
+
+  registarDocumentoCriadoNaTimeline(documentoComStorage);
   return documentoComStorage;
 }
 

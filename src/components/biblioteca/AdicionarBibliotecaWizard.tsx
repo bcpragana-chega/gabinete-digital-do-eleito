@@ -12,6 +12,7 @@ import { useAssembleias } from "@/lib/assembleias-store";
 import { associarDocumentoAoDossie } from "@/lib/dossie-documentos-store";
 import { useDossies } from "@/lib/dossies-store";
 import { adicionarDocumentoComUpload } from "@/lib/documentos-store";
+import { DocumentoStorageErro } from "@/lib/documentos-storage";
 import {
   arquivarInboxDocumento,
   associarInboxDocumentoAAssembleia,
@@ -194,9 +195,11 @@ export function AdicionarBibliotecaWizard() {
     } catch (error) {
       console.warn("[Tribuno] Não foi possível adicionar o documento à Biblioteca.", error);
       setErro(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível guardar o documento. Tente novamente.",
+        error instanceof DocumentoStorageErro
+          ? `${error.codigo}: ${error.message}`
+          : error instanceof Error
+            ? error.message
+            : "Não foi possível guardar o documento. Tente novamente.",
       );
       setAGuardar(false);
       return;

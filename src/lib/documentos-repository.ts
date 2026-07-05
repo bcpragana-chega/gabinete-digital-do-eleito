@@ -201,6 +201,32 @@ async function obterSupabaseUserIdValido(userId?: string) {
   return data.user.id;
 }
 
+async function diagnosticarSessaoDocumentos() {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return {
+      supabaseConfigurado: isSupabaseConfigured(),
+      existeSessao: false,
+      sessionUserId: undefined,
+      authUserId: undefined,
+      erroSessao: "Supabase não configurado",
+      erroUser: undefined,
+    };
+  }
+
+  const [{ data: sessionData, error: sessionError }, { data: userData, error: userError }] =
+    await Promise.all([supabase.auth.getSession(), supabase.auth.getUser()]);
+
+  return {
+    supabaseConfigurado: isSupabaseConfigured(),
+    existeSessao: Boolean(sessionData.session?.user.id),
+    sessionUserId: sessionData.session?.user.id,
+    authUserId: userData.user?.id,
+    erroSessao: sessionError?.message,
+    erroUser: userError?.message,
+  };
+}
+
 export function carregarDocumentosLocais() {
   const parsed = lerJSONPorUtilizador<Documento[]>(STORAGE_KEY, []);
   return Array.isArray(parsed) ? parsed : [];
@@ -235,6 +261,22 @@ export async function guardarDocumentoRemoto(userId: string, documento: Document
   if (!supabase) return;
 
   const row = toRow(supabaseUserId, documento);
+  const diagnosticoSessao = await diagnosticarSessaoDocumentos();
+
+  console.info("[Tribuno Documentos][RLS DIAG] Payload para public.documentos", {
+    tabela: "public.documentos",
+    operacao: "upsert",
+    authUid: supabaseUserId,
+    sessionUserId: diagnosticoSessao.sessionUserId,
+    authUserId: diagnosticoSessao.authUserId,
+    userIdLocalRecebido: userId,
+    userIdEnviadoNoInsert: row.user_id,
+    authUidIgualUserIdEnviado: supabaseUserId === row.user_id,
+    sessionIgualUserIdEnviado: diagnosticoSessao.sessionUserId === row.user_id,
+    authUserIgualUserIdEnviado: diagnosticoSessao.authUserId === row.user_id,
+    policyInsertEsperada: "with check (auth.uid() = user_id)",
+    payload: row,
+  });
 
   const response = await withSupabaseTimeout(
     supabase
@@ -246,7 +288,27 @@ export async function guardarDocumentoRemoto(userId: string, documento: Document
     "DOCUMENTOS_UPSERT",
   );
 
-  if (response.error) throw response.error;
+  console.info("[Tribuno Documentos][RLS DIAG] Resposta public.documentos", {
+    tabela: "public.documentos",
+    status: response.status,
+    statusText: response.statusText,
+    data: response.data,
+    error: response.error,
+  });
+
+  if (response.error) {
+    console.error("[Tribuno Documentos][RLS DIAG] Upsert rejeitado em public.documentos", {
+      authUid: supabaseUserId,
+      sessionUserId: diagnosticoSessao.sessionUserId,
+      authUserId: diagnosticoSessao.authUserId,
+      userIdLocalRecebido: userId,
+      userIdEnviadoNoInsert: row.user_id,
+      policyInsertEsperada: "with check (auth.uid() = user_id)",
+      payload: row,
+      error: response.error,
+    });
+    throw response.error;
+  }
 }
 
 export async function apagarDocumentoRemoto(id: string) {
