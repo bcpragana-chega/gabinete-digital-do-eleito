@@ -1,6 +1,6 @@
 import type { PerfilEleito } from "@/lib/auth-store";
 import { readJSON, userScopedKey, writeJSON } from "@/lib/storage-provider";
-import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
+import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
 
 type ProfileRow = {
   user_id: string;
@@ -80,29 +80,32 @@ function toRow(userId: string, perfil: PerfilEleito): ProfileRow {
 }
 
 async function obterSupabaseUserIdValido(userId?: string) {
-  if (!isSupabaseConfigured()) return undefined;
+  if (!isSupabaseConfigured()) {
+    console.info("[Tribuno Perfil] Supabase não configurado para perfil remoto.");
+    return undefined;
+  }
 
   const supabase = getSupabaseClient();
   if (!supabase) return undefined;
 
-  const { data, error } = await supabase.auth.getUser();
+  const { data, error } = await withSupabaseTimeout(
+    supabase.auth.getUser(),
+    "PROFILE_GET_USER",
+    8000,
+  );
   if (error || !data.user?.id) {
-    if (import.meta.env.DEV) {
-      console.warn("[Tribuno] Sem sessão Supabase válida para sincronizar Perfil.", error);
-    }
+    console.warn("[Tribuno Perfil] Sem sessão Supabase válida para sincronizar perfil.", {
+      userId,
+      error,
+    });
     return undefined;
   }
 
   if (userId && userId !== data.user.id) {
-    if (import.meta.env.DEV) {
-      console.warn(
-        "[Tribuno] Sincronização de Perfil ignorada: userId não corresponde ao auth.uid().",
-        {
-          storeUserId: userId,
-          supabaseUserId: data.user.id,
-        },
-      );
-    }
+    console.warn("[Tribuno Perfil] Sincronização ignorada: userId não corresponde ao auth.uid().", {
+      storeUserId: userId,
+      supabaseUserId: data.user.id,
+    });
     return undefined;
   }
 
@@ -126,35 +129,76 @@ export function guardarPerfilLocal(userId: string, perfil: PerfilEleito) {
 }
 
 export async function carregarPerfilRemoto(userId?: string) {
+  console.info("[Tribuno Perfil] Carregar perfil remoto iniciado", {
+    userId,
+    supabaseConfigurado: isSupabaseConfigured(),
+  });
+
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
-  if (!supabaseUserId) return undefined;
+  if (!supabaseUserId) {
+    console.info("[Tribuno Perfil] Carregamento remoto ignorado: sem auth.uid válido.", {
+      userId,
+    });
+    return undefined;
+  }
 
   const supabase = getSupabaseClient();
   if (!supabase) return undefined;
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("user_id", supabaseUserId)
-    .maybeSingle<ProfileRow>();
+  const { data, error } = await withSupabaseTimeout(
+    supabase.from("profiles").select("*").eq("user_id", supabaseUserId).maybeSingle<ProfileRow>(),
+    "PROFILE_SELECT",
+  );
 
   if (error) throw error;
+
+  console.info("[Tribuno Perfil] Carregar perfil remoto concluído", {
+    userId,
+    supabaseUserId,
+    perfilEncontrado: Boolean(data),
+  });
 
   return data ? fromRow(data) : undefined;
 }
 
 export async function guardarPerfilRemoto(userId: string, perfil: PerfilEleito) {
+  console.info("[Tribuno Perfil] Guardar perfil remoto iniciado", {
+    userId,
+    supabaseConfigurado: isSupabaseConfigured(),
+    payload: {
+      nomeInstitucionalLength: perfil.nomeInstitucional.length,
+      cargo: perfil.cargo,
+      orgao: perfil.orgao,
+      organizacaoLength: perfil.organizacao.length,
+      territorioLength: perfil.territorio.length,
+      temAssinaturaInstitucional: Boolean(perfil.assinaturaInstitucional),
+    },
+  });
+
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
-  if (!supabaseUserId) return;
+  if (!supabaseUserId) {
+    console.info("[Tribuno Perfil] Gravação remota ignorada: sem auth.uid válido.", {
+      userId,
+    });
+    return;
+  }
 
   const supabase = getSupabaseClient();
   if (!supabase) return;
 
-  const { error } = await supabase.from("profiles").upsert(toRow(supabaseUserId, perfil), {
-    onConflict: "user_id",
-  });
+  const { error } = await withSupabaseTimeout(
+    supabase.from("profiles").upsert(toRow(supabaseUserId, perfil), {
+      onConflict: "user_id",
+    }),
+    "PROFILE_UPSERT",
+  );
 
   if (error) throw error;
+
+  console.info("[Tribuno Perfil] Guardar perfil remoto concluído", {
+    userId,
+    supabaseUserId,
+  });
 }
 
 export async function carregarPerfilHibrido(userId?: string) {

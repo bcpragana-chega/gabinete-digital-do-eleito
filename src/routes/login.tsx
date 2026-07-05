@@ -84,6 +84,23 @@ function userFromCredential(credential: string): AuthUser {
 }
 
 type GoogleClientIdStatus = "missing" | "empty" | "loaded";
+type LoginErroCodigo =
+  | "ERRO_LOGIN_GOOGLE_CREDENTIAL"
+  | "ERRO_LOGIN_SUPABASE"
+  | "ERRO_LOGIN_PERFIL"
+  | "ERRO_LOGIN_NAVEGACAO"
+  | "ERRO_LOGIN_DESCONHECIDO";
+
+const mensagensErroLogin: Record<LoginErroCodigo, string> = {
+  ERRO_LOGIN_GOOGLE_CREDENTIAL:
+    "A Google não devolveu uma credencial válida. Tente novamente ou use outro navegador.",
+  ERRO_LOGIN_SUPABASE:
+    "A autenticação remota não respondeu corretamente. Tente novamente dentro de instantes.",
+  ERRO_LOGIN_PERFIL: "A sessão foi criada, mas não foi possível carregar o perfil.",
+  ERRO_LOGIN_NAVEGACAO: "A sessão foi criada, mas não foi possível abrir a aplicação.",
+  ERRO_LOGIN_DESCONHECIDO:
+    "Não foi possível iniciar sessão. Tente novamente ou recarregue a página.",
+};
 
 function getGoogleClientIdStatus(rawClientId: unknown): GoogleClientIdStatus {
   if (rawClientId === undefined) return "missing";
@@ -102,6 +119,31 @@ function logAuth(etapa: string, dados: Record<string, unknown> = {}) {
     supabaseConfigurado: isSupabaseConfigured(),
     ...dados,
   });
+}
+
+function codigoLoginDoErro(error: unknown): LoginErroCodigo {
+  if (error instanceof Error) {
+    const mensagem = error.message.toLocaleLowerCase("pt-PT");
+    if (mensagem.includes("credential") || mensagem.includes("credencial")) {
+      return "ERRO_LOGIN_GOOGLE_CREDENTIAL";
+    }
+    if (
+      mensagem.includes("supabase") ||
+      mensagem.includes("auth") ||
+      mensagem.includes("timeout_supabase") ||
+      mensagem.includes("id token")
+    ) {
+      return "ERRO_LOGIN_SUPABASE";
+    }
+    if (mensagem.includes("perfil") || mensagem.includes("profile")) {
+      return "ERRO_LOGIN_PERFIL";
+    }
+    if (mensagem.includes("navigate") || mensagem.includes("navega")) {
+      return "ERRO_LOGIN_NAVEGACAO";
+    }
+  }
+
+  return "ERRO_LOGIN_DESCONHECIDO";
 }
 
 function LoginPage() {
@@ -210,19 +252,17 @@ function LoginPage() {
               destino,
             });
           } catch (error) {
+            const codigo = codigoLoginDoErro(error);
             const diagnostico = await diagnosticarSessaoSupabase();
 
             console.error("[Tribuno Auth] Erro no fluxo de login", {
+              codigo,
               supabaseConfigurado: isSupabaseConfigured(),
               diagnostico,
               error,
             });
 
-            setErro(
-              error instanceof Error
-                ? `Não foi possível iniciar sessão. ${error.message}`
-                : "Não foi possível iniciar sessão. Código: ERRO_LOGIN_DESCONHECIDO",
-            );
+            setErro(`${mensagensErroLogin[codigo]} Código: ${codigo}`);
           } finally {
             setAEntrar(false);
           }

@@ -1,6 +1,22 @@
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 
 let client: SupabaseClient | undefined;
+const SUPABASE_TIMEOUT_MS = 12000;
+
+export function withSupabaseTimeout<T>(
+  promise: Promise<T>,
+  etapa: string,
+  timeoutMs = SUPABASE_TIMEOUT_MS,
+) {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      globalThis.setTimeout(() => {
+        reject(new Error(`TIMEOUT_SUPABASE_${etapa}`));
+      }, timeoutMs);
+    }),
+  ]);
+}
 
 export function isSupabaseConfigured() {
   return Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
@@ -39,10 +55,13 @@ export async function iniciarSessaoSupabaseComGoogleCredential(
     return undefined;
   }
 
-  const { data, error } = await supabase.auth.signInWithIdToken({
-    provider: "google",
-    token: credential,
-  });
+  const { data, error } = await withSupabaseTimeout(
+    supabase.auth.signInWithIdToken({
+      provider: "google",
+      token: credential,
+    }),
+    "SIGN_IN_WITH_ID_TOKEN",
+  );
 
   if (error) {
     console.error("[Tribuno Auth] Login Supabase falhou", {
@@ -74,7 +93,11 @@ export async function diagnosticarSessaoSupabase() {
   }
 
   try {
-    const { data, error } = await supabase.auth.getSession();
+    const { data, error } = await withSupabaseTimeout(
+      supabase.auth.getSession(),
+      "GET_SESSION",
+      8000,
+    );
 
     return {
       supabaseConfigurado,
