@@ -10,21 +10,32 @@ export const Route = createFileRoute("/_app")({
 
 function AppLayout() {
   const navigate = useNavigate();
-  const { initialized, isAuthenticated, perfil } = useAuth();
+  const { initialized, isAuthenticated, user, perfil } = useAuth();
   const storageStatus = obterStorageStatus();
 
   useEffect(() => {
     if (!initialized) return;
 
     if (!isAuthenticated) {
+      console.warn("[Tribuno Auth] Rota protegida sem autenticação, a enviar para login.");
       navigate({ to: "/login", replace: true });
       return;
     }
 
     if (!perfilCompleto(perfil)) {
+      console.info("[Tribuno Auth] Rota protegida precisa de onboarding", {
+        userId: user?.id,
+        perfilCarregado: Boolean(perfil),
+      });
       navigate({ to: "/completar-perfil", replace: true });
+      return;
     }
-  }, [initialized, isAuthenticated, navigate, perfil]);
+
+    console.info("[Tribuno Auth] Rota protegida autorizada", {
+      userId: user?.id,
+      perfilCarregado: Boolean(perfil),
+    });
+  }, [initialized, isAuthenticated, navigate, perfil, user?.id]);
 
   if (!initialized || !isAuthenticated || !perfilCompleto(perfil)) {
     return (

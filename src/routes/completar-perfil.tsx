@@ -23,15 +23,26 @@ function CompletarPerfilPage() {
 
   useEffect(() => {
     if (!initialized) return;
+    console.info("[Tribuno Auth] Completar perfil: estado recebido", {
+      isAuthenticated,
+      userId: user?.id,
+      perfilCarregado: Boolean(perfil),
+      perfilCompleto: perfilCompleto(perfil),
+    });
+
     if (!isAuthenticated) {
+      console.warn("[Tribuno Auth] Completar perfil: sem autenticação, a voltar para login.");
       navigate({ to: "/login", replace: true });
       return;
     }
 
     if (perfilCompleto(perfil)) {
+      console.info("[Tribuno Auth] Completar perfil: perfil completo, a entrar na aplicação.", {
+        userId: user?.id,
+      });
       navigate({ to: "/", replace: true });
     }
-  }, [initialized, isAuthenticated, navigate, perfil]);
+  }, [initialized, isAuthenticated, navigate, perfil, user?.id]);
 
   return (
     <main className="min-h-screen bg-muted/30 px-4 py-8">

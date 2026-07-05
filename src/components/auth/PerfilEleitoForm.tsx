@@ -18,11 +18,14 @@ import {
   nomeVisivel,
   normalizarPerfilEleito,
   orgaosEleito,
+  PerfilErro,
   type AuthUser,
   type CargoEleito,
   type OrgaoEleito,
   type PerfilEleito,
+  type PerfilErroCodigo,
 } from "@/lib/auth-store";
+import { diagnosticarSessaoSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 type PerfilEleitoFormProps = {
   user?: AuthUser;
@@ -30,6 +33,61 @@ type PerfilEleitoFormProps = {
   submitLabel?: string;
   onSaved?: (perfil: PerfilEleito) => void;
 };
+
+const mensagensErroPerfil: Record<PerfilErroCodigo, string> = {
+  ERRO_PERFIL_VALIDACAO:
+    "Não foi possível validar o perfil. Confirme os campos obrigatórios e tente novamente.",
+  ERRO_PERFIL_SUPABASE:
+    "O perfil foi guardado neste dispositivo, mas não foi possível sincronizar agora.",
+  ERRO_PERFIL_LOCAL:
+    "Não foi possível guardar o perfil neste dispositivo. Verifique o espaço disponível ou as permissões do navegador.",
+  ERRO_PERFIL_DESCONHECIDO:
+    "Não foi possível guardar o perfil. Tente novamente ou recarregue a página.",
+};
+
+function tamanhoTexto(valor: string) {
+  return valor.trim().length;
+}
+
+function payloadSeguro(perfil: Omit<PerfilEleito, "updatedAt">) {
+  return {
+    nomeInstitucionalLength: tamanhoTexto(perfil.nomeInstitucional),
+    cargo: perfil.cargo,
+    orgao: perfil.orgao,
+    organizacaoLength: tamanhoTexto(perfil.organizacao),
+    territorioLength: tamanhoTexto(perfil.territorio),
+    temAssinaturaInstitucional: Boolean(perfil.assinaturaInstitucional?.trim()),
+  };
+}
+
+function codigoDoErro(error: unknown): PerfilErroCodigo {
+  if (error instanceof PerfilErro) return error.codigo;
+
+  if (error instanceof Error) {
+    const mensagem = error.message.toLocaleLowerCase("pt-PT");
+    if (mensagem.includes("localstorage") || mensagem.includes("quota")) {
+      return "ERRO_PERFIL_LOCAL";
+    }
+    if (mensagem.includes("supabase") || mensagem.includes("auth") || mensagem.includes("rls")) {
+      return "ERRO_PERFIL_SUPABASE";
+    }
+    if (mensagem.includes("inválido") || mensagem.includes("valid")) {
+      return "ERRO_PERFIL_VALIDACAO";
+    }
+  }
+
+  return "ERRO_PERFIL_DESCONHECIDO";
+}
+
+async function diagnosticoSupabase(userId?: string) {
+  const diagnostico = await diagnosticarSessaoSupabase();
+  return {
+    ...diagnostico,
+    userIdCorrespondeAoSupabase: Boolean(
+      userId && diagnostico.supabaseUserId && userId === diagnostico.supabaseUserId,
+    ),
+  };
+}
 
 export function PerfilEleitoForm({
   user,
@@ -59,6 +117,7 @@ export function PerfilEleitoForm({
   const [aGuardar, setAGuardar] = useState(false);
   const [nomeEditadoManualmente, setNomeEditadoManualmente] = useState(false);
   const [erro, setErro] = useState("");
+  const [codigoErro, setCodigoErro] = useState<PerfilErroCodigo | undefined>();
 
   useEffect(() => {
     if (nomeEditadoManualmente) return;
@@ -79,29 +138,129 @@ export function PerfilEleitoForm({
     nomeInstitucional.trim() && cargo && orgao && organizacao.trim() && territorio.trim(),
   );
 
-  async function guardar() {
-    if (!podeGuardar || aGuardar) return;
-
+  function limparErro() {
     setErro("");
-    setAGuardar(true);
+    setCodigoErro(undefined);
+  }
+
+  function registarCampoAlterado(campo: string, valor: string) {
+    console.info("[Tribuno Perfil] Campo alterado", {
+      campo,
+      length: valor.length,
+      userId: user?.id,
+      supabaseConfigurado: isSupabaseConfigured(),
+    });
+  }
+
+  function alterarTexto(
+    campo: string,
+    valor: string,
+    setter: React.Dispatch<React.SetStateAction<string>>,
+  ) {
     try {
-      const atualizado = await guardarPerfilEleito({
-        nomeInstitucional: nomeInstitucional.trim(),
-        cargo,
-        orgao,
-        organizacao: organizacao.trim(),
-        territorio: territorio.trim(),
-        assinaturaInstitucional: assinaturaInstitucional.trim(),
+      limparErro();
+      registarCampoAlterado(campo, valor);
+      setter(valor);
+    } catch (error) {
+      const codigo = codigoDoErro(error);
+      console.error("[Tribuno Perfil] Erro ao alterar campo", {
+        codigo,
+        campo,
+        userId: user?.id,
+        supabaseConfigurado: isSupabaseConfigured(),
+        error,
+      });
+      setCodigoErro(codigo);
+      setErro(mensagensErroPerfil[codigo]);
+    }
+  }
+
+  function alterarOpcao<T extends CargoEleito | OrgaoEleito>(
+    campo: string,
+    valor: string,
+    setter: React.Dispatch<React.SetStateAction<T>>,
+  ) {
+    try {
+      limparErro();
+      registarCampoAlterado(campo, valor);
+      setter(valor as T);
+    } catch (error) {
+      const codigo = codigoDoErro(error);
+      console.error("[Tribuno Perfil] Erro ao alterar opção", {
+        codigo,
+        campo,
+        userId: user?.id,
+        supabaseConfigurado: isSupabaseConfigured(),
+        error,
+      });
+      setCodigoErro(codigo);
+      setErro(mensagensErroPerfil[codigo]);
+    }
+  }
+
+  async function guardar() {
+    if (aGuardar) return;
+
+    if (!podeGuardar) {
+      const codigo: PerfilErroCodigo = "ERRO_PERFIL_VALIDACAO";
+      const diagnostico = await diagnosticoSupabase(user?.id);
+      console.warn("[Tribuno Perfil] Validação falhou antes de guardar", {
+        codigo,
+        userId: user?.id,
+        diagnostico,
+        campos: {
+          nomeInstitucionalLength: nomeInstitucional.length,
+          temCargo: Boolean(cargo),
+          temOrgao: Boolean(orgao),
+          organizacaoLength: organizacao.length,
+          territorioLength: territorio.length,
+        },
+      });
+      setCodigoErro(codigo);
+      setErro(mensagensErroPerfil[codigo]);
+      return;
+    }
+
+    limparErro();
+    setAGuardar(true);
+
+    const payload = {
+      nomeInstitucional: nomeInstitucional.trim(),
+      cargo,
+      orgao,
+      organizacao: organizacao.trim(),
+      territorio: territorio.trim(),
+      assinaturaInstitucional: assinaturaInstitucional.trim(),
+    };
+    const diagnostico = await diagnosticoSupabase(user?.id);
+
+    console.info("[Tribuno Perfil] Submit iniciado", {
+      userId: user?.id,
+      diagnostico,
+      payload: payloadSeguro(payload),
+    });
+
+    try {
+      const atualizado = await guardarPerfilEleito(payload);
+      console.info("[Tribuno Perfil] Perfil guardado", {
+        userId: user?.id,
+        diagnostico,
+        payload: payloadSeguro(payload),
       });
       onSaved?.(atualizado);
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("[Tribuno] Não foi possível guardar o perfil.", error);
-      }
+      const codigo = codigoDoErro(error);
 
-      setErro(
-        "Não foi possível guardar o perfil. Confirme os dados e tente novamente. Se o problema continuar, recarregue a página.",
-      );
+      console.error("[Tribuno Perfil] Erro ao guardar perfil", {
+        codigo,
+        userId: user?.id,
+        diagnostico,
+        payload: payloadSeguro(payload),
+        error,
+      });
+
+      setCodigoErro(codigo);
+      setErro(mensagensErroPerfil[codigo]);
     } finally {
       setAGuardar(false);
     }
@@ -128,8 +287,19 @@ export function PerfilEleitoForm({
             id="perfil-nome"
             value={nomeInstitucional}
             onChange={(event) => {
-              setNomeEditadoManualmente(true);
-              setNomeInstitucional(event.target.value);
+              try {
+                setNomeEditadoManualmente(true);
+                alterarTexto("nomeInstitucional", event.target.value, setNomeInstitucional);
+              } catch (error) {
+                const codigo = codigoDoErro(error);
+                console.error("[Tribuno Perfil] Erro no handler do nome", {
+                  codigo,
+                  userId: user?.id,
+                  error,
+                });
+                setCodigoErro(codigo);
+                setErro(mensagensErroPerfil[codigo]);
+              }
             }}
             placeholder="Ex: Nome institucional"
           />
@@ -137,7 +307,7 @@ export function PerfilEleitoForm({
 
         <div className="space-y-2">
           <Label>Função/cargo</Label>
-          <Select value={cargo} onValueChange={(value) => setCargo(value as CargoEleito)}>
+          <Select value={cargo} onValueChange={(value) => alterarOpcao("cargo", value, setCargo)}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -153,7 +323,7 @@ export function PerfilEleitoForm({
 
         <div className="space-y-2">
           <Label>Órgão</Label>
-          <Select value={orgao} onValueChange={(value) => setOrgao(value as OrgaoEleito)}>
+          <Select value={orgao} onValueChange={(value) => alterarOpcao("orgao", value, setOrgao)}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -172,7 +342,7 @@ export function PerfilEleitoForm({
           <Input
             id="perfil-organizacao"
             value={organizacao}
-            onChange={(event) => setOrganizacao(event.target.value)}
+            onChange={(event) => alterarTexto("organizacao", event.target.value, setOrganizacao)}
             placeholder="Ex: Movimento independente"
           />
         </div>
@@ -182,7 +352,7 @@ export function PerfilEleitoForm({
           <Input
             id="perfil-territorio"
             value={territorio}
-            onChange={(event) => setTerritorio(event.target.value)}
+            onChange={(event) => alterarTexto("territorio", event.target.value, setTerritorio)}
             placeholder="Ex: Aveiro"
           />
         </div>
@@ -192,7 +362,13 @@ export function PerfilEleitoForm({
           <Textarea
             id="perfil-assinatura"
             value={assinaturaInstitucional}
-            onChange={(event) => setAssinaturaInstitucional(event.target.value)}
+            onChange={(event) =>
+              alterarTexto(
+                "assinaturaInstitucional",
+                event.target.value,
+                setAssinaturaInstitucional,
+              )
+            }
             placeholder="Nome, cargo e grupo político para usar futuramente em documentos."
             rows={3}
           />
@@ -202,7 +378,7 @@ export function PerfilEleitoForm({
       <div className="flex justify-end">
         {erro && (
           <p className="mr-auto max-w-md text-sm leading-6 text-destructive" role="alert">
-            {erro}
+            {erro} {codigoErro ? `Código: ${codigoErro}` : null}
           </p>
         )}
         <Button type="button" onClick={guardar} disabled={!podeGuardar || aGuardar}>

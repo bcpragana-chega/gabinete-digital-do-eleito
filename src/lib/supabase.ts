@@ -28,17 +28,68 @@ export function getSupabaseClient() {
 export async function iniciarSessaoSupabaseComGoogleCredential(
   credential: string,
 ): Promise<User | undefined> {
+  console.info("[Tribuno Auth] Login Supabase iniciado", {
+    supabaseConfigurado: isSupabaseConfigured(),
+    temCredential: Boolean(credential),
+  });
+
   const supabase = getSupabaseClient();
-  if (!supabase) return undefined;
+  if (!supabase) {
+    console.warn("[Tribuno Auth] Login Supabase ignorado: Supabase não configurado.");
+    return undefined;
+  }
 
   const { data, error } = await supabase.auth.signInWithIdToken({
     provider: "google",
     token: credential,
   });
 
-  if (error) throw error;
+  if (error) {
+    console.error("[Tribuno Auth] Login Supabase falhou", {
+      supabaseConfigurado: true,
+      error,
+    });
+    throw error;
+  }
+
+  console.info("[Tribuno Auth] Login Supabase concluído", {
+    existeSupabaseUser: Boolean(data.user?.id),
+    supabaseUserId: data.user?.id,
+  });
 
   return data.user ?? undefined;
+}
+
+export async function diagnosticarSessaoSupabase() {
+  const supabaseConfigurado = isSupabaseConfigured();
+  const supabase = getSupabaseClient();
+
+  if (!supabaseConfigurado || !supabase) {
+    return {
+      supabaseConfigurado,
+      existeSessaoSupabase: false,
+      supabaseUserId: undefined,
+      erroSessaoSupabase: undefined,
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.getSession();
+
+    return {
+      supabaseConfigurado,
+      existeSessaoSupabase: Boolean(data.session?.user?.id),
+      supabaseUserId: data.session?.user?.id,
+      erroSessaoSupabase: error?.message,
+    };
+  } catch (error) {
+    return {
+      supabaseConfigurado,
+      existeSessaoSupabase: false,
+      supabaseUserId: undefined,
+      erroSessaoSupabase: error instanceof Error ? error.message : "Erro desconhecido",
+    };
+  }
 }
 
 export async function terminarSessaoSupabase() {

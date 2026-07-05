@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { loginComGoogle, perfilCompleto, useAuth, type AuthUser } from "@/lib/auth-store";
+import { diagnosticarSessaoSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 declare global {
   interface Window {
@@ -95,6 +96,14 @@ function getCurrentOrigin() {
   return window.location.origin;
 }
 
+function logAuth(etapa: string, dados: Record<string, unknown> = {}) {
+  console.info(`[Tribuno Auth] ${etapa}`, {
+    origin: getCurrentOrigin(),
+    supabaseConfigurado: isSupabaseConfigured(),
+    ...dados,
+  });
+}
+
 function LoginPage() {
   const navigate = useNavigate();
   const { initialized, isAuthenticated, perfil } = useAuth();
@@ -125,7 +134,15 @@ function LoginPage() {
   useEffect(() => {
     if (!initialized || !isAuthenticated) return;
 
-    navigate({ to: perfilCompleto(perfil) ? "/" : "/completar-perfil", replace: true });
+    const onboardingNecessario = !perfilCompleto(perfil);
+    const destino = onboardingNecessario ? "/completar-perfil" : "/";
+
+    logAuth("Navegação automática após sessão existente", {
+      onboardingNecessario,
+      destino,
+    });
+
+    navigate({ to: destino, replace: true });
   }, [initialized, isAuthenticated, navigate, perfil]);
 
   useEffect(() => {
@@ -142,17 +159,70 @@ function LoginPage() {
         callback: async (response) => {
           try {
             setAEntrar(true);
+            setErro("");
+
+            logAuth("Login Google recebido", {
+              temCredential: Boolean(response.credential),
+            });
+
             if (!response.credential) throw new Error("A Google não devolveu credencial.");
-            const authState = await loginComGoogle(
-              userFromCredential(response.credential),
-              response.credential,
-            );
+
+            const googleUser = userFromCredential(response.credential);
+            logAuth("Credencial Google lida", {
+              userId: googleUser.id,
+              temNome: Boolean(googleUser.nome),
+              temEmail: Boolean(googleUser.email),
+              temAvatar: Boolean(googleUser.avatarUrl),
+            });
+
+            logAuth("Login Supabase iniciado", {
+              userIdGoogle: googleUser.id,
+            });
+
+            const authState = await loginComGoogle(googleUser, response.credential);
+            const diagnostico = await diagnosticarSessaoSupabase();
+
+            logAuth("Login Supabase/perfil concluído", {
+              userId: authState.user?.id,
+              googleSub: authState.user?.googleSub,
+              existeSessaoSupabase: diagnostico.existeSessaoSupabase,
+              supabaseUserId: diagnostico.supabaseUserId,
+              perfilCarregado: Boolean(authState.perfil),
+              perfilCompleto: perfilCompleto(authState.perfil),
+            });
+
+            const onboardingNecessario = !perfilCompleto(authState.perfil);
+            const destino = onboardingNecessario ? "/completar-perfil" : "/";
+
+            logAuth("Onboarding necessário?", {
+              userId: authState.user?.id,
+              onboardingNecessario,
+              destino,
+            });
+
             navigate({
-              to: perfilCompleto(authState.perfil) ? "/" : "/completar-perfil",
+              to: destino,
               replace: true,
             });
+
+            logAuth("Navegação para a aplicação", {
+              userId: authState.user?.id,
+              destino,
+            });
           } catch (error) {
-            setErro(error instanceof Error ? error.message : "Não foi possível iniciar sessão.");
+            const diagnostico = await diagnosticarSessaoSupabase();
+
+            console.error("[Tribuno Auth] Erro no fluxo de login", {
+              supabaseConfigurado: isSupabaseConfigured(),
+              diagnostico,
+              error,
+            });
+
+            setErro(
+              error instanceof Error
+                ? `Não foi possível iniciar sessão. ${error.message}`
+                : "Não foi possível iniciar sessão. Código: ERRO_LOGIN_DESCONHECIDO",
+            );
           } finally {
             setAEntrar(false);
           }
@@ -178,19 +248,28 @@ function LoginPage() {
     script.async = true;
     script.defer = true;
     script.onload = inicializarGoogle;
-    script.onerror = () =>
+    script.onerror = () => {
+      console.error("[Tribuno Auth] Erro ao carregar script Google Identity Services", {
+        origin: getCurrentOrigin(),
+      });
       setErro(
         "Não foi possível carregar o login Google. Verifique a ligação à internet, bloqueadores do browser ou políticas de rede.",
       );
+    };
     document.head.appendChild(script);
   }, [googleClientId, googleClientIdStatus, navigate]);
 
   async function entrarModoLocal() {
+    logAuth("Login local iniciado");
     const authState = await loginComGoogle({
       id: "local-dev-user",
       nome: "Utilizador",
       email: "utilizador@tribuno.local",
       provider: "local-dev",
+    });
+    logAuth("Login local concluído", {
+      perfilCarregado: Boolean(authState.perfil),
+      perfilCompleto: perfilCompleto(authState.perfil),
     });
     navigate({
       to: perfilCompleto(authState.perfil) ? "/" : "/completar-perfil",

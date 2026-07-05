@@ -5,7 +5,11 @@ import {
   guardarPerfilHibrido,
 } from "@/lib/profile-repository";
 import { readJSON, writeJSON } from "@/lib/storage-provider";
-import { iniciarSessaoSupabaseComGoogleCredential, terminarSessaoSupabase } from "@/lib/supabase";
+import {
+  diagnosticarSessaoSupabase,
+  iniciarSessaoSupabaseComGoogleCredential,
+  terminarSessaoSupabase,
+} from "@/lib/supabase";
 
 export type CargoEleito =
   | "Membro da Assembleia de Freguesia"
@@ -49,6 +53,24 @@ type AuthState = {
   perfil?: PerfilEleito;
   perfisPorUserId?: Record<string, PerfilEleito>;
 };
+
+export type PerfilErroCodigo =
+  | "ERRO_PERFIL_VALIDACAO"
+  | "ERRO_PERFIL_SUPABASE"
+  | "ERRO_PERFIL_LOCAL"
+  | "ERRO_PERFIL_DESCONHECIDO";
+
+export class PerfilErro extends Error {
+  codigo: PerfilErroCodigo;
+  causa?: unknown;
+
+  constructor(codigo: PerfilErroCodigo, mensagem: string, causa?: unknown) {
+    super(mensagem);
+    this.name = "PerfilErro";
+    this.codigo = codigo;
+    this.causa = causa;
+  }
+}
 
 const STORAGE_KEY = "tribuno.auth.v1";
 const EVENT_NAME = "tribuno:auth";
@@ -108,6 +130,11 @@ function isBrowser() {
   return typeof window !== "undefined";
 }
 
+function perfisPorUserIdSeguro(valor: unknown): Record<string, PerfilEleito> {
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return {};
+  return valor as Record<string, PerfilEleito>;
+}
+
 function lerPerfilDoStorage(userId?: string): PerfilEleito | undefined {
   return normalizarPerfilEleito(carregarPerfilLocal(userId));
 }
@@ -131,7 +158,7 @@ function normalizarAuthState(state: AuthState): AuthState {
   const perfilNormalizado = normalizarPerfilEleito(state.perfil);
   if (!perfilNormalizado) return state;
 
-  const perfisPorUserId = { ...state.perfisPorUserId };
+  const perfisPorUserId = { ...perfisPorUserIdSeguro(state.perfisPorUserId) };
   const perfilDoUser = normalizarPerfilEleito(perfisPorUserId[state.user.id]) ?? perfilNormalizado;
 
   perfisPorUserId[state.user.id] = perfilDoUser;
@@ -164,8 +191,17 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
   let userAutenticado = user;
   let perfilRemoto: PerfilEleito | undefined;
 
+  console.info("[Tribuno Auth] loginComGoogle iniciado", {
+    userIdInicial: user.id,
+    provider: user.provider,
+    temGoogleCredential: Boolean(googleCredential),
+  });
+
   if (googleCredential && user.provider === "google") {
     try {
+      console.info("[Tribuno Auth] A iniciar autenticação Supabase com Google ID token", {
+        userIdGoogle: user.id,
+      });
       const supabaseUser = await iniciarSessaoSupabaseComGoogleCredential(googleCredential);
 
       if (supabaseUser?.id) {
@@ -184,10 +220,24 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
           googleSub: user.id,
           supabaseUserId: supabaseUser.id,
         };
+        console.info("[Tribuno Auth] Sessão Supabase criada", {
+          userId: userAutenticado.id,
+          googleSub: userAutenticado.googleSub,
+        });
         perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userAutenticado.id));
+        console.info("[Tribuno Auth] Perfil remoto/local carregado após login", {
+          userId: userAutenticado.id,
+          perfilCarregado: Boolean(perfilRemoto),
+          perfilCompleto: perfilCompleto(perfilRemoto),
+        });
       }
     } catch (error) {
-      console.warn("[Tribuno] Login Supabase indisponível; a usar fallback local.", error);
+      const diagnostico = await diagnosticarSessaoSupabase();
+      console.warn("[Tribuno Auth] Login Supabase indisponível; a usar fallback local.", {
+        userIdGoogle: user.id,
+        diagnostico,
+        error,
+      });
     }
   }
 
@@ -197,6 +247,12 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
     perfil: perfilRemoto ?? obterPerfilDoUser(state, userAutenticado),
   };
   guardarAuthState(nextState);
+  console.info("[Tribuno Auth] Sessão local guardada", {
+    userId: nextState.user?.id,
+    provider: nextState.user?.provider,
+    perfilCarregado: Boolean(nextState.perfil),
+    onboardingNecessario: !perfilCompleto(nextState.perfil),
+  });
   return nextState;
 }
 
@@ -209,21 +265,39 @@ export async function guardarPerfilEleito(perfil: Omit<PerfilEleito, "updatedAt"
   });
 
   if (!perfilAtualizado) {
-    throw new Error("Perfil inválido.");
+    throw new PerfilErro("ERRO_PERFIL_VALIDACAO", "Perfil inválido.");
   }
 
-  guardarAuthState({
-    ...state,
-    perfil: perfilAtualizado,
-    perfisPorUserId: userId
-      ? {
-          ...state.perfisPorUserId,
-          [userId]: perfilAtualizado,
-        }
-      : state.perfisPorUserId,
-  });
+  try {
+    guardarAuthState({
+      ...state,
+      perfil: perfilAtualizado,
+      perfisPorUserId: userId
+        ? {
+            ...perfisPorUserIdSeguro(state.perfisPorUserId),
+            [userId]: perfilAtualizado,
+          }
+        : state.perfisPorUserId,
+    });
+  } catch (error) {
+    throw new PerfilErro(
+      "ERRO_PERFIL_LOCAL",
+      "Não foi possível guardar o perfil localmente.",
+      error,
+    );
+  }
 
-  if (userId) await guardarPerfilHibrido(userId, perfilAtualizado);
+  if (userId) {
+    try {
+      await guardarPerfilHibrido(userId, perfilAtualizado);
+    } catch (error) {
+      throw new PerfilErro(
+        "ERRO_PERFIL_SUPABASE",
+        "Não foi possível sincronizar o perfil remotamente.",
+        error,
+      );
+    }
+  }
 
   return perfilAtualizado;
 }
@@ -286,9 +360,20 @@ export function useAuth() {
       const userId = stateAtual.user?.id;
       const perfilAtual = obterPerfilDoUser(stateAtual);
 
+      console.info("[Tribuno Auth] Verificação de perfil ao inicializar", {
+        userId,
+        perfilLocalCarregado: Boolean(perfilAtual),
+        perfilCompleto: perfilCompleto(perfilAtual),
+      });
+
       if (!userId || perfilCompleto(perfilAtual)) return stateAtual;
 
       const perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userId));
+      console.info("[Tribuno Auth] Perfil carregado durante inicialização", {
+        userId,
+        perfilCarregado: Boolean(perfilRemoto),
+        perfilCompleto: perfilCompleto(perfilRemoto),
+      });
       if (!perfilRemoto) return stateAtual;
 
       const nextState = {
@@ -306,23 +391,37 @@ export function useAuth() {
 
     async function atualizar() {
       const currentUpdateId = ++updateId;
-      const stateAtual = lerAuthState();
-      setInitialized(false);
-      setState(stateAtual);
+      try {
+        const stateAtual = lerAuthState();
+        setInitialized(false);
+        setState(stateAtual);
 
-      const nextState = await carregarPerfilAntesDeInicializar(stateAtual);
-      if (cancelled || currentUpdateId !== updateId) return;
+        const nextState = await carregarPerfilAntesDeInicializar(stateAtual);
+        if (cancelled || currentUpdateId !== updateId) return;
 
-      const latestState = lerAuthState();
-      setState({
-        ...latestState,
-        ...nextState,
-        perfisPorUserId: {
-          ...latestState.perfisPorUserId,
-          ...nextState.perfisPorUserId,
-        },
-      });
-      setInitialized(true);
+        const latestState = lerAuthState();
+        setState({
+          ...latestState,
+          ...nextState,
+          perfisPorUserId: {
+            ...perfisPorUserIdSeguro(latestState.perfisPorUserId),
+            ...perfisPorUserIdSeguro(nextState.perfisPorUserId),
+          },
+        });
+      } catch (error) {
+        const diagnostico = await diagnosticarSessaoSupabase();
+        console.error("[Tribuno Auth] Erro ao inicializar autenticação/perfil", {
+          diagnostico,
+          error,
+        });
+        if (!cancelled && currentUpdateId === updateId) {
+          setState(lerAuthState());
+        }
+      } finally {
+        if (!cancelled && currentUpdateId === updateId) {
+          setInitialized(true);
+        }
+      }
     }
 
     void atualizar();
