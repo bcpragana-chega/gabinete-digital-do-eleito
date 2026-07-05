@@ -51,6 +51,7 @@ export function PerfilEleitoForm({
   );
   const [aGuardar, setAGuardar] = useState(false);
   const [nomeEditadoManualmente, setNomeEditadoManualmente] = useState(false);
+  const [erro, setErro] = useState("");
 
   useEffect(() => {
     if (nomeEditadoManualmente) return;
@@ -74,6 +75,7 @@ export function PerfilEleitoForm({
   async function guardar() {
     if (!podeGuardar || aGuardar) return;
 
+    setErro("");
     setAGuardar(true);
     try {
       const atualizado = await guardarPerfilEleito({
@@ -85,6 +87,14 @@ export function PerfilEleitoForm({
         assinaturaInstitucional: assinaturaInstitucional.trim(),
       });
       onSaved?.(atualizado);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("[Tribuno] Não foi possível guardar o perfil.", error);
+      }
+
+      setErro(
+        "Não foi possível guardar o perfil. Confirme os dados e tente novamente. Se o problema continuar, recarregue a página.",
+      );
     } finally {
       setAGuardar(false);
     }
@@ -183,6 +193,11 @@ export function PerfilEleitoForm({
       </div>
 
       <div className="flex justify-end">
+        {erro && (
+          <p className="mr-auto max-w-md text-sm leading-6 text-destructive" role="alert">
+            {erro}
+          </p>
+        )}
         <Button type="button" onClick={guardar} disabled={!podeGuardar || aGuardar}>
           <Save className="h-4 w-4" />
           {aGuardar ? "A guardar..." : submitLabel}

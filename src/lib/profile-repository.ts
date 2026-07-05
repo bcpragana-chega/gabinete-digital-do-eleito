@@ -42,6 +42,36 @@ function toRow(userId: string, perfil: PerfilEleito): ProfileRow {
   };
 }
 
+async function obterSupabaseUserIdValido(userId?: string) {
+  if (!isSupabaseConfigured()) return undefined;
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return undefined;
+
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user?.id) {
+    if (import.meta.env.DEV) {
+      console.warn("[Tribuno] Sem sessão Supabase válida para sincronizar Perfil.", error);
+    }
+    return undefined;
+  }
+
+  if (userId && userId !== data.user.id) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        "[Tribuno] Sincronização de Perfil ignorada: userId não corresponde ao auth.uid().",
+        {
+          storeUserId: userId,
+          supabaseUserId: data.user.id,
+        },
+      );
+    }
+    return undefined;
+  }
+
+  return data.user.id;
+}
+
 export function carregarPerfilLocal(userId?: string) {
   if (!userId) return undefined;
 
@@ -59,7 +89,8 @@ export function guardarPerfilLocal(userId: string, perfil: PerfilEleito) {
 }
 
 export async function carregarPerfilRemoto(userId?: string) {
-  if (!userId || !isSupabaseConfigured()) return undefined;
+  const supabaseUserId = await obterSupabaseUserIdValido(userId);
+  if (!supabaseUserId) return undefined;
 
   const supabase = getSupabaseClient();
   if (!supabase) return undefined;
@@ -67,7 +98,7 @@ export async function carregarPerfilRemoto(userId?: string) {
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", supabaseUserId)
     .maybeSingle<ProfileRow>();
 
   if (error) throw error;
@@ -76,12 +107,13 @@ export async function carregarPerfilRemoto(userId?: string) {
 }
 
 export async function guardarPerfilRemoto(userId: string, perfil: PerfilEleito) {
-  if (!isSupabaseConfigured()) return;
+  const supabaseUserId = await obterSupabaseUserIdValido(userId);
+  if (!supabaseUserId) return;
 
   const supabase = getSupabaseClient();
   if (!supabase) return;
 
-  const { error } = await supabase.from("profiles").upsert(toRow(userId, perfil), {
+  const { error } = await supabase.from("profiles").upsert(toRow(supabaseUserId, perfil), {
     onConflict: "user_id",
   });
 
