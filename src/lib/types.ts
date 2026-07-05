@@ -21,6 +21,7 @@ export type TipoDocumentoCriado =
   | "Recomendação"
   | "Requerimento"
   | "Declaração de voto"
+  | "Intervenção"
   | "Outro documento";
 
 export type EstadoDocumentoCriado =

@@ -74,6 +74,7 @@ const tiposDocumentoACriar: TipoDocumentoCriado[] = [
   "Recomendação",
   "Requerimento",
   "Declaração de voto",
+  "Intervenção",
 ];
 
 function pontoPreparado(ponto: PontoOrdemTrabalhos) {

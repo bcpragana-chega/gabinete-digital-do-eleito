@@ -71,6 +71,219 @@ function gerarId() {
   return `documento-a-criar-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function notaBase(conteudo?: string) {
+  const limpo = conteudo?.trim();
+  if (!limpo || limpo === "Rascunho inicial.") return "[Escrever aqui notas de preparação.]";
+  return limpo;
+}
+
+function criarConteudoInicialDocumento(documento: {
+  tipo: DocumentoCriado["tipo"];
+  titulo: string;
+  conteudo?: string;
+}) {
+  const titulo = documento.titulo.trim() || "[Título do documento]";
+  const base = notaBase(documento.conteudo);
+
+  if (documento.tipo === "Moção") {
+    return `# ${titulo}
+
+## Enquadramento
+
+[Identificar o problema, contexto político e relevância para a população.]
+
+## Fundamentação
+
+Considerando que:
+
+1. [Primeiro fundamento.]
+2. [Segundo fundamento.]
+3. [Terceiro fundamento.]
+
+## Deliberação / Proposta
+
+Assim, os eleitos propõem que a assembleia delibere:
+
+1. [Medida ou posição a aprovar.]
+2. [Ação a recomendar ou solicitar.]
+3. [Entidade responsável ou destinatária.]
+
+## Notas de preparação
+
+${base}
+
+## Local e data
+
+[Local], [data]
+
+## Assinatura
+
+[Nome e cargo]`;
+  }
+
+  if (documento.tipo === "Recomendação") {
+    return `# ${titulo}
+
+## Contexto
+
+[Descrever a situação que justifica esta recomendação.]
+
+## Problema identificado
+
+[Explicar de forma clara o problema, impacto e urgência.]
+
+## Recomendação
+
+Recomenda-se que:
+
+1. [Primeira recomendação.]
+2. [Segunda recomendação.]
+3. [Prazo, acompanhamento ou entidade responsável.]
+
+## Justificação
+
+[Explicar por que razão esta recomendação é adequada e exequível.]
+
+## Notas de preparação
+
+${base}
+
+## Local e data
+
+[Local], [data]
+
+## Assinatura
+
+[Nome e cargo]`;
+  }
+
+  if (documento.tipo === "Requerimento") {
+    return `# ${titulo}
+
+## Destinatário
+
+[Identificar a entidade ou órgão a quem é dirigido o requerimento.]
+
+## Assunto
+
+${titulo}
+
+## Enquadramento
+
+[Explicar o contexto e a razão do pedido de informação.]
+
+## Pedido
+
+Requer-se que sejam prestadas as seguintes informações:
+
+1. [Pergunta ou pedido de documento.]
+2. [Pergunta ou pedido de esclarecimento.]
+3. [Prazo, detalhe ou formato pretendido.]
+
+## Fundamentação
+
+[Indicar a relevância pública, política ou legal do pedido.]
+
+## Notas de preparação
+
+${base}
+
+## Local e data
+
+[Local], [data]
+
+## Assinatura
+
+[Nome e cargo]`;
+  }
+
+  if (documento.tipo === "Declaração de voto") {
+    return `# ${titulo}
+
+## Identificação da votação
+
+[Identificar o ponto, proposta ou deliberação a que se refere a declaração de voto.]
+
+## Sentido de voto
+
+[A favor / Contra / Abstenção]
+
+## Fundamentação política
+
+[Explicar as razões principais do sentido de voto.]
+
+## Posição assumida
+
+[Clarificar compromissos, reservas, alertas ou condições políticas.]
+
+## Notas de preparação
+
+${base}
+
+## Local e data
+
+[Local], [data]
+
+## Assinatura
+
+[Nome e cargo]`;
+  }
+
+  if (documento.tipo === "Intervenção") {
+    return `# ${titulo}
+
+## Objetivo da intervenção
+
+[Definir o que se pretende alcançar com esta intervenção.]
+
+## Mensagem principal
+
+[Escrever a ideia central em linguagem clara e direta.]
+
+## Pontos a abordar
+
+1. [Primeiro ponto.]
+2. [Segundo ponto.]
+3. [Terceiro ponto.]
+
+## Dados ou exemplos a referir
+
+[Inserir factos, exemplos locais, números ou referências relevantes.]
+
+## Encerramento
+
+[Frase final com pedido, posição ou compromisso.]
+
+## Notas de preparação
+
+${base}`;
+  }
+
+  return `# ${titulo}
+
+## Objetivo
+
+[Explicar o objetivo deste documento.]
+
+## Contexto
+
+[Descrever o enquadramento e a razão para criar este documento.]
+
+## Conteúdo principal
+
+[Desenvolver aqui o conteúdo do documento.]
+
+## Próximos passos
+
+1. [Ação seguinte.]
+2. [Responsável ou destinatário.]
+3. [Prazo ou momento de apresentação.]
+
+## Notas de preparação
+
+${base}`;
+}
+
 function hrefRascunho(documento: DocumentoCriado) {
   if (documento.assuntoId) {
     return `/assuntos/${documento.assuntoId}/documentos/${documento.id}`;
@@ -148,6 +361,7 @@ export function adicionarDocumentoACriarRascunho(
   data: Omit<DocumentoCriado, "id" | "estado" | "createdAt" | "updatedAt">,
 ) {
   const documentos = lerDocumentos();
+  const conteudo = criarConteudoInicialDocumento(data);
 
   const novoDocumento: DocumentoCriado = {
     id: gerarId(),
@@ -155,8 +369,9 @@ export function adicionarDocumentoACriarRascunho(
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     origem: data.origem ?? "manual",
-    formatoConteudo: data.formatoConteudo ?? "plain_text",
+    formatoConteudo: data.formatoConteudo ?? "markdown",
     ...data,
+    conteudo,
   };
 
   guardarDocumentos([novoDocumento, ...documentos]);

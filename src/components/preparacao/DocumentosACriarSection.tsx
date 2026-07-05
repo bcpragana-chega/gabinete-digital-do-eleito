@@ -24,6 +24,7 @@ const tiposDocumentosACriar: TipoDocumentoCriado[] = [
   "Recomendação",
   "Requerimento",
   "Declaração de voto",
+  "Intervenção",
 ];
 
 export function DocumentosACriarSection({

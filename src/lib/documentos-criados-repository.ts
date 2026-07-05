@@ -17,6 +17,7 @@ type TipoDocumentoCriadoRemoto =
   | "recomendacao"
   | "requerimento"
   | "declaracao_voto"
+  | "intervencao"
   | "outro_documento";
 
 type DocumentoCriadoRow = {
@@ -55,6 +56,7 @@ function tipoParaRemoto(tipo: TipoDocumentoCriado): TipoDocumentoCriadoRemoto {
   if (tipo === "Recomendação") return "recomendacao";
   if (tipo === "Requerimento") return "requerimento";
   if (tipo === "Declaração de voto") return "declaracao_voto";
+  if (tipo === "Intervenção") return "intervencao";
   return "outro_documento";
 }
 
@@ -63,6 +65,7 @@ function tipoDeRemoto(tipo: unknown): TipoDocumentoCriado {
   if (tipo === "recomendacao") return "Recomendação";
   if (tipo === "requerimento") return "Requerimento";
   if (tipo === "declaracao_voto") return "Declaração de voto";
+  if (tipo === "intervencao") return "Intervenção";
   return "Outro documento";
 }
 

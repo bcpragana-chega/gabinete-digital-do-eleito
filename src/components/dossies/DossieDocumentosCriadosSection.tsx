@@ -29,6 +29,7 @@ const tiposDocumentos: TipoDocumentoCriado[] = [
   "Recomendação",
   "Requerimento",
   "Declaração de voto",
+  "Intervenção",
   "Outro documento",
 ];
 

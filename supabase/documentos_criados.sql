@@ -24,7 +24,14 @@ create table if not exists public.documentos_criados (
   finalizado_em timestamptz,
   apresentado_em timestamptz,
   constraint documentos_criados_tipo_check check (
-    tipo in ('mocao', 'recomendacao', 'requerimento', 'declaracao_voto', 'outro_documento')
+    tipo in (
+      'mocao',
+      'recomendacao',
+      'requerimento',
+      'declaracao_voto',
+      'intervencao',
+      'outro_documento'
+    )
   ),
   constraint documentos_criados_estado_check check (
     estado in ('rascunho', 'em_revisao', 'final', 'pronto', 'apresentado', 'arquivado')
