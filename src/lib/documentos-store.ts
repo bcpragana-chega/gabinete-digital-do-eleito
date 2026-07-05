@@ -35,10 +35,21 @@ function mergeDocumentos(local: Documento[], remoto: Documento[]) {
 
 function guardarDocumentoRemotamente(documento: Documento) {
   const userId = obterUserIdAtual();
-  if (!userId) return;
+  console.info("[DOCUMENTOS DIAG] PASSO 2 documentos-store recebeu o documento", {
+    userId,
+    documento,
+  });
+
+  if (!userId) {
+    console.warn("[DOCUMENTOS DIAG] PASSO 2 parado: não existe userId local/autenticado");
+    return;
+  }
 
   guardarDocumentoRemoto(userId, documento).catch((error) => {
-    console.warn("[Tribuno] Não foi possível sincronizar o documento no Supabase.", error);
+    console.error("[DOCUMENTOS DIAG] Sincronização remota falhou no documentos-store", {
+      documentoId: documento.id,
+      error,
+    });
   });
 }
 
@@ -112,6 +123,10 @@ export interface NovoDocumentoInput {
 }
 
 export function adicionarDocumento(input: NovoDocumentoInput): Documento {
+  console.info("[DOCUMENTOS DIAG] PASSO 2 adicionarDocumento chamado", {
+    input,
+  });
+
   const agora = new Date().toISOString();
   const doc: Documento = {
     id: crypto.randomUUID(),
@@ -120,6 +135,9 @@ export function adicionarDocumento(input: NovoDocumentoInput): Documento {
     assembleiaOrigemId: input.assembleiaId !== "biblioteca" ? input.assembleiaId : undefined,
     ...input,
   };
+  console.info("[DOCUMENTOS DIAG] PASSO 2 documento normalizado na store", {
+    documento: doc,
+  });
   const docs = read();
   docs.push(doc);
   write(docs);

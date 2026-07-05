@@ -157,6 +157,18 @@ export function AdicionarBibliotecaWizard() {
   }
 
   function adicionar() {
+    console.info("[DOCUMENTOS DIAG] PASSO 1 botão Adicionar à Biblioteca foi clicado", {
+      origem: "AdicionarBibliotecaWizard",
+      titulo,
+      tipo,
+      estado,
+      ligacao,
+      dossieId,
+      assembleiaId,
+      temFicheiroNome: Boolean(ficheiroNome),
+      ficheiroTipo,
+    });
+
     if (!dadosValidos) return;
 
     const documento = adicionarDocumento({

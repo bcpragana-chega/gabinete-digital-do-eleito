@@ -170,30 +170,33 @@ function toRow(userId: string, documento: Documento): DocumentoRow {
   };
 }
 
-function semChavesOpcionais(row: DocumentoRow): DocumentoRow {
-  return {
-    ...row,
-    assunto_origem_id: null,
-    assembleia_origem_id: null,
-    ponto_origem_id: null,
-  };
-}
-
-function isErroChaveEstrangeira(error: { code?: string; message?: string }) {
-  return error.code === "23503" || error.message?.toLowerCase().includes("foreign key");
-}
-
 async function obterSupabaseUserIdValido(userId?: string) {
-  if (!isSupabaseConfigured()) return undefined;
+  console.info("[DOCUMENTOS DIAG] Sessão Supabase: início", {
+    supabaseConfigurado: isSupabaseConfigured(),
+    storeUserId: userId,
+  });
+
+  if (!isSupabaseConfigured()) {
+    console.warn("[DOCUMENTOS DIAG] Sessão Supabase: Supabase não configurado");
+    return undefined;
+  }
 
   const supabase = getSupabaseClient();
-  if (!supabase) return undefined;
+  if (!supabase) {
+    console.warn("[DOCUMENTOS DIAG] Sessão Supabase: cliente Supabase indisponível");
+    return undefined;
+  }
 
   const { data, error } = await withSupabaseTimeout(
     supabase.auth.getUser(),
     "DOCUMENTOS_GET_USER",
     8000,
   );
+
+  console.info("[DOCUMENTOS DIAG] Sessão Supabase: getUser concluído", {
+    supabaseUserId: data.user?.id,
+    error,
+  });
 
   if (error || !data.user?.id) {
     console.warn("[Tribuno] Sem sessão Supabase válida para sincronizar Documentos.", error);
@@ -241,46 +244,60 @@ export async function carregarDocumentosRemotos() {
 }
 
 export async function guardarDocumentoRemoto(userId: string, documento: Documento) {
+  console.info("[DOCUMENTOS DIAG] PASSO 3 documentos-repository foi chamado", {
+    storeUserId: userId,
+    documento,
+  });
+
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
-  if (!supabaseUserId) return;
-
-  const supabase = getSupabaseClient();
-  if (!supabase) return;
-  const row = toRow(supabaseUserId, documento);
-
-  const { error } = await withSupabaseTimeout(
-    supabase.from("documentos").upsert(row, {
-      onConflict: "id",
-    }),
-    "DOCUMENTOS_UPSERT",
-  );
-
-  if (!error) return;
-
-  if (isErroChaveEstrangeira(error)) {
-    console.warn(
-      "[Tribuno] Documento guardado sem chaves opcionais porque o contexto remoto ainda não existe.",
-      {
-        documentoId: documento.id,
-        assuntoOrigemId: row.assunto_origem_id,
-        assembleiaOrigemId: row.assembleia_origem_id,
-        pontoOrigemId: row.ponto_origem_id,
-        error,
-      },
-    );
-
-    const { error: retryError } = await withSupabaseTimeout(
-      supabase.from("documentos").upsert(semChavesOpcionais(row), {
-        onConflict: "id",
-      }),
-      "DOCUMENTOS_UPSERT_SEM_FKS",
-    );
-
-    if (retryError) throw retryError;
+  if (!supabaseUserId) {
+    console.warn("[DOCUMENTOS DIAG] PASSO 3 parado: sem supabaseUserId válido");
     return;
   }
 
-  throw error;
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    console.warn("[DOCUMENTOS DIAG] PASSO 3 parado: cliente Supabase indisponível");
+    return;
+  }
+
+  const row = toRow(supabaseUserId, documento);
+
+  console.info("[DOCUMENTOS DIAG] PASSO 4 payload enviado para Supabase", {
+    tabela: "documentos",
+    operacao: "upsert",
+    payload: row,
+  });
+
+  console.info("[DOCUMENTOS DIAG] PASSO 7 vai executar upsert em public.documentos");
+
+  const response = await withSupabaseTimeout(
+    supabase
+      .from("documentos")
+      .upsert(row, {
+        onConflict: "id",
+      })
+      .select("*"),
+    "DOCUMENTOS_UPSERT",
+  );
+
+  console.info("[DOCUMENTOS DIAG] PASSO 5 resposta completa do Supabase", {
+    data: response.data,
+    error: response.error,
+    status: response.status,
+    statusText: response.statusText,
+  });
+
+  if (response.error) {
+    console.error("[DOCUMENTOS DIAG] PASSO 6 erro completo do Supabase/PostgREST", {
+      message: response.error.message,
+      details: response.error.details,
+      hint: response.error.hint,
+      code: response.error.code,
+      error: response.error,
+    });
+    throw response.error;
+  }
 }
 
 export async function apagarDocumentoRemoto(id: string) {
