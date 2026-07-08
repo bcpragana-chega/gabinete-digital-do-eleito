@@ -2,8 +2,9 @@ import type { AiProvider, PedidoGeracaoAi, RespostaGeracaoAi } from "@/lib/ai/ty
 
 type OpenAiResponsesPayload = {
   model: string;
+  instructions?: string;
   input: Array<{
-    role: "system" | "user";
+    role: "user";
     content: Array<{ type: "input_text"; text: string }>;
   }>;
   temperature?: number;
@@ -35,6 +36,10 @@ function erroComCodigo(code: string, message: string) {
   const error = new Error(message);
   error.name = code;
   return error;
+}
+
+function modeloSuportaTemperature(modelo: string) {
+  return !/^gpt-5([.-]|$)/i.test(modelo.trim());
 }
 
 export class OpenAiProvider implements AiProvider {
@@ -80,19 +85,19 @@ export class OpenAiProvider implements AiProvider {
     try {
       const payload: OpenAiResponsesPayload = {
         model: this.model,
+        instructions: input.systemPrompt,
         input: [
-          {
-            role: "system",
-            content: [{ type: "input_text", text: input.systemPrompt }],
-          },
           {
             role: "user",
             content: [{ type: "input_text", text: input.userPrompt }],
           },
         ],
-        temperature: 0.25,
         max_output_tokens: this.resolverMaxOutputTokens(input.maxOutputTokens ?? this.maxOutputTokens),
       };
+
+      if (modeloSuportaTemperature(this.model)) {
+        payload.temperature = 0.25;
+      }
 
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
