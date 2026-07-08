@@ -252,29 +252,12 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                   size="sm"
                   variant="secondary"
                   onClick={async () => {
-                    if (import.meta.env.DEV) {
-                      console.log("[Tribuno][Abrir documento IA] clique em Abrir", {
-                        dossieId,
-                        documentoId: documento.id,
-                        documentoTitulo: documento.titulo,
-                        documentoOrigem: documento.origem ?? null,
-                        destino: "/assuntos/$dossieId/documentos/$documentoId",
-                        params: { dossieId, documentoId: documento.id },
-                      });
-                    }
+                    debugger;
 
                     await navigate({
                       to: "/assuntos/$dossieId/documentos/$documentoId",
                       params: { dossieId, documentoId: documento.id },
                     });
-
-                    if (import.meta.env.DEV) {
-                      console.log("[Tribuno][Abrir documento IA] navigate chamado/completado", {
-                        dossieId,
-                        documentoId: documento.id,
-                        destino: "/assuntos/$dossieId/documentos/$documentoId",
-                      });
-                    }
                   }}
                 >
                   Abrir

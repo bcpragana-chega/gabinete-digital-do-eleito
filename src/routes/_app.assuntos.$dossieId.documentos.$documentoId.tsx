@@ -118,6 +118,7 @@ function limparSintaxeMarkdownVisivel(conteudo: string) {
 
 function DocumentoDoAssuntoPage() {
   const { dossieId, documentoId } = Route.useParams();
+  debugger;
   const dossie = useDossie(dossieId);
   const assembleias = useAssembleias();
   const [documento, setDocumento] = useState<DocumentoCriado | undefined>();
@@ -140,33 +141,12 @@ function DocumentoDoAssuntoPage() {
       const proximo = obterDocumentoACriarGlobal(documentoId);
       const documentosLocais = carregarDocumentosCriadosLocais();
       const documentoLocal = documentosLocais.find((item) => item.id === documentoId);
-      const documentosRemotos = import.meta.env.DEV ? await carregarDocumentosCriadosRemotos().catch((error) => {
-        console.warn("[Tribuno][Editor documento] falha ao carregar documentos remotos para diagnóstico", {
-          dossieId,
-          documentoId,
-          erro: error instanceof Error ? error.message : String(error),
-        });
-        return undefined;
-      }) : undefined;
+      const documentosRemotos = import.meta.env.DEV
+        ? await carregarDocumentosCriadosRemotos().catch(() => undefined)
+        : undefined;
       const documentoRemoto = documentosRemotos?.find((item) => item.id === documentoId);
       const pertenceAoAssunto =
         proximo?.assuntoId === dossieId || proximo?.origem === "ia";
-
-      if (import.meta.env.DEV) {
-        console.log("[Tribuno][Editor documento] entrada da rota", {
-          dossieId,
-          documentoId,
-          documentoEncontrado: Boolean(proximo),
-          documentoLocalEncontrado: Boolean(documentoLocal),
-          documentoRemotoEncontrado: Boolean(documentoRemoto),
-          documentoOrigem: proximo?.origem ?? null,
-          assuntoIdNoDocumento: proximo?.assuntoId ?? null,
-          pertenceAoAssunto,
-          titulo: proximo?.titulo ?? null,
-          estado: proximo?.estado ?? null,
-          carregou,
-        });
-      }
 
       setDocumento(pertenceAoAssunto ? proximo : undefined);
 
@@ -200,18 +180,6 @@ function DocumentoDoAssuntoPage() {
     : carregou && !documento
       ? "documento não encontrado para os parâmetros recebidos"
       : undefined;
-
-  if (import.meta.env.DEV && motivoNaoAbrir) {
-    console.warn("[Tribuno][Editor documento] decisão de não abrir", {
-      dossieId,
-      documentoId,
-      motivo: motivoNaoAbrir,
-      documentoEncontrado: Boolean(documento),
-      assuntoEncontrado: Boolean(dossie),
-      carregou,
-      renderVazio: carregou && !documento,
-    });
-  }
 
   const pontosDaSessao = useMemo(
     () => (assembleiaId ? obterPontosDaAssembleia(assembleiaId) : []),
