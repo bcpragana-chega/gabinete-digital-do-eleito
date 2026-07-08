@@ -137,7 +137,8 @@ function DocumentoDoAssuntoPage() {
       if (!ativo) return;
 
       const proximo = obterDocumentoACriarGlobal(documentoId);
-      const pertenceAoAssunto = proximo?.assuntoId === dossieId;
+      const pertenceAoAssunto =
+        proximo?.assuntoId === dossieId || proximo?.origem === "ia";
 
       setDocumento(pertenceAoAssunto ? proximo : undefined);
 

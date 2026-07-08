@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { AlertCircle, FilePlus2, FileText, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ActionCard } from "@/components/ui/cards";
@@ -247,13 +247,18 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
               description={metaAssociacao(documento)}
               meta={documento.tipo}
               action={
-                <Button asChild size="sm" variant="secondary">
-                  <Link
-                    to="/assuntos/$dossieId/documentos/$documentoId"
-                    params={{ dossieId, documentoId: documento.id }}
-                  >
-                    Abrir
-                  </Link>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() =>
+                    void navigate({
+                      to: "/assuntos/$dossieId/documentos/$documentoId",
+                      params: { dossieId, documentoId: documento.id },
+                    })
+                  }
+                >
+                  Abrir
                 </Button>
               }
             >
