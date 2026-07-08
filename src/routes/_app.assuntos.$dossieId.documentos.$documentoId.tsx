@@ -37,6 +37,7 @@ import {
   obterDocumentoACriarGlobal,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
+import { carregarDocumentosCriadosLocais, carregarDocumentosCriadosRemotos } from "@/lib/documentos-criados-repository";
 import {
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
@@ -133,10 +134,21 @@ function DocumentoDoAssuntoPage() {
   useEffect(() => {
     let ativo = true;
 
-    function carregar() {
+    async function carregar() {
       if (!ativo) return;
 
       const proximo = obterDocumentoACriarGlobal(documentoId);
+      const documentosLocais = carregarDocumentosCriadosLocais();
+      const documentoLocal = documentosLocais.find((item) => item.id === documentoId);
+      const documentosRemotos = import.meta.env.DEV ? await carregarDocumentosCriadosRemotos().catch((error) => {
+        console.warn("[Tribuno][Editor documento] falha ao carregar documentos remotos para diagnóstico", {
+          dossieId,
+          documentoId,
+          erro: error instanceof Error ? error.message : String(error),
+        });
+        return undefined;
+      }) : undefined;
+      const documentoRemoto = documentosRemotos?.find((item) => item.id === documentoId);
       const pertenceAoAssunto =
         proximo?.assuntoId === dossieId || proximo?.origem === "ia";
 
@@ -145,6 +157,8 @@ function DocumentoDoAssuntoPage() {
           dossieId,
           documentoId,
           documentoEncontrado: Boolean(proximo),
+          documentoLocalEncontrado: Boolean(documentoLocal),
+          documentoRemotoEncontrado: Boolean(documentoRemoto),
           documentoOrigem: proximo?.origem ?? null,
           assuntoIdNoDocumento: proximo?.assuntoId ?? null,
           pertenceAoAssunto,
@@ -170,7 +184,9 @@ function DocumentoDoAssuntoPage() {
     }
 
     setCarregou(false);
-    void carregarDocumentosCriadosRemotosSeDisponivel().finally(carregar);
+    void carregarDocumentosCriadosRemotosSeDisponivel().finally(() => {
+      void carregar();
+    });
     const unsubscribe = subscreverDocumentosACriar(carregar);
 
     return () => {
@@ -193,6 +209,7 @@ function DocumentoDoAssuntoPage() {
       documentoEncontrado: Boolean(documento),
       assuntoEncontrado: Boolean(dossie),
       carregou,
+      renderVazio: carregou && !documento,
     });
   }
 
