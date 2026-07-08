@@ -99,127 +99,102 @@ export function PreparationGuidancePanel({
 
   return (
     <section className={className}>
-      <Card className="w-full max-w-full overflow-hidden rounded-xl border border-border bg-card p-3">
-        <div className="space-y-1.5">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <h2 className="font-display text-sm font-semibold tracking-tight text-foreground">
+      <Card className="w-full max-w-full overflow-hidden rounded-xl border border-border/80 bg-card p-2.5">
+        <div className="space-y-1">
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="font-display text-xs font-semibold tracking-tight text-foreground">
               Assistente de preparação
             </h2>
-            <StatusBadge tone={state.readinessTone} dot={false} className="shrink-0">
+            <StatusBadge tone={state.readinessTone} dot={false} className="shrink-0 text-[11px]">
               {state.readinessLabel}
             </StatusBadge>
           </div>
 
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Estado atual, próxima ação e pendências — sem ruído.
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Estado, próxima ação e pendências.
           </p>
         </div>
 
-        <div className="mt-3 space-y-2.5">
-          <div className="rounded-lg border border-border bg-background/80 p-2.5">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="mt-2.5 space-y-2">
+          <div className="space-y-1.5 border-b border-border/70 pb-2">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               Estado
             </p>
-            <div className="mt-1.5 flex items-center justify-between gap-2">
-              <p className="min-w-0 text-sm font-semibold text-foreground">{state.readinessLabel}</p>
-              <p className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
+            <div className="flex items-center justify-between gap-2">
+              <p className="min-w-0 text-sm font-semibold leading-none text-foreground">{state.readinessLabel}</p>
+              <p className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs font-semibold leading-none text-foreground">
                 {state.score}%
               </p>
             </div>
-            <div className="mt-1.5 h-1.5 rounded-full bg-muted">
+            <p className="text-[11px] leading-none text-muted-foreground">{state.scoreDescription}</p>
+            <div className="h-1 rounded-full bg-muted">
               <div
                 className="h-full rounded-full transition-all"
                 style={{ width: `${state.score}%`, backgroundColor: state.progressColor }}
               />
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">{state.scoreDescription}</p>
           </div>
 
-          <div className="rounded-lg border border-primary/25 bg-primary/5 p-2.5">
-            <p className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              <Sparkles className="h-3.5 w-3.5" />
+          <div className="space-y-1.5 border-b border-border/70 pb-2">
+            <p className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <Sparkles className="h-3 w-3" />
               Próxima ação recomendada
             </p>
-            <h3 className="mt-1 text-sm font-semibold leading-snug text-foreground">
-              {state.nextAction.title}
-            </h3>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-              {state.nextAction.description}
-            </p>
+            <h3 className="text-sm font-semibold leading-snug text-foreground">{state.nextAction.title}</h3>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">{state.nextAction.description}</p>
 
-            <Button asChild size="sm" className="mt-2 h-8 w-full justify-center px-3 text-xs">
+            <Button asChild size="sm" className="h-7 w-full justify-center px-2.5 text-[11px]">
               <Link to={state.nextAction.href}>
                 {state.nextAction.button}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
           </div>
 
-          <div className="rounded-lg border border-border bg-background/80 p-2.5">
-            <p className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              <ClipboardList className="h-3.5 w-3.5" />
+          <div className="space-y-1.5 border-b border-border/70 pb-2">
+            <p className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <ClipboardList className="h-3 w-3" />
               Checklist de preparação
             </p>
 
-            <ol className="mt-1.5 space-y-1.5">
+            <ol className="space-y-1">
               {state.steps.map((step) => (
-                <li key={step.id} className="rounded-md border border-border/70 bg-card/70 px-2 py-1.5">
-                  <div className="flex min-w-0 items-start gap-2">
-                    <span
-                      className={[
-                        "mt-0.5 shrink-0 text-sm font-semibold leading-none",
-                        step.done ? "text-status-concluida" : "text-status-alerta",
-                      ].join(" ")}
-                      aria-hidden
-                    >
-                      {step.done ? "✓" : "☐"}
-                    </span>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 items-start justify-between gap-2">
-                        <p className="min-w-0 text-sm font-medium leading-snug text-foreground">{step.label}</p>
-                        <span className="shrink-0 text-[11px] text-muted-foreground">
-                          {step.done ? "Concluído" : "Em falta"}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{step.description}</p>
-                      {!step.done && step.href && step.cta && (
-                        <Button
-                          asChild
-                          variant="secondary"
-                          size="sm"
-                          className="mt-1.5 h-7 w-full justify-center px-2.5 text-[11px]"
-                        >
-                          <Link to={step.href}>{step.cta}</Link>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                <li key={step.id} className="flex items-center gap-1.5 text-xs leading-snug text-foreground">
+                  <span
+                    className={[
+                      "shrink-0 text-sm font-semibold leading-none",
+                      step.done ? "text-status-concluida" : "text-muted-foreground",
+                    ].join(" ")}
+                    aria-hidden
+                  >
+                    {step.done ? "✓" : "○"}
+                  </span>
+                  <span className="truncate">{step.label}</span>
                 </li>
               ))}
             </ol>
           </div>
 
-          <div className="rounded-lg border border-border bg-background/80 p-2.5">
-            <p className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              <ListChecks className="h-3.5 w-3.5" />
-              Itens em falta
+          <div className="space-y-1.5">
+            <p className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <ListChecks className="h-3 w-3" />
+              Ainda falta
             </p>
 
             {state.isComplete ? (
-              <p className="mt-1.5 rounded-md border border-status-concluida/30 bg-status-concluida/10 px-2 py-1.5 text-xs leading-relaxed text-foreground">
+              <p className="text-[11px] leading-relaxed text-foreground">
                 Preparação concluída. Faça apenas uma revisão final de confiança antes da sessão.
               </p>
             ) : state.missingItems.length > 0 ? (
-              <ul className="mt-1.5 space-y-1.5">
+              <ul className="space-y-1">
                 {state.missingItems.map((item) => (
-                  <li key={item.id} className="rounded-md border border-status-alerta/30 bg-status-alerta/10 px-2 py-1.5">
-                    <p className="text-xs leading-relaxed text-foreground">• {item.message}</p>
+                  <li key={item.id} className="flex items-center justify-between gap-2">
+                    <p className="min-w-0 text-[11px] leading-relaxed text-foreground">• {item.message}</p>
                     <Button
                       asChild
                       variant="secondary"
                       size="sm"
-                      className="mt-1.5 h-7 w-full justify-center px-2.5 text-[11px]"
+                      className="h-6 shrink-0 px-2 text-[10px]"
                     >
                       <Link to={item.href}>{item.cta}</Link>
                     </Button>
@@ -227,7 +202,7 @@ export function PreparationGuidancePanel({
                 ))}
               </ul>
             ) : (
-              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
                 Não existem pendências críticas neste momento.
               </p>
             )}
