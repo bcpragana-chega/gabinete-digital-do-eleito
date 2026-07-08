@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router";
-import { FilePlus2, FileText } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { AlertCircle, FilePlus2, FileText, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ActionCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
@@ -16,11 +16,17 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { WorkspaceSection } from "@/components/ui/workspace";
 import {
-  adicionarDocumentoACriarRascunho,
   listarDocumentosACriarDoAssunto,
+  sincronizarDocumentoACriarGerado,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
+import { gerarDocumentoAssistido } from "@/lib/ai/document-generator.server";
 import { obterAssembleia } from "@/lib/assembleias-store";
+import { useAuth } from "@/lib/auth-store";
+import { listarAssembleiasDoDossie } from "@/lib/dossie-assembleias-store";
+import { listarDocumentosDoDossie } from "@/lib/dossie-documentos-store";
+import { listarNotasDossie } from "@/lib/dossie-notas-store";
+import { listarEventosTimelineDossie } from "@/lib/dossie-timeline-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
@@ -54,10 +60,14 @@ function metaAssociacao(documento: DocumentoCriado) {
 }
 
 export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [documentos, setDocumentos] = useState<DocumentoCriado[]>([]);
   const [tipo, setTipo] = useState<TipoDocumentoCriado>("Recomendação");
   const [titulo, setTitulo] = useState("");
   const [conteudo, setConteudo] = useState("");
+  const [gerando, setGerando] = useState(false);
+  const [erroGeracao, setErroGeracao] = useState<string | undefined>();
 
   useEffect(() => {
     function carregar() {
@@ -68,21 +78,58 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
     return subscreverDocumentosACriar(carregar);
   }, [dossieId]);
 
-  function criarDocumento() {
+  async function gerarDocumento() {
     const tituloLimpo = titulo.trim();
     if (!tituloLimpo) return;
+    if (!user?.id || gerando) return;
 
-    adicionarDocumentoACriarRascunho({
-      assuntoId: dossieId,
-      tipo,
-      titulo: tituloLimpo,
-      conteudo: conteudo.trim() || "Rascunho inicial.",
-    });
+    setGerando(true);
+    setErroGeracao(undefined);
 
-    setTipo("Recomendação");
-    setTitulo("");
-    setConteudo("");
-    setDocumentos(listarDocumentosACriarDoAssunto(dossieId));
+    try {
+      const sessoesRelacionadas = listarAssembleiasDoDossie(dossieId);
+      const sessaoDeterministicaId =
+        sessoesRelacionadas.length === 1 ? sessoesRelacionadas[0].assembleiaId : undefined;
+
+      const response = await gerarDocumentoAssistido({
+        data: {
+          userId: user.id,
+          assuntoId: dossieId,
+          sessaoId: sessaoDeterministicaId,
+          tipo,
+          titulo: tituloLimpo,
+          conteudoInicial: conteudo.trim(),
+          documentosRelacionadosIds: listarDocumentosDoDossie(dossieId).map(
+            (relacao) => relacao.documentoId,
+          ),
+          assuntoNotas: listarNotasDossie(dossieId).map((nota) => nota.conteudo),
+          assuntoTimeline: listarEventosTimelineDossie(dossieId).map(
+            (evento) => `${evento.data} · ${evento.titulo}: ${evento.descricao}`,
+          ),
+        },
+      });
+
+      if (!response.ok) {
+        setErroGeracao(response.message);
+        return;
+      }
+
+      sincronizarDocumentoACriarGerado(response.documento);
+
+      setTipo("Recomendação");
+      setTitulo("");
+      setConteudo("");
+      setDocumentos(listarDocumentosACriarDoAssunto(dossieId));
+
+      await navigate({
+        to: "/assuntos/$dossieId/documentos/$documentoId",
+        params: { dossieId, documentoId: response.documento.id },
+      });
+    } catch {
+      setErroGeracao("Não foi possível gerar o documento. Verifique a ligação e tente novamente.");
+    } finally {
+      setGerando(false);
+    }
   }
 
   return (
@@ -131,9 +178,25 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
           />
         </div>
 
+        {erroGeracao && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4" />
+              <span>{erroGeracao}</span>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-end">
-          <Button type="button" onClick={criarDocumento} disabled={!titulo.trim()}>
-            Criar documento
+          <Button type="button" onClick={gerarDocumento} disabled={!titulo.trim() || gerando}>
+            {gerando ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                A gerar documento...
+              </>
+            ) : (
+              "Gerar documento"
+            )}
           </Button>
         </div>
       </div>

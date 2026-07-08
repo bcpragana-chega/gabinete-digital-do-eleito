@@ -281,6 +281,25 @@ export function adicionarDocumentoACriarRascunho(
   return novoDocumento;
 }
 
+export function sincronizarDocumentoACriarGerado(documento: DocumentoCriado) {
+  const documentos = lerDocumentos();
+  const existe = documentos.some((item) => item.id === documento.id);
+
+  const atualizados = existe
+    ? documentos.map((item) => (item.id === documento.id ? { ...item, ...documento } : item))
+    : [documento, ...documentos];
+
+  guardarDocumentos(atualizados);
+
+  if (existe) {
+    registarDocumentoACriarNaTimeline(documento, "editado");
+  } else {
+    registarDocumentoACriarNaTimeline(documento, "criado");
+  }
+
+  return documento;
+}
+
 export function atualizarDocumentoACriarRascunho(
   rascunhoId: string,
   data: Partial<
