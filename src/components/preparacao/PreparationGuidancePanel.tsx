@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
+  AlertTriangle,
   ArrowRight,
   CheckCircle2,
   CircleDashed,
@@ -28,9 +29,16 @@ type GuidanceStep = {
   id: string;
   label: string;
   done: boolean;
+  description: string;
+  href?: string;
+  cta?: string;
+};
+
+type MissingItem = {
+  id: string;
+  message: string;
   href: string;
   cta: string;
-  description: string;
 };
 
 type NextAction = {
@@ -132,7 +140,7 @@ export function PreparationGuidancePanel({
               <div>
                 <p className="text-sm font-semibold text-foreground">{state.readinessLabel}</p>
                 <p className="text-xs text-muted-foreground">
-                  {state.completedCount} de {state.steps.length} passos concluídos
+                  {state.scoreDescription}
                 </p>
               </div>
             </div>
@@ -143,6 +151,8 @@ export function PreparationGuidancePanel({
                 style={{ width: `${state.score}%`, backgroundColor: state.progressColor }}
               />
             </div>
+
+            <p className="mt-2 text-xs text-muted-foreground">Preparação: {state.score}%</p>
           </div>
 
           <div className="rounded-xl border border-border bg-background/70 p-4 lg:col-span-2">
@@ -151,42 +161,74 @@ export function PreparationGuidancePanel({
               2. O que ainda falta?
             </p>
 
-            <ol className="mt-3 grid gap-2">
-              {state.steps.map((step) => (
-                <li
-                  key={step.id}
-                  className={[
-                    "flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2",
-                    step.done
-                      ? "border-status-concluida/30 bg-status-concluida/10"
-                      : "border-status-alerta/30 bg-status-alerta/10",
-                  ].join(" ")}
-                >
-                  <div>
-                    <p className="inline-flex items-center gap-2 text-sm text-foreground">
-                      {step.done ? (
-                        <CheckCircle2 className="h-4 w-4 text-status-concluida" />
-                      ) : (
-                        <CircleDashed className="h-4 w-4 text-status-alerta" />
-                      )}
-                      {step.label}
-                    </p>
-                    <p className="ml-6 mt-0.5 text-xs text-muted-foreground">{step.description}</p>
-                  </div>
+            {state.isComplete ? (
+              <div className="mt-3 rounded-xl border border-status-concluida/30 bg-status-concluida/10 p-4">
+                <h3 className="text-sm font-semibold text-foreground">Session preparation complete.</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Everything required for this session has been prepared.
+                </p>
+                <p className="mt-2 text-sm font-medium text-foreground">Preparation score: 100%</p>
+              </div>
+            ) : (
+              <>
+                <ol className="mt-3 grid gap-2">
+                  {state.steps.map((step) => (
+                    <li
+                      key={step.id}
+                      className={[
+                        "flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2",
+                        step.done
+                          ? "border-status-concluida/30 bg-status-concluida/10"
+                          : "border-status-alerta/30 bg-status-alerta/10",
+                      ].join(" ")}
+                    >
+                      <div>
+                        <p className="inline-flex items-center gap-2 text-sm text-foreground">
+                          {step.done ? (
+                            <CheckCircle2 className="h-4 w-4 text-status-concluida" />
+                          ) : (
+                            <CircleDashed className="h-4 w-4 text-status-alerta" />
+                          )}
+                          {step.label}
+                        </p>
+                        <p className="ml-6 mt-0.5 text-xs text-muted-foreground">{step.description}</p>
+                      </div>
 
-                  <div className="flex items-center gap-2">
-                    <StatusBadge tone={step.done ? "success" : "warning"}>
-                      {step.done ? "Concluído" : "Em falta"}
-                    </StatusBadge>
-                    {!step.done && (
-                      <Button asChild variant="secondary" size="sm">
-                        <Link to={step.href}>{step.cta}</Link>
-                      </Button>
-                    )}
+                      <div className="flex items-center gap-2">
+                        <StatusBadge tone={step.done ? "success" : "warning"}>
+                          {step.done ? "Concluído" : "Em falta"}
+                        </StatusBadge>
+
+                        {!step.done && step.href && step.cta && (
+                          <Button asChild variant="secondary" size="sm">
+                            <Link to={step.href}>{step.cta}</Link>
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+
+                {state.missingItems.length > 0 && (
+                  <div className="mt-3 grid gap-2">
+                    {state.missingItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-status-alerta/30 bg-status-alerta/10 px-3 py-2"
+                      >
+                        <p className="inline-flex items-center gap-2 text-sm text-foreground">
+                          <AlertTriangle className="h-4 w-4 text-status-alerta" />
+                          {item.message}
+                        </p>
+                        <Button asChild variant="secondary" size="sm">
+                          <Link to={item.href}>{item.cta}</Link>
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                </li>
-              ))}
-            </ol>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -252,65 +294,58 @@ function criarEstadoPreparacao({
     estrategia.notasLivres,
   ].some((item) => item.trim().length > 0);
   const questionsPrepared = preparacao.perguntas.length > 0 || pontos.some((ponto) => ponto.perguntas.length > 0);
-  const prioritiesDefined = preparacao.prioridades.length > 0;
   const draftsCreated = rascunhos.length > 0;
+  const finalReview =
+    documentsUploaded &&
+    documentsReviewed &&
+    strategyCompleted &&
+    questionsPrepared &&
+    draftsCreated;
 
   const steps: GuidanceStep[] = [
     {
-      id: "documents-uploaded",
-      label: "Documentos carregados",
-      description: "Garanta que convocatória, propostas e anexos estão disponíveis.",
-      done: documentsUploaded,
-      href: `/sessoes/${assembleiaId}/preparacao/documentos`,
-      cta: "Abrir documentos",
+      id: "session-created",
+      label: "✓ Sessão criada",
+      description: "A sessão está disponível para preparação.",
+      done: true,
+    },
+    {
+      id: "strategy-completed",
+      label: "✓ Estratégia concluída",
+      description: "Defina objetivo político e mensagem principal da sessão.",
+      done: strategyCompleted,
+      href: `/sessoes/${assembleiaId}/preparacao/estrategia`,
+      cta: "Preparar estratégia",
     },
     {
       id: "documents-reviewed",
-      label: "Documentos analisados",
-      description: "Confirme que nenhum documento crítico ficou por analisar.",
+      label: "☐ Documentos analisados",
+      description: "Confirme que os documentos carregados já foram analisados.",
       done: documentsReviewed,
       href: `/sessoes/${assembleiaId}/preparacao/documentos`,
       cta: "Analisar documentos",
     },
     {
-      id: "points-added",
-      label: "Pontos adicionados",
-      description: "Registe os pontos da ordem de trabalhos para estruturar a sessão.",
-      done: pointsAdded,
-      href: `/sessoes/${assembleiaId}/preparacao/pontos`,
-      cta: "Abrir pontos",
-    },
-    {
-      id: "strategy-completed",
-      label: "Estratégia preenchida",
-      description: "Defina objetivo político e mensagem principal da sessão.",
-      done: strategyCompleted,
-      href: `/sessoes/${assembleiaId}/preparacao/estrategia`,
-      cta: "Abrir estratégia",
+      id: "draft-documents",
+      label: "☐ Rascunhos criados",
+      description: "Crie minutas de moções, requerimentos ou intervenções.",
+      done: draftsCreated,
+      href: `/sessoes/${assembleiaId}/preparacao/documentos-a-criar`,
+      cta: "Criar rascunhos",
     },
     {
       id: "questions-prepared",
-      label: "Intervenções preparadas",
+      label: "☐ Intervenção preparada",
       description: "Prepare perguntas/intervenções nos pontos relevantes.",
       done: questionsPrepared,
       href: `/sessoes/${assembleiaId}/preparacao/pontos`,
       cta: "Preparar intervenção",
     },
     {
-      id: "priorities-defined",
-      label: "Prioridades definidas",
-      description: "Estabeleça prioridades políticas para orientar a intervenção.",
-      done: prioritiesDefined,
-      href: `/sessoes/${assembleiaId}/preparacao/pontos`,
-      cta: "Definir prioridades",
-    },
-    {
-      id: "draft-documents",
-      label: "Rascunhos criados",
-      description: "Crie minutas de moções, requerimentos e declarações, quando necessário.",
-      done: draftsCreated,
-      href: `/sessoes/${assembleiaId}/preparacao/documentos-a-criar`,
-      cta: "Abrir rascunhos",
+      id: "final-review",
+      label: "☐ Revisão final",
+      description: "Confirme que tudo está pronto para a sessão.",
+      done: finalReview,
     },
   ];
 
@@ -318,9 +353,79 @@ function criarEstadoPreparacao({
   const score = Math.round((completedCount / steps.length) * 100);
 
   const readinessLabel =
-    score === 100 ? "Pronto" : score >= 67 ? "Quase pronto" : "Precisa de atenção";
-  const readinessTone = score === 100 ? "success" : score >= 67 ? "info" : "warning";
-  const progressColor = score === 100 ? "hsl(var(--status-concluida))" : score >= 67 ? "hsl(var(--status-analise))" : "hsl(var(--status-alerta))";
+    score === 100
+      ? "Ready"
+      : score >= 80
+        ? "Almost ready"
+        : score >= 40
+          ? "In progress"
+          : "Needs attention";
+  const readinessTone =
+    score === 100 ? "success" : score >= 80 ? "info" : score >= 40 ? "warning" : "danger";
+  const progressColor =
+    score === 100
+      ? "hsl(var(--status-concluida))"
+      : score >= 80
+        ? "hsl(var(--status-analise))"
+        : score >= 40
+          ? "hsl(var(--status-alerta))"
+          : "hsl(var(--destructive))";
+
+  const missingItems: MissingItem[] = [];
+  if (!documentsUploaded) {
+    missingItems.push({
+      id: "missing-documents-upload",
+      message: "No documents have been uploaded yet.",
+      href: `/sessoes/${assembleiaId}/preparacao/documentos`,
+      cta: "Upload session documents",
+    });
+  }
+  if (!documentsReviewed) {
+    missingItems.push({
+      id: "missing-documents-reviewed",
+      message: "Uploaded documents still need review.",
+      href: `/sessoes/${assembleiaId}/preparacao/documentos`,
+      cta: "Review uploaded documents",
+    });
+  }
+  if (!strategyCompleted) {
+    missingItems.push({
+      id: "missing-strategy",
+      message: "Strategy has not been completed.",
+      href: `/sessoes/${assembleiaId}/preparacao/estrategia`,
+      cta: "Prepare strategy",
+    });
+  }
+  if (!questionsPrepared) {
+    missingItems.push({
+      id: "missing-intervention",
+      message: "Intervention is still missing.",
+      href: `/sessoes/${assembleiaId}/preparacao/pontos`,
+      cta: "Prepare intervention",
+    });
+  }
+  if (!draftsCreated) {
+    missingItems.push({
+      id: "missing-drafts",
+      message: "Draft documents are still missing.",
+      href: `/sessoes/${assembleiaId}/preparacao/documentos-a-criar`,
+      cta: "Create draft documents",
+    });
+  }
+  if (!pointsAdded) {
+    missingItems.push({
+      id: "missing-points",
+      message: "Session points have not been structured yet.",
+      href: `/sessoes/${assembleiaId}/preparacao/pontos`,
+      cta: "Open points",
+    });
+  }
+
+  const isComplete = score === 100;
+  const scoreDescription =
+    isComplete
+      ? "Todos os requisitos essenciais estão completos."
+      : `${completedCount} de ${steps.length} passos concluídos.`;
 
   const nextAction = escolherProximaAcao({
     assembleiaId,
@@ -329,7 +434,6 @@ function criarEstadoPreparacao({
     pointsAdded,
     strategyCompleted,
     questionsPrepared,
-    prioritiesDefined,
     draftsCreated,
   });
 
@@ -340,6 +444,9 @@ function criarEstadoPreparacao({
     readinessLabel,
     readinessTone,
     progressColor,
+    missingItems,
+    isComplete,
+    scoreDescription,
     nextAction,
   };
 }
@@ -351,7 +458,6 @@ function escolherProximaAcao({
   pointsAdded,
   strategyCompleted,
   questionsPrepared,
-  prioritiesDefined,
   draftsCreated,
 }: {
   assembleiaId: string;
@@ -360,76 +466,66 @@ function escolherProximaAcao({
   pointsAdded: boolean;
   strategyCompleted: boolean;
   questionsPrepared: boolean;
-  prioritiesDefined: boolean;
   draftsCreated: boolean;
 }): NextAction {
   if (!documentsUploaded) {
     return {
-      title: "Carregue os documentos da sessão.",
-      description: "Comece por reunir os documentos base para orientar toda a preparação.",
-      button: "Carregar documentos",
+      title: "Upload session documents",
+      description: "Start by uploading the base documents for this session.",
+      button: "Upload session documents",
       href: `/sessoes/${assembleiaId}/preparacao/documentos`,
     };
   }
 
   if (!documentsReviewed) {
     return {
-      title: "Analise os documentos carregados.",
-      description: "Confirme o estado dos documentos para evitar material crítico por analisar.",
-      button: "Analisar documentos",
+      title: "Review uploaded documents",
+      description: "Mark each document so nothing critical remains unreviewed.",
+      button: "Review uploaded documents",
       href: `/sessoes/${assembleiaId}/preparacao/documentos`,
     };
   }
 
   if (!pointsAdded) {
     return {
-      title: "Adicione os pontos da ordem de trabalhos.",
-      description: "Os pontos estruturam intervenções, perguntas e rascunhos de documentos.",
-      button: "Adicionar pontos",
+      title: "Prepare intervention",
+      description: "Create session points so you can prepare interventions with structure.",
+      button: "Prepare intervention",
       href: `/sessoes/${assembleiaId}/preparacao/pontos`,
     };
   }
 
   if (!strategyCompleted) {
     return {
-      title: "Defina a estratégia da sessão.",
-      description: "Registe objetivo e mensagem principal para alinhar as decisões de preparação.",
-      button: "Abrir estratégia",
+      title: "Prepare strategy",
+      description: "Define objective and key political message before the session.",
+      button: "Prepare strategy",
       href: `/sessoes/${assembleiaId}/preparacao/estrategia`,
     };
   }
 
   if (!questionsPrepared) {
     return {
-      title: "Prepare a sua intervenção.",
-      description: "Registe perguntas-chave antes de fechar prioridades e rascunhos.",
-      button: "Preparar intervenção",
-      href: `/sessoes/${assembleiaId}/preparacao/pontos`,
-    };
-  }
-
-  if (!prioritiesDefined) {
-    return {
-      title: "Defina as prioridades de preparação.",
-      description: "Priorize os temas para clarificar o que é mais importante na sessão.",
-      button: "Abrir pontos",
+      title: "Prepare intervention",
+      description: "Register key questions and talking points for the most relevant items.",
+      button: "Prepare intervention",
       href: `/sessoes/${assembleiaId}/preparacao/pontos`,
     };
   }
 
   if (!draftsCreated) {
     return {
-      title: "Crie os rascunhos necessários.",
-      description: "Crie minutas de moções, requerimentos e intervenções antes da sessão.",
-      button: "Abrir rascunhos",
+      title: "Create draft documents",
+      description: "Create the necessary draft documents before the session starts.",
+      button: "Create draft documents",
       href: `/sessoes/${assembleiaId}/preparacao/documentos-a-criar`,
     };
   }
 
   return {
-    title: "Preparação da sessão concluída.",
-    description: "Todos os passos essenciais estão completos. Faça apenas a revisão final.",
-    button: "Rever sessão",
+    title: "Session preparation complete",
+    description: "Everything required is ready. Do a final confidence check.",
+    button: "Review session",
     href: `/sessoes/${assembleiaId}`,
   };
 }
