@@ -140,6 +140,20 @@ function DocumentoDoAssuntoPage() {
       const pertenceAoAssunto =
         proximo?.assuntoId === dossieId || proximo?.origem === "ia";
 
+      if (import.meta.env.DEV) {
+        console.log("[Tribuno][Editor documento] entrada da rota", {
+          dossieId,
+          documentoId,
+          documentoEncontrado: Boolean(proximo),
+          documentoOrigem: proximo?.origem ?? null,
+          assuntoIdNoDocumento: proximo?.assuntoId ?? null,
+          pertenceAoAssunto,
+          titulo: proximo?.titulo ?? null,
+          estado: proximo?.estado ?? null,
+          carregou,
+        });
+      }
+
       setDocumento(pertenceAoAssunto ? proximo : undefined);
 
       if (proximo && pertenceAoAssunto) {
@@ -164,6 +178,23 @@ function DocumentoDoAssuntoPage() {
       unsubscribe();
     };
   }, [documentoId, dossieId]);
+
+  const motivoNaoAbrir = !dossie
+    ? "assunto não encontrado"
+    : carregou && !documento
+      ? "documento não encontrado para os parâmetros recebidos"
+      : undefined;
+
+  if (import.meta.env.DEV && motivoNaoAbrir) {
+    console.warn("[Tribuno][Editor documento] decisão de não abrir", {
+      dossieId,
+      documentoId,
+      motivo: motivoNaoAbrir,
+      documentoEncontrado: Boolean(documento),
+      assuntoEncontrado: Boolean(dossie),
+      carregou,
+    });
+  }
 
   const pontosDaSessao = useMemo(
     () => (assembleiaId ? obterPontosDaAssembleia(assembleiaId) : []),

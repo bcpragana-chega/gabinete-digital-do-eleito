@@ -251,12 +251,21 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                   type="button"
                   size="sm"
                   variant="secondary"
-                  onClick={() =>
+                  onClick={() => {
+                    if (import.meta.env.DEV) {
+                      console.log("[Tribuno][Abrir documento IA] clique em Abrir", {
+                        dossieId,
+                        documentoId: documento.id,
+                        destino: "/assuntos/$dossieId/documentos/$documentoId",
+                        params: { dossieId, documentoId: documento.id },
+                      });
+                    }
+
                     void navigate({
                       to: "/assuntos/$dossieId/documentos/$documentoId",
                       params: { dossieId, documentoId: documento.id },
                     })
-                  }
+                  }}
                 >
                   Abrir
                 </Button>
