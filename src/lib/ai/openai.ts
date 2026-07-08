@@ -3,6 +3,9 @@ import type { AiProvider, PedidoGeracaoAi, RespostaGeracaoAi, UsoTokensAi } from
 type OpenAiResponsesPayload = {
   model: string;
   instructions?: string;
+  reasoning?: {
+    effort?: "minimal" | "low" | "medium" | "high" | "xhigh";
+  };
   input: Array<{
     role: "user";
     content: Array<{ type: "input_text"; text: string }>;
@@ -30,6 +33,9 @@ type OpenAiResponseBody = {
   output?: unknown;
   usage?: unknown;
   error?: unknown;
+  incomplete_details?: {
+    reason?: unknown;
+  };
 };
 
 type AiErrorContext = {
@@ -46,6 +52,10 @@ function isPlainObject(valor: unknown): valor is Record<string, unknown> {
 
 function normalizarTexto(valor: unknown): string {
   return typeof valor === "string" ? valor.trim() : "";
+}
+
+function modeloSuportaReasoning(modelo: string) {
+  return /^gpt-5([.-]|$)/i.test(modelo.trim());
 }
 
 function extrairTextoDeConteudo(content: unknown): string[] {
@@ -113,11 +123,16 @@ function diagnosticoRespostaOpenAi(payload: unknown) {
       hasOutputText: false,
       outputTextLength: 0,
       outputItemTypes: [] as string[],
+      incompleteReason: undefined as string | undefined,
     };
   }
 
   const raw = payload as OpenAiResponseBody;
   const outputText = normalizarTexto(raw.output_text);
+  const incompleteReason =
+    raw.status === "incomplete" && raw.incomplete_details
+      ? normalizarTexto(raw.incomplete_details.reason)
+      : "";
 
   return {
     responseId: typeof raw.id === "string" ? raw.id : undefined,
@@ -125,13 +140,24 @@ function diagnosticoRespostaOpenAi(payload: unknown) {
     hasOutputText: Boolean(outputText),
     outputTextLength: outputText.length,
     outputItemTypes: extrairTiposOutput(payload),
+    incompleteReason: incompleteReason || undefined,
   };
 }
 
 function logRespostaOpenAiDiagnostico(payload: unknown) {
   if (process.env.NODE_ENV === "production") return;
 
-  console.info("[Tribuno AI] Diagnóstico resposta OpenAI", diagnosticoRespostaOpenAi(payload));
+  const diagnostico = diagnosticoRespostaOpenAi(payload);
+  console.info("[Tribuno AI] Diagnóstico resposta OpenAI", diagnostico);
+
+  if (diagnostico.status === "incomplete") {
+    console.warn("[Tribuno AI] Resposta OpenAI incompleta", {
+      responseId: diagnostico.responseId,
+      incompleteReason: diagnostico.incompleteReason,
+      outputTextLength: diagnostico.outputTextLength,
+      outputItemTypes: diagnostico.outputItemTypes,
+    });
+  }
 }
 
 function erroComCodigo(code: string, message: string, context?: AiErrorContext) {
@@ -145,6 +171,10 @@ function modeloSuportaTemperature(modelo: string) {
   return !/^gpt-5([.-]|$)/i.test(modelo.trim());
 }
 
+function construirInstructionsParaDocumento(systemPrompt: string) {
+  return `${systemPrompt}\n\nInstrução obrigatória: Produz obrigatoriamente texto final do documento. Não devolvas apenas raciocínio.`;
+}
+
 export class OpenAiProvider implements AiProvider {
   readonly name = "openai";
 
@@ -153,12 +183,12 @@ export class OpenAiProvider implements AiProvider {
   private readonly maxOutputTokens: number;
 
   private resolverMaxOutputTokens(input?: number) {
-    const fallback = 1200;
+    const fallback = 8192;
     const value = input ?? Number.parseInt(process.env.OPENAI_MAX_OUTPUT_TOKENS ?? "", 10);
 
     if (!Number.isFinite(value)) return fallback;
 
-    return Math.max(256, Math.min(4096, Math.trunc(value)));
+    return Math.max(4096, Math.min(16384, Math.trunc(value)));
   }
 
   constructor(input?: { apiKey?: string; model?: string }) {
@@ -186,17 +216,22 @@ export class OpenAiProvider implements AiProvider {
     const timeout = globalThis.setTimeout(() => controller.abort(), input.timeoutMs ?? 60_000);
 
     try {
+      const maxOutputTokens = this.resolverMaxOutputTokens(input.maxOutputTokens ?? this.maxOutputTokens);
       const payload: OpenAiResponsesPayload = {
         model: this.model,
-        instructions: input.systemPrompt,
+        instructions: construirInstructionsParaDocumento(input.systemPrompt),
         input: [
           {
             role: "user",
             content: [{ type: "input_text", text: input.userPrompt }],
           },
         ],
-        max_output_tokens: this.resolverMaxOutputTokens(input.maxOutputTokens ?? this.maxOutputTokens),
+        max_output_tokens: maxOutputTokens,
       };
+
+      if (modeloSuportaReasoning(this.model)) {
+        payload.reasoning = { effort: "minimal" };
+      }
 
       if (modeloSuportaTemperature(this.model)) {
         payload.temperature = 0.25;
@@ -238,11 +273,22 @@ export class OpenAiProvider implements AiProvider {
 
       logRespostaOpenAiDiagnostico(body);
 
+      if (diagnostico.status === "incomplete") {
+        console.warn("[Tribuno AI] Resposta OpenAI marcada como incomplete", {
+          responseId: diagnostico.responseId,
+          incompleteReason: diagnostico.incompleteReason,
+          model: this.model,
+          provider: this.name,
+          operation: "generate_document",
+          maxOutputTokens,
+        });
+      }
+
       const texto = extrairTextoRespostaOpenAi(body);
       if (!texto) {
         throw erroComCodigo(
           "AI_EMPTY_RESPONSE",
-          `A IA não devolveu conteúdo textual para o documento. Diagnóstico: responseId=${diagnostico.responseId ?? "n/a"}, status=${diagnostico.status ?? "n/a"}, hasOutputText=${diagnostico.hasOutputText}, outputTextLength=${diagnostico.outputTextLength}, outputItemTypes=${diagnostico.outputItemTypes.join(",") || "none"}.`,
+          `A IA não devolveu conteúdo textual para o documento. Diagnóstico: responseId=${diagnostico.responseId ?? "n/a"}, status=${diagnostico.status ?? "n/a"}, hasOutputText=${diagnostico.hasOutputText}, outputTextLength=${diagnostico.outputTextLength}, outputItemTypes=${diagnostico.outputItemTypes.join(",") || "none"}${diagnostico.incompleteReason ? `, incompleteReason=${diagnostico.incompleteReason}` : ""}.`,
           {
             status: response.status,
             responseId: diagnostico.responseId,
