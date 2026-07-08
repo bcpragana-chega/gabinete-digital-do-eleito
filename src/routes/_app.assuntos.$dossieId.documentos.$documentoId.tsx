@@ -37,7 +37,10 @@ import {
   obterDocumentoACriarGlobal,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
-import { carregarDocumentosCriadosLocais, carregarDocumentosCriadosRemotos } from "@/lib/documentos-criados-repository";
+import {
+  carregarDocumentosCriadosLocais,
+  carregarDocumentosCriadosRemotos,
+} from "@/lib/documentos-criados-repository";
 import {
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
@@ -52,6 +55,7 @@ import { adicionarEventoAutomaticoTimelineDossie } from "@/lib/dossie-timeline-s
 import { adicionarEventoHistorico } from "@/lib/historico-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
 import { useDossie } from "@/lib/dossies-store";
+import { addDiagnosticEvent } from "@/lib/debug-diagnostics";
 import type { DocumentoCriado, EstadoDocumentoCriado } from "@/lib/types";
 
 const estados: EstadoDocumentoCriado[] = [
@@ -118,7 +122,18 @@ function limparSintaxeMarkdownVisivel(conteudo: string) {
 
 function DocumentoDoAssuntoPage() {
   const { dossieId, documentoId } = Route.useParams();
-  debugger;
+
+  addDiagnosticEvent({
+    area: "documento_editor",
+    message: "route_enter",
+    data: {
+      params: {
+        dossieId,
+        documentoId,
+      },
+    },
+  });
+
   const dossie = useDossie(dossieId);
   const assembleias = useAssembleias();
   const [documento, setDocumento] = useState<DocumentoCriado | undefined>();
@@ -138,13 +153,56 @@ function DocumentoDoAssuntoPage() {
     async function carregar() {
       if (!ativo) return;
 
+      addDiagnosticEvent({
+        area: "documento_editor",
+        message: "before_local_lookup",
+        data: {
+          documentoId,
+        },
+      });
+
       const proximo = obterDocumentoACriarGlobal(documentoId);
       const documentosLocais = carregarDocumentosCriadosLocais();
       const documentoLocal = documentosLocais.find((item) => item.id === documentoId);
-      const documentosRemotos = import.meta.env.DEV
-        ? await carregarDocumentosCriadosRemotos().catch(() => undefined)
-        : undefined;
+
+      addDiagnosticEvent({
+        area: "documento_editor",
+        message: "after_local_lookup",
+        data: {
+          found: Boolean(documentoLocal),
+        },
+      });
+
+      addDiagnosticEvent({
+        area: "documento_editor",
+        message: "before_remote_lookup",
+        data: {
+          table: "documentos_criados",
+          documentoId,
+        },
+      });
+
+      let documentosRemotos: Awaited<ReturnType<typeof carregarDocumentosCriadosRemotos>>;
+      let erroRemoteLookup: string | undefined;
+
+      try {
+        documentosRemotos = await carregarDocumentosCriadosRemotos();
+      } catch (error) {
+        erroRemoteLookup = error instanceof Error ? error.message : String(error);
+        documentosRemotos = undefined;
+      }
+
       const documentoRemoto = documentosRemotos?.find((item) => item.id === documentoId);
+
+      addDiagnosticEvent({
+        area: "documento_editor",
+        message: "after_remote_lookup",
+        data: {
+          found: Boolean(documentoRemoto),
+          error: erroRemoteLookup,
+        },
+      });
+
       const pertenceAoAssunto =
         proximo?.assuntoId === dossieId || proximo?.origem === "ia";
 
@@ -343,6 +401,14 @@ function DocumentoDoAssuntoPage() {
   }
 
   if (!dossie || (carregou && !documento)) {
+    addDiagnosticEvent({
+      area: "documento_editor",
+      message: "render_not_found",
+      data: {
+        motivo: motivoNaoAbrir ?? "desconhecido",
+      },
+    });
+
     return (
       <>
         <TopBar breadcrumb="Documento" />
@@ -370,6 +436,16 @@ function DocumentoDoAssuntoPage() {
       </>
     );
   }
+
+  addDiagnosticEvent({
+    area: "documento_editor",
+    message: "render_editor",
+    data: {
+      documentoId: documento.id,
+      titulo: documento.titulo,
+      temConteudo: Boolean(documento.conteudo?.trim()),
+    },
+  });
 
   return (
     <>

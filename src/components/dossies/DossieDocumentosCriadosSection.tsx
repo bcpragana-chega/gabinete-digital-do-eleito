@@ -28,6 +28,7 @@ import { listarDocumentosDoDossie } from "@/lib/dossie-documentos-store";
 import { listarNotasDossie } from "@/lib/dossie-notas-store";
 import { listarEventosTimelineDossie } from "@/lib/dossie-timeline-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
+import { addDiagnosticEvent } from "@/lib/debug-diagnostics";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
 const tiposDocumentos: TipoDocumentoCriado[] = [
@@ -106,6 +107,17 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
     carregar();
     return subscreverDocumentosACriar(carregar);
   }, [dossieId]);
+
+  useEffect(() => {
+    addDiagnosticEvent({
+      area: "documentos_criados_list",
+      message: "render",
+      data: {
+        dossieId,
+        totalDocumentos: documentos.length,
+      },
+    });
+  });
 
   async function gerarDocumento() {
     const tituloLimpo = titulo.trim();
@@ -252,11 +264,44 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                   size="sm"
                   variant="secondary"
                   onClick={async () => {
-                    debugger;
+                    const rotaDestino = "/assuntos/$dossieId/documentos/$documentoId";
+
+                    addDiagnosticEvent({
+                      area: "documentos_criados_open",
+                      message: "click",
+                      data: {
+                        dossieId,
+                        documentoId: documento.id,
+                        titulo: documento.titulo,
+                        rotaDestino,
+                      },
+                    });
+
+                    addDiagnosticEvent({
+                      area: "documentos_criados_open",
+                      message: "before_navigate",
+                      data: {
+                        dossieId,
+                        documentoId: documento.id,
+                        titulo: documento.titulo,
+                        rotaDestino,
+                      },
+                    });
 
                     await navigate({
-                      to: "/assuntos/$dossieId/documentos/$documentoId",
+                      to: rotaDestino,
                       params: { dossieId, documentoId: documento.id },
+                    });
+
+                    addDiagnosticEvent({
+                      area: "documentos_criados_open",
+                      message: "after_navigate",
+                      data: {
+                        dossieId,
+                        documentoId: documento.id,
+                        titulo: documento.titulo,
+                        rotaDestino,
+                      },
                     });
                   }}
                 >
