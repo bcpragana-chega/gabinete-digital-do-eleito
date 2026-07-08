@@ -266,6 +266,12 @@ async function guardarDocumentoGeradoRemotamente(input: {
 export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
   .validator((input) => inputSchema.parse(input))
   .handler(async ({ data }): Promise<ResultadoGeracaoDocumento> => {
+    console.info("[Tribuno AI] Server function iniciada", {
+      AI_PROVIDER: estadoEnv(process.env.AI_PROVIDER),
+      OPENAI_MODEL: estadoEnv(process.env.OPENAI_MODEL),
+      OPENAI_API_KEY: estadoEnv(process.env.OPENAI_API_KEY),
+    });
+
     try {
       const contexto = await construirContextoGeracaoDocumento(data);
       const provider = criarAiProvider();
