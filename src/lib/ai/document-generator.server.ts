@@ -167,6 +167,32 @@ function normalizarErro(error: unknown): { code: string; message: string } {
   };
 }
 
+const CODIGOS_ERRO_CONFIG_AI = new Set([
+  "AI_CONFIG_MISSING",
+  "AI_CONFIG_MISSING_MODEL",
+  "AI_CONFIG_MISSING_PROVIDER",
+  "AI_PROVIDER_NOT_SUPPORTED",
+]);
+
+function estadoEnv(valor: string | undefined) {
+  return valor && valor.trim() ? "SET" : "MISSING";
+}
+
+function diagnosticoSeguroConfiguracaoAi() {
+  const provider = process.env.AI_PROVIDER;
+  const model = process.env.OPENAI_MODEL;
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  return {
+    AI_PROVIDER: estadoEnv(provider),
+    OPENAI_MODEL: estadoEnv(model),
+    OPENAI_API_KEY: estadoEnv(apiKey),
+    OPENAI_API_KEY_length: apiKey?.length ?? 0,
+    NODE_ENV: process.env.NODE_ENV ?? "undefined",
+    VERCEL_ENV: process.env.VERCEL_ENV ?? "undefined",
+  };
+}
+
 async function guardarDocumentoGeradoRemotamente(input: {
   userId: string;
   assuntoId: string;
@@ -278,6 +304,13 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
         documento,
       };
     } catch (error) {
+      if (error instanceof Error && CODIGOS_ERRO_CONFIG_AI.has(error.name)) {
+        console.error("[Tribuno AI] Diagnóstico seguro de configuração", {
+          code: error.name,
+          ...diagnosticoSeguroConfiguracaoAi(),
+        });
+      }
+
       const normalizado = normalizarErro(error);
 
       return {
