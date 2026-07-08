@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_app/sessoes/")({
 
 const filtros = [
   { id: "todas", label: "Todas" },
-  { id: "preparacao", label: "Preparação" },
+  { id: "preparacao", label: "Em preparação" },
   { id: "analise", label: "Em análise" },
   { id: "concluida", label: "Concluída" },
 ] as const;
@@ -41,7 +41,7 @@ const filtros = [
 type FiltroId = (typeof filtros)[number]["id"];
 
 function estadoLabel(estado: EstadoAssembleia) {
-  if (estado === "preparacao") return "Preparação";
+  if (estado === "preparacao") return "Em preparação";
   if (estado === "analise") return "Em análise";
   if (estado === "concluida") return "Concluída";
   return "Arquivada";
@@ -123,8 +123,8 @@ function AssembleiasPage() {
 
             {assembleiasVisiveis.length === 0 ? (
               <EmptyState
-                title="Nenhuma sessão encontrada"
-                description="Crie uma nova sessão ou altere o filtro selecionado."
+                title="Ainda não existem Sessões nesta vista"
+                description="As Sessões organizam documentos, pontos e estratégia do mandato. Crie uma Sessão para começar a preparação."
                 action={<NovaAssembleiaDialog />}
               />
             ) : (

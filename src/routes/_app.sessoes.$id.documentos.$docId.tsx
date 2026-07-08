@@ -4,10 +4,7 @@ import {
   CalendarDays,
   ChevronLeft,
   FileText,
-  Sparkles,
-  AlertCircle,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { DocumentoEstadoBadge } from "@/components/documentos/DocumentoEstadoBadge";
@@ -191,9 +188,23 @@ export function DocumentoDetalhePage({ contextoId, docId }: { contextoId: string
         )}
 
         {!documento ? (
-          <section className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-muted-foreground">
-            Documento não encontrado.
-          </section>
+          <EmptyState
+            title="Documento não encontrado"
+            description="Este espaço serve para analisar contexto e ligações do documento. O documento pode ter sido removido ou ainda não está disponível neste dispositivo."
+            action={
+              isDocumentoBiblioteca ? (
+                <Button asChild>
+                  <Link to="/biblioteca">Ir para Biblioteca</Link>
+                </Button>
+              ) : (
+                <Button asChild>
+                  <Link to="/sessoes/$id" params={{ id: contextoId }}>
+                    Voltar à sessão
+                  </Link>
+                </Button>
+              )
+            }
+          />
         ) : (
           <>
             <section className="rounded-2xl border border-border bg-card p-6 shadow-card mb-8">
@@ -238,17 +249,6 @@ export function DocumentoDetalhePage({ contextoId, docId }: { contextoId: string
             </section>
 
             <div className="grid gap-5 lg:grid-cols-3">
-              <ReservedSection
-                icon={Sparkles}
-                titulo="Análise"
-                descricao="A análise automática deste documento será disponibilizada em fase futura."
-                className="lg:col-span-2"
-              />
-              <ReservedSection
-                icon={AlertCircle}
-                titulo="Alertas"
-                descricao="Os alertas sobre prazos, valores e inconsistências serão apresentados aqui."
-              />
               <DocumentosLigadosSection
                 documentosLigados={documentosLigados}
                 documentosDisponiveis={documentosDisponiveis}
@@ -386,31 +386,3 @@ function DocumentosLigadosSection({
   );
 }
 
-function ReservedSection({
-  icon: Icon,
-  titulo,
-  descricao,
-  className = "",
-}: {
-  icon: LucideIcon;
-  titulo: string;
-  descricao: string;
-  className?: string;
-}) {
-  return (
-    <section className={`rounded-2xl border border-border bg-card p-6 shadow-card ${className}`}>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-          <Icon className="h-4 w-4" strokeWidth={1.75} />
-        </div>
-        <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
-          {titulo}
-        </h2>
-      </div>
-      <div className="rounded-lg border border-dashed border-border bg-background/50 px-5 py-8 text-center">
-        <p className="text-sm text-muted-foreground">{descricao}</p>
-        <p className="mt-2 text-xs text-muted-foreground/70 italic">Disponível em fase futura</p>
-      </div>
-    </section>
-  );
-}

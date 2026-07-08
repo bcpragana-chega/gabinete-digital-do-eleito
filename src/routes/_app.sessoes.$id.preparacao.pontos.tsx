@@ -5,6 +5,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { AdicionarPontoDialog } from "@/components/preparacao/AdicionarPontoDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/button";
 import { useAssembleia } from "@/lib/assembleias-store";
 import { carregarPontosRemotosSeDisponivel, obterPontosDaAssembleia } from "@/lib/pontos-store";
 
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/_app/sessoes/$id/preparacao/pontos")({
       { title: "Pontos — Preparação — Tribuno" },
       {
         name: "description",
-        content: "Pontos da ordem de trabalhos da assembleia.",
+        content: "Pontos da ordem de trabalhos da sessão.",
       },
     ],
   }),
@@ -66,10 +67,14 @@ function PreparacaoPontosPage() {
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
-            Todas as assembleias
+            Todas as sessões
           </Link>
 
-          <EmptyState title="Sessão não encontrada" />
+          <EmptyState
+            title="Sessão não encontrada"
+            description="Os pontos da ordem de trabalhos são preparados por Sessão. Esta Sessão não está disponível neste dispositivo."
+            action={<Button asChild><Link to="/sessoes">Ir para Sessões</Link></Button>}
+          />
         </main>
       </>
     );
@@ -97,7 +102,11 @@ function PreparacaoPontosPage() {
         />
 
         {pontos.length === 0 ? (
-          <EmptyState title="Ainda não existem pontos" />
+          <EmptyState
+            title="Ainda não existem pontos nesta Sessão"
+            description="Os pontos orientam perguntas, intervenções e documentos. Adicione o primeiro ponto para avançar na preparação."
+            action={<AdicionarPontoDialog assembleiaId={id} onAdicionar={atualizarPontos} />}
+          />
         ) : (
           <section className="grid gap-4 md:grid-cols-2">
             {pontos.map((ponto) => (

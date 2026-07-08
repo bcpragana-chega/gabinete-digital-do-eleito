@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/feedback";
 import { Breadcrumb } from "@/components/ui/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SaveFeedback, type SaveFeedbackState } from "@/components/ui/SaveFeedback";
 import {
   Select,
   SelectContent,
@@ -125,7 +126,7 @@ function DocumentoDoAssuntoPage() {
   const [estado, setEstado] = useState<EstadoDocumentoCriado>("rascunho");
   const [assembleiaId, setAssembleiaId] = useState<string | undefined>();
   const [pontoId, setPontoId] = useState<string | undefined>();
-  const [guardado, setGuardado] = useState(false);
+  const [saveState, setSaveState] = useState<SaveFeedbackState>("saved");
   const [copiado, setCopiado] = useState(false);
   const [modo, setModo] = useState<ModoDocumento>("visualizar");
 
@@ -214,46 +215,53 @@ function DocumentoDoAssuntoPage() {
     const antesPontoId = documento.pontoId;
     const antesEstado = documento.estado;
 
-    const atualizado = atualizarDocumentoACriarRascunho(documento.id, {
-      titulo: titulo.trim(),
-      conteudo,
-      estado,
-      assuntoId: dossieId,
-      assembleiaId,
-      pontoId: assembleiaId ? pontoId : undefined,
-    });
+    try {
+      setSaveState("saving");
+      const atualizado = atualizarDocumentoACriarRascunho(documento.id, {
+        titulo: titulo.trim(),
+        conteudo,
+        estado,
+        assuntoId: dossieId,
+        assembleiaId,
+        pontoId: assembleiaId ? pontoId : undefined,
+      });
 
-    if (!atualizado) return;
+      if (!atualizado) {
+        setSaveState("error");
+        return;
+      }
 
-    setDocumento(atualizado);
-    setGuardado(true);
-    window.setTimeout(() => setGuardado(false), 1600);
+      setDocumento(atualizado);
+      setSaveState("saved");
 
-    if (assembleiaId && assembleiaId !== antesAssembleiaId) {
-      registarEvento("Documento associado a sessão", atualizado.titulo, pontoId);
-    }
+      if (assembleiaId && assembleiaId !== antesAssembleiaId) {
+        registarEvento("Documento associado a sessão", atualizado.titulo, pontoId);
+      }
 
-    if (pontoId && pontoId !== antesPontoId) {
-      registarEvento("Documento associado a ponto", atualizado.titulo, pontoId);
-    }
+      if (pontoId && pontoId !== antesPontoId) {
+        registarEvento("Documento associado a ponto", atualizado.titulo, pontoId);
+      }
 
-    if (!assembleiaId && antesAssembleiaId) {
-      registarEvento(
-        "Associação removida",
-        `${atualizado.titulo} deixou de estar associado à sessão.`,
-      );
-    }
+      if (!assembleiaId && antesAssembleiaId) {
+        registarEvento(
+          "Associação removida",
+          `${atualizado.titulo} deixou de estar associado à sessão.`,
+        );
+      }
 
-    if (!pontoId && antesPontoId) {
-      registarEvento(
-        "Associação removida",
-        `${atualizado.titulo} deixou de estar associado ao ponto.`,
-        antesPontoId,
-      );
-    }
+      if (!pontoId && antesPontoId) {
+        registarEvento(
+          "Associação removida",
+          `${atualizado.titulo} deixou de estar associado ao ponto.`,
+          antesPontoId,
+        );
+      }
 
-    if (estado === "apresentado" && antesEstado !== "apresentado") {
-      registarEvento("Documento marcado como apresentado", atualizado.titulo, pontoId);
+      if (estado === "apresentado" && antesEstado !== "apresentado") {
+        registarEvento("Documento marcado como apresentado", atualizado.titulo, pontoId);
+      }
+    } catch {
+      setSaveState("error");
     }
   }
 
@@ -308,11 +316,13 @@ function DocumentoDoAssuntoPage() {
   function escolherAssembleia(proximoId: string) {
     setAssembleiaId(proximoId);
     setPontoId(undefined);
+    setSaveState("unsaved");
   }
 
   function removerAssociacaoSessao() {
     setAssembleiaId(undefined);
     setPontoId(undefined);
+    setSaveState("unsaved");
   }
 
   if (!dossie || (carregou && !documento)) {
@@ -330,6 +340,13 @@ function DocumentoDoAssuntoPage() {
             <EmptyState
               title="Documento não encontrado"
               description="Este documento pode ter sido removido ou não pertencer a este assunto."
+              action={
+                <Button asChild>
+                  <Link to="/assuntos/$dossieId" params={{ dossieId }}>
+                    Voltar ao assunto
+                  </Link>
+                </Button>
+              }
             />
           </div>
         </main>
@@ -378,10 +395,10 @@ function DocumentoDoAssuntoPage() {
                 }
                 actions={
                   <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    {(guardado || copiado) && (
-                      <span className="text-xs text-muted-foreground">
-                        {copiado ? "Texto copiado" : "Alterações guardadas"}
-                      </span>
+                    {copiado ? (
+                      <span className="text-xs text-muted-foreground">Texto copiado</span>
+                    ) : (
+                      <SaveFeedback state={saveState} />
                     )}
                     <Button
                       type="button"
@@ -466,7 +483,10 @@ function DocumentoDoAssuntoPage() {
                     </label>
                     <Select
                       value={pontoId}
-                      onValueChange={setPontoId}
+                      onValueChange={(valor) => {
+                        setPontoId(valor);
+                        setSaveState("unsaved");
+                      }}
                       disabled={!assembleiaId || pontosDaSessao.length === 0}
                     >
                       <SelectTrigger>
@@ -527,14 +547,23 @@ function DocumentoDoAssuntoPage() {
                 <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-foreground">Título</label>
-                    <Input value={titulo} onChange={(event) => setTitulo(event.target.value)} />
+                    <Input
+                      value={titulo}
+                      onChange={(event) => {
+                        setTitulo(event.target.value);
+                        setSaveState("unsaved");
+                      }}
+                    />
                   </div>
 
                   <div>
                     <label className="mb-1 block text-xs font-medium text-foreground">Estado</label>
                     <Select
                       value={estado}
-                      onValueChange={(value) => setEstado(value as EstadoDocumentoCriado)}
+                      onValueChange={(value) => {
+                        setEstado(value as EstadoDocumentoCriado);
+                        setSaveState("unsaved");
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -559,7 +588,14 @@ function DocumentoDoAssuntoPage() {
                     conteudo={conteudo}
                     contexto={contextoDocumento}
                     readOnly={modo === "visualizar"}
-                    onConteudoChange={modo === "editar" ? setConteudo : undefined}
+                    onConteudoChange={
+                      modo === "editar"
+                        ? (valor) => {
+                            setConteudo(valor);
+                            setSaveState("unsaved");
+                          }
+                        : undefined
+                    }
                   />
                 </div>
               ) : (
@@ -571,7 +607,10 @@ function DocumentoDoAssuntoPage() {
                       </label>
                       <Textarea
                         value={conteudo}
-                        onChange={(event) => setConteudo(event.target.value)}
+                        onChange={(event) => {
+                          setConteudo(event.target.value);
+                          setSaveState("unsaved");
+                        }}
                         rows={18}
                         className="min-h-[420px]"
                       />

@@ -54,8 +54,13 @@ function AgendaPage() {
               {proximas.length === 0 ? (
                 <EmptyState
                   className="mt-5"
-                  title="Sem datas próximas"
-                  description="As próximas sessões aparecerão aqui quando forem registadas."
+                  title="Ainda não existem sessões na Agenda"
+                  description="A Agenda ajuda a antecipar preparação e prazos. Crie ou atualize uma Sessão para ver as próximas datas aqui."
+                  action={
+                    <Button asChild>
+                      <Link to="/sessoes">Ir para Sessões</Link>
+                    </Button>
+                  }
                 />
               ) : (
                 <div className="mt-5 grid gap-4 lg:grid-cols-2">

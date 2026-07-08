@@ -44,7 +44,7 @@ export const Route = createFileRoute("/_app/biblioteca")({
 
 const separadores = [
   { id: "todos", label: "Todos" },
-  { id: "por-tratar", label: "Por tratar" },
+  { id: "por-tratar", label: "Por analisar" },
   { id: "leis", label: "Leis e regulamentos" },
   { id: "programas", label: "Programas eleitorais" },
   { id: "atas", label: "Atas" },
@@ -53,7 +53,7 @@ const separadores = [
 ] as const;
 
 type SeparadorId = (typeof separadores)[number]["id"];
-type EstadoBiblioteca = "por tratar" | "analisado" | "arquivado";
+type EstadoBiblioteca = "por analisar" | "analisado" | "arquivado";
 
 function documentosUnicos(documentos: Documento[]) {
   const porId = new Map<string, Documento>();
@@ -76,7 +76,7 @@ function estadoDocumento(documento: Documento): EstadoBiblioteca {
 
   if (inbox.archivedAt || documento.estado === "Arquivado") return "arquivado";
   if (inbox.estado === "Tratado" || documento.estado === "Revisto") return "analisado";
-  return "por tratar";
+  return "por analisar";
 }
 
 function estadoTone(estado: EstadoBiblioteca) {
@@ -114,13 +114,13 @@ function BibliotecaPage() {
     estado: estadoDocumento(documento),
   }));
 
-  const porTratar = documentosComEstado.filter((item) => item.estado === "por tratar").length;
+  const porTratar = documentosComEstado.filter((item) => item.estado === "por analisar").length;
   const analisados = documentosComEstado.filter((item) => item.estado === "analisado").length;
   const arquivados = documentosComEstado.filter((item) => item.estado === "arquivado").length;
 
   const documentosVisiveis = documentosComEstado.filter(({ documento, estado }) => {
     if (separadorAtivo === "todos") return true;
-    if (separadorAtivo === "por-tratar") return estado === "por tratar";
+    if (separadorAtivo === "por-tratar") return estado === "por analisar";
     return categoriaDocumento(documento) === separadorAtivo;
   });
 
@@ -162,7 +162,7 @@ function BibliotecaPage() {
           >
             <WorkspaceMetrics>
               <MetricCard icon={FileText} label="Documentos" value={documentos.length} />
-              <MetricCard icon={Inbox} label="Por tratar" value={porTratar} />
+              <MetricCard icon={Inbox} label="Por analisar" value={porTratar} />
               <MetricCard icon={CheckCircle2} label="Analisados" value={analisados} />
               <MetricCard icon={Archive} label="Arquivados" value={arquivados} />
             </WorkspaceMetrics>
@@ -194,8 +194,9 @@ function BibliotecaPage() {
               {documentosVisiveis.length === 0 ? (
                 <EmptyState
                   className="mt-6"
-                  title="Nada nesta vista"
-                  description="Quando existirem documentos deste tipo, aparecerão aqui."
+                  title="Ainda não existem documentos nesta vista"
+                  description="A Biblioteca centraliza documentos para análise e referência política. Adicione um documento para começar."
+                  action={<AdicionarBibliotecaWizard />}
                 />
               ) : (
                 <div className="mt-6 grid gap-3">

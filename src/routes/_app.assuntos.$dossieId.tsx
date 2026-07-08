@@ -67,22 +67,6 @@ function formatarData(data?: string) {
   }).format(new Date(data));
 }
 
-function proximaAcaoPlaceholder(dossie: Dossie) {
-  if (dossie.prioridade === "Crítica") {
-    return "Rever urgência política e registar o próximo seguimento.";
-  }
-
-  if (dossie.estado === "em acompanhamento") {
-    return "Rever a evolução recente do assunto.";
-  }
-
-  if (dossie.estado === "concluido") {
-    return "Confirmar se o histórico está completo.";
-  }
-
-  return "Definir primeiro passo de acompanhamento.";
-}
-
 function DossieDetalhePage() {
   const { dossieId } = Route.useParams();
   const dossie = useDossie(dossieId);
@@ -102,6 +86,11 @@ function DossieDetalhePage() {
             <EmptyState
               title="Assunto não encontrado"
               description="Este assunto pode ter sido removido ou ainda não estar disponível neste navegador."
+              action={
+                <Button asChild>
+                  <Link to="/assuntos">Ir para Assuntos</Link>
+                </Button>
+              }
             />
           </div>
         </main>
@@ -192,8 +181,8 @@ function DossieDetalhePage() {
                   />
                   <div className="mt-5">
                     <InfoCard
-                      title="Ainda não ativo"
-                      description="Mais tarde, o assistente poderá resumir evolução, detetar lacunas e sugerir próximos passos."
+                        title="Funcionalidade futura"
+                        description="This feature will be available in a future version."
                     />
                   </div>
                 </WorkspaceSection>
@@ -255,9 +244,8 @@ function DossieDetalhePage() {
               <div className="mt-5">
                 <ActionCard
                   icon={Clock3}
-                  title={proximaAcaoPlaceholder(dossie)}
-                  description="Esta indicação é provisória. No futuro poderá ser calculada a partir de sessões, compromissos e atividade recente."
-                  meta={`Baseado no estado "${estadoLabel(dossie.estado)}" e prioridade "${dossie.prioridade}".`}
+                  title="Funcionalidade futura"
+                  description="This feature will be available in a future version."
                 />
               </div>
             </WorkspaceSection>

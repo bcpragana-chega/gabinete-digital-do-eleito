@@ -1,10 +1,12 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronLeft, ClipboardList } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { StrategyField } from "@/components/estrategia/StrategyField";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SaveFeedback, type SaveFeedbackState } from "@/components/ui/SaveFeedback";
+import { Button } from "@/components/ui/button";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useAssembleia } from "@/lib/assembleias-store";
 import {
@@ -29,18 +31,25 @@ export const Route = createFileRoute("/_app/sessoes/$id/preparacao/estrategia")(
 function PreparacaoEstrategiaPage() {
   const { id } = Route.useParams();
   const assembleia = useAssembleia(id);
+  const [saveState, setSaveState] = useState<SaveFeedbackState>("saved");
 
   const estrategiaInicial = useMemo(() => obterEstrategiaDaAssembleia(id), [id]);
 
   const guardarEstrategia = useCallback(
     (value: EstrategiaSessao) => {
-      guardarEstrategiaDaAssembleia(id, {
-        objetivoPolitico: value.objetivoPolitico,
-        mensagemPrincipal: value.mensagemPrincipal,
-        naoFazer: value.naoFazer,
-        adversariosPrevisiveis: value.adversariosPrevisiveis,
-        notasLivres: value.notasLivres,
-      });
+      try {
+        setSaveState("saving");
+        guardarEstrategiaDaAssembleia(id, {
+          objetivoPolitico: value.objetivoPolitico,
+          mensagemPrincipal: value.mensagemPrincipal,
+          naoFazer: value.naoFazer,
+          adversariosPrevisiveis: value.adversariosPrevisiveis,
+          notasLivres: value.notasLivres,
+        });
+        setSaveState("saved");
+      } catch {
+        setSaveState("error");
+      }
     },
     [id],
   );
@@ -52,6 +61,7 @@ function PreparacaoEstrategiaPage() {
   });
 
   function atualizarCampo(campo: keyof Omit<EstrategiaSessao, "assembleiaId">, valor: string) {
+    setSaveState("unsaved");
     setEstrategia((atual) => ({
       ...atual,
       [campo]: valor,
@@ -68,12 +78,13 @@ function PreparacaoEstrategiaPage() {
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
-            Todas as assembleias
+            Todas as sessões
           </Link>
 
           <EmptyState
             title="Sessão não encontrada"
-            description="Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador."
+            description="A estratégia é guardada por Sessão. Esta Sessão não está disponível neste dispositivo."
+            action={<Button asChild><Link to="/sessoes">Ir para Sessões</Link></Button>}
           />
         </main>
       </>
@@ -124,6 +135,7 @@ function PreparacaoEstrategiaPage() {
           icon={ClipboardList}
           title="Briefing político"
           description="Defina a linha política da sessão antes de preparar perguntas, intervenções ou documentos. As alterações são guardadas automaticamente."
+          actions={<SaveFeedback state={saveState} />}
         />
 
         <section className="space-y-4">

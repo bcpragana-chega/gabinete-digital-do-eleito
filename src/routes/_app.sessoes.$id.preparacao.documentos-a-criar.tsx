@@ -5,6 +5,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Button } from "@/components/ui/button";
 import { useAssembleia } from "@/lib/assembleias-store";
 import {
   listarDocumentosACriarDaAssembleia,
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/_app/sessoes/$id/preparacao/documentos-a-
       { title: "Documentos a Criar — Preparação — Tribuno" },
       {
         name: "description",
-        content: "Central de rascunhos e documentos a criar da assembleia.",
+        content: "Central de rascunhos e documentos a criar da sessão.",
       },
     ],
   }),
@@ -62,10 +63,14 @@ function DocumentosACriarPage() {
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
-            Todas as assembleias
+            Todas as sessões
           </Link>
 
-          <EmptyState title="Sessão não encontrada" />
+          <EmptyState
+            title="Sessão não encontrada"
+            description="Os rascunhos são organizados por Sessão para apoiar intervenções e propostas."
+            action={<Button asChild><Link to="/sessoes">Ir para Sessões</Link></Button>}
+          />
         </main>
       </>
     );
@@ -115,13 +120,20 @@ function DocumentosACriarPage() {
           icon={FilePlus2}
           eyebrow="Preparação"
           title="Documentos a Criar"
-          description="Central dos rascunhos criados para esta assembleia, incluindo moções, recomendações, requerimentos e declarações de voto."
+          description="Central dos rascunhos criados para esta sessão, incluindo moções, recomendações, requerimentos e declarações de voto."
         />
 
         {rascunhos.length === 0 ? (
           <EmptyState
-            title="Ainda não existem documentos a criar"
-            description="Os rascunhos criados no detalhe de cada ponto aparecerão aqui."
+            title="Ainda não existem rascunhos nesta Sessão"
+            description="Esta área concentra os documentos políticos que vai apresentar. Crie um rascunho num ponto da ordem de trabalhos para aparecer aqui."
+            action={
+              <Button asChild>
+                <Link to="/sessoes/$id/preparacao/pontos" params={{ id }}>
+                  Ir para Pontos
+                </Link>
+              </Button>
+            }
           />
         ) : (
           <section className="grid gap-4">

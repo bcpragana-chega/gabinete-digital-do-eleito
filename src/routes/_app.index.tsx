@@ -38,6 +38,7 @@ import {
   obterPontosDaAssembleia,
   type PontoOrdemTrabalhos,
 } from "@/lib/pontos-store";
+import { labelEstadoDocumento } from "@/lib/ui-labels";
 import { cn } from "@/lib/utils";
 import type { Assembleia, Documento, DocumentoCriado, Dossie } from "@/lib/types";
 
@@ -581,7 +582,7 @@ function RecentDocumentsCard({ documentos }: { documentos: Documento[] }) {
                   {documento.titulo}
                 </p>
                 <p className="mt-0.5 truncate text-xs text-[#536682]">
-                  {documento.estado} · {formatarData(documento.data)}
+                  {labelEstadoDocumento(documento.estado)} · {formatarData(documento.data)}
                 </p>
               </div>
               {documento.estado === "Por rever" && (
@@ -801,7 +802,7 @@ function criarMissaoPrioritaria({
       meta: [
         {
           icon: FileText,
-          text: `${documentosPorRever.length} ${documentosPorRever.length === 1 ? "documento por rever" : "documentos por rever"}`,
+          text: `${documentosPorRever.length} ${documentosPorRever.length === 1 ? "documento por analisar" : "documentos por analisar"}`,
         },
       ],
     };
@@ -1140,7 +1141,7 @@ function criarMetricas({
     {
       label: "Documentos",
       value: String(documentos.length),
-      delta: `${documentos.filter((documento) => documento.estado === "Por rever").length} por rever`,
+      delta: `${documentos.filter((documento) => documento.estado === "Por rever").length} por analisar`,
       icon: Folder,
       iconBg: "bg-[#e8f6f8]",
       iconText: "text-[#0f7785]",

@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/ui/feedback";
 import { Breadcrumb } from "@/components/ui/navigation";
 import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
 import { Button } from "@/components/ui/button";
+import { SaveFeedback, type SaveFeedbackState } from "@/components/ui/SaveFeedback";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useAssembleia } from "@/lib/assembleias-store";
 import {
@@ -85,6 +86,7 @@ function PreparacaoPontoDetalhePage() {
   const dossies = useDossies();
   const relacoesDoPonto = useRelacoesPorObjeto("ponto", pontoId);
   const [versaoPonto, setVersaoPonto] = useState(0);
+  const [saveState, setSaveState] = useState<SaveFeedbackState>("saved");
 
   const ponto = useMemo(() => obterPontoPorId(id, pontoId), [id, pontoId, versaoPonto]);
   const preparacao = useMemo(() => obterPreparacaoDaAssembleia(id), [id]);
@@ -110,7 +112,13 @@ function PreparacaoPontoDetalhePage() {
   const guardarCampos = useCallback(
     (campos: CamposPreparacaoPonto) => {
       if (!ponto) return;
-      atualizarPonto(ponto.id, campos);
+      try {
+        setSaveState("saving");
+        atualizarPonto(ponto.id, campos);
+        setSaveState("saved");
+      } catch {
+        setSaveState("error");
+      }
 
       const estrategiaAntes = [
         ponto.descricao,
@@ -237,6 +245,7 @@ function PreparacaoPontoDetalhePage() {
   }, [id, pontoId]);
 
   function atualizarCampo(campo: keyof CamposPreparacaoPonto, valor: string) {
+    setSaveState("unsaved");
     setCampos((atuais) => ({
       ...atuais,
       [campo]: valor,
@@ -332,12 +341,17 @@ function PreparacaoPontoDetalhePage() {
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
-            Todas as assembleias
+            Todas as sessões
           </Link>
 
           <EmptyState
             title="Sessão não encontrada"
-            description="Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador."
+            description="Os pontos pertencem a uma Sessão. Esta Sessão não está disponível neste dispositivo."
+            action={
+              <Button asChild>
+                <Link to="/sessoes">Ir para Sessões</Link>
+              </Button>
+            }
           />
         </main>
       </>
@@ -361,6 +375,13 @@ function PreparacaoPontoDetalhePage() {
           <EmptyState
             title="Ponto não encontrado"
             description="Este ponto pode ter sido removido ou ainda não estar disponível neste navegador."
+            action={
+              <Button asChild>
+                <Link to="/sessoes/$id/preparacao/pontos" params={{ id }}>
+                  Voltar aos pontos
+                </Link>
+              </Button>
+            }
           />
         </main>
       </>
@@ -483,6 +504,10 @@ function PreparacaoPontoDetalhePage() {
               tarefasPendentes={dashboard.tarefasPendentes}
               progresso={dashboard.progresso}
             />
+
+            <div className="-mt-1">
+              <SaveFeedback state={saveState} />
+            </div>
 
             <LigadoAoPontoSection
               assuntosLigados={assuntosLigados}

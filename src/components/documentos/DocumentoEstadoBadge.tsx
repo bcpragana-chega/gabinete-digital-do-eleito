@@ -1,4 +1,5 @@
 import type { EstadoDocumento } from "@/lib/types";
+import { labelEstadoDocumento } from "@/lib/ui-labels";
 import { cn } from "@/lib/utils";
 
 const styles: Record<EstadoDocumento, string> = {
@@ -24,7 +25,7 @@ export function DocumentoEstadoBadge({
       )}
     >
       <span className="h-1 w-1 rounded-full bg-current opacity-70" />
-      {estado}
+      {labelEstadoDocumento(estado)}
     </span>
   );
 }

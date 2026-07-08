@@ -3,6 +3,7 @@ import { ChevronLeft, FileText, ClipboardList, ListOrdered, FilePlus2 } from "lu
 import { TopBar } from "@/components/layout/TopBar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/button";
 import { formatarData } from "@/lib/mock-data";
 import { useAssembleia } from "@/lib/assembleias-store";
 import { PreparacaoAreaCard } from "@/components/preparacao/PreparacaoAreaCard";
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/_app/sessoes/$id/preparacao")({
       {
         name: "description",
         content:
-          "Prepare a assembleia: documentos, estratégia, pontos da ordem de trabalhos e documentos a criar.",
+          "Prepare a sessão: documentos, estratégia, pontos da ordem de trabalhos e documentos a criar.",
       },
     ],
   }),
@@ -42,12 +43,17 @@ function PreparacaoPage() {
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
-            Todas as assembleias
+            Todas as sessões
           </Link>
 
           <EmptyState
             title="Sessão não encontrada"
-            description="Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador."
+            description="A preparação da Sessão só fica disponível quando a Sessão existe neste dispositivo."
+            action={
+              <Button asChild>
+                <Link to="/sessoes">Ir para Sessões</Link>
+              </Button>
+            }
           />
         </main>
       </>
@@ -83,7 +89,7 @@ function PreparacaoPage() {
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
-          Voltar à assembleia
+          Voltar à sessão
         </Link>
 
         <PageHeader
@@ -105,7 +111,7 @@ function PreparacaoPage() {
           <PreparacaoAreaCard
             icon={ClipboardList}
             titulo="Estratégia da Sessão"
-            descricao="Objetivos, mensagens-chave, riscos e notas gerais da assembleia."
+            descricao="Objetivos, mensagens-chave, riscos e notas gerais da sessão."
             to="/sessoes/$id/preparacao/estrategia"
             params={{ id }}
           />

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SaveFeedback, type SaveFeedbackState } from "@/components/ui/SaveFeedback";
 import {
   Select,
   SelectContent,
@@ -60,7 +61,7 @@ function RascunhoDocumentoPage() {
   const [conteudo, setConteudo] = useState("");
   const [estado, setEstado] = useState<EstadoDocumentoCriado>("rascunho");
   const [modo, setModo] = useState<ModoEditor>("editar");
-  const [guardado, setGuardado] = useState(false);
+  const [saveState, setSaveState] = useState<SaveFeedbackState>("saved");
 
   useEffect(() => {
     let ativo = true;
@@ -100,13 +101,19 @@ function RascunhoDocumentoPage() {
   function guardarAlteracoes() {
     if (!rascunho || !titulo.trim()) return;
 
-    const atualizado = atualizarDocumentoACriarRascunho(rascunho.id, {
-      titulo: titulo.trim(),
-      conteudo,
-      estado,
-    });
+    try {
+      setSaveState("saving");
+      const atualizado = atualizarDocumentoACriarRascunho(rascunho.id, {
+        titulo: titulo.trim(),
+        conteudo,
+        estado,
+      });
 
-    if (atualizado) {
+      if (!atualizado) {
+        setSaveState("error");
+        return;
+      }
+
       setRascunho(atualizado);
       adicionarEventoHistorico({
         pontoId,
@@ -114,8 +121,9 @@ function RascunhoDocumentoPage() {
         acao: "Documento editado",
         descricao: `Documento "${atualizado.titulo}" editado.`,
       });
-      setGuardado(true);
-      window.setTimeout(() => setGuardado(false), 1600);
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
     }
   }
 
@@ -165,10 +173,18 @@ function RascunhoDocumentoPage() {
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
-            Todas as assembleias
+            Todas as sessões
           </Link>
 
-          <EmptyState title="Sessão não encontrada" />
+          <EmptyState
+            title="Sessão não encontrada"
+            description="Os rascunhos por ponto dependem da Sessão. Esta Sessão não está disponível neste dispositivo."
+            action={
+              <Button asChild>
+                <Link to="/sessoes">Ir para Sessões</Link>
+              </Button>
+            }
+          />
         </main>
       </>
     );
@@ -191,6 +207,13 @@ function RascunhoDocumentoPage() {
           <EmptyState
             title="Rascunho não encontrado"
             description="Este rascunho pode ter sido removido ou ainda não estar disponível neste navegador."
+            action={
+              <Button asChild>
+                <Link to="/sessoes/$id/preparacao/pontos/$pontoId" params={{ id, pontoId }}>
+                  Voltar ao ponto
+                </Link>
+              </Button>
+            }
           />
         </main>
       </>
@@ -269,9 +292,7 @@ function RascunhoDocumentoPage() {
 
             {modo === "editar" && (
               <div className="flex items-center justify-end gap-3">
-                {guardado && (
-                  <span className="text-xs text-muted-foreground">Alterações guardadas</span>
-                )}
+                <SaveFeedback state={saveState} />
                 <Button
                   type="button"
                   variant="secondary"
@@ -302,14 +323,23 @@ function RascunhoDocumentoPage() {
               <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-foreground">Título</label>
-                  <Input value={titulo} onChange={(event) => setTitulo(event.target.value)} />
+                  <Input
+                    value={titulo}
+                    onChange={(event) => {
+                      setTitulo(event.target.value);
+                      setSaveState("unsaved");
+                    }}
+                  />
                 </div>
 
                 <div>
                   <label className="mb-1 block text-xs font-medium text-foreground">Estado</label>
                   <Select
                     value={estado}
-                    onValueChange={(value) => setEstado(value as EstadoDocumentoCriado)}
+                    onValueChange={(value) => {
+                      setEstado(value as EstadoDocumentoCriado);
+                      setSaveState("unsaved");
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -336,7 +366,10 @@ function RascunhoDocumentoPage() {
                       sessao: assembleia.nome,
                       ponto: ponto ? `Ponto ${ponto.numero} · ${ponto.titulo}` : undefined,
                     }}
-                    onConteudoChange={setConteudo}
+                    onConteudoChange={(valor) => {
+                      setConteudo(valor);
+                      setSaveState("unsaved");
+                    }}
                   />
                 </div>
               ) : (
@@ -344,7 +377,10 @@ function RascunhoDocumentoPage() {
                   <label className="mb-1 block text-xs font-medium text-foreground">Conteúdo</label>
                   <Textarea
                     value={conteudo}
-                    onChange={(event) => setConteudo(event.target.value)}
+                    onChange={(event) => {
+                      setConteudo(event.target.value);
+                      setSaveState("unsaved");
+                    }}
                     rows={16}
                     className="min-h-[360px]"
                   />

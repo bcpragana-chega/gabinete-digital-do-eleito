@@ -6,6 +6,7 @@ import { AdicionarDocumentoSheet } from "@/components/documentos/AdicionarDocume
 import { DashboardMetric } from "@/components/ui/DashboardMetric";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/button";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
 import { useAssembleia } from "@/lib/assembleias-store";
 
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/_app/sessoes/$id/preparacao/documentos")(
       { title: "Documentos — Preparação — Tribuno" },
       {
         name: "description",
-        content: "Gestão dos documentos da preparação da assembleia.",
+        content: "Gestão dos documentos da preparação da sessão.",
       },
     ],
   }),
@@ -37,12 +38,13 @@ function PreparacaoDocumentosPage() {
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
-            Todas as assembleias
+            Todas as sessões
           </Link>
 
           <EmptyState
             title="Sessão não encontrada"
-            description="Esta assembleia pode ter sido removida ou ainda não estar disponível neste navegador."
+            description="Esta área guarda os documentos de preparação da Sessão. A Sessão não está disponível neste dispositivo."
+            action={<Button asChild><Link to="/sessoes">Ir para Sessões</Link></Button>}
           />
         </main>
       </>
@@ -92,7 +94,7 @@ function PreparacaoDocumentosPage() {
         <PageHeader
           icon={FileText}
           title="Documentos"
-          description="Carregue aqui a convocatória, atas, relatórios, propostas e restantes documentos necessários para preparar a assembleia."
+          description="Carregue aqui a convocatória, atas, relatórios e propostas para preparar a sessão com contexto completo."
           actions={<AdicionarDocumentoSheet assembleiaId={id} />}
         />
 
@@ -126,8 +128,9 @@ function PreparacaoDocumentosPage() {
 
           {documentos.length === 0 ? (
             <EmptyState
-              title="Ainda não existem documentos"
-              description="Comece por carregar a convocatória, atas, relatórios ou propostas que pretende analisar."
+              title="Ainda não existem documentos nesta Sessão"
+              description="Os documentos orientam decisões e intervenções. Adicione o primeiro documento para iniciar a análise."
+              action={<AdicionarDocumentoSheet assembleiaId={id} />}
             />
           ) : (
             <div className="grid gap-3 md:grid-cols-2">

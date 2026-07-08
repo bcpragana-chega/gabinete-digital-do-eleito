@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SaveFeedback, type SaveFeedbackState } from "@/components/ui/SaveFeedback";
 import {
   Select,
   SelectContent,
@@ -62,7 +63,7 @@ function DocumentoACriarDaSessaoPage() {
   const [titulo, setTitulo] = useState("");
   const [conteudo, setConteudo] = useState("");
   const [estado, setEstado] = useState<EstadoDocumentoCriado>("rascunho");
-  const [guardado, setGuardado] = useState(false);
+  const [saveState, setSaveState] = useState<SaveFeedbackState>("saved");
 
   useEffect(() => {
     let ativo = true;
@@ -102,18 +103,25 @@ function DocumentoACriarDaSessaoPage() {
   function guardarAlteracoes() {
     if (!rascunho || !titulo.trim()) return;
 
-    const atualizado = atualizarDocumentoACriarRascunho(rascunho.id, {
-      titulo: titulo.trim(),
-      conteudo,
-      estado,
-      assembleiaId: id,
-    });
+    try {
+      setSaveState("saving");
+      const atualizado = atualizarDocumentoACriarRascunho(rascunho.id, {
+        titulo: titulo.trim(),
+        conteudo,
+        estado,
+        assembleiaId: id,
+      });
 
-    if (!atualizado) return;
+      if (!atualizado) {
+        setSaveState("error");
+        return;
+      }
 
-    setRascunho(atualizado);
-    setGuardado(true);
-    window.setTimeout(() => setGuardado(false), 1600);
+      setRascunho(atualizado);
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
   }
 
   function exportarPDF() {
@@ -164,7 +172,15 @@ function DocumentoACriarDaSessaoPage() {
             </Link>
           </Button>
 
-          <EmptyState title="Sessão não encontrada" />
+          <EmptyState
+            title="Sessão não encontrada"
+            description="Os documentos a criar ficam organizados por Sessão. Esta Sessão não está disponível neste dispositivo."
+            action={
+              <Button asChild>
+                <Link to="/sessoes">Ir para Sessões</Link>
+              </Button>
+            }
+          />
         </main>
       </>
     );
@@ -185,6 +201,13 @@ function DocumentoACriarDaSessaoPage() {
           <EmptyState
             title="Documento não encontrado"
             description="Este documento pode ter sido removido ou ainda não estar sincronizado neste dispositivo."
+            action={
+              <Button asChild>
+                <Link to="/sessoes/$id/preparacao/documentos-a-criar" params={{ id }}>
+                  Voltar aos documentos a criar
+                </Link>
+              </Button>
+            }
           />
         </main>
       </>
@@ -211,9 +234,7 @@ function DocumentoACriarDaSessaoPage() {
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-card">
           <div className="mb-5 flex flex-wrap items-center justify-end gap-3">
-            {guardado && (
-              <span className="text-xs text-muted-foreground">Alterações guardadas</span>
-            )}
+            <SaveFeedback state={saveState} />
             <Button type="button" variant="secondary" onClick={exportarPDF} disabled={!rascunho}>
               <Download className="mr-2 h-4 w-4" />
               Exportar PDF
@@ -231,14 +252,23 @@ function DocumentoACriarDaSessaoPage() {
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
             <div>
               <label className="mb-1 block text-xs font-medium text-foreground">Título</label>
-              <Input value={titulo} onChange={(event) => setTitulo(event.target.value)} />
+              <Input
+                value={titulo}
+                onChange={(event) => {
+                  setTitulo(event.target.value);
+                  setSaveState("unsaved");
+                }}
+              />
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-medium text-foreground">Estado</label>
               <Select
                 value={estado}
-                onValueChange={(value) => setEstado(value as EstadoDocumentoCriado)}
+                onValueChange={(value) => {
+                  setEstado(value as EstadoDocumentoCriado);
+                  setSaveState("unsaved");
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -261,7 +291,10 @@ function DocumentoACriarDaSessaoPage() {
                 titulo={titulo}
                 conteudo={conteudo}
                 contexto={{ assembleia, sessao: assembleia.nome }}
-                onConteudoChange={setConteudo}
+                onConteudoChange={(valor) => {
+                  setConteudo(valor);
+                  setSaveState("unsaved");
+                }}
               />
             </div>
           ) : (
@@ -269,7 +302,10 @@ function DocumentoACriarDaSessaoPage() {
               <label className="mb-1 block text-xs font-medium text-foreground">Conteúdo</label>
               <Textarea
                 value={conteudo}
-                onChange={(event) => setConteudo(event.target.value)}
+                onChange={(event) => {
+                  setConteudo(event.target.value);
+                  setSaveState("unsaved");
+                }}
                 rows={18}
                 className="min-h-[420px]"
               />

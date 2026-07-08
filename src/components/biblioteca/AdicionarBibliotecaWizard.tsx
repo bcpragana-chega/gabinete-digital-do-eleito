@@ -51,7 +51,7 @@ type TipoBiblioteca =
   | "Notícia"
   | "Outro";
 
-type EstadoInicial = "Por tratar" | "Analisado" | "Arquivado";
+type EstadoInicial = "Por analisar" | "Analisado" | "Arquivado";
 type Ligacao = "Assunto" | "Sessão" | "Ambos" | "Nenhum por agora";
 
 const passos = ["Documento", "Classificar", "Ligar", "Revisão"];
@@ -64,7 +64,7 @@ const tipos: TipoBiblioteca[] = [
   "Notícia",
   "Outro",
 ];
-const estados: EstadoInicial[] = ["Por tratar", "Analisado", "Arquivado"];
+const estados: EstadoInicial[] = ["Por analisar", "Analisado", "Arquivado"];
 const ligacoes: Ligacao[] = ["Assunto", "Sessão", "Ambos", "Nenhum por agora"];
 
 function hoje() {
@@ -131,7 +131,7 @@ export function AdicionarBibliotecaWizard() {
   const [ficheiroTipo, setFicheiroTipo] = useState<string | undefined>();
   const [ficheiro, setFicheiro] = useState<File | undefined>();
   const [tipo, setTipo] = useState<TipoBiblioteca>("Outro");
-  const [estado, setEstado] = useState<EstadoInicial>("Por tratar");
+  const [estado, setEstado] = useState<EstadoInicial>("Por analisar");
   const [ligacao, setLigacao] = useState<Ligacao>("Nenhum por agora");
   const [dossieId, setDossieId] = useState("");
   const [assembleiaId, setAssembleiaId] = useState("");
@@ -150,7 +150,7 @@ export function AdicionarBibliotecaWizard() {
     setFicheiroTipo(undefined);
     setFicheiro(undefined);
     setTipo("Outro");
-    setEstado("Por tratar");
+    setEstado("Por analisar");
     setLigacao("Nenhum por agora");
     setDossieId("");
     setAssembleiaId("");
@@ -214,7 +214,7 @@ export function AdicionarBibliotecaWizard() {
       associarInboxDocumentoAAssembleia(documento.id, assembleiaId);
     }
 
-    if (estado === "Por tratar") {
+    if (estado === "Por analisar") {
       definirEstadoInboxDocumento(documento.id, "Novo");
     }
 

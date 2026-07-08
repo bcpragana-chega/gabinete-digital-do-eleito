@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { TopBar } from "@/components/layout/TopBar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/feedback";
 import { formatarData } from "@/lib/mock-data";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
 import { useAssembleias } from "@/lib/assembleias-store";
@@ -63,14 +65,15 @@ function HistoricoPage() {
         </div>
 
         {historico.length === 0 ? (
-          <section className="rounded-2xl border border-border bg-card p-8 shadow-card">
-            <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
-              Ainda não há sessões concluídas
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              As sessões concluídas ou arquivadas aparecerão aqui automaticamente.
-            </p>
-          </section>
+          <EmptyState
+            title="Ainda não existem sessões concluídas"
+            description="O Histórico mostra decisões já encerradas para consulta futura. Quando concluir uma Sessão, ela aparecerá aqui."
+            action={
+              <Button asChild>
+                <Link to="/sessoes">Ir para Sessões</Link>
+              </Button>
+            }
+          />
         ) : (
           <ol className="relative border-l border-border ml-3">
             {historico.map((a) => (

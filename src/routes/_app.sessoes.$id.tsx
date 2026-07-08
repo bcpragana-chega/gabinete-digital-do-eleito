@@ -62,7 +62,7 @@ export const Route = createFileRoute("/_app/sessoes/$id")({
 });
 
 function estadoLabel(estado: EstadoAssembleia) {
-  if (estado === "preparacao") return "Preparação";
+  if (estado === "preparacao") return "Em preparação";
   if (estado === "analise") return "Em análise";
   if (estado === "concluida") return "Concluída";
   return "Arquivada";
@@ -139,11 +139,16 @@ function AssembleiaDetailPage() {
         <main className="min-h-screen bg-transparent">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
             <Button asChild variant="ghost" size="sm" className="mb-6">
-              <Link to="/sessoes">Todas as sessões</Link>
+              <Link to="/sessoes">Voltar às sessões</Link>
             </Button>
             <EmptyState
               title="Sessão não encontrada"
-              description="Esta sessão pode ter sido removida ou ainda não estar disponível neste navegador."
+              description="A Sessão é o centro da preparação política e documental. Esta Sessão não está disponível neste dispositivo."
+              action={
+                <Button asChild>
+                  <Link to="/sessoes">Ir para Sessões</Link>
+                </Button>
+              }
             />
           </div>
         </main>
@@ -582,12 +587,11 @@ function AssembleiaDetailPage() {
                 title="Ligado a esta sessão"
                 description="Documentos, pessoas, entidades e compromissos ligados à sessão."
               />
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <div className="mt-5">
                 <InfoCard
-                  title="Compromissos"
-                  description="Preparado para acompanhamento futuro."
+                  title="Funcionalidade futura"
+                  description="This feature will be available in a future version."
                 />
-                <InfoCard title="Outras ligações" description="Preparado para relações futuras." />
               </div>
             </WorkspaceSection>
 
@@ -595,12 +599,12 @@ function AssembleiaDetailPage() {
               <SectionTitle
                 icon={Bot}
                 title="Assistente"
-                description="Preparado para IA. Não ativo nesta fase."
+                description="Assistência contextual para preparação de sessão."
               />
               <div className="mt-5">
                 <InfoCard
-                  title="Contexto pronto"
-                  description="No futuro, o assistente poderá usar documentos, estratégia, pontos e rascunhos desta sessão para ajudar na preparação."
+                  title="Funcionalidade futura"
+                  description="This feature will be available in a future version."
                 />
               </div>
             </WorkspaceSection>

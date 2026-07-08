@@ -4,6 +4,7 @@ import { UserAvatar } from "@/components/auth/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SaveFeedback, type SaveFeedbackState } from "@/components/ui/SaveFeedback";
 import {
   Select,
   SelectContent,
@@ -115,6 +116,7 @@ export function PerfilEleitoForm({
     perfilNormalizado?.assinaturaInstitucional || "",
   );
   const [aGuardar, setAGuardar] = useState(false);
+  const [saveState, setSaveState] = useState<SaveFeedbackState>("saved");
   const [nomeEditadoManualmente, setNomeEditadoManualmente] = useState(false);
   const [erro, setErro] = useState("");
   const [codigoErro, setCodigoErro] = useState<PerfilErroCodigo | undefined>();
@@ -141,6 +143,9 @@ export function PerfilEleitoForm({
   function limparErro() {
     setErro("");
     setCodigoErro(undefined);
+    if (saveState === "error") {
+      setSaveState("unsaved");
+    }
   }
 
   function registarCampoAlterado(campo: string, valor: string) {
@@ -161,6 +166,7 @@ export function PerfilEleitoForm({
       limparErro();
       registarCampoAlterado(campo, valor);
       setter(valor);
+      setSaveState("unsaved");
     } catch (error) {
       const codigo = codigoDoErro(error);
       console.error("[Tribuno Perfil] Erro ao alterar campo", {
@@ -172,6 +178,7 @@ export function PerfilEleitoForm({
       });
       setCodigoErro(codigo);
       setErro(mensagensErroPerfil[codigo]);
+      setSaveState("error");
     }
   }
 
@@ -184,6 +191,7 @@ export function PerfilEleitoForm({
       limparErro();
       registarCampoAlterado(campo, valor);
       setter(valor as T);
+      setSaveState("unsaved");
     } catch (error) {
       const codigo = codigoDoErro(error);
       console.error("[Tribuno Perfil] Erro ao alterar opção", {
@@ -195,6 +203,7 @@ export function PerfilEleitoForm({
       });
       setCodigoErro(codigo);
       setErro(mensagensErroPerfil[codigo]);
+      setSaveState("error");
     }
   }
 
@@ -223,6 +232,7 @@ export function PerfilEleitoForm({
 
     limparErro();
     setAGuardar(true);
+    setSaveState("saving");
 
     const payload = {
       nomeInstitucional: nomeInstitucional.trim(),
@@ -247,6 +257,7 @@ export function PerfilEleitoForm({
         diagnostico,
         payload: payloadSeguro(payload),
       });
+      setSaveState("saved");
       onSaved?.(atualizado);
     } catch (error) {
       const codigo = codigoDoErro(error);
@@ -261,6 +272,7 @@ export function PerfilEleitoForm({
 
       setCodigoErro(codigo);
       setErro(mensagensErroPerfil[codigo]);
+      setSaveState("error");
     } finally {
       setAGuardar(false);
     }
@@ -381,6 +393,7 @@ export function PerfilEleitoForm({
             {erro} {codigoErro ? `Código: ${codigoErro}` : null}
           </p>
         )}
+        {!erro && <SaveFeedback state={saveState} className="mr-3 self-center" />}
         <Button type="button" onClick={guardar} disabled={!podeGuardar || aGuardar}>
           <Save className="h-4 w-4" />
           {aGuardar ? "A guardar..." : submitLabel}

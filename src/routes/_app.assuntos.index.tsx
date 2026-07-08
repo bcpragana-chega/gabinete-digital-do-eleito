@@ -127,8 +127,8 @@ function DossiesPage() {
             <div>
               {dossiesVisiveis.length === 0 ? (
                 <EmptyState
-                  title="Nenhum assunto encontrado"
-                  description="Crie um novo assunto ou altere o filtro selecionado."
+                  title="Ainda não existem Assuntos nesta vista"
+                  description="Os Assuntos ajudam a acompanhar temas políticos ao longo do mandato. Crie um Assunto para começar o acompanhamento."
                   action={<NovoDossieDialog />}
                 />
               ) : (

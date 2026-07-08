@@ -30,15 +30,16 @@ import {
   obterInboxDocumento,
   useInboxDocumentos,
 } from "@/lib/inbox-store";
+import { TERMS, labelEstadoInbox } from "@/lib/ui-labels";
 import type { Documento, EstadoInboxDocumento } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/caixa-de-entrada")({
   head: () => ({
     meta: [
-      { title: "Por tratar — Tribuno" },
+      { title: "Caixa de Entrada — Tribuno" },
       {
         name: "description",
-        content: "Documentos que ainda precisam de atenção.",
+        content: "Documentos que entram no mandato e precisam de triagem.",
       },
     ],
   }),
@@ -88,46 +89,51 @@ function CaixaDeEntradaPage() {
 
   return (
     <>
-      <TopBar breadcrumb="Por tratar" />
+      <TopBar breadcrumb={TERMS.caixaEntrada} />
       <main className="min-h-screen bg-transparent">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
           <WorkspaceLayout
             header={
               <WorkspaceHeader
                 icon={Inbox}
-                eyebrow="Documentos pendentes"
-                title="Por tratar"
-                description="Documentos que ainda precisam de leitura, associação ou arquivo."
+                eyebrow={TERMS.caixaEntrada}
+                title={TERMS.caixaEntrada}
+                description="Aqui faz a triagem de entrada: analisar documentos, ligar a Assuntos ou Sessões, e arquivar quando estiver concluído."
                 className="bg-card p-4 sm:p-7"
                 meta={
                   <>
                     <StatusBadge tone="warning">{novos} novos</StatusBadge>
                     <StatusBadge tone="info">{emAnalise} em análise</StatusBadge>
-                    <StatusBadge tone="success">{tratados} tratados</StatusBadge>
+                    <StatusBadge tone="success">{tratados} analisados</StatusBadge>
                   </>
                 }
               />
             }
           >
             <WorkspaceMetrics>
-              <MetricCard icon={Inbox} label="Por tratar" value={pendentes.length} />
+              <MetricCard icon={Inbox} label="Por analisar" value={pendentes.length} />
               <MetricCard icon={FileText} label="Novos" value={novos} />
               <MetricCard icon={CheckCircle2} label="Em análise" value={emAnalise} />
-              <MetricCard icon={Archive} label="Tratados" value={tratados} />
+              <MetricCard icon={Archive} label="Analisados" value={tratados} />
             </WorkspaceMetrics>
 
             <WorkspaceSection>
               <SectionTitle
                 icon={Inbox}
-                title="Documentos por tratar"
-                description="Dê destino a cada documento."
+                title="Documentos por analisar"
+                description="Dê destino a cada documento de entrada para manter o mandato organizado."
               />
 
               {pendentes.length === 0 ? (
                 <EmptyState
                   className="mt-5"
-                  title="Nada por tratar"
-                  description="Não há documentos novos ou em análise por tratar."
+                  title="Caixa de Entrada vazia"
+                  description="Todos os documentos de entrada já foram analisados ou arquivados. Mantenha esta área limpa para não perder prioridades."
+                  action={
+                    <Button asChild>
+                      <Link to="/biblioteca">Adicionar documento à Biblioteca</Link>
+                    </Button>
+                  }
                 />
               ) : (
                 <div className="mt-5 grid gap-4 lg:grid-cols-2">
@@ -143,7 +149,9 @@ function CaixaDeEntradaPage() {
                       className="min-w-0 overflow-hidden"
                       meta={
                         <div className="flex flex-wrap gap-2">
-                          <StatusBadge tone={estadoTone(inbox.estado)}>{inbox.estado}</StatusBadge>
+                          <StatusBadge tone={estadoTone(inbox.estado)}>
+                            {labelEstadoInbox(inbox.estado)}
+                          </StatusBadge>
                           <StatusBadge tone="muted" dot={false}>
                             {documento.tipo}
                           </StatusBadge>
