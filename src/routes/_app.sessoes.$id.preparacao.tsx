@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { formatarData } from "@/lib/mock-data";
 import { useAssembleia } from "@/lib/assembleias-store";
 import { PreparacaoAreaCard } from "@/components/preparacao/PreparacaoAreaCard";
+import { PreparationGuidancePanel } from "@/components/preparacao/PreparationGuidancePanel";
 
 export const Route = createFileRoute("/_app/sessoes/$id/preparacao")({
   head: () => ({
@@ -98,6 +99,8 @@ function PreparacaoPage() {
           title={assembleia.nome}
           description={`${formatarData(assembleia.data)} · ${assembleia.hora} · ${assembleia.local}`}
         />
+
+        <PreparationGuidancePanel assembleiaId={id} className="mb-6" />
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <PreparacaoAreaCard

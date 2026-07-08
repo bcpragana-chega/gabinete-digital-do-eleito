@@ -6,6 +6,7 @@ import { AdicionarPontoDialog } from "@/components/preparacao/AdicionarPontoDial
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
+import { PreparationGuidancePanel } from "@/components/preparacao/PreparationGuidancePanel";
 import { useAssembleia } from "@/lib/assembleias-store";
 import { carregarPontosRemotosSeDisponivel, obterPontosDaAssembleia } from "@/lib/pontos-store";
 
@@ -100,6 +101,8 @@ function PreparacaoPontosPage() {
           description="Organize aqui os pontos da sessão e prepare notas, perguntas, ações, sentido de voto e documentos associados a cada ponto."
           actions={<AdicionarPontoDialog assembleiaId={id} onAdicionar={atualizarPontos} />}
         />
+
+        <PreparationGuidancePanel assembleiaId={id} className="mb-6" />
 
         {pontos.length === 0 ? (
           <EmptyState

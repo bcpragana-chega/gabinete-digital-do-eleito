@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SaveFeedback, type SaveFeedbackState } from "@/components/ui/SaveFeedback";
 import { Button } from "@/components/ui/button";
+import { PreparationGuidancePanel } from "@/components/preparacao/PreparationGuidancePanel";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useAssembleia } from "@/lib/assembleias-store";
 import {
@@ -137,6 +138,8 @@ function PreparacaoEstrategiaPage() {
           description="Defina a linha política da sessão antes de preparar perguntas, intervenções ou documentos. As alterações são guardadas automaticamente."
           actions={<SaveFeedback state={saveState} />}
         />
+
+        <PreparationGuidancePanel assembleiaId={id} className="mb-6" />
 
         <section className="space-y-4">
           <StrategyField

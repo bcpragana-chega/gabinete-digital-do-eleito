@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { PreparationGuidancePanel } from "@/components/preparacao/PreparationGuidancePanel";
 import { useAssembleia } from "@/lib/assembleias-store";
 import {
   listarDocumentosACriarDaAssembleia,
@@ -122,6 +123,8 @@ function DocumentosACriarPage() {
           title="Documentos a Criar"
           description="Central dos rascunhos criados para esta sessão, incluindo moções, recomendações, requerimentos e declarações de voto."
         />
+
+        <PreparationGuidancePanel assembleiaId={id} className="mb-6" />
 
         {rascunhos.length === 0 ? (
           <EmptyState

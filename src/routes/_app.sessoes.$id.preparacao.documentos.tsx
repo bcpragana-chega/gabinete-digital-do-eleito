@@ -7,6 +7,7 @@ import { DashboardMetric } from "@/components/ui/DashboardMetric";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
+import { PreparationGuidancePanel } from "@/components/preparacao/PreparationGuidancePanel";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
 import { useAssembleia } from "@/lib/assembleias-store";
 
@@ -97,6 +98,8 @@ function PreparacaoDocumentosPage() {
           description="Carregue aqui a convocatória, atas, relatórios e propostas para preparar a sessão com contexto completo."
           actions={<AdicionarDocumentoSheet assembleiaId={id} />}
         />
+
+        <PreparationGuidancePanel assembleiaId={id} className="mb-6" />
 
         <div className="grid gap-4 md:grid-cols-3 mb-8">
           <DashboardMetric
