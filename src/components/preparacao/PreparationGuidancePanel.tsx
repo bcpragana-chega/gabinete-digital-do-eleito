@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { StatusBadge } from "@/components/ui/common/StatusBadge";
 import {
   listarDocumentosACriarDaAssembleia,
   subscreverDocumentosACriar,
@@ -99,35 +98,26 @@ export function PreparationGuidancePanel({
 
   return (
     <section className={className}>
-      <Card className="w-full max-w-full overflow-hidden rounded-xl border border-border/80 bg-card p-2.5">
-        <div className="space-y-1">
+      <Card className="w-full max-w-full overflow-hidden rounded-xl border border-border/80 bg-card p-2">
+        <div className="space-y-0.5">
           <div className="flex items-start justify-between gap-2">
-            <h2 className="font-display text-xs font-semibold tracking-tight text-foreground">
+            <h2 className="font-display text-xs font-semibold tracking-tight text-foreground/90">
               Assistente de preparação
             </h2>
-            <StatusBadge tone={state.readinessTone} dot={false} className="shrink-0 text-[11px]">
-              {state.readinessLabel}
-            </StatusBadge>
           </div>
-
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Estado, próxima ação e pendências.
-          </p>
         </div>
 
-        <div className="mt-2.5 space-y-2">
-          <div className="space-y-1.5 border-b border-border/70 pb-2">
+        <div className="mt-2 space-y-1.5">
+          <div className="space-y-1 border-b border-border/60 pb-1.5">
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               Estado
             </p>
-            <div className="flex items-center justify-between gap-2">
-              <p className="min-w-0 text-sm font-semibold leading-none text-foreground">{state.readinessLabel}</p>
-              <p className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs font-semibold leading-none text-foreground">
-                {state.score}%
-              </p>
-            </div>
-            <p className="text-[11px] leading-none text-muted-foreground">{state.scoreDescription}</p>
-            <div className="h-1 rounded-full bg-muted">
+            <p className="text-base font-semibold leading-none text-foreground">{state.score}%</p>
+            <p className="text-xs font-medium leading-none text-foreground">{state.readinessLabel}</p>
+            <p className="text-[11px] leading-none text-muted-foreground">
+              {state.completedCount} de {state.steps.length} passos concluídos
+            </p>
+            <div className="h-1 rounded-full bg-muted/80">
               <div
                 className="h-full rounded-full transition-all"
                 style={{ width: `${state.score}%`, backgroundColor: state.progressColor }}
@@ -135,10 +125,10 @@ export function PreparationGuidancePanel({
             </div>
           </div>
 
-          <div className="space-y-1.5 border-b border-border/70 pb-2">
+          <div className="space-y-1 border-b border-border/60 pb-1.5">
             <p className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               <Sparkles className="h-3 w-3" />
-              Próxima ação recomendada
+              Próxima ação
             </p>
             <h3 className="text-sm font-semibold leading-snug text-foreground">{state.nextAction.title}</h3>
             <p className="text-[11px] leading-relaxed text-muted-foreground">{state.nextAction.description}</p>
@@ -151,31 +141,37 @@ export function PreparationGuidancePanel({
             </Button>
           </div>
 
-          <div className="space-y-1.5 border-b border-border/70 pb-2">
+          <div className="space-y-1 border-b border-border/60 pb-1.5">
             <p className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               <ClipboardList className="h-3 w-3" />
-              Checklist de preparação
+              Checklist
             </p>
 
-            <ol className="space-y-1">
+            <ol className="space-y-0.5">
               {state.steps.map((step) => (
-                <li key={step.id} className="flex items-center gap-1.5 text-xs leading-snug text-foreground">
+                <li
+                  key={step.id}
+                  className="grid grid-cols-[12px_minmax(0,1fr)_auto] items-center gap-1.5 text-[11px] leading-none text-foreground"
+                >
                   <span
                     className={[
-                      "shrink-0 text-sm font-semibold leading-none",
+                      "shrink-0 text-xs font-semibold leading-none",
                       step.done ? "text-status-concluida" : "text-muted-foreground",
                     ].join(" ")}
                     aria-hidden
                   >
                     {step.done ? "✓" : "○"}
                   </span>
-                  <span className="truncate">{step.label}</span>
+                  <span className="min-w-0">{step.label}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">
+                    {step.done ? "Concluído" : "Em falta"}
+                  </span>
                 </li>
               ))}
             </ol>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <p className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               <ListChecks className="h-3 w-3" />
               Ainda falta
@@ -186,15 +182,15 @@ export function PreparationGuidancePanel({
                 Preparação concluída. Faça apenas uma revisão final de confiança antes da sessão.
               </p>
             ) : state.missingItems.length > 0 ? (
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 {state.missingItems.map((item) => (
-                  <li key={item.id} className="flex items-center justify-between gap-2">
+                  <li key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
                     <p className="min-w-0 text-[11px] leading-relaxed text-foreground">• {item.message}</p>
                     <Button
                       asChild
                       variant="secondary"
                       size="sm"
-                      className="h-6 shrink-0 px-2 text-[10px]"
+                      className="h-6 shrink-0 px-2 text-[10px] whitespace-nowrap"
                     >
                       <Link to={item.href}>{item.cta}</Link>
                     </Button>
