@@ -22,6 +22,7 @@ import { EditarAssembleiaDialog } from "@/components/assembleias/EditarAssemblei
 import { SessaoPreparacaoWizard } from "@/components/assembleias/SessaoPreparacaoWizard";
 import { AdicionarDocumentoSheet } from "@/components/documentos/AdicionarDocumentoSheet";
 import { AdicionarPontoDialog } from "@/components/preparacao/AdicionarPontoDialog";
+import { PreparationGuidancePanel } from "@/components/preparacao/PreparationGuidancePanel";
 import { Button } from "@/components/ui/button";
 import { ActionCard, InfoCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
@@ -277,22 +278,7 @@ function AssembleiaDetailPage() {
             sidebar={
               <>
                 <WorkspaceSection>
-                  <SectionTitle
-                    icon={Clock}
-                    title="Pronto para a sessão?"
-                    description="Resumo rápido do que ainda falta preparar."
-                  />
-                  <div className="mt-5 space-y-3">
-                    <InfoCard
-                      title="Data"
-                      description={`${formatarData(assembleia.data)} · ${assembleia.hora}`}
-                    />
-                    <InfoCard title="Local" description={assembleia.local} />
-                    <InfoCard
-                      title="Preparação"
-                      description={`${documentos.length} documentos · ${pontos.length} pontos · ${documentosACriar.length} rascunhos`}
-                    />
-                  </div>
+                  <PreparationGuidancePanel assembleiaId={id} />
                 </WorkspaceSection>
               </>
             }
