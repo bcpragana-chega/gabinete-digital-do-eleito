@@ -82,10 +82,17 @@ export type PedidoGeracaoAi = {
   maxOutputTokens?: number;
 };
 
+export type UsoTokensAi = {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+};
+
 export type RespostaGeracaoAi = {
   texto: string;
   modelo: string;
   provider: string;
+  usage?: UsoTokensAi;
   metadata?: Record<string, unknown>;
 };
 

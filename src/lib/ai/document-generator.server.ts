@@ -4,6 +4,8 @@ import { construirContextoGeracaoDocumento } from "@/lib/ai/context-builder.serv
 import { criarAiProvider } from "@/lib/ai/provider";
 import { construirPromptDocumento } from "@/lib/ai/prompts/documents";
 import { obterPromptSistemaTribuno } from "@/lib/ai/prompts/system";
+import { obterFeatureGeracaoDocumento, type EstadoUsoAi } from "@/lib/ai/usage";
+import { registrarUsoAi } from "@/lib/ai/usage.server";
 import type { ResultadoGeracaoDocumento } from "@/lib/ai/types";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
@@ -50,6 +52,12 @@ function env(name: string) {
 
 function textoSeguro(valor: unknown) {
   return typeof valor === "string" ? valor.trim() : "";
+}
+
+function organizacaoUsoSegura(valor: unknown) {
+  const texto = textoSeguro(valor);
+  if (!texto || texto === "Organização não indicada") return undefined;
+  return texto;
 }
 
 function tipoParaRemoto(tipo: TipoDocumentoCriado) {
@@ -266,50 +274,92 @@ async function guardarDocumentoGeradoRemotamente(input: {
 export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
   .validator((input) => inputSchema.parse(input))
   .handler(async ({ data }): Promise<ResultadoGeracaoDocumento> => {
+    const inicio = Date.now();
     console.info("[Tribuno AI] Server function iniciada", {
       AI_PROVIDER: estadoEnv(process.env.AI_PROVIDER),
       OPENAI_MODEL: estadoEnv(process.env.OPENAI_MODEL),
       OPENAI_API_KEY: estadoEnv(process.env.OPENAI_API_KEY),
     });
 
+    let respostaAi: { texto: string; modelo: string; provider: string; usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number }; metadata?: Record<string, unknown> } | undefined;
+    let documentoGerado: DocumentoCriado | undefined;
+    let usoRegistrado = false;
+    let contextoGeracao: Awaited<ReturnType<typeof construirContextoGeracaoDocumento>> | undefined;
+
+    const registrarUso = (status: EstadoUsoAi, errorCode?: string) => {
+      if (!respostaAi || usoRegistrado) return;
+      usoRegistrado = true;
+
+      void registrarUsoAi({
+        userId: data.userId,
+        organizationId: organizacaoUsoSegura(contextoGeracao?.perfil.organizacao),
+        assuntoId: data.assuntoId,
+        documentoId: documentoGerado?.id ?? null,
+        provider: respostaAi.provider,
+        model: respostaAi.modelo,
+        operation: "generate_document",
+        feature: obterFeatureGeracaoDocumento(data.tipo),
+        documentType: data.tipo,
+        usage: respostaAi.usage,
+        durationMs: Date.now() - inicio,
+        status,
+        errorCode,
+      });
+    };
+
     try {
-      const contexto = await construirContextoGeracaoDocumento(data);
+      contextoGeracao = await construirContextoGeracaoDocumento(data);
       const provider = criarAiProvider();
       const systemPrompt = obterPromptSistemaTribuno();
-      const userPrompt = construirPromptDocumento(contexto);
+      const userPrompt = construirPromptDocumento(contextoGeracao);
 
-      const respostaAi = await provider.gerarDocumento({
+      respostaAi = await provider.gerarDocumento({
         systemPrompt,
         userPrompt,
         timeoutMs: 70_000,
         maxOutputTokens: Number.parseInt(process.env.OPENAI_MAX_OUTPUT_TOKENS ?? "", 10),
       });
 
-      const documento = await guardarDocumentoGeradoRemotamente({
-        userId: data.userId,
-        assuntoId: data.assuntoId,
-        tipo: data.tipo,
-        titulo: data.titulo,
-        conteudo: respostaAi.texto,
-        modelo: respostaAi.modelo,
-        provider: respostaAi.provider,
-        promptOrigem: data.conteudoInicial,
-        metadata: {
-          ...respostaAi.metadata,
-          documentosRelacionados: contexto.documentosRelacionados.length,
-          anexosTextuais: contexto.anexosTextuais.length,
-          assunto: contexto.assunto.titulo,
-          sessaoId: contexto.sessao?.id,
-          notasAssunto: contexto.assunto.notas.length,
-          timelineAssunto: contexto.assunto.timeline.length,
-        },
-      });
+      try {
+        documentoGerado = await guardarDocumentoGeradoRemotamente({
+          userId: data.userId,
+          assuntoId: data.assuntoId,
+          tipo: data.tipo,
+          titulo: data.titulo,
+          conteudo: respostaAi.texto,
+          modelo: respostaAi.modelo,
+          provider: respostaAi.provider,
+          promptOrigem: data.conteudoInicial,
+          metadata: {
+            ...respostaAi.metadata,
+            documentosRelacionados: contextoGeracao.documentosRelacionados.length,
+            anexosTextuais: contextoGeracao.anexosTextuais.length,
+            assunto: contextoGeracao.assunto.titulo,
+            sessaoId: contextoGeracao.sessao?.id,
+            notasAssunto: contextoGeracao.assunto.notas.length,
+            timelineAssunto: contextoGeracao.assunto.timeline.length,
+          },
+        });
+        registrarUso("success");
+      } catch (error) {
+        registrarUso(
+          "partial",
+          error instanceof Error && error.name !== "Error"
+            ? error.name
+            : "SUPABASE_INSERT_DOCUMENTO_CRIADO",
+        );
+        throw error;
+      }
 
       return {
         ok: true,
-        documento,
+        documento: documentoGerado,
       };
     } catch (error) {
+      if (respostaAi && !usoRegistrado) {
+        registrarUso("failed", error instanceof Error ? error.name : "AI_GENERATION_ERROR");
+      }
+
       if (error instanceof Error && CODIGOS_ERRO_CONFIG_AI.has(error.name)) {
         console.error("[Tribuno AI] Diagnóstico seguro de configuração", {
           code: error.name,
