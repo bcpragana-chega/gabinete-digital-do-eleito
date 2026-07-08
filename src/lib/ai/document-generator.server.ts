@@ -201,6 +201,42 @@ function diagnosticoSeguroConfiguracaoAi() {
   };
 }
 
+function extrairTextoSeguro(valor: unknown) {
+  return typeof valor === "string" ? valor.trim() : "";
+}
+
+function diagnosticarErroAi(error: unknown) {
+  if (!(error instanceof Error)) {
+    return {
+      code: "AI_GENERATION_ERROR",
+      message: "Erro desconhecido",
+      status: undefined,
+      responseId: undefined,
+      operation: "generate_document",
+      model: undefined,
+      provider: undefined,
+    };
+  }
+
+  const anyError = error as Error & {
+    status?: unknown;
+    responseId?: unknown;
+    provider?: unknown;
+    model?: unknown;
+    operation?: unknown;
+  };
+
+  return {
+    code: error.name || "AI_GENERATION_ERROR",
+    message: error.message || "Erro desconhecido",
+    status: typeof anyError.status === "number" ? anyError.status : undefined,
+    responseId: extrairTextoSeguro(anyError.responseId),
+    operation: extrairTextoSeguro(anyError.operation) || "generate_document",
+    model: extrairTextoSeguro(anyError.model) || undefined,
+    provider: extrairTextoSeguro(anyError.provider) || undefined,
+  };
+}
+
 async function guardarDocumentoGeradoRemotamente(input: {
   userId: string;
   assuntoId: string;
@@ -356,6 +392,18 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
         documento: documentoGerado,
       };
     } catch (error) {
+      const diagnosticoErro = diagnosticarErroAi(error);
+
+      console.error("[Tribuno AI] Erro na geração", {
+        code: diagnosticoErro.code,
+        message: diagnosticoErro.message,
+        status: diagnosticoErro.status,
+        responseId: diagnosticoErro.responseId || undefined,
+        operation: diagnosticoErro.operation,
+        model: diagnosticoErro.model,
+        provider: diagnosticoErro.provider,
+      });
+
       if (respostaAi && !usoRegistrado) {
         registrarUso("failed", error instanceof Error ? error.name : "AI_GENERATION_ERROR");
       }

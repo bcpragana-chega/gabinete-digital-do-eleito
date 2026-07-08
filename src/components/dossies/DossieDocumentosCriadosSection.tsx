@@ -59,6 +59,35 @@ function metaAssociacao(documento: DocumentoCriado) {
   return "Sem sessão associada";
 }
 
+function mensagemErroGeracao(code?: string, message?: string) {
+  const base = message?.trim() || "Não foi possível gerar o documento. Verifique a ligação e tente novamente.";
+
+  if (!import.meta.env.DEV || !code) {
+    return base;
+  }
+
+  const mensagensConhecidas: Record<string, string> = {
+    AI_TIMEOUT: "A geração demorou demasiado tempo no backend. Tente novamente.",
+    AI_EMPTY_RESPONSE:
+      "A OpenAI respondeu, mas não devolveu texto útil para o documento. Verifique o diagnóstico no log do backend.",
+    AI_PROVIDER_ERROR:
+      "A OpenAI devolveu um erro ao gerar o documento. Consulte o log seguro do backend para ver o status HTTP.",
+    AI_CONFIG_MISSING:
+      "A IA não está configurada no backend. Falta a chave OpenAI ou a configuração do provider.",
+    AI_CONFIG_MISSING_MODEL:
+      "O modelo de IA não está configurado no backend.",
+    AI_CONFIG_MISSING_PROVIDER:
+      "O provider de IA não está configurado no backend.",
+    AI_PROVIDER_NOT_SUPPORTED:
+      "O provider de IA configurado não é suportado.",
+    SUPABASE_INSERT_DOCUMENTO_CRIADO:
+      "A geração correu, mas a gravação do documento falhou no backend.",
+    AI_GENERATION_ERROR: "Ocorreu um erro inesperado na geração de IA.",
+  };
+
+  return mensagensConhecidas[code] ? `${mensagensConhecidas[code]} [${code}]` : `${base} [${code}]`;
+}
+
 export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string }) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -110,7 +139,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
       });
 
       if (!response.ok) {
-        setErroGeracao(response.message);
+        setErroGeracao(mensagemErroGeracao(response.code, response.message));
         return;
       }
 
@@ -126,7 +155,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
         params: { dossieId, documentoId: response.documento.id },
       });
     } catch {
-      setErroGeracao("Não foi possível gerar o documento. Verifique a ligação e tente novamente.");
+      setErroGeracao(mensagemErroGeracao("AI_GENERATION_ERROR"));
     } finally {
       setGerando(false);
     }

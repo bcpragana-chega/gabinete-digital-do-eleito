@@ -29,6 +29,15 @@ type OpenAiResponseBody = {
   output_text?: unknown;
   output?: unknown;
   usage?: unknown;
+  error?: unknown;
+};
+
+type AiErrorContext = {
+  status?: number;
+  responseId?: string;
+  provider?: string;
+  model?: string;
+  operation?: string;
 };
 
 function isPlainObject(valor: unknown): valor is Record<string, unknown> {
@@ -125,9 +134,10 @@ function logRespostaOpenAiDiagnostico(payload: unknown) {
   console.info("[Tribuno AI] Diagnóstico resposta OpenAI", diagnosticoRespostaOpenAi(payload));
 }
 
-function erroComCodigo(code: string, message: string) {
+function erroComCodigo(code: string, message: string, context?: AiErrorContext) {
   const error = new Error(message);
   error.name = code;
+  Object.assign(error, context);
   return error;
 }
 
@@ -203,24 +213,43 @@ export class OpenAiProvider implements AiProvider {
       });
 
       const body = (await response.json().catch(() => undefined)) as unknown;
+      const diagnostico = diagnosticoRespostaOpenAi(body);
 
       if (!response.ok) {
         logRespostaOpenAiDiagnostico(body);
         const message =
           typeof body === "object" && body && "error" in body
-            ? JSON.stringify((body as { error?: unknown }).error)
+            ? (() => {
+                const errorBody = (body as OpenAiResponseBody).error;
+                if (isPlainObject(errorBody) && typeof errorBody.message === "string") {
+                  return errorBody.message;
+                }
+                return JSON.stringify(errorBody);
+              })()
             : `OpenAI devolveu HTTP ${response.status}.`;
-        throw erroComCodigo("AI_PROVIDER_ERROR", message);
+        throw erroComCodigo("AI_PROVIDER_ERROR", message, {
+          status: response.status,
+          responseId: diagnostico.responseId,
+          provider: this.name,
+          model: this.model,
+          operation: "generate_document",
+        });
       }
 
       logRespostaOpenAiDiagnostico(body);
 
       const texto = extrairTextoRespostaOpenAi(body);
       if (!texto) {
-        const diagnostico = diagnosticoRespostaOpenAi(body);
         throw erroComCodigo(
           "AI_EMPTY_RESPONSE",
           `A IA não devolveu conteúdo textual para o documento. Diagnóstico: responseId=${diagnostico.responseId ?? "n/a"}, status=${diagnostico.status ?? "n/a"}, hasOutputText=${diagnostico.hasOutputText}, outputTextLength=${diagnostico.outputTextLength}, outputItemTypes=${diagnostico.outputItemTypes.join(",") || "none"}.`,
+          {
+            status: response.status,
+            responseId: diagnostico.responseId,
+            provider: this.name,
+            model: this.model,
+            operation: "generate_document",
+          },
         );
       }
 
@@ -265,7 +294,11 @@ export class OpenAiProvider implements AiProvider {
       };
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
-        throw erroComCodigo("AI_TIMEOUT", "A geração excedeu o tempo limite configurado.");
+        throw erroComCodigo("AI_TIMEOUT", "A geração excedeu o tempo limite configurado.", {
+          provider: this.name,
+          model: this.model,
+          operation: "generate_document",
+        });
       }
 
       throw error;
