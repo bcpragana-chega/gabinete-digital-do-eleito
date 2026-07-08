@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import {
+  carregarOnboardingVersionRemoto,
   carregarPerfilHibrido,
   carregarPerfilLocal,
+  guardarOnboardingVersionRemoto,
   guardarPerfilHibrido,
 } from "@/lib/profile-repository";
 import { readJSON, writeJSON } from "@/lib/storage-provider";
 import {
   diagnosticarSessaoSupabase,
   iniciarSessaoSupabaseComGoogleCredential,
+  isSupabaseConfigured,
   terminarSessaoSupabase,
 } from "@/lib/supabase";
 
@@ -302,6 +305,24 @@ export async function guardarPerfilEleito(perfil: Omit<PerfilEleito, "updatedAt"
   return perfilAtualizado;
 }
 
+export async function concluirOnboarding(version = 1) {
+  const state = lerAuthState();
+  const userId = state.user?.id;
+
+  if (!userId || !isSupabaseConfigured()) {
+    if (isBrowser()) {
+      window.dispatchEvent(new Event(EVENT_NAME));
+    }
+    return;
+  }
+
+  await guardarOnboardingVersionRemoto(userId, version);
+
+  if (isBrowser()) {
+    window.dispatchEvent(new Event(EVENT_NAME));
+  }
+}
+
 export function logout() {
   if (!isBrowser()) return;
 
@@ -350,7 +371,13 @@ export function saudacaoPorHora(data = new Date()) {
 export function useAuth() {
   const [state, setState] = useState<AuthState>({});
   const [initialized, setInitialized] = useState(false);
+  const [onboardingVersion, setOnboardingVersion] = useState<number | undefined>();
+  const [onboardingResolved, setOnboardingResolved] = useState(false);
   const perfil = obterPerfilDoUser(state);
+  const hasCompleteProfile = perfilCompleto(perfil);
+
+  const onboardingRequired =
+    hasCompleteProfile && isSupabaseConfigured() && onboardingVersion === 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -394,6 +421,7 @@ export function useAuth() {
       try {
         const stateAtual = lerAuthState();
         setInitialized(false);
+        setOnboardingResolved(false);
         setState(stateAtual);
 
         const nextState = await carregarPerfilAntesDeInicializar(stateAtual);
@@ -408,6 +436,32 @@ export function useAuth() {
             ...perfisPorUserIdSeguro(nextState.perfisPorUserId),
           },
         });
+
+        const userId = nextState.user?.id;
+        const perfilAtual = obterPerfilDoUser(nextState);
+
+        if (!userId || !perfilCompleto(perfilAtual) || !isSupabaseConfigured()) {
+          setOnboardingVersion(undefined);
+          setOnboardingResolved(true);
+          return;
+        }
+
+        try {
+          const versao = await carregarOnboardingVersionRemoto(userId);
+          if (!cancelled && currentUpdateId === updateId) {
+            setOnboardingVersion(versao);
+            setOnboardingResolved(true);
+          }
+        } catch (error) {
+          console.warn("[Tribuno Auth] Não foi possível carregar estado de onboarding.", {
+            userId,
+            error,
+          });
+          if (!cancelled && currentUpdateId === updateId) {
+            setOnboardingVersion(undefined);
+            setOnboardingResolved(true);
+          }
+        }
       } catch (error) {
         const diagnostico = await diagnosticarSessaoSupabase();
         console.error("[Tribuno Auth] Erro ao inicializar autenticação/perfil", {
@@ -416,6 +470,8 @@ export function useAuth() {
         });
         if (!cancelled && currentUpdateId === updateId) {
           setState(lerAuthState());
+          setOnboardingVersion(undefined);
+          setOnboardingResolved(true);
         }
       } finally {
         if (!cancelled && currentUpdateId === updateId) {
@@ -440,7 +496,10 @@ export function useAuth() {
     user: state.user,
     perfil,
     isAuthenticated: Boolean(state.user),
-    hasCompleteProfile: perfilCompleto(perfil),
+    hasCompleteProfile,
     displayName: nomeVisivel(state.user, perfil),
+    onboardingVersion,
+    onboardingRequired,
+    onboardingResolved,
   };
 }

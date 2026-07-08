@@ -33,6 +33,7 @@ type PerfilEleitoFormProps = {
   perfil?: PerfilEleito;
   submitLabel?: string;
   onSaved?: (perfil: PerfilEleito) => void;
+  afterSave?: (perfil: PerfilEleito) => void;
 };
 
 const mensagensErroPerfil: Record<PerfilErroCodigo, string> = {
@@ -95,6 +96,7 @@ export function PerfilEleitoForm({
   perfil,
   submitLabel = "Guardar perfil",
   onSaved,
+  afterSave,
 }: PerfilEleitoFormProps) {
   const perfilNormalizado = useMemo(() => normalizarPerfilEleito(perfil), [perfil]);
   const nomeInicial = useMemo(
@@ -259,6 +261,7 @@ export function PerfilEleitoForm({
       });
       setSaveState("saved");
       onSaved?.(atualizado);
+      afterSave?.(atualizado);
     } catch (error) {
       const codigo = codigoDoErro(error);
 

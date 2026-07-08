@@ -1,7 +1,7 @@
 import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
-import { perfilCompleto, useAuth } from "@/lib/auth-store";
+import { useAuth } from "@/lib/auth-store";
 import { obterStorageStatus } from "@/lib/storage-provider";
 
 export const Route = createFileRoute("/_app")({
@@ -10,7 +10,15 @@ export const Route = createFileRoute("/_app")({
 
 function AppLayout() {
   const navigate = useNavigate();
-  const { initialized, isAuthenticated, user, perfil } = useAuth();
+  const {
+    initialized,
+    isAuthenticated,
+    user,
+    perfil,
+    hasCompleteProfile,
+    onboardingRequired,
+    onboardingResolved,
+  } = useAuth();
   const storageStatus = obterStorageStatus();
 
   useEffect(() => {
@@ -22,10 +30,20 @@ function AppLayout() {
       return;
     }
 
-    if (!perfilCompleto(perfil)) {
+    if (!hasCompleteProfile) {
       console.info("[Tribuno Auth] Rota protegida precisa de onboarding", {
         userId: user?.id,
         perfilCarregado: Boolean(perfil),
+      });
+      navigate({ to: "/completar-perfil", replace: true });
+      return;
+    }
+
+    if (!onboardingResolved) return;
+
+    if (onboardingRequired) {
+      console.info("[Tribuno Auth] Rota protegida com onboarding inicial pendente", {
+        userId: user?.id,
       });
       navigate({ to: "/completar-perfil", replace: true });
       return;
@@ -35,9 +53,24 @@ function AppLayout() {
       userId: user?.id,
       perfilCarregado: Boolean(perfil),
     });
-  }, [initialized, isAuthenticated, navigate, perfil, user?.id]);
+  }, [
+    hasCompleteProfile,
+    initialized,
+    isAuthenticated,
+    navigate,
+    onboardingRequired,
+    onboardingResolved,
+    perfil,
+    user?.id,
+  ]);
 
-  if (!initialized || !isAuthenticated || !perfilCompleto(perfil)) {
+  if (
+    !initialized ||
+    !isAuthenticated ||
+    !hasCompleteProfile ||
+    !onboardingResolved ||
+    onboardingRequired
+  ) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="text-sm text-muted-foreground">A preparar o Tribuno...</div>

@@ -10,7 +10,12 @@ type ProfileRow = {
   organizacao: string | null;
   territorio: string | null;
   assinatura_institucional: string | null;
+  onboarding_version?: number | null;
   updated_at: string | null;
+};
+
+type ProfileOnboardingRow = {
+  onboarding_version: number | null;
 };
 
 const cargosPermitidos: PerfilEleito["cargo"][] = [
@@ -161,6 +166,47 @@ export async function carregarPerfilRemoto(userId?: string) {
   return data ? fromRow(data) : undefined;
 }
 
+export async function carregarOnboardingVersionRemoto(userId?: string) {
+  console.info("[Tribuno Perfil] Carregar onboarding remoto iniciado", {
+    userId,
+    supabaseConfigurado: isSupabaseConfigured(),
+  });
+
+  const supabaseUserId = await obterSupabaseUserIdValido(userId);
+  if (!supabaseUserId) {
+    console.info("[Tribuno Perfil] Carregamento de onboarding ignorado: sem auth.uid válido.", {
+      userId,
+    });
+    return undefined;
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return undefined;
+
+  const { data, error } = await withSupabaseTimeout(
+    supabase
+      .from("profiles")
+      .select("onboarding_version")
+      .eq("user_id", supabaseUserId)
+      .maybeSingle<ProfileOnboardingRow>(),
+    "PROFILE_SELECT_ONBOARDING",
+  );
+
+  if (error) throw error;
+
+  const version = Number.isFinite(data?.onboarding_version)
+    ? Number(data?.onboarding_version)
+    : undefined;
+
+  console.info("[Tribuno Perfil] Carregar onboarding remoto concluído", {
+    userId,
+    supabaseUserId,
+    onboardingVersion: version,
+  });
+
+  return version;
+}
+
 export async function guardarPerfilRemoto(userId: string, perfil: PerfilEleito) {
   console.info("[Tribuno Perfil] Guardar perfil remoto iniciado", {
     userId,
@@ -198,6 +244,41 @@ export async function guardarPerfilRemoto(userId: string, perfil: PerfilEleito) 
   console.info("[Tribuno Perfil] Guardar perfil remoto concluído", {
     userId,
     supabaseUserId,
+  });
+}
+
+export async function guardarOnboardingVersionRemoto(userId: string, version: number) {
+  console.info("[Tribuno Perfil] Guardar onboarding remoto iniciado", {
+    userId,
+    supabaseConfigurado: isSupabaseConfigured(),
+    onboardingVersion: version,
+  });
+
+  const supabaseUserId = await obterSupabaseUserIdValido(userId);
+  if (!supabaseUserId) {
+    console.info("[Tribuno Perfil] Gravação de onboarding ignorada: sem auth.uid válido.", {
+      userId,
+    });
+    return;
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  const { error } = await withSupabaseTimeout(
+    supabase
+      .from("profiles")
+      .update({ onboarding_version: version, updated_at: new Date().toISOString() })
+      .eq("user_id", supabaseUserId),
+    "PROFILE_UPDATE_ONBOARDING",
+  );
+
+  if (error) throw error;
+
+  console.info("[Tribuno Perfil] Guardar onboarding remoto concluído", {
+    userId,
+    supabaseUserId,
+    onboardingVersion: version,
   });
 }
 

@@ -6,6 +6,7 @@ create table if not exists public.profiles (
   organizacao text not null,
   territorio text not null,
   assinatura_institucional text,
+  onboarding_version integer not null default 0,
   updated_at timestamptz not null default now()
 );
 
