@@ -102,105 +102,105 @@ export function PreparationGuidancePanel({
 
   return (
     <section className={className}>
-      <Card className="rounded-2xl border border-border bg-card p-5 md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-display text-lg font-semibold tracking-tight text-foreground">
+      <Card className="w-full max-w-full overflow-hidden rounded-2xl border border-border bg-card p-4">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
               Assistente de preparação
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Resposta rápida para três perguntas: quão preparado está, o que falta e o que fazer já a seguir.
-            </p>
+            <StatusBadge tone={state.readinessTone} dot={false} className="shrink-0">
+              {state.readinessLabel}
+            </StatusBadge>
           </div>
 
-          <StatusBadge tone={state.readinessTone} dot={false}>
-            {state.readinessLabel}
-          </StatusBadge>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Em segundos, veja o estado da preparação, o que está em falta e a próxima ação
+            recomendada.
+          </p>
         </div>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-3">
-          <div className="rounded-xl border border-border bg-background/70 p-4 lg:col-span-1">
-            <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="mt-4 space-y-3">
+          <div className="rounded-xl border border-border bg-background/80 p-4">
+            <p className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               <Gauge className="h-3.5 w-3.5" />
-              1. Quão preparado estou?
+              1. Como está a preparação?
             </p>
 
-            <div className="mt-4 flex items-center gap-4">
+            <div className="mt-3 grid grid-cols-[70px_minmax(0,1fr)] items-center gap-3">
               <div
-                className="relative grid h-20 w-20 place-items-center rounded-full"
+                className="relative grid h-[70px] w-[70px] place-items-center rounded-full"
                 style={{
                   background: `conic-gradient(${state.progressColor} ${state.score * 3.6}deg, hsl(var(--muted)) 0deg)`,
                 }}
               >
-                <div className="grid h-14 w-14 place-items-center rounded-full bg-card text-lg font-semibold text-foreground">
+                <div className="grid h-[50px] w-[50px] place-items-center rounded-full bg-card text-sm font-semibold text-foreground">
                   {state.score}%
                 </div>
               </div>
 
-              <div>
+              <div className="min-w-0 space-y-1">
                 <p className="text-sm font-semibold text-foreground">{state.readinessLabel}</p>
-                <p className="text-xs text-muted-foreground">
-                  {state.scoreDescription}
-                </p>
+                <p className="text-xs leading-relaxed text-muted-foreground">{state.scoreDescription}</p>
               </div>
             </div>
 
-            <div className="mt-4 h-2.5 rounded-full bg-muted">
+            <div className="mt-3 h-2 rounded-full bg-muted">
               <div
                 className="h-full rounded-full transition-all"
                 style={{ width: `${state.score}%`, backgroundColor: state.progressColor }}
               />
             </div>
 
-            <p className="mt-2 text-xs text-muted-foreground">Preparação: {state.score}%</p>
+            <p className="mt-2 text-xs text-muted-foreground">Pontuação de preparação: {state.score}%</p>
           </div>
 
-          <div className="rounded-xl border border-border bg-background/70 p-4 lg:col-span-2">
-            <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="rounded-xl border border-border bg-background/80 p-4">
+            <p className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               <ClipboardList className="h-3.5 w-3.5" />
               2. O que ainda falta?
             </p>
 
             {state.isComplete ? (
               <div className="mt-3 rounded-xl border border-status-concluida/30 bg-status-concluida/10 p-4">
-                <h3 className="text-sm font-semibold text-foreground">Session preparation complete.</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Everything required for this session has been prepared.
+                <h3 className="text-sm font-semibold text-foreground">Preparação da sessão concluída.</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  Tudo o que é necessário para esta sessão já está preparado.
                 </p>
-                <p className="mt-2 text-sm font-medium text-foreground">Preparation score: 100%</p>
+                <p className="mt-2 text-sm font-medium text-foreground">Pontuação de preparação: 100%</p>
               </div>
             ) : (
               <>
-                <ol className="mt-3 grid gap-2">
+                <ol className="mt-3 space-y-2">
                   {state.steps.map((step) => (
                     <li
                       key={step.id}
                       className={[
-                        "flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2",
+                        "rounded-xl border p-3",
                         step.done
                           ? "border-status-concluida/30 bg-status-concluida/10"
                           : "border-status-alerta/30 bg-status-alerta/10",
                       ].join(" ")}
                     >
-                      <div>
-                        <p className="inline-flex items-center gap-2 text-sm text-foreground">
-                          {step.done ? (
-                            <CheckCircle2 className="h-4 w-4 text-status-concluida" />
-                          ) : (
-                            <CircleDashed className="h-4 w-4 text-status-alerta" />
-                          )}
-                          {step.label}
-                        </p>
-                        <p className="ml-6 mt-0.5 text-xs text-muted-foreground">{step.description}</p>
+                      <div className="flex min-w-0 items-start gap-2">
+                        {step.done ? (
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-status-concluida" />
+                        ) : (
+                          <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-status-alerta" />
+                        )}
+
+                        <div className="min-w-0 space-y-1">
+                          <p className="text-sm font-medium leading-relaxed text-foreground">{step.label}</p>
+                          <p className="text-xs leading-relaxed text-muted-foreground">{step.description}</p>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="mt-2 flex flex-wrap items-center gap-2 pl-6">
                         <StatusBadge tone={step.done ? "success" : "warning"}>
                           {step.done ? "Concluído" : "Em falta"}
                         </StatusBadge>
 
                         {!step.done && step.href && step.cta && (
-                          <Button asChild variant="secondary" size="sm">
+                          <Button asChild variant="secondary" size="sm" className="h-8 w-full justify-center px-3 text-xs">
                             <Link to={step.href}>{step.cta}</Link>
                           </Button>
                         )}
@@ -210,17 +210,17 @@ export function PreparationGuidancePanel({
                 </ol>
 
                 {state.missingItems.length > 0 && (
-                  <div className="mt-3 grid gap-2">
+                  <div className="mt-3 space-y-2">
                     {state.missingItems.map((item) => (
                       <div
                         key={item.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-status-alerta/30 bg-status-alerta/10 px-3 py-2"
+                        className="rounded-xl border border-status-alerta/30 bg-status-alerta/10 p-3"
                       >
-                        <p className="inline-flex items-center gap-2 text-sm text-foreground">
-                          <AlertTriangle className="h-4 w-4 text-status-alerta" />
-                          {item.message}
+                        <p className="inline-flex items-start gap-2 text-sm leading-relaxed text-foreground">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-alerta" />
+                          <span>{item.message}</span>
                         </p>
-                        <Button asChild variant="secondary" size="sm">
+                        <Button asChild variant="secondary" size="sm" className="mt-2 h-8 w-full justify-center px-3 text-xs">
                           <Link to={item.href}>{item.cta}</Link>
                         </Button>
                       </div>
@@ -230,27 +230,31 @@ export function PreparationGuidancePanel({
               </>
             )}
           </div>
-        </div>
 
-        <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-4">
-          <p className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5" />
-            3. O que devo fazer a seguir?
-          </p>
-          <h3 className="mt-2 text-sm font-semibold text-foreground">{state.nextAction.title}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">{state.nextAction.description}</p>
-          <Button asChild size="sm" className="mt-3">
-            <Link to={state.nextAction.href}>
-              {state.nextAction.button}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-
-          {state.score === 100 && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Excelente — preparação completa. Faça apenas uma revisão final antes da sessão.
+          <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
+            <p className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5" />
+              3. O que deve fazer agora?
             </p>
-          )}
+
+            <h3 className="mt-2 text-sm font-semibold leading-relaxed text-foreground">
+              {state.nextAction.title}
+            </h3>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{state.nextAction.description}</p>
+
+            <Button asChild size="sm" className="mt-3 h-9 w-full justify-center px-3 text-xs">
+              <Link to={state.nextAction.href}>
+                {state.nextAction.button}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+
+            {state.score === 100 && (
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                Excelente. Faça apenas uma revisão final de confiança antes da sessão.
+              </p>
+            )}
+          </div>
         </div>
       </Card>
     </section>
@@ -354,12 +358,12 @@ function criarEstadoPreparacao({
 
   const readinessLabel =
     score === 100
-      ? "Ready"
+      ? "Pronto"
       : score >= 80
-        ? "Almost ready"
+        ? "Quase concluído"
         : score >= 40
-          ? "In progress"
-          : "Needs attention";
+          ? "Em preparação"
+          : "Necessita de atenção";
   const readinessTone =
     score === 100 ? "success" : score >= 80 ? "info" : score >= 40 ? "warning" : "danger";
   const progressColor =
@@ -375,49 +379,49 @@ function criarEstadoPreparacao({
   if (!documentsUploaded) {
     missingItems.push({
       id: "missing-documents-upload",
-      message: "No documents have been uploaded yet.",
+      message: "Nenhum documento foi carregado.",
       href: `/sessoes/${assembleiaId}/preparacao/documentos`,
-      cta: "Upload session documents",
+      cta: "Carregar documentos",
     });
   }
   if (!documentsReviewed) {
     missingItems.push({
       id: "missing-documents-reviewed",
-      message: "Uploaded documents still need review.",
+      message: "Os documentos carregados ainda não foram analisados.",
       href: `/sessoes/${assembleiaId}/preparacao/documentos`,
-      cta: "Review uploaded documents",
+      cta: "Analisar documentos",
     });
   }
   if (!strategyCompleted) {
     missingItems.push({
       id: "missing-strategy",
-      message: "Strategy has not been completed.",
+      message: "A estratégia ainda não foi concluída.",
       href: `/sessoes/${assembleiaId}/preparacao/estrategia`,
-      cta: "Prepare strategy",
+      cta: "Preparar estratégia",
     });
   }
   if (!questionsPrepared) {
     missingItems.push({
       id: "missing-intervention",
-      message: "Intervention is still missing.",
+      message: "Ainda falta preparar a intervenção.",
       href: `/sessoes/${assembleiaId}/preparacao/pontos`,
-      cta: "Prepare intervention",
+      cta: "Preparar intervenção",
     });
   }
   if (!draftsCreated) {
     missingItems.push({
       id: "missing-drafts",
-      message: "Draft documents are still missing.",
+      message: "Ainda não existem rascunhos.",
       href: `/sessoes/${assembleiaId}/preparacao/documentos-a-criar`,
-      cta: "Create draft documents",
+      cta: "Criar rascunhos",
     });
   }
   if (!pointsAdded) {
     missingItems.push({
       id: "missing-points",
-      message: "Session points have not been structured yet.",
+      message: "Os pontos da sessão ainda não estão estruturados.",
       href: `/sessoes/${assembleiaId}/preparacao/pontos`,
-      cta: "Open points",
+      cta: "Abrir pontos",
     });
   }
 
@@ -470,62 +474,62 @@ function escolherProximaAcao({
 }): NextAction {
   if (!documentsUploaded) {
     return {
-      title: "Upload session documents",
-      description: "Start by uploading the base documents for this session.",
-      button: "Upload session documents",
+      title: "Carregar documentos da sessão",
+      description: "Comece por reunir os documentos base para orientar toda a preparação.",
+      button: "Carregar documentos",
       href: `/sessoes/${assembleiaId}/preparacao/documentos`,
     };
   }
 
   if (!documentsReviewed) {
     return {
-      title: "Review uploaded documents",
-      description: "Mark each document so nothing critical remains unreviewed.",
-      button: "Review uploaded documents",
+      title: "Analisar documentos carregados",
+      description: "Confirme o estado de cada documento para não deixar matéria crítica por analisar.",
+      button: "Analisar documentos",
       href: `/sessoes/${assembleiaId}/preparacao/documentos`,
     };
   }
 
   if (!pointsAdded) {
     return {
-      title: "Prepare intervention",
-      description: "Create session points so you can prepare interventions with structure.",
-      button: "Prepare intervention",
+      title: "Estruturar pontos da sessão",
+      description: "Adicione os pontos da ordem de trabalhos para orientar a preparação.",
+      button: "Abrir pontos",
       href: `/sessoes/${assembleiaId}/preparacao/pontos`,
     };
   }
 
   if (!strategyCompleted) {
     return {
-      title: "Prepare strategy",
-      description: "Define objective and key political message before the session.",
-      button: "Prepare strategy",
+      title: "Preparar estratégia",
+      description: "Defina objetivo político e mensagem principal antes da sessão.",
+      button: "Preparar estratégia",
       href: `/sessoes/${assembleiaId}/preparacao/estrategia`,
     };
   }
 
   if (!questionsPrepared) {
     return {
-      title: "Prepare intervention",
-      description: "Register key questions and talking points for the most relevant items.",
-      button: "Prepare intervention",
+      title: "Preparar intervenção",
+      description: "Registe perguntas e linhas de intervenção para os pontos mais relevantes.",
+      button: "Preparar intervenção",
       href: `/sessoes/${assembleiaId}/preparacao/pontos`,
     };
   }
 
   if (!draftsCreated) {
     return {
-      title: "Create draft documents",
-      description: "Create the necessary draft documents before the session starts.",
-      button: "Create draft documents",
+      title: "Criar rascunhos",
+      description: "Crie os rascunhos necessários antes do início da sessão.",
+      button: "Criar rascunhos",
       href: `/sessoes/${assembleiaId}/preparacao/documentos-a-criar`,
     };
   }
 
   return {
-    title: "Session preparation complete",
-    description: "Everything required is ready. Do a final confidence check.",
-    button: "Review session",
+    title: "Preparação da sessão concluída",
+    description: "Tudo o que é necessário está pronto. Faça apenas a revisão final.",
+    button: "Rever sessão",
     href: `/sessoes/${assembleiaId}`,
   };
 }
