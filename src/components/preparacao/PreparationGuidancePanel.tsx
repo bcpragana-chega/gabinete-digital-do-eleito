@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  AlertTriangle,
   ArrowRight,
-  CheckCircle2,
-  CircleDashed,
   ClipboardList,
-  Gauge,
+  ListChecks,
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -102,10 +99,10 @@ export function PreparationGuidancePanel({
 
   return (
     <section className={className}>
-      <Card className="w-full max-w-full overflow-hidden rounded-2xl border border-border bg-card p-4">
-        <div className="space-y-2">
+      <Card className="w-full max-w-full overflow-hidden rounded-xl border border-border bg-card p-3">
+        <div className="space-y-1.5">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
+            <h2 className="font-display text-sm font-semibold tracking-tight text-foreground">
               Assistente de preparação
             </h2>
             <StatusBadge tone={state.readinessTone} dot={false} className="shrink-0">
@@ -113,145 +110,125 @@ export function PreparationGuidancePanel({
             </StatusBadge>
           </div>
 
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Em segundos, veja o estado da preparação, o que está em falta e a próxima ação
-            recomendada.
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Estado atual, próxima ação e pendências — sem ruído.
           </p>
         </div>
 
-        <div className="mt-4 space-y-3">
-          <div className="rounded-xl border border-border bg-background/80 p-4">
-            <p className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              <Gauge className="h-3.5 w-3.5" />
-              1. Como está a preparação?
+        <div className="mt-3 space-y-2.5">
+          <div className="rounded-lg border border-border bg-background/80 p-2.5">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Estado
             </p>
-
-            <div className="mt-3 grid grid-cols-[70px_minmax(0,1fr)] items-center gap-3">
-              <div
-                className="relative grid h-[70px] w-[70px] place-items-center rounded-full"
-                style={{
-                  background: `conic-gradient(${state.progressColor} ${state.score * 3.6}deg, hsl(var(--muted)) 0deg)`,
-                }}
-              >
-                <div className="grid h-[50px] w-[50px] place-items-center rounded-full bg-card text-sm font-semibold text-foreground">
-                  {state.score}%
-                </div>
-              </div>
-
-              <div className="min-w-0 space-y-1">
-                <p className="text-sm font-semibold text-foreground">{state.readinessLabel}</p>
-                <p className="text-xs leading-relaxed text-muted-foreground">{state.scoreDescription}</p>
-              </div>
+            <div className="mt-1.5 flex items-center justify-between gap-2">
+              <p className="min-w-0 text-sm font-semibold text-foreground">{state.readinessLabel}</p>
+              <p className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-foreground">
+                {state.score}%
+              </p>
             </div>
-
-            <div className="mt-3 h-2 rounded-full bg-muted">
+            <div className="mt-1.5 h-1.5 rounded-full bg-muted">
               <div
                 className="h-full rounded-full transition-all"
                 style={{ width: `${state.score}%`, backgroundColor: state.progressColor }}
               />
             </div>
-
-            <p className="mt-2 text-xs text-muted-foreground">Pontuação de preparação: {state.score}%</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">{state.scoreDescription}</p>
           </div>
 
-          <div className="rounded-xl border border-border bg-background/80 p-4">
-            <p className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              <ClipboardList className="h-3.5 w-3.5" />
-              2. O que ainda falta?
-            </p>
-
-            {state.isComplete ? (
-              <div className="mt-3 rounded-xl border border-status-concluida/30 bg-status-concluida/10 p-4">
-                <h3 className="text-sm font-semibold text-foreground">Preparação da sessão concluída.</h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                  Tudo o que é necessário para esta sessão já está preparado.
-                </p>
-                <p className="mt-2 text-sm font-medium text-foreground">Pontuação de preparação: 100%</p>
-              </div>
-            ) : (
-              <>
-                <ol className="mt-3 space-y-2">
-                  {state.steps.map((step) => (
-                    <li
-                      key={step.id}
-                      className={[
-                        "rounded-xl border p-3",
-                        step.done
-                          ? "border-status-concluida/30 bg-status-concluida/10"
-                          : "border-status-alerta/30 bg-status-alerta/10",
-                      ].join(" ")}
-                    >
-                      <div className="flex min-w-0 items-start gap-2">
-                        {step.done ? (
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-status-concluida" />
-                        ) : (
-                          <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-status-alerta" />
-                        )}
-
-                        <div className="min-w-0 space-y-1">
-                          <p className="text-sm font-medium leading-relaxed text-foreground">{step.label}</p>
-                          <p className="text-xs leading-relaxed text-muted-foreground">{step.description}</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-2 pl-6">
-                        <StatusBadge tone={step.done ? "success" : "warning"}>
-                          {step.done ? "Concluído" : "Em falta"}
-                        </StatusBadge>
-
-                        {!step.done && step.href && step.cta && (
-                          <Button asChild variant="secondary" size="sm" className="h-8 w-full justify-center px-3 text-xs">
-                            <Link to={step.href}>{step.cta}</Link>
-                          </Button>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-
-                {state.missingItems.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {state.missingItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="rounded-xl border border-status-alerta/30 bg-status-alerta/10 p-3"
-                      >
-                        <p className="inline-flex items-start gap-2 text-sm leading-relaxed text-foreground">
-                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-alerta" />
-                          <span>{item.message}</span>
-                        </p>
-                        <Button asChild variant="secondary" size="sm" className="mt-2 h-8 w-full justify-center px-3 text-xs">
-                          <Link to={item.href}>{item.cta}</Link>
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
-            <p className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="rounded-lg border border-primary/25 bg-primary/5 p-2.5">
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5" />
-              3. O que deve fazer agora?
+              Próxima ação recomendada
             </p>
-
-            <h3 className="mt-2 text-sm font-semibold leading-relaxed text-foreground">
+            <h3 className="mt-1 text-sm font-semibold leading-snug text-foreground">
               {state.nextAction.title}
             </h3>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{state.nextAction.description}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              {state.nextAction.description}
+            </p>
 
-            <Button asChild size="sm" className="mt-3 h-9 w-full justify-center px-3 text-xs">
+            <Button asChild size="sm" className="mt-2 h-8 w-full justify-center px-3 text-xs">
               <Link to={state.nextAction.href}>
                 {state.nextAction.button}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
+          </div>
 
-            {state.score === 100 && (
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Excelente. Faça apenas uma revisão final de confiança antes da sessão.
+          <div className="rounded-lg border border-border bg-background/80 p-2.5">
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <ClipboardList className="h-3.5 w-3.5" />
+              Checklist de preparação
+            </p>
+
+            <ol className="mt-1.5 space-y-1.5">
+              {state.steps.map((step) => (
+                <li key={step.id} className="rounded-md border border-border/70 bg-card/70 px-2 py-1.5">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <span
+                      className={[
+                        "mt-0.5 shrink-0 text-sm font-semibold leading-none",
+                        step.done ? "text-status-concluida" : "text-status-alerta",
+                      ].join(" ")}
+                      aria-hidden
+                    >
+                      {step.done ? "✓" : "☐"}
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-start justify-between gap-2">
+                        <p className="min-w-0 text-sm font-medium leading-snug text-foreground">{step.label}</p>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                          {step.done ? "Concluído" : "Em falta"}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{step.description}</p>
+                      {!step.done && step.href && step.cta && (
+                        <Button
+                          asChild
+                          variant="secondary"
+                          size="sm"
+                          className="mt-1.5 h-7 w-full justify-center px-2.5 text-[11px]"
+                        >
+                          <Link to={step.href}>{step.cta}</Link>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="rounded-lg border border-border bg-background/80 p-2.5">
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <ListChecks className="h-3.5 w-3.5" />
+              Itens em falta
+            </p>
+
+            {state.isComplete ? (
+              <p className="mt-1.5 rounded-md border border-status-concluida/30 bg-status-concluida/10 px-2 py-1.5 text-xs leading-relaxed text-foreground">
+                Preparação concluída. Faça apenas uma revisão final de confiança antes da sessão.
+              </p>
+            ) : state.missingItems.length > 0 ? (
+              <ul className="mt-1.5 space-y-1.5">
+                {state.missingItems.map((item) => (
+                  <li key={item.id} className="rounded-md border border-status-alerta/30 bg-status-alerta/10 px-2 py-1.5">
+                    <p className="text-xs leading-relaxed text-foreground">• {item.message}</p>
+                    <Button
+                      asChild
+                      variant="secondary"
+                      size="sm"
+                      className="mt-1.5 h-7 w-full justify-center px-2.5 text-[11px]"
+                    >
+                      <Link to={item.href}>{item.cta}</Link>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                Não existem pendências críticas neste momento.
               </p>
             )}
           </div>
@@ -309,13 +286,13 @@ function criarEstadoPreparacao({
   const steps: GuidanceStep[] = [
     {
       id: "session-created",
-      label: "✓ Sessão criada",
+      label: "Sessão criada",
       description: "A sessão está disponível para preparação.",
       done: true,
     },
     {
       id: "strategy-completed",
-      label: "✓ Estratégia concluída",
+      label: "Estratégia concluída",
       description: "Defina objetivo político e mensagem principal da sessão.",
       done: strategyCompleted,
       href: `/sessoes/${assembleiaId}/preparacao/estrategia`,
@@ -323,15 +300,15 @@ function criarEstadoPreparacao({
     },
     {
       id: "documents-reviewed",
-      label: "☐ Documentos analisados",
+      label: "Documentos analisados",
       description: "Confirme que os documentos carregados já foram analisados.",
       done: documentsReviewed,
       href: `/sessoes/${assembleiaId}/preparacao/documentos`,
-      cta: "Analisar documentos",
+      cta: documentsUploaded ? "Analisar documentos" : "Carregar documentos",
     },
     {
       id: "draft-documents",
-      label: "☐ Rascunhos criados",
+      label: "Rascunhos criados",
       description: "Crie minutas de moções, requerimentos ou intervenções.",
       done: draftsCreated,
       href: `/sessoes/${assembleiaId}/preparacao/documentos-a-criar`,
@@ -339,7 +316,7 @@ function criarEstadoPreparacao({
     },
     {
       id: "questions-prepared",
-      label: "☐ Intervenção preparada",
+      label: "Intervenção preparada",
       description: "Prepare perguntas/intervenções nos pontos relevantes.",
       done: questionsPrepared,
       href: `/sessoes/${assembleiaId}/preparacao/pontos`,
@@ -347,7 +324,7 @@ function criarEstadoPreparacao({
     },
     {
       id: "final-review",
-      label: "☐ Revisão final",
+      label: "Revisão final",
       description: "Confirme que tudo está pronto para a sessão.",
       done: finalReview,
     },
@@ -385,12 +362,14 @@ function criarEstadoPreparacao({
     });
   }
   if (!documentsReviewed) {
-    missingItems.push({
-      id: "missing-documents-reviewed",
-      message: "Os documentos carregados ainda não foram analisados.",
-      href: `/sessoes/${assembleiaId}/preparacao/documentos`,
-      cta: "Analisar documentos",
-    });
+    if (documentsUploaded) {
+      missingItems.push({
+        id: "missing-documents-reviewed",
+        message: "Os documentos carregados ainda não foram analisados.",
+        href: `/sessoes/${assembleiaId}/preparacao/documentos`,
+        cta: "Analisar documentos",
+      });
+    }
   }
   if (!strategyCompleted) {
     missingItems.push({
@@ -401,12 +380,14 @@ function criarEstadoPreparacao({
     });
   }
   if (!questionsPrepared) {
-    missingItems.push({
-      id: "missing-intervention",
-      message: "Ainda falta preparar a intervenção.",
-      href: `/sessoes/${assembleiaId}/preparacao/pontos`,
-      cta: "Preparar intervenção",
-    });
+    if (pointsAdded) {
+      missingItems.push({
+        id: "missing-intervention",
+        message: "Ainda falta preparar a intervenção.",
+        href: `/sessoes/${assembleiaId}/preparacao/pontos`,
+        cta: "Preparar intervenção",
+      });
+    }
   }
   if (!draftsCreated) {
     missingItems.push({
