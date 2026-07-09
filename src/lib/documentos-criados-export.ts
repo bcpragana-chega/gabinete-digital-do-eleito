@@ -31,110 +31,17 @@ export function exportarDocumentoCriadoPDF(
   contexto?: ContextoDocumentoInstitucional,
 ) {
   if (isTipoDocumentoInstitucional(documento.tipo)) {
-    imprimirHtml(criarHtmlDocumentoInstitucional(documento, contexto), documento.titulo);
+    imprimirDocumentoIsolado(
+      criarHtmlDocumentoInstitucional(documento, contexto),
+      documento.titulo,
+    );
     return;
   }
 
-  const titulo = documento.titulo.trim() || "Documento sem titulo";
-  const tipo = documento.tipo;
-  const conteudo = documento.conteudo.trim() || "Sem conteudo.";
-  const data = dataAtualFormatada();
-  const assinatura = assinaturaInstitucional();
-  const detalhes = [
-    contexto?.assunto ? `Assunto: ${contexto.assunto}` : undefined,
-    contexto?.sessao ? `Sessao: ${contexto.sessao}` : undefined,
-    contexto?.ponto ? `Ponto: ${contexto.ponto}` : undefined,
-  ].filter(Boolean);
-
-  imprimirHtml(`<!doctype html>
-<html lang="pt">
-  <head>
-    <meta charset="utf-8" />
-    <title>${escaparHtml(titulo)}</title>
-    <style>
-      @page { margin: 24mm; }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        color: #111827;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        line-height: 1.65;
-      }
-      header {
-        border-bottom: 1px solid #e5e7eb;
-        margin-bottom: 32px;
-        padding-bottom: 24px;
-        text-align: center;
-      }
-      .brand {
-        color: #6b7280;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-      }
-      .type {
-        color: #374151;
-        font-size: 13px;
-        font-weight: 700;
-        margin-top: 10px;
-        text-transform: uppercase;
-      }
-      h1 {
-        font-size: 28px;
-        line-height: 1.2;
-        margin: 28px 0 0;
-      }
-      .meta {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        color: #4b5563;
-        font-size: 13px;
-        margin-bottom: 32px;
-        padding: 16px 18px;
-      }
-      .content {
-        font-size: 15px;
-        white-space: pre-wrap;
-      }
-      footer {
-        margin-top: 56px;
-        page-break-inside: avoid;
-      }
-      .date {
-        margin-bottom: 48px;
-      }
-      .signature {
-        border-top: 1px solid #9ca3af;
-        display: inline-block;
-        min-width: 260px;
-        padding-top: 10px;
-      }
-      @media print {
-        body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <div class="brand">Tribuno</div>
-      <div class="type">${escaparHtml(tipo)}</div>
-      <h1>${escaparHtml(titulo)}</h1>
-    </header>
-    ${
-      detalhes.length > 0
-        ? `<section class="meta">${detalhes.map((item) => escaparHtml(item ?? "")).join("<br />")}</section>`
-        : ""
-    }
-    <main class="content">${escaparHtml(conteudo)}</main>
-    <footer>
-      <p class="date">Data: ${escaparHtml(data)}</p>
-      <p class="signature">${escaparHtml(assinatura)}</p>
-    </footer>
-  </body>
-</html>`, titulo);
+  imprimirDocumentoIsolado(criarHtmlDocumentoGenerico(documento, contexto), documento.titulo);
 }
+
+export const exportarDocumentoCriadoPdf = exportarDocumentoCriadoPDF;
 
 export function exportarDocumentoCriadoWord(
   documento: DocumentoCriado,
@@ -157,40 +64,18 @@ export function exportarDocumentoCriadoWord(
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function imprimirHtml(html: string, titulo: string) {
-  const janela = window.open("", "_blank", "noopener,noreferrer,width=900,height=1200");
-  if (!janela) {
-    window.print();
-    return;
-  }
-
-  const scriptImpressao = `<script>
-      window.addEventListener("load", () => {
-        window.focus();
-        window.print();
-      });
-    </script>`;
-  const htmlComImpressao = html.includes("</body>")
-    ? html.replace("</body>", `${scriptImpressao}</body>`)
-    : `${html}${scriptImpressao}`;
-
-  janela.document.write(htmlComImpressao);
-  janela.document.title = titulo;
-  janela.document.close();
-}
-
 function criarHtmlDocumentoGenerico(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ) {
-  const titulo = documento.titulo.trim() || "Documento sem titulo";
+  const titulo = documento.titulo.trim() || "Documento sem título";
   const tipo = documento.tipo;
-  const conteudo = documento.conteudo.trim() || "Sem conteudo.";
+  const conteudo = documento.conteudo.trim() || "";
   const data = dataAtualFormatada();
   const assinatura = assinaturaInstitucional();
   const detalhes = [
     contexto?.assunto ? `Assunto: ${contexto.assunto}` : undefined,
-    contexto?.sessao ? `Sessao: ${contexto.sessao}` : undefined,
+    contexto?.sessao ? `Sessão: ${contexto.sessao}` : undefined,
     contexto?.ponto ? `Ponto: ${contexto.ponto}` : undefined,
   ].filter(Boolean);
 
@@ -282,4 +167,89 @@ function criarHtmlDocumentoGenerico(
     </footer>
   </body>
 </html>`;
+}
+
+function imprimirDocumentoIsolado(html: string, titulo: string) {
+  const iframe = document.createElement("iframe");
+
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.style.opacity = "0";
+  iframe.style.pointerEvents = "none";
+  document.body.appendChild(iframe);
+
+  const documentoIframe = iframe.contentDocument;
+  const janelaIframe = iframe.contentWindow;
+
+  if (!documentoIframe || !janelaIframe) {
+    iframe.remove();
+    abrirDocumentoIsolado(html, titulo);
+    return;
+  }
+
+  documentoIframe.open();
+  documentoIframe.write(html);
+  documentoIframe.title = titulo.trim() || "Documento Tribuno";
+  documentoIframe.close();
+
+  const removerIframe = () => {
+    window.setTimeout(() => iframe.remove(), 500);
+  };
+
+  janelaIframe.addEventListener("afterprint", removerIframe, { once: true });
+
+  window.setTimeout(() => {
+    try {
+      janelaIframe.focus();
+      janelaIframe.print();
+      window.setTimeout(removerIframe, 2000);
+    } catch {
+      iframe.remove();
+      abrirDocumentoIsolado(html, titulo);
+    }
+  }, 350);
+}
+
+function abrirDocumentoIsolado(html: string, titulo: string) {
+  const janela = window.open("", "_blank", "width=900,height=1200");
+
+  if (!janela) {
+    descarregarHtmlDocumento(html, titulo);
+    return;
+  }
+
+  janela.document.open();
+  janela.document.write(html);
+  janela.document.title = titulo.trim() || "Documento Tribuno";
+  janela.document.close();
+
+  window.setTimeout(() => {
+    try {
+      janela.focus();
+      janela.print();
+    } catch {
+      descarregarHtmlDocumento(html, titulo);
+    }
+  }, 350);
+}
+
+function descarregarHtmlDocumento(html: string, titulo: string) {
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `${nomeFicheiroDocumento(
+    { tipo: "Outro documento", titulo: titulo.trim() || "Documento Tribuno" },
+    "html",
+  )}`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
