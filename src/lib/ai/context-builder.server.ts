@@ -13,6 +13,7 @@ type ProfileRow = {
   cargo: string | null;
   orgao: string | null;
   organizacao: string | null;
+  territorio: string | null;
   assinatura_institucional: string | null;
 };
 
@@ -122,6 +123,7 @@ function construirPerfil(row?: ProfileRow): PerfilInstitucionalContexto {
     cargo: row?.cargo?.trim() || "Cargo não indicado",
     orgao: row?.orgao?.trim() || "Órgão não indicado",
     organizacao: row?.organizacao?.trim() || "Organização não indicada",
+    territorio: row?.territorio?.trim() || undefined,
     assinatura: row?.assinatura_institucional?.trim() || undefined,
     partido: undefined,
   };
@@ -202,7 +204,7 @@ export async function construirContextoGeracaoDocumento(
 
   const [profiles, assuntos, documentosCriadosAssunto, documentosAssunto] = await Promise.all([
     supabaseSelect<ProfileRow>("profiles", {
-      select: "nome_institucional,cargo,orgao,organizacao,assinatura_institucional",
+      select: "nome_institucional,cargo,orgao,organizacao,territorio,assinatura_institucional",
       user_id: `eq.${userId}`,
       limit: "1",
     }),

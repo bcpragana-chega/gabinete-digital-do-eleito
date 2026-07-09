@@ -22,9 +22,13 @@ import {
 } from "@/lib/documentos-a-criar-store";
 import { gerarDocumentoAssistido } from "@/lib/ai/document-generator.server";
 import type { ResultadoGeracaoDocumento } from "@/lib/ai/types";
-import { exportarDocumentoCriadoWord } from "@/lib/documentos-criados-export";
+import {
+  exportarDocumentoCriadoPDF,
+  exportarDocumentoCriadoWord,
+} from "@/lib/documentos-criados-export";
 import { obterAssembleia } from "@/lib/assembleias-store";
 import { useAuth } from "@/lib/auth-store";
+import { useDossie } from "@/lib/dossies-store";
 import { listarAssembleiasDoDossie } from "@/lib/dossie-assembleias-store";
 import { listarDocumentosDoDossie } from "@/lib/dossie-documentos-store";
 import { listarNotasDossie } from "@/lib/dossie-notas-store";
@@ -91,6 +95,7 @@ function mensagemErroGeracao(code?: string, message?: string) {
 
 export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string }) {
   const { user } = useAuth();
+  const dossie = useDossie(dossieId);
   const [documentos, setDocumentos] = useState<DocumentoCriado[]>([]);
   const [tipo, setTipo] = useState<TipoDocumentoCriado>("Recomendação");
   const [titulo, setTitulo] = useState("");
@@ -253,7 +258,19 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
               meta={documento.tipo}
               action={
                 <div className="flex flex-wrap justify-end gap-2">
-                  <Button asChild type="button" size="sm">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() =>
+                      exportarDocumentoCriadoPDF(documento, {
+                        assunto: dossie?.titulo,
+                      })
+                    }
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download PDF
+                  </Button>
+                  <Button asChild type="button" size="sm" variant="secondary">
                     <Link
                       to="/assuntos/$dossieId/documentos/$documentoId"
                       params={{ dossieId, documentoId: documento.id }}

@@ -30,6 +30,7 @@ export type PerfilInstitucionalContexto = {
   cargo: string;
   orgao: string;
   organizacao: string;
+  territorio?: string;
   partido?: string;
   assinatura?: string;
 };
