@@ -405,8 +405,8 @@ function desenharCabecalho(
     pagina.y,
     {
       maxWidth: larguraTexto,
-      font: "700 25px Arial, sans-serif",
-      lineHeight: 34,
+      font: "800 32px Arial, sans-serif",
+      lineHeight: 42,
       color: "#374151",
     },
   );
@@ -420,8 +420,8 @@ function desenharCabecalho(
       pagina.y,
       {
         maxWidth: larguraTexto,
-        font: "800 29px Arial, sans-serif",
-        lineHeight: 38,
+        font: "700 25px Arial, sans-serif",
+        lineHeight: 34,
         color: "#111827",
       },
     );
