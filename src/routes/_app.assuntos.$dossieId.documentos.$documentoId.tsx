@@ -34,10 +34,12 @@ import {
   atualizarDocumentoACriarRascunho,
   carregarDocumentosCriadosRemotosSeDisponivel,
   criarConteudoInicialDocumento,
+  hidratarDocumentoACriarLocal,
   obterDocumentoACriarGlobal,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
 import {
+  carregarDocumentoCriadoRemotoPorId,
   carregarDocumentosCriadosLocais,
   carregarDocumentosCriadosRemotos,
 } from "@/lib/documentos-criados-repository";
@@ -195,16 +197,23 @@ function DocumentoDoAssuntoPage() {
       });
 
       let documentosRemotos: Awaited<ReturnType<typeof carregarDocumentosCriadosRemotos>>;
+      let documentoRemotoPorId: DocumentoCriado | undefined;
       let erroRemoteLookup: string | undefined;
 
       try {
-        documentosRemotos = await carregarDocumentosCriadosRemotos();
+        if (!proximo) {
+          documentoRemotoPorId = await carregarDocumentoCriadoRemotoPorId(documentoId);
+        }
+        documentosRemotos = documentoRemotoPorId
+          ? [documentoRemotoPorId]
+          : await carregarDocumentosCriadosRemotos();
       } catch (error) {
         erroRemoteLookup = error instanceof Error ? error.message : String(error);
         documentosRemotos = undefined;
       }
 
       const documentoRemoto = documentosRemotos?.find((item) => item.id === documentoId);
+      const documentoParaEditor = proximo ?? documentoRemoto;
 
       logEditorDocumentoDev("lookup_result", {
         params: {
@@ -218,6 +227,8 @@ function DocumentoDoAssuntoPage() {
         documentoLocalOrigem: documentoLocal?.origem,
         documentoStoreOrigem: proximo?.origem,
         documentoStoreAssuntoId: proximo?.assuntoId,
+        documentoRemotoOrigem: documentoRemoto?.origem,
+        documentoRemotoAssuntoId: documentoRemoto?.assuntoId,
         erroRemoteLookup,
       });
 
@@ -230,7 +241,12 @@ function DocumentoDoAssuntoPage() {
         },
       });
 
-      const pertenceAoAssunto = proximo?.assuntoId === dossieId || proximo?.origem === "ia";
+      const pertenceAoAssunto =
+        documentoParaEditor?.assuntoId === dossieId || documentoParaEditor?.origem === "ia";
+
+      if (documentoParaEditor && documentoParaEditor === documentoRemoto) {
+        hidratarDocumentoACriarLocal(documentoParaEditor);
+      }
 
       logEditorDocumentoDev("render_decision_source", {
         documentoId,
@@ -238,23 +254,30 @@ function DocumentoDoAssuntoPage() {
         pertenceAoAssunto,
         motivoSeNaoRenderizarEditor: !assuntoEncontrado
           ? "assunto não encontrado"
-          : !proximo
-            ? "documento não encontrado no store usado pela rota"
+          : !documentoParaEditor
+            ? "documento não encontrado no store local nem em documentos_criados"
             : !pertenceAoAssunto
-              ? "documento encontrado, mas não pertence ao assunto e não tem origem ia"
+              ? "documento encontrado, mas assuntoId/origem não permitem abrir neste assunto"
               : undefined,
+        fonteDocumento: proximo
+          ? "store_local"
+          : documentoRemoto
+            ? "documentos_criados"
+            : undefined,
       });
 
-      setDocumento(pertenceAoAssunto ? proximo : undefined);
+      setDocumento(pertenceAoAssunto ? documentoParaEditor : undefined);
 
-      if (proximo && pertenceAoAssunto) {
-        setTitulo(proximo.titulo);
+      if (documentoParaEditor && pertenceAoAssunto) {
+        setTitulo(documentoParaEditor.titulo);
         setConteudo(
-          proximo.conteudo?.trim() ? proximo.conteudo : criarConteudoInicialDocumento(proximo),
+          documentoParaEditor.conteudo?.trim()
+            ? documentoParaEditor.conteudo
+            : criarConteudoInicialDocumento(documentoParaEditor),
         );
-        setEstado(proximo.estado);
-        setAssembleiaId(proximo.assembleiaId);
-        setPontoId(proximo.pontoId);
+        setEstado(documentoParaEditor.estado);
+        setAssembleiaId(documentoParaEditor.assembleiaId);
+        setPontoId(documentoParaEditor.pontoId);
       }
 
       setCarregou(true);

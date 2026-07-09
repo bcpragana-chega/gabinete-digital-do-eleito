@@ -222,6 +222,24 @@ export async function carregarDocumentosCriadosRemotos() {
   return (data ?? []).map((row) => fromRow(row as DocumentoCriadoRow));
 }
 
+export async function carregarDocumentoCriadoRemotoPorId(id: string) {
+  const supabaseUserId = await obterSupabaseUserIdValido();
+  if (!supabaseUserId) return undefined;
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return undefined;
+
+  const { data, error } = await withSupabaseTimeout(
+    supabase.from("documentos_criados").select("*").eq("id", id).maybeSingle(),
+    "DOCUMENTOS_CRIADOS_SELECT_BY_ID",
+  );
+
+  if (error) throw error;
+  if (!data) return undefined;
+
+  return fromRow(data as DocumentoCriadoRow);
+}
+
 export async function guardarDocumentoCriadoRemoto(userId: string, documento: DocumentoCriado) {
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) return;

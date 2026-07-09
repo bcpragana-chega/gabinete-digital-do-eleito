@@ -300,6 +300,18 @@ export function sincronizarDocumentoACriarGerado(documento: DocumentoCriado) {
   return documento;
 }
 
+export function hidratarDocumentoACriarLocal(documento: DocumentoCriado) {
+  const documentos = carregarDocumentosCriadosLocais();
+  const existe = documentos.some((item) => item.id === documento.id);
+
+  const atualizados = existe
+    ? documentos.map((item) => (item.id === documento.id ? { ...item, ...documento } : item))
+    : [documento, ...documentos];
+
+  guardarDocumentos(atualizados);
+  return documento;
+}
+
 export function atualizarDocumentoACriarRascunho(
   rascunhoId: string,
   data: Partial<
