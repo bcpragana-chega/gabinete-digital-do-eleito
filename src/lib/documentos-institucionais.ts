@@ -26,11 +26,7 @@ type DadosInstitucionais = {
   data: string;
 };
 
-const tiposInstitucionais: TipoDocumentoInstitucional[] = [
-  "Moção",
-  "Recomendação",
-  "Requerimento",
-];
+const tiposInstitucionais: TipoDocumentoInstitucional[] = ["Moção", "Recomendação", "Requerimento"];
 
 const secoesPorTipo: Record<TipoDocumentoInstitucional, string[]> = {
   Moção: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "PROPOSTA / DELIBERAÇÃO"],
@@ -84,7 +80,10 @@ function dataFormatada(data?: string) {
   }).format(dataBase);
 }
 
-function obterNomeOrgao(perfil?: PerfilEleito, assembleia?: ContextoDocumentoInstitucional["assembleia"]) {
+function obterNomeOrgao(
+  perfil?: PerfilEleito,
+  assembleia?: ContextoDocumentoInstitucional["assembleia"],
+) {
   const organizacao = textoSeguro(perfil?.organizacao);
   if (organizacao) return organizacao;
 
@@ -236,11 +235,61 @@ function removerTituloMarkdown(conteudo: string, titulo: string) {
   const primeiraLinha = linhas[0]?.trim();
   const tituloMarkdown = `# ${titulo.trim()}`;
 
-  if (primeiraLinha && primeiraLinha.toLocaleLowerCase("pt-PT") === tituloMarkdown.toLocaleLowerCase("pt-PT")) {
+  if (
+    primeiraLinha &&
+    primeiraLinha.toLocaleLowerCase("pt-PT") === tituloMarkdown.toLocaleLowerCase("pt-PT")
+  ) {
     return linhas.slice(1).join("\n").trim();
   }
 
   return conteudo.trim();
+}
+
+function normalizarTituloSecao(valor: string) {
+  return valor
+    .trim()
+    .replace(/^#{1,6}\s*/, "")
+    .replace(/:$/, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleUpperCase("pt-PT");
+}
+
+function obterTituloSecaoNormalizado(
+  tipo: TipoDocumentoInstitucional,
+  linha: string,
+): string | undefined {
+  const tituloNormalizado = normalizarTituloSecao(linha);
+  const secoesEsperadas = secoesPorTipo[tipo];
+  const aliases: Record<string, string | undefined> = {
+    ENQUADRAMENTO: "ENQUADRAMENTO",
+    CONTEXTO: "ENQUADRAMENTO",
+    "EXPOSICAO DE MOTIVOS": "ENQUADRAMENTO",
+    "EXPOSICAO DOS MOTIVOS": "ENQUADRAMENTO",
+    MOTIVOS: "ENQUADRAMENTO",
+    FUNDAMENTACAO: "FUNDAMENTAÇÃO",
+    FUNDAMENTOS: "FUNDAMENTAÇÃO",
+    CONSIDERANDOS: "FUNDAMENTAÇÃO",
+    DELIBERACAO: tipo === "Moção" ? "PROPOSTA / DELIBERAÇÃO" : undefined,
+    PROPOSTA: tipo === "Moção" ? "PROPOSTA / DELIBERAÇÃO" : undefined,
+    "PROPOSTA / DELIBERACAO": "PROPOSTA / DELIBERAÇÃO",
+    PEDIDO: tipo === "Requerimento" ? "REQUERIMENTO" : "RECOMENDAÇÃO",
+    RECOMENDACAO: "RECOMENDAÇÃO",
+    REQUERIMENTO: "REQUERIMENTO",
+  };
+  const direto = secoesEsperadas.find(
+    (secao) => normalizarTituloSecao(secao) === tituloNormalizado,
+  );
+  const alias = aliases[tituloNormalizado];
+
+  if (direto) return direto;
+  if (alias && secoesEsperadas.includes(alias)) return alias;
+  return undefined;
+}
+
+function linhaPareceTituloSecao(tipo: TipoDocumentoInstitucional, linha: string) {
+  if (!linha.trim()) return undefined;
+  return obterTituloSecaoNormalizado(tipo, linha);
 }
 
 export function obterSecoesDocumentoInstitucional(
@@ -254,9 +303,12 @@ export function obterSecoesDocumentoInstitucional(
   for (const linhaOriginal of removerTituloMarkdown(conteudo, "").split(/\r?\n/)) {
     const linha = linhaOriginal.trimEnd();
 
-    if (linha.trim().startsWith("## ")) {
-      const titulo = linha.trim().slice(3).trim().toLocaleUpperCase("pt-PT");
-      secaoAtual = secoesEsperadas.includes(titulo) ? titulo : undefined;
+    const tituloSecao = linha.trim().startsWith("## ")
+      ? obterTituloSecaoNormalizado(tipo, linha.trim().slice(3))
+      : linhaPareceTituloSecao(tipo, linha);
+
+    if (tituloSecao) {
+      secaoAtual = tituloSecao;
       if (secaoAtual && !secoes.has(secaoAtual)) secoes.set(secaoAtual, []);
       continue;
     }
@@ -270,10 +322,7 @@ export function obterSecoesDocumentoInstitucional(
   return secoesEsperadas.map((titulo) => ({
     titulo,
     conteudo:
-      secoes
-        .get(titulo)
-        ?.join("\n")
-        .trim() ||
+      secoes.get(titulo)?.join("\n").trim() ||
       obterSecoesDocumentoInstitucionalSemFallback(tipo, defaults).find(
         (secao) => secao.titulo === titulo,
       )?.conteudo ||
@@ -292,9 +341,12 @@ function obterSecoesDocumentoInstitucionalSemFallback(
   for (const linhaOriginal of conteudo.split(/\r?\n/)) {
     const linha = linhaOriginal.trimEnd();
 
-    if (linha.trim().startsWith("## ")) {
-      const titulo = linha.trim().slice(3).trim().toLocaleUpperCase("pt-PT");
-      secaoAtual = secoesEsperadas.includes(titulo) ? titulo : undefined;
+    const tituloSecao = linha.trim().startsWith("## ")
+      ? obterTituloSecaoNormalizado(tipo, linha.trim().slice(3))
+      : linhaPareceTituloSecao(tipo, linha);
+
+    if (tituloSecao) {
+      secaoAtual = tituloSecao;
       if (secaoAtual && !secoes.has(secaoAtual)) secoes.set(secaoAtual, []);
       continue;
     }
@@ -310,9 +362,7 @@ function obterSecoesDocumentoInstitucionalSemFallback(
 }
 
 export function serializarSecoesDocumentoInstitucional(secoes: SecaoDocumentoInstitucional[]) {
-  return secoes
-    .map((secao) => `## ${secao.titulo}\n\n${secao.conteudo.trim()}`)
-    .join("\n\n");
+  return secoes.map((secao) => `## ${secao.titulo}\n\n${secao.conteudo.trim()}`).join("\n\n");
 }
 
 function renderMarkdownInstitucional(markdown: string) {
@@ -525,7 +575,10 @@ export function criarHtmlDocumentoInstitucional(
 </html>`;
 }
 
-export function nomeFicheiroDocumento(documento: Pick<DocumentoCriado, "tipo" | "titulo">, extensao: string) {
+export function nomeFicheiroDocumento(
+  documento: Pick<DocumentoCriado, "tipo" | "titulo">,
+  extensao: string,
+) {
   const base = `${documento.tipo}_${documento.titulo || "Documento"}`
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")

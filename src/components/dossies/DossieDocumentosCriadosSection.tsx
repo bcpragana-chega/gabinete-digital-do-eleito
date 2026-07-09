@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { AlertCircle, Download, FilePlus2, FileText, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ActionCard } from "@/components/ui/cards";
@@ -251,15 +252,25 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
               description={metaAssociacao(documento)}
               meta={documento.tipo}
               action={
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => exportarDocumentoCriadoWord(documento)}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download
-                </Button>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button asChild type="button" size="sm">
+                    <Link
+                      to="/assuntos/$dossieId/documentos/$documentoId"
+                      params={{ dossieId, documentoId: documento.id }}
+                    >
+                      Abrir no Tribuno
+                    </Link>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => exportarDocumentoCriadoWord(documento)}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    .doc
+                  </Button>
+                </div>
               }
             >
               <div className="flex flex-wrap gap-2">
