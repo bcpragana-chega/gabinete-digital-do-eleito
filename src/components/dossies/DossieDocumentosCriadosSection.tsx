@@ -1,5 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
-import { AlertCircle, FilePlus2, FileText, Loader2 } from "lucide-react";
+import { AlertCircle, Download, FilePlus2, FileText, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ActionCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
@@ -22,6 +21,7 @@ import {
 } from "@/lib/documentos-a-criar-store";
 import { gerarDocumentoAssistido } from "@/lib/ai/document-generator.server";
 import type { ResultadoGeracaoDocumento } from "@/lib/ai/types";
+import { exportarDocumentoCriadoWord } from "@/lib/documentos-criados-export";
 import { obterAssembleia } from "@/lib/assembleias-store";
 import { useAuth } from "@/lib/auth-store";
 import { listarAssembleiasDoDossie } from "@/lib/dossie-assembleias-store";
@@ -88,13 +88,7 @@ function mensagemErroGeracao(code?: string, message?: string) {
   return mensagensConhecidas[code] ? `${mensagensConhecidas[code]} [${code}]` : `${base} [${code}]`;
 }
 
-function logAbrirDocumentoDev(message: string, data: Record<string, unknown>) {
-  if (!import.meta.env.DEV) return;
-  console.info(`[Tribuno DEV][documentos_criados_open] ${message}`, data);
-}
-
 export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string }) {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [documentos, setDocumentos] = useState<DocumentoCriado[]>([]);
   const [tipo, setTipo] = useState<TipoDocumentoCriado>("Recomendação");
@@ -165,11 +159,6 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
       setTitulo("");
       setConteudo("");
       setDocumentos(listarDocumentosACriarDoAssunto(dossieId));
-
-      await navigate({
-        to: "/assuntos/$dossieId/documentos/$documentoId",
-        params: { dossieId, documentoId: response.documento.id },
-      });
     } catch {
       setErroGeracao(mensagemErroGeracao("AI_GENERATION_ERROR"));
     } finally {
@@ -266,71 +255,10 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                   type="button"
                   size="sm"
                   variant="secondary"
-                  onClick={async () => {
-                    const rotaDestino = "/assuntos/$dossieId/documentos/$documentoId";
-
-                    logAbrirDocumentoDev("click", {
-                      dossieId,
-                      documentoId: documento.id,
-                      titulo: documento.titulo,
-                      origem: documento.origem,
-                      rotaDestino,
-                    });
-
-                    addDiagnosticEvent({
-                      area: "documentos_criados_open",
-                      message: "click",
-                      data: {
-                        dossieId,
-                        documentoId: documento.id,
-                        titulo: documento.titulo,
-                        rotaDestino,
-                      },
-                    });
-
-                    addDiagnosticEvent({
-                      area: "documentos_criados_open",
-                      message: "before_navigate",
-                      data: {
-                        dossieId,
-                        documentoId: documento.id,
-                        titulo: documento.titulo,
-                        rotaDestino,
-                      },
-                    });
-
-                    const navigation = navigate({
-                      to: rotaDestino,
-                      params: { dossieId, documentoId: documento.id },
-                    });
-
-                    logAbrirDocumentoDev("navigate_called", {
-                      dossieId,
-                      documentoId: documento.id,
-                      rotaDestino,
-                    });
-
-                    await navigation;
-
-                    logAbrirDocumentoDev("navigate_resolved", {
-                      dossieId,
-                      documentoId: documento.id,
-                      rotaDestino,
-                    });
-
-                    addDiagnosticEvent({
-                      area: "documentos_criados_open",
-                      message: "after_navigate",
-                      data: {
-                        dossieId,
-                        documentoId: documento.id,
-                        titulo: documento.titulo,
-                        rotaDestino,
-                      },
-                    });
-                  }}
+                  onClick={() => exportarDocumentoCriadoWord(documento)}
                 >
-                  Abrir
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
                 </Button>
               }
             >
