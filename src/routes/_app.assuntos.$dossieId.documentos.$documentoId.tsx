@@ -120,6 +120,11 @@ function limparSintaxeMarkdownVisivel(conteudo: string) {
     .trim();
 }
 
+function logEditorDocumentoDev(message: string, data: Record<string, unknown>) {
+  if (!import.meta.env.DEV) return;
+  console.info(`[Tribuno DEV][documento_editor] ${message}`, data);
+}
+
 function DocumentoDoAssuntoPage() {
   const { dossieId, documentoId } = Route.useParams();
 
@@ -135,6 +140,7 @@ function DocumentoDoAssuntoPage() {
   });
 
   const dossie = useDossie(dossieId);
+  const assuntoEncontrado = Boolean(dossie);
   const assembleias = useAssembleias();
   const [documento, setDocumento] = useState<DocumentoCriado | undefined>();
   const [carregou, setCarregou] = useState(false);
@@ -149,6 +155,12 @@ function DocumentoDoAssuntoPage() {
 
   useEffect(() => {
     let ativo = true;
+
+    logEditorDocumentoDev("route_params", {
+      dossieId,
+      documentoId,
+      assuntoEncontrado,
+    });
 
     async function carregar() {
       if (!ativo) return;
@@ -194,6 +206,21 @@ function DocumentoDoAssuntoPage() {
 
       const documentoRemoto = documentosRemotos?.find((item) => item.id === documentoId);
 
+      logEditorDocumentoDev("lookup_result", {
+        params: {
+          dossieId,
+          documentoId,
+        },
+        documentoLocalEncontrado: Boolean(documentoLocal),
+        documentoStoreEncontrado: Boolean(proximo),
+        documentoRemotoEncontrado: Boolean(documentoRemoto),
+        assuntoEncontrado,
+        documentoLocalOrigem: documentoLocal?.origem,
+        documentoStoreOrigem: proximo?.origem,
+        documentoStoreAssuntoId: proximo?.assuntoId,
+        erroRemoteLookup,
+      });
+
       addDiagnosticEvent({
         area: "documento_editor",
         message: "after_remote_lookup",
@@ -203,8 +230,20 @@ function DocumentoDoAssuntoPage() {
         },
       });
 
-      const pertenceAoAssunto =
-        proximo?.assuntoId === dossieId || proximo?.origem === "ia";
+      const pertenceAoAssunto = proximo?.assuntoId === dossieId || proximo?.origem === "ia";
+
+      logEditorDocumentoDev("render_decision_source", {
+        documentoId,
+        assuntoEncontrado,
+        pertenceAoAssunto,
+        motivoSeNaoRenderizarEditor: !assuntoEncontrado
+          ? "assunto não encontrado"
+          : !proximo
+            ? "documento não encontrado no store usado pela rota"
+            : !pertenceAoAssunto
+              ? "documento encontrado, mas não pertence ao assunto e não tem origem ia"
+              : undefined,
+      });
 
       setDocumento(pertenceAoAssunto ? proximo : undefined);
 
@@ -231,7 +270,7 @@ function DocumentoDoAssuntoPage() {
       ativo = false;
       unsubscribe();
     };
-  }, [documentoId, dossieId]);
+  }, [documentoId, dossieId, assuntoEncontrado]);
 
   const motivoNaoAbrir = !dossie
     ? "assunto não encontrado"
@@ -401,6 +440,17 @@ function DocumentoDoAssuntoPage() {
   }
 
   if (!dossie || (carregou && !documento)) {
+    logEditorDocumentoDev("render_not_editor", {
+      params: {
+        dossieId,
+        documentoId,
+      },
+      carregou,
+      assuntoEncontrado: Boolean(dossie),
+      documentoEmEstado: Boolean(documento),
+      motivo: motivoNaoAbrir ?? "desconhecido",
+    });
+
     addDiagnosticEvent({
       area: "documento_editor",
       message: "render_not_found",
@@ -436,6 +486,31 @@ function DocumentoDoAssuntoPage() {
       </>
     );
   }
+
+  if (!documento) {
+    logEditorDocumentoDev("render_not_editor", {
+      params: {
+        dossieId,
+        documentoId,
+      },
+      carregou,
+      assuntoEncontrado: Boolean(dossie),
+      documentoEmEstado: false,
+      motivo: "a aguardar carregamento do documento",
+    });
+
+    return null;
+  }
+
+  logEditorDocumentoDev("render_editor", {
+    params: {
+      dossieId,
+      documentoId,
+    },
+    documentoId: documento.id,
+    titulo: documento.titulo,
+    origem: documento.origem,
+  });
 
   addDiagnosticEvent({
     area: "documento_editor",

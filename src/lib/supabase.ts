@@ -4,11 +4,11 @@ let client: SupabaseClient | undefined;
 const SUPABASE_TIMEOUT_MS = 12000;
 
 export function withSupabaseTimeout<T>(
-  promise: Promise<T>,
+  promise: PromiseLike<T>,
   etapa: string,
   timeoutMs = SUPABASE_TIMEOUT_MS,
-) {
-  return Promise.race([
+): Promise<T> {
+  return Promise.race<T>([
     promise,
     new Promise<never>((_, reject) => {
       globalThis.setTimeout(() => {

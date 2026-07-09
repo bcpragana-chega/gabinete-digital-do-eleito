@@ -21,6 +21,7 @@ import {
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
 import { gerarDocumentoAssistido } from "@/lib/ai/document-generator.server";
+import type { ResultadoGeracaoDocumento } from "@/lib/ai/types";
 import { obterAssembleia } from "@/lib/assembleias-store";
 import { useAuth } from "@/lib/auth-store";
 import { listarAssembleiasDoDossie } from "@/lib/dossie-assembleias-store";
@@ -61,7 +62,8 @@ function metaAssociacao(documento: DocumentoCriado) {
 }
 
 function mensagemErroGeracao(code?: string, message?: string) {
-  const base = message?.trim() || "Não foi possível gerar o documento. Verifique a ligação e tente novamente.";
+  const base =
+    message?.trim() || "Não foi possível gerar o documento. Verifique a ligação e tente novamente.";
 
   if (!import.meta.env.DEV || !code) {
     return base;
@@ -75,18 +77,20 @@ function mensagemErroGeracao(code?: string, message?: string) {
       "A OpenAI devolveu um erro ao gerar o documento. Consulte o log seguro do backend para ver o status HTTP.",
     AI_CONFIG_MISSING:
       "A IA não está configurada no backend. Falta a chave OpenAI ou a configuração do provider.",
-    AI_CONFIG_MISSING_MODEL:
-      "O modelo de IA não está configurado no backend.",
-    AI_CONFIG_MISSING_PROVIDER:
-      "O provider de IA não está configurado no backend.",
-    AI_PROVIDER_NOT_SUPPORTED:
-      "O provider de IA configurado não é suportado.",
+    AI_CONFIG_MISSING_MODEL: "O modelo de IA não está configurado no backend.",
+    AI_CONFIG_MISSING_PROVIDER: "O provider de IA não está configurado no backend.",
+    AI_PROVIDER_NOT_SUPPORTED: "O provider de IA configurado não é suportado.",
     SUPABASE_INSERT_DOCUMENTO_CRIADO:
       "A geração correu, mas a gravação do documento falhou no backend.",
     AI_GENERATION_ERROR: "Ocorreu um erro inesperado na geração de IA.",
   };
 
   return mensagensConhecidas[code] ? `${mensagensConhecidas[code]} [${code}]` : `${base} [${code}]`;
+}
+
+function logAbrirDocumentoDev(message: string, data: Record<string, unknown>) {
+  if (!import.meta.env.DEV) return;
+  console.info(`[Tribuno DEV][documentos_criados_open] ${message}`, data);
 }
 
 export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string }) {
@@ -132,7 +136,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
       const sessaoDeterministicaId =
         sessoesRelacionadas.length === 1 ? sessoesRelacionadas[0].assembleiaId : undefined;
 
-      const response = await gerarDocumentoAssistido({
+      const response = (await gerarDocumentoAssistido({
         data: {
           userId: user.id,
           assuntoId: dossieId,
@@ -148,7 +152,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
             (evento) => `${evento.data} · ${evento.titulo}: ${evento.descricao}`,
           ),
         },
-      });
+      })) as ResultadoGeracaoDocumento;
 
       if (!response.ok) {
         setErroGeracao(mensagemErroGeracao(response.code, response.message));
@@ -232,8 +236,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
           <Button type="button" onClick={gerarDocumento} disabled={!titulo.trim() || gerando}>
             {gerando ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                A gerar documento...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />A gerar documento...
               </>
             ) : (
               "Gerar documento"
@@ -266,6 +269,14 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                   onClick={async () => {
                     const rotaDestino = "/assuntos/$dossieId/documentos/$documentoId";
 
+                    logAbrirDocumentoDev("click", {
+                      dossieId,
+                      documentoId: documento.id,
+                      titulo: documento.titulo,
+                      origem: documento.origem,
+                      rotaDestino,
+                    });
+
                     addDiagnosticEvent({
                       area: "documentos_criados_open",
                       message: "click",
@@ -288,9 +299,23 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                       },
                     });
 
-                    await navigate({
+                    const navigation = navigate({
                       to: rotaDestino,
                       params: { dossieId, documentoId: documento.id },
+                    });
+
+                    logAbrirDocumentoDev("navigate_called", {
+                      dossieId,
+                      documentoId: documento.id,
+                      rotaDestino,
+                    });
+
+                    await navigation;
+
+                    logAbrirDocumentoDev("navigate_resolved", {
+                      dossieId,
+                      documentoId: documento.id,
+                      rotaDestino,
                     });
 
                     addDiagnosticEvent({

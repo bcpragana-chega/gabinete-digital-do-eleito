@@ -70,7 +70,11 @@ function DocumentosACriarPage() {
           <EmptyState
             title="Sessão não encontrada"
             description="Os rascunhos são organizados por Sessão para apoiar intervenções e propostas."
-            action={<Button asChild><Link to="/sessoes">Ir para Sessões</Link></Button>}
+            action={
+              <Button asChild>
+                <Link to="/sessoes">Ir para Sessões</Link>
+              </Button>
+            }
           />
         </main>
       </>
@@ -145,7 +149,7 @@ function DocumentosACriarPage() {
                 key={rascunho.id}
                 assembleiaId={id}
                 rascunho={rascunho}
-                ponto={pontosPorId.get(rascunho.pontoId)}
+                ponto={rascunho.pontoId ? pontosPorId.get(rascunho.pontoId) : undefined}
               />
             ))}
           </section>

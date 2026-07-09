@@ -1,5 +1,18 @@
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
+export type JsonSerializable =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonSerializable[]
+  | { [key: string]: JsonSerializable };
+
+export type DocumentoCriadoSerializavel = Omit<DocumentoCriado, "conteudoJson" | "iaMetadata"> & {
+  conteudoJson?: JsonSerializable;
+  iaMetadata?: JsonSerializable;
+};
+
 export type DadosEntradaGeracaoDocumento = {
   userId: string;
   assuntoId: string;
@@ -104,7 +117,7 @@ export interface AiProvider {
 export type ResultadoGeracaoDocumento =
   | {
       ok: true;
-      documento: DocumentoCriado;
+      documento: DocumentoCriadoSerializavel;
     }
   | {
       ok: false;

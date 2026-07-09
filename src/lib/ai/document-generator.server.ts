@@ -6,7 +6,11 @@ import { construirPromptDocumento } from "@/lib/ai/prompts/documents";
 import { obterPromptSistemaTribuno } from "@/lib/ai/prompts/system";
 import { obterFeatureGeracaoDocumento, type EstadoUsoAi } from "@/lib/ai/usage";
 import { registrarUsoAi } from "@/lib/ai/usage.server";
-import type { ResultadoGeracaoDocumento } from "@/lib/ai/types";
+import type {
+  DocumentoCriadoSerializavel,
+  JsonSerializable,
+  ResultadoGeracaoDocumento,
+} from "@/lib/ai/types";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
 const inputSchema = z.object({
@@ -116,6 +120,46 @@ function mapearDocumentoCriado(row: DocumentoCriadoRow): DocumentoCriado {
     archivedAt: row.archived_at ?? undefined,
     finalizadoEm: row.finalizado_em ?? undefined,
     apresentadoEm: row.apresentado_em ?? undefined,
+  };
+}
+
+function valorSerializavel(valor: unknown): JsonSerializable | undefined {
+  if (valor === undefined) return undefined;
+  if (valor === null) return null;
+
+  if (typeof valor === "string" || typeof valor === "number" || typeof valor === "boolean") {
+    return valor;
+  }
+
+  if (Array.isArray(valor)) {
+    return valor.map((item) => valorSerializavel(item) ?? null);
+  }
+
+  if (typeof valor === "object") {
+    const serializavel: Record<string, JsonSerializable> = {};
+
+    Object.entries(valor).forEach(([chave, item]) => {
+      const proximo = valorSerializavel(item);
+      if (proximo !== undefined) {
+        serializavel[chave] = proximo;
+      }
+    });
+
+    return serializavel;
+  }
+
+  return undefined;
+}
+
+function documentoSerializavel(documento: DocumentoCriado): DocumentoCriadoSerializavel {
+  const { conteudoJson: conteudoJsonOriginal, iaMetadata: iaMetadataOriginal, ...base } = documento;
+  const conteudoJson = valorSerializavel(conteudoJsonOriginal);
+  const iaMetadata = valorSerializavel(iaMetadataOriginal);
+
+  return {
+    ...base,
+    ...(conteudoJson !== undefined ? { conteudoJson } : {}),
+    ...(iaMetadata !== undefined ? { iaMetadata } : {}),
   };
 }
 
@@ -317,7 +361,15 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
       OPENAI_API_KEY: estadoEnv(process.env.OPENAI_API_KEY),
     });
 
-    let respostaAi: { texto: string; modelo: string; provider: string; usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number }; metadata?: Record<string, unknown> } | undefined;
+    let respostaAi:
+      | {
+          texto: string;
+          modelo: string;
+          provider: string;
+          usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number };
+          metadata?: Record<string, unknown>;
+        }
+      | undefined;
     let documentoGerado: DocumentoCriado | undefined;
     let usoRegistrado = false;
     let contextoGeracao: Awaited<ReturnType<typeof construirContextoGeracaoDocumento>> | undefined;
@@ -389,7 +441,7 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
 
       return {
         ok: true,
-        documento: documentoGerado,
+        documento: documentoSerializavel(documentoGerado),
       };
     } catch (error) {
       const diagnosticoErro = diagnosticarErroAi(error);
