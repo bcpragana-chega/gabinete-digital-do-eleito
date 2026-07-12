@@ -1,12 +1,19 @@
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
 
 export const DOCUMENTOS_STORAGE_BUCKET = "documentos";
+export const PDF_MAX_BYTES = 20 * 1024 * 1024;
+export const PDF_MIME_TYPE = "application/pdf";
 
 export type DocumentoStorageErroCodigo =
   | "STORAGE_BUCKET_INEXISTENTE"
   | "STORAGE_UPLOAD_FALHOU"
   | "STORAGE_PATH_AUSENTE"
-  | "PDF_URL_INVALIDA";
+  | "PDF_URL_INVALIDA"
+  | "PDF_MIME_INVALIDO"
+  | "PDF_EXTENSAO_INVALIDA"
+  | "PDF_VAZIO"
+  | "PDF_DEMASIADO_GRANDE"
+  | "PDF_ASSINATURA_INVALIDA";
 
 export class DocumentoStorageErro extends Error {
   codigo: DocumentoStorageErroCodigo;
@@ -32,8 +39,32 @@ function limparNomeFicheiro(nome: string) {
   );
 }
 
-function isPDF(file: File) {
-  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+export async function validarDocumentoPDF(file: File): Promise<void> {
+  if (file.type !== PDF_MIME_TYPE) {
+    throw new DocumentoStorageErro("PDF_MIME_INVALIDO", "Escolha um ficheiro PDF válido.");
+  }
+
+  if (!file.name.toLowerCase().endsWith(".pdf")) {
+    throw new DocumentoStorageErro("PDF_EXTENSAO_INVALIDA", "Escolha um ficheiro PDF válido.");
+  }
+
+  if (file.size === 0) {
+    throw new DocumentoStorageErro("PDF_VAZIO", "O ficheiro PDF está vazio.");
+  }
+
+  if (file.size > PDF_MAX_BYTES) {
+    throw new DocumentoStorageErro("PDF_DEMASIADO_GRANDE", "O PDF deve ter no máximo 20 MB.");
+  }
+
+  const assinatura = new Uint8Array(await file.slice(0, 5).arrayBuffer());
+  const assinaturaPDF = [0x25, 0x50, 0x44, 0x46, 0x2d];
+
+  if (
+    assinatura.length !== assinaturaPDF.length ||
+    !assinaturaPDF.every((byte, index) => assinatura[index] === byte)
+  ) {
+    throw new DocumentoStorageErro("PDF_ASSINATURA_INVALIDA", "Escolha um ficheiro PDF válido.");
+  }
 }
 
 async function obterSupabaseUserId() {
@@ -92,9 +123,7 @@ function isBucketInexistente(error: unknown) {
 }
 
 export async function uploadDocumentoPDF(documentoId: string, file: File) {
-  if (!isPDF(file)) {
-    throw new Error("Apenas ficheiros PDF são suportados nesta fase.");
-  }
+  await validarDocumentoPDF(file);
 
   const supabaseUserId = await obterSupabaseUserId();
   const supabase = getSupabaseClient();
@@ -126,14 +155,14 @@ export async function uploadDocumentoPDF(documentoId: string, file: File) {
       supabaseUserId === diagnosticoSessao.sessionUserId &&
       supabaseUserId === diagnosticoSessao.authUserId,
     ficheiroNome: file.name,
-    ficheiroTipo: file.type,
+    ficheiroTipo: PDF_MIME_TYPE,
     ficheiroTamanho: file.size,
   });
 
   const { error } = await withSupabaseTimeout(
     supabase.storage.from(DOCUMENTOS_STORAGE_BUCKET).upload(path, file, {
       cacheControl: "3600",
-      contentType: file.type || "application/pdf",
+      contentType: PDF_MIME_TYPE,
       upsert: true,
     }),
     "DOCUMENTOS_STORAGE_UPLOAD",
@@ -175,7 +204,7 @@ export async function uploadDocumentoPDF(documentoId: string, file: File) {
     storageBucket: DOCUMENTOS_STORAGE_BUCKET,
     storagePath: path,
     ficheiroNome: file.name,
-    ficheiroTipo: file.type || "application/pdf",
+    ficheiroTipo: PDF_MIME_TYPE,
     ficheiroTamanho: file.size,
   };
 }

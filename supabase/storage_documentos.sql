@@ -3,7 +3,7 @@
 -- documentos/{auth.uid()}/{documento_id}/{filename}
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('documentos', 'documentos', false, 52428800, array['application/pdf'])
+values ('documentos', 'documentos', false, 20971520, array['application/pdf'])
 on conflict (id) do update
 set
   public = excluded.public,

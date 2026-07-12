@@ -61,15 +61,6 @@ export function DocumentoForm({
       return;
     }
 
-    if (
-      ficheiro &&
-      ficheiro.type !== "application/pdf" &&
-      !ficheiro.name.toLowerCase().endsWith(".pdf")
-    ) {
-      setErro("Nesta fase só é possível adicionar ficheiros PDF.");
-      return;
-    }
-
     const input: NovoDocumentoInput = {
       assembleiaId,
       titulo: titulo.trim(),
@@ -91,7 +82,7 @@ export function DocumentoForm({
       console.warn("[Tribuno] Não foi possível adicionar o documento.", error);
       setErro(
         error instanceof DocumentoStorageErro
-          ? `${error.codigo}: ${error.message}`
+          ? error.message
           : error instanceof Error
             ? error.message
             : "Não foi possível guardar o documento. Tente novamente.",

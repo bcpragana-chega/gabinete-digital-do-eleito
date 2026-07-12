@@ -166,15 +166,6 @@ export function AdicionarBibliotecaWizard() {
   async function adicionar() {
     if (!dadosValidos) return;
 
-    if (
-      ficheiro &&
-      ficheiro.type !== "application/pdf" &&
-      !ficheiro.name.toLowerCase().endsWith(".pdf")
-    ) {
-      setErro("Nesta fase só é possível adicionar ficheiros PDF.");
-      return;
-    }
-
     let documento;
 
     try {
@@ -196,7 +187,7 @@ export function AdicionarBibliotecaWizard() {
       console.warn("[Tribuno] Não foi possível adicionar o documento à Biblioteca.", error);
       setErro(
         error instanceof DocumentoStorageErro
-          ? `${error.codigo}: ${error.message}`
+          ? error.message
           : error instanceof Error
             ? error.message
             : "Não foi possível guardar o documento. Tente novamente.",
