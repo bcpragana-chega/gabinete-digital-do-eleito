@@ -5,6 +5,7 @@ import {
 import { hidratarDocumentoACriarLocal } from "@/lib/documentos-a-criar-store";
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
 import type { DocumentoCriado } from "@/lib/types";
+import { hrefDocumentoCriado } from "@/lib/document-routes";
 
 export type DocumentoCriadoServiceErroCodigo = "SESSAO_EXPIRADA" | "INDISPONIVEL";
 
@@ -81,7 +82,15 @@ export async function obterDocumentoCriadoPorIdComDependencias(
 
   try {
     const remoto = await dependencias.carregarRemotoPorId(id);
-    if (!remoto) return undefined;
+    if (!remoto) {
+      const metadata = cache?.iaMetadata;
+      const pendente =
+        metadata &&
+        typeof metadata === "object" &&
+        !Array.isArray(metadata) &&
+        (metadata as Record<string, unknown>).persistenciaPendente === true;
+      return pendente ? cache : undefined;
+    }
     dependencias.hidratarCache(remoto);
     return remoto;
   } catch (error) {
@@ -105,9 +114,7 @@ export function documentoCriadoPertenceAoAssunto(documento: DocumentoCriado, ass
 }
 
 export function hrefDocumentoCriadoNoAssunto(documento: DocumentoCriado) {
-  return documento.assuntoId
-    ? `/assuntos/${documento.assuntoId}/documentos/${documento.id}`
-    : undefined;
+  return hrefDocumentoCriado(documento.id);
 }
 
 export async function obterDocumentoCriadoPorId(documentoId: string) {

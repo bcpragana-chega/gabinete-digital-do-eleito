@@ -149,47 +149,27 @@ function toRow(userId: string, documento: DocumentoCriado): DocumentoCriadoRow {
   };
 }
 
-function isErroChaveEstrangeira(error: { code?: string; message?: string }) {
-  return error.code === "23503" || error.message?.toLowerCase().includes("foreign key");
-}
-
-type ChaveEstrangeiraOpcional = "assembleia_id" | "ponto_id" | "documento_final_id";
-
-function chaveEstrangeiraOpcionalInvalida(error: { message?: string; details?: string }) {
-  const detalhe = `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
-  const chaves: ChaveEstrangeiraOpcional[] = ["assembleia_id", "ponto_id", "documento_final_id"];
-  return chaves.find((chave) => detalhe.includes(chave));
-}
-
 type ResultadoUpsertDocumentoCriado = {
   data: DocumentoCriadoRow | null;
   error: { code?: string; message?: string; details?: string } | null;
 };
 
-/** @internal Mantém assunto_id e remove apenas uma FK opcional identificada com segurança. */
-export async function guardarDocumentoCriadoComFallbackDeRelacao(
+/** @internal Nunca remove relações escolhidas pelo utilizador para contornar erros de FK. */
+export async function guardarDocumentoCriadoSemRemoverRelacoes(
   row: DocumentoCriadoRow,
   executarUpsert: (row: DocumentoCriadoRow) => Promise<ResultadoUpsertDocumentoCriado>,
 ) {
   const response = await executarUpsert(row);
-  if (!response.error) {
-    if (!response.data) throw new Error("DOCUMENTO_CRIADO_UPSERT_SEM_DADOS");
-    return response.data;
+  if (response.error) {
+    console.warn("[Tribuno] Documento criado não foi guardado com todas as relações.", {
+      operacao: "DOCUMENTO_CRIADO_RELACAO_INVALIDA",
+      documentoId: row.id.slice(0, 8),
+      codigoErro: response.error.code ?? "SUPABASE_UPSERT_ERROR",
+    });
+    throw response.error;
   }
-  if (!isErroChaveEstrangeira(response.error)) throw response.error;
-
-  const chaveOpcional = chaveEstrangeiraOpcionalInvalida(response.error);
-  if (!chaveOpcional) throw response.error;
-
-  console.warn("[Tribuno] Relação opcional inválida removida de documento criado.", {
-    operacao: "DOCUMENTOS_CRIADOS_FK_OPCIONAL_INVALIDA",
-    relacao: chaveOpcional,
-  });
-
-  const fallback = await executarUpsert({ ...row, [chaveOpcional]: null });
-  if (fallback.error) throw fallback.error;
-  if (!fallback.data) throw new Error("DOCUMENTO_CRIADO_UPSERT_SEM_DADOS");
-  return fallback.data;
+  if (!response.data) throw new Error("DOCUMENTO_CRIADO_UPSERT_SEM_DADOS");
+  return response.data;
 }
 
 async function obterSupabaseUserIdValido(userId?: string) {
@@ -239,7 +219,11 @@ export async function carregarDocumentosCriadosRemotos() {
   if (!supabase) return undefined;
 
   const { data, error } = await withSupabaseTimeout(
-    supabase.from("documentos_criados").select("*").order("updated_at", { ascending: false }),
+    supabase
+      .from("documentos_criados")
+      .select("*")
+      .eq("user_id", supabaseUserId)
+      .order("updated_at", { ascending: false }),
     "DOCUMENTOS_CRIADOS_SELECT",
   );
 
@@ -260,7 +244,12 @@ export async function carregarDocumentoCriadoRemotoPorId(id: string) {
   if (!supabase) throw new Error("Serviço remoto indisponível.");
 
   const { data, error } = await withSupabaseTimeout(
-    supabase.from("documentos_criados").select("*").eq("id", id).maybeSingle(),
+    supabase
+      .from("documentos_criados")
+      .select("*")
+      .eq("user_id", supabaseUserId)
+      .eq("id", id)
+      .maybeSingle(),
     "DOCUMENTOS_CRIADOS_SELECT_BY_ID",
   );
 
@@ -278,7 +267,7 @@ export async function guardarDocumentoCriadoRemoto(userId: string, documento: Do
   if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
 
   const row = toRow(supabaseUserId, documento);
-  const persistido = await guardarDocumentoCriadoComFallbackDeRelacao(row, (rowParaGuardar) =>
+  const persistido = await guardarDocumentoCriadoSemRemoverRelacoes(row, (rowParaGuardar) =>
     withSupabaseTimeout(
       supabase
         .from("documentos_criados")
@@ -302,7 +291,7 @@ export async function apagarDocumentoCriadoRemoto(id: string) {
   if (!supabase) return;
 
   const { error } = await withSupabaseTimeout(
-    supabase.from("documentos_criados").delete().eq("id", id),
+    supabase.from("documentos_criados").delete().eq("user_id", supabaseUserId).eq("id", id),
     "DOCUMENTOS_CRIADOS_DELETE",
   );
 

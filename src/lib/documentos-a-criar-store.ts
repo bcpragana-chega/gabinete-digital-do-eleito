@@ -323,7 +323,7 @@ export function atualizarDocumentoACriarRascunho(
   data: Partial<
     Pick<
       DocumentoCriado,
-      "titulo" | "conteudo" | "estado" | "assuntoId" | "assembleiaId" | "pontoId"
+      "titulo" | "conteudo" | "estado" | "assuntoId" | "assembleiaId" | "pontoId" | "iaMetadata"
     >
   >,
 ) {
@@ -351,7 +351,10 @@ export function atualizarDocumentoACriarRascunho(
 }
 
 type AlteracoesDocumentoCriado = Partial<
-  Pick<DocumentoCriado, "titulo" | "conteudo" | "estado" | "assuntoId" | "assembleiaId" | "pontoId">
+  Pick<
+    DocumentoCriado,
+    "titulo" | "conteudo" | "estado" | "assuntoId" | "assembleiaId" | "pontoId" | "iaMetadata"
+  >
 >;
 
 type GuardarDocumentoConfirmadoDependencias = {
