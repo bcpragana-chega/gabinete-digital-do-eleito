@@ -426,6 +426,13 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
             sessaoId: contextoGeracao.sessao?.id,
             notasAssunto: contextoGeracao.assunto.notas.length,
             timelineAssunto: contextoGeracao.assunto.timeline.length,
+            baseJuridica: {
+              diploma: contextoGeracao.baseJuridica.diploma,
+              tipoOrgao: contextoGeracao.baseJuridica.tipoOrgao,
+              tipoDocumental: contextoGeracao.baseJuridica.tipoDocumental,
+              orgaoApresentacao: contextoGeracao.baseJuridica.orgaoApresentacao,
+              destinatario: contextoGeracao.baseJuridica.destinatario,
+            },
           },
         });
         registrarUso("success");

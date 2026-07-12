@@ -116,6 +116,23 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
         `- Observações: ${contexto.sessao.observacoes ?? ""}`,
       ].join("\n")
     : "Sessão:\n";
+  const baseJuridica = contexto.baseJuridica;
+  const baseJuridicaBloco = [
+    "Base Jurídica Institucional fornecida pelo Tribuno:",
+    `- Diploma: ${baseJuridica.diploma}`,
+    `- Tipo de órgão identificado: ${baseJuridica.tipoOrgao}`,
+    `- Tipo documental: ${baseJuridica.tipoDocumental}`,
+    `- Órgão de apresentação: ${baseJuridica.orgaoApresentacao}`,
+    `- Destinatário juridicamente adequado: ${baseJuridica.destinatario}`,
+    "- Enquadramento jurídico relevante:",
+    ...baseJuridica.enquadramentoJuridico.map((item) => `  - ${item}`),
+    "- Competências do órgão de apresentação:",
+    ...baseJuridica.competenciaOrgao.map((item) => `  - ${item}`),
+    "- Competências do destinatário:",
+    ...baseJuridica.competenciaDestinatario.map((item) => `  - ${item}`),
+    "- Limites legais:",
+    ...baseJuridica.limitesLegais.map((item) => `  - ${item}`),
+  ].join("\n");
 
   return [
     "Tarefa: gerar automaticamente um documento institucional completo com base no contexto do Tribuno.",
@@ -127,6 +144,8 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "- Não faças perguntas, não peças confirmação e não incluas mensagens conversacionais.",
     "- Quando um dado não existir, simplesmente não o menciones.",
     "- Se houver fundamentação jurídica no contexto, usa-a; se não houver, não inventes legislação.",
+    "- Para competências legais dos órgãos autárquicos, usa exclusivamente a Base Jurídica Institucional fornecida pelo Tribuno.",
+    "- Não uses memória própria para completar artigos, competências ou limites legais.",
     "- Escreve como Chefe de Gabinete experiente: rigor institucional, utilidade prática e força política sem floreados.",
     "",
     "Hierarquia institucional obrigatória:",
@@ -139,11 +158,12 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "Raciocínio documental interno obrigatório antes da redação:",
     "- Identifica o problema principal do assunto.",
     "- Identifica o objetivo político do documento.",
-    "- Identifica a competência do órgão a que o documento se destina.",
+    "- Identifica a competência do órgão a que o documento se destina apenas a partir da Base Jurídica Institucional.",
     "- Confirma se o tipo documental recebido é o mais adequado ao objetivo; se houver margem, adapta a redação ao enquadramento institucional mais eficaz sem alterar o tipo pedido.",
     "- Seleciona os factos relevantes e elimina informação irrelevante.",
     "- Seleciona os documentos relevantes e integra apenas o que fortalece o documento.",
     "- Identifica legislação ou referências jurídicas presentes no contexto e usa-as com rigor.",
+    "- Não acrescentes legislação, artigos ou competências que não constem da Base Jurídica Institucional ou dos documentos anexados.",
     "- Identifica riscos jurídicos ou técnicos e evita formulações frágeis, absolutas ou não suportadas.",
     "- Evita repetições e organiza a estrutura antes de redigir.",
     "- Não mostres esta análise. O documento final deve conter apenas o resultado.",
@@ -212,6 +232,8 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "",
     sessaoBloco,
     "",
+    baseJuridicaBloco,
+    "",
     "Documentos já existentes relacionados com o assunto:",
     documentosRelacionados,
     "",
@@ -223,6 +245,7 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "- Documentos anteriormente produzidos sobre o assunto.",
     "- Programa eleitoral, promessas ou compromissos relacionados com o assunto.",
     "- Legislação ou referências jurídicas existentes no contexto.",
+    "- A Base Jurídica Institucional prevalece sobre qualquer formulação genérica sobre competências dos órgãos autárquicos.",
     "",
     "Revisão interna obrigatória antes de concluir:",
     "- Verifica que todos os argumentos são coerentes.",
@@ -230,6 +253,7 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "- Verifica que todas as propostas decorrem naturalmente da fundamentação.",
     "- Verifica que a deliberação, pedido, recomendação ou conclusão responde ao problema identificado.",
     "- Verifica que o documento está adaptado ao órgão competente.",
+    "- Verifica que todas as referências a competências legais constam da Base Jurídica Institucional.",
     "- Verifica que o documento está adaptado ao tipo documental solicitado.",
     "- Verifica que a linguagem mantém o mesmo nível de formalidade do início ao fim.",
     "- Verifica se existem placeholders, frases demasiado genéricas, linguagem típica de IA ou dados contraditórios.",
@@ -246,6 +270,7 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "- Estrutura o texto, sempre que adequado, com: tipo de documento, título, exposição de motivos/enquadramento, fundamentação, deliberação/pedido/recomendação, local e data, assinatura institucional.",
     "- A deliberação, pedido ou recomendação deve ser objetiva e responder diretamente ao problema identificado; não a transformes num novo enquadramento.",
     "- Não incluas avisos, notas, disclaimers, comentários sobre falta de informação ou pedidos de dados adicionais.",
+    "- Nunca uses placeholders como Assembleia Municipal/Freguesia, Câmara/Junta ou Presidente da Câmara/Presidente da Junta; usa sempre o órgão e o destinatário determinados pela Base Jurídica Institucional.",
     "- Mantém o texto pronto para entrega oficial e revisão final pelo eleito.",
   ].join("\n");
 }

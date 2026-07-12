@@ -1,4 +1,5 @@
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
+import type { BaseJuridicaInstitucional } from "@/lib/ai/legal-basis";
 
 export type JsonSerializable =
   | string
@@ -85,6 +86,7 @@ export type ContextoGeracaoDocumento = {
   perfil: PerfilInstitucionalContexto;
   assunto: AssuntoContexto;
   sessao?: SessaoContexto;
+  baseJuridica: BaseJuridicaInstitucional;
   documentosRelacionados: DocumentoRelacionadoContexto[];
   anexosTextuais: AnexoTextualContexto[];
 };

@@ -7,6 +7,7 @@ import type {
   PerfilInstitucionalContexto,
   SessaoContexto,
 } from "@/lib/ai/types";
+import { construirBaseJuridicaInstitucional } from "@/lib/ai/legal-basis";
 
 type ProfileRow = {
   nome_institucional: string | null;
@@ -258,6 +259,9 @@ export async function construirContextoGeracaoDocumento(
       })
     : [];
 
+  const perfil = construirPerfil(profiles[0]);
+  const sessao = construirSessao(assembleias[0]);
+
   return {
     entrada: {
       assuntoId,
@@ -269,9 +273,14 @@ export async function construirContextoGeracaoDocumento(
       assuntoNotas: normalizarListaContexto(input.assuntoNotas, 25, 2000),
       assuntoTimeline: normalizarListaContexto(input.assuntoTimeline, 40, 1000),
     },
-    perfil: construirPerfil(profiles[0]),
+    perfil,
     assunto: construirAssunto(assunto, input),
-    sessao: construirSessao(assembleias[0]),
+    sessao,
+    baseJuridica: construirBaseJuridicaInstitucional({
+      perfil,
+      sessao,
+      tipoDocumental: input.tipo,
+    }),
     documentosRelacionados: mapearDocumentosRelacionados(documentosCriadosAssunto),
     anexosTextuais: mapearAnexos(anexos),
   };

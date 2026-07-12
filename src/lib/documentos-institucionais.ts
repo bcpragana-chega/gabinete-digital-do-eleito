@@ -177,6 +177,21 @@ function obterEntidadeDeliberativa(
   return `o ${nomeOrgao}`;
 }
 
+function obterDestinatarioExecutivo(perfil?: PerfilEleito) {
+  const orgao = textoSeguro(perfil?.orgao);
+  const territorio = textoSeguro(perfil?.territorio);
+
+  if (orgao === "Assembleia Municipal" || orgao === "Câmara Municipal") {
+    return territorio ? `Câmara Municipal de ${territorio}` : "Câmara Municipal";
+  }
+
+  if (orgao === "Assembleia de Freguesia" || orgao === "Junta de Freguesia") {
+    return territorio ? `Junta de Freguesia de ${territorio}` : "Junta de Freguesia";
+  }
+
+  return textoSeguro(perfil?.orgao) || "órgão executivo";
+}
+
 export function obterDadosInstitucionais(
   contexto?: ContextoDocumentoInstitucional,
 ): DadosInstitucionais {
@@ -211,6 +226,8 @@ export function criarConteudoInicialInstitucional(
   contexto?: ContextoDocumentoInstitucional,
 ) {
   const dados = obterDadosInstitucionais(contexto);
+  const perfil = contexto?.perfil ?? obterAuthState().perfil;
+  const destinatarioExecutivo = obterDestinatarioExecutivo(perfil);
   const notasPreparacao = notas?.trim();
 
   if (tipo === "Moção") {
@@ -240,7 +257,7 @@ Considerando que:
 ## RECOMENDAÇÃO
 
 Face ao exposto,
-recomenda-se ao Executivo competente que:`;
+recomenda-se que a ${destinatarioExecutivo}:`;
   }
 
   return `## ENQUADRAMENTO
@@ -254,7 +271,7 @@ Considerando que:
 ## REQUERIMENTO
 
 Face ao exposto,
-requer-se ao Executivo competente que informe:`;
+requer-se que a ${destinatarioExecutivo} informe:`;
 }
 
 function removerTituloMarkdown(conteudo: string, titulo: string) {
