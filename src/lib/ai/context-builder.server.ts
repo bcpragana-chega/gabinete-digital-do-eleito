@@ -59,10 +59,14 @@ type DocumentoRow = {
   assembleia_origem_id: string | null;
 };
 
+type AssuntoSessaoRow = {
+  assunto_id: string;
+  sessao_id: string;
+};
+
 type AssembleiaRow = {
   id: string;
   data: string | null;
-  hora: string | null;
   tipo: string | null;
   orgao: string | null;
   titulo: string | null;
@@ -194,7 +198,7 @@ function construirSessao(row?: AssembleiaRow): SessaoContexto | undefined {
   return {
     id: row.id,
     data: row.data ?? undefined,
-    hora: row.hora ?? undefined,
+    hora: undefined,
     tipo: row.tipo ?? undefined,
     orgao: row.orgao ?? undefined,
     ordemTrabalhos: row.titulo ?? undefined,
@@ -261,11 +265,25 @@ export async function construirContextoGeracaoDocumento(
   [...documentosAssunto, ...anexosExtraPorIds].forEach((row) => anexosMap.set(row.id, row));
   const anexos = Array.from(anexosMap.values());
 
+  const relacoesAssuntoSessao = sessaoId
+    ? await supabaseSelect<AssuntoSessaoRow>("assunto_sessoes", {
+        select: "assunto_id,sessao_id",
+        user_id: `eq.${userId}`,
+        assunto_id: `eq.${assuntoId}`,
+        sessao_id: `eq.${sessaoId}`,
+        limit: "1",
+      })
+    : [];
+
+  if (sessaoId && !relacoesAssuntoSessao[0]) {
+    throw new Error("SESSAO_NOT_LINKED_TO_ASSUNTO");
+  }
+
   const assembleias = sessaoId
     ? await supabaseSelect<AssembleiaRow>("assembleias", {
-        select: "id,data,hora,tipo,orgao,titulo,notas",
+        select: "id,data,tipo,orgao,titulo,notas",
         user_id: `eq.${userId}`,
-        id: `eq.${idSeguro(sessaoId)}`,
+        id: `eq.${sessaoId}`,
         limit: "1",
       })
     : [];

@@ -245,6 +245,14 @@ function normalizarErro(error: unknown): { code: string; message: string } {
       };
     }
 
+    if (error.message.includes("SESSAO_NOT_LINKED_TO_ASSUNTO")) {
+      return {
+        code: "SESSAO_NOT_LINKED_TO_ASSUNTO",
+        message:
+          "A sessão selecionada não está ligada a este assunto. Associe a sessão antes de gerar o documento.",
+      };
+    }
+
     if (error.message.includes("SUPABASE_SERVER_CONFIG_MISSING")) {
       return {
         code: "SUPABASE_SERVER_CONFIG_MISSING",
