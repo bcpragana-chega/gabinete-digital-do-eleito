@@ -39,6 +39,7 @@ import {
   type PontoOrdemTrabalhos,
 } from "@/lib/pontos-store";
 import { labelEstadoDocumento } from "@/lib/ui-labels";
+import { obterEstrategiaDaAssembleia } from "@/lib/estrategia-store";
 import { cn } from "@/lib/utils";
 import type { Assembleia, Documento, DocumentoCriado, Dossie } from "@/lib/types";
 
@@ -121,6 +122,19 @@ function GabinetePage() {
   const rascunhosAbertos = rascunhosDaProxima.filter(
     (documento) => documento.estado === "rascunho" || documento.estado === "em revisão",
   );
+  const estrategiaPreparada = proxima
+    ? Object.entries(obterEstrategiaDaAssembleia(proxima.id))
+        .filter(([chave]) => chave !== "assembleiaId")
+        .some(([, valor]) => typeof valor === "string" && valor.trim().length > 0)
+    : null;
+  const intervencoesPreparadas = proxima
+    ? pontosDaProxima.some(
+        (ponto) =>
+          ponto.perguntas.length > 0 ||
+          ponto.notas.trim().length > 0 ||
+          ponto.linhaIntervencao.trim().length > 0,
+      )
+    : null;
 
   const tasks = criarTarefas({
     proxima,
@@ -163,7 +177,8 @@ function GabinetePage() {
               mission={mission}
               documentosPorRever={documentosGlobaisPorRever.length}
               pontosPorPreparar={pontosPorPreparar.length}
-              rascunhosAbertos={rascunhosAbertos.length}
+              estrategiaPreparada={estrategiaPreparada}
+              intervencoesPreparadas={intervencoesPreparadas}
             />
             <TasksCard tasks={tasks} />
             <AlertsCard alerts={alerts} />
@@ -186,12 +201,14 @@ function MissionCard({
   mission,
   documentosPorRever,
   pontosPorPreparar,
-  rascunhosAbertos,
+  estrategiaPreparada,
+  intervencoesPreparadas,
 }: {
   mission: PriorityMission;
   documentosPorRever: number;
   pontosPorPreparar: number;
-  rascunhosAbertos: number;
+  estrategiaPreparada: boolean | null;
+  intervencoesPreparadas: boolean | null;
 }) {
   const dias = mission.dueDate ? Math.max(diasAte(mission.dueDate), 0) : undefined;
   const steps = [
@@ -207,13 +224,23 @@ function MissionCard({
     },
     {
       label: "Estratégia",
-      helper: rascunhosAbertos > 0 ? "Em falta" : "Pronta",
-      done: rascunhosAbertos === 0,
+      helper:
+        estrategiaPreparada === null
+          ? "Não aplicável"
+          : estrategiaPreparada
+            ? "Pronta"
+            : "Em falta",
+      done: estrategiaPreparada === true,
     },
     {
       label: "Intervenções",
-      helper: rascunhosAbertos > 0 ? `${rascunhosAbertos} por preparar` : "Prontas",
-      done: rascunhosAbertos === 0,
+      helper:
+        intervencoesPreparadas === null
+          ? "Não aplicável"
+          : intervencoesPreparadas
+            ? "Preparadas"
+            : "Por preparar",
+      done: intervencoesPreparadas === true,
     },
   ];
 

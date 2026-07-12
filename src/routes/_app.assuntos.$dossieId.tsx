@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   Activity,
   Archive,
@@ -23,6 +24,16 @@ import { Button } from "@/components/ui/button";
 import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
 import { arquivarDossie, useDossie } from "@/lib/dossies-store";
+import { useNotasDossie } from "@/lib/dossie-notas-store";
+import { useEventosTimelineDossie } from "@/lib/dossie-timeline-store";
+import { useDocumentosDoDossie } from "@/lib/dossie-documentos-store";
+import { useAssembleiasDoDossie } from "@/lib/dossie-assembleias-store";
+import {
+  listarDocumentosACriarDoAssunto,
+  subscreverDocumentosACriar,
+} from "@/lib/documentos-a-criar-store";
+import { calcularEstadoUxAssunto, type AcaoAssunto } from "@/lib/assunto-ux";
+import type { DocumentoCriado } from "@/lib/types";
 import type { Dossie, EstadoDossie, PrioridadeDossie } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/assuntos/$dossieId")({
@@ -70,6 +81,17 @@ function formatarData(data?: string) {
 function DossieDetalhePage() {
   const { dossieId } = Route.useParams();
   const dossie = useDossie(dossieId);
+  const notas = useNotasDossie(dossieId);
+  const eventos = useEventosTimelineDossie(dossieId);
+  const documentosRelacionados = useDocumentosDoDossie(dossieId);
+  const sessoes = useAssembleiasDoDossie(dossieId);
+  const [documentosCriados, setDocumentosCriados] = useState<DocumentoCriado[]>([]);
+
+  useEffect(() => {
+    const atualizar = () => setDocumentosCriados(listarDocumentosACriarDoAssunto(dossieId));
+    atualizar();
+    return subscreverDocumentosACriar(atualizar);
+  }, [dossieId]);
 
   if (!dossie) {
     return (
@@ -85,7 +107,7 @@ function DossieDetalhePage() {
             </Button>
             <EmptyState
               title="Assunto não encontrado"
-              description="Este assunto pode ter sido removido ou ainda não estar disponível neste navegador."
+              description="Não foi possível encontrar este assunto. Pode ter sido removido ou já não estar disponível."
               action={
                 <Button asChild>
                   <Link to="/assuntos">Ir para Assuntos</Link>
@@ -108,6 +130,30 @@ function DossieDetalhePage() {
 
   const arquivado = Boolean(dossie.archivedAt);
   const ultimaAtualizacao = formatarData(dossie.updatedAt ?? dossie.createdAt);
+  const estadoUx = calcularEstadoUxAssunto({
+    assuntoId: dossie.id,
+    objetivoPolitico: dossie.objetivoPolitico,
+    resumo: dossie.resumo,
+    estado: dossie.estado,
+    totalNotas: notas.length,
+    totalEventos: eventos.length,
+    totalDocumentosRelacionados: documentosRelacionados.length,
+    sessoesIds: sessoes.map((relacao) => relacao.assembleiaId),
+    documentosCriados,
+  });
+  const dossieAtual = dossie;
+
+  function renderAcao(acao: AcaoAssunto, principal = false) {
+    if (acao.tipo === "editar") {
+      return <EditarDossieDialog dossie={dossieAtual} triggerLabel={acao.label} />;
+    }
+
+    return (
+      <Button asChild variant={principal ? "primary" : "secondary"} size="sm">
+        <a href={acao.href}>{acao.label}</a>
+      </Button>
+    );
+  }
 
   return (
     <>
@@ -177,13 +223,20 @@ function DossieDetalhePage() {
                   <SectionTitle
                     icon={Bot}
                     title="Assistente"
-                    description="Preparado para ajudar com contexto deste assunto."
+                    description="Síntese determinística do estado atual."
                   />
-                  <div className="mt-5">
+                  <div className="mt-5 space-y-3">
                     <InfoCard
-                        title="Funcionalidade futura"
-                        description="This feature will be available in a future version."
+                      title="Leitura do Tribuno"
+                      description={`Este assunto está com ${estadoUx.estadoResumido}.`}
                     />
+                    {estadoUx.recomendacoes.length > 0 && (
+                      <ul className="space-y-2 text-sm leading-6 text-muted-foreground">
+                        {estadoUx.recomendacoes.map((recomendacao) => (
+                          <li key={recomendacao}>• {recomendacao}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </WorkspaceSection>
 
@@ -200,7 +253,7 @@ function DossieDetalhePage() {
               </>
             }
           >
-            <WorkspaceSection>
+            <WorkspaceSection id="contexto-assunto" className="scroll-mt-24">
               <SectionTitle
                 icon={Activity}
                 title="Estado do assunto"
@@ -244,17 +297,31 @@ function DossieDetalhePage() {
               <div className="mt-5">
                 <ActionCard
                   icon={Clock3}
-                  title="Funcionalidade futura"
-                  description="This feature will be available in a future version."
+                  title={estadoUx.titulo}
+                  description={estadoUx.descricao}
+                  action={
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      {renderAcao(estadoUx.acaoPrincipal, true)}
+                      {estadoUx.acoesSecundarias.map((acao) => (
+                        <span key={`${acao.tipo}-${acao.label}`}>{renderAcao(acao)}</span>
+                      ))}
+                    </div>
+                  }
                 />
               </div>
             </WorkspaceSection>
 
-            <DossieTimelineSection dossieId={dossie.id} />
+            <div id="atividade-assunto" className="scroll-mt-24">
+              <DossieTimelineSection dossieId={dossie.id} />
+            </div>
 
-            <DossieDocumentosCriadosSection dossieId={dossie.id} />
+            <div id="documentos-assunto" className="scroll-mt-24">
+              <DossieDocumentosCriadosSection dossieId={dossie.id} />
+            </div>
 
-            <DossieRelacionadosSection dossieId={dossie.id} />
+            <div id="relacoes-assunto" className="scroll-mt-24">
+              <DossieRelacionadosSection dossieId={dossie.id} />
+            </div>
 
             <DossieNotasSection dossieId={dossie.id} />
 

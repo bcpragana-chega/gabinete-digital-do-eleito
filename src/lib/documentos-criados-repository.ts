@@ -198,21 +198,17 @@ async function obterSupabaseUserIdValido(userId?: string) {
   );
 
   if (error || !data.user?.id) {
-    console.warn(
-      "[Tribuno] Sem sessão Supabase válida para sincronizar Documentos a Criar.",
-      error,
-    );
+    console.warn("[Tribuno] Sem sessão válida para sincronizar documentos criados.", {
+      operacao: "DOCUMENTOS_CRIADOS_AUTH_INVALIDA",
+      temErro: Boolean(error),
+    });
     return undefined;
   }
 
   if (userId && userId !== data.user.id) {
-    console.warn(
-      "[Tribuno] Sincronização de Documentos a Criar ignorada: userId não corresponde ao auth.uid().",
-      {
-        storeUserId: userId,
-        supabaseUserId: data.user.id,
-      },
-    );
+    console.warn("[Tribuno] Sincronização de documentos criados ignorada.", {
+      operacao: "DOCUMENTOS_CRIADOS_AUTH_DIVERGENTE",
+    });
     return undefined;
   }
 

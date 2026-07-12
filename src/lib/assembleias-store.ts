@@ -34,14 +34,20 @@ function guardarAssembleiaRemotamente(assembleia: Assembleia) {
   const userId = obterUserIdAtual();
   if (!userId) return;
 
-  void guardarAssembleiaRemota(userId, assembleia).catch((error) => {
-    console.warn("[Tribuno] Sessão guardada localmente, mas falhou no Supabase.", error);
+  void guardarAssembleiaRemota(userId, assembleia).catch(() => {
+    console.warn("[Tribuno] Sincronização de sessão falhou.", {
+      operacao: "SESSAO_SYNC_FALHOU",
+      documentoId: assembleia.id.slice(0, 8),
+    });
   });
 }
 
 function apagarAssembleiaRemotamente(id: string) {
-  void apagarAssembleiaRemota(id).catch((error) => {
-    console.warn("[Tribuno] Sessão apagada localmente, mas falhou no Supabase.", error);
+  void apagarAssembleiaRemota(id).catch(() => {
+    console.warn("[Tribuno] Eliminação remota de sessão falhou.", {
+      operacao: "SESSAO_DELETE_FALHOU",
+      documentoId: id.slice(0, 8),
+    });
   });
 }
 
@@ -51,8 +57,10 @@ async function carregarAssembleiasRemotasSeDisponivel() {
     if (!remotas) return;
 
     guardarAssembleiasLocais(remotas);
-  } catch (error) {
-    console.warn("[Tribuno] Não foi possível carregar sessões do Supabase.", error);
+  } catch {
+    console.warn("[Tribuno] Carregamento remoto de sessões falhou.", {
+      operacao: "SESSOES_LOAD_FALHOU",
+    });
   }
 }
 

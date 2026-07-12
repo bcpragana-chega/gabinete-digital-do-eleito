@@ -27,7 +27,6 @@ import {
   type PerfilErroCodigo,
 } from "@/lib/auth-store";
 import { guardarLogoPerfil } from "@/lib/profile-repository";
-import { diagnosticarSessaoSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 type PerfilEleitoFormProps = {
   user?: AuthUser;
@@ -52,20 +51,6 @@ function tamanhoTexto(valor: string) {
   return valor.trim().length;
 }
 
-function payloadSeguro(perfil: Omit<PerfilEleito, "updatedAt">) {
-  return {
-    nomeInstitucionalLength: tamanhoTexto(perfil.nomeInstitucional),
-    cargo: perfil.cargo,
-    orgao: perfil.orgao,
-    organizacaoLength: tamanhoTexto(perfil.organizacao),
-    territorioLength: tamanhoTexto(perfil.territorio),
-    municipioLength: tamanhoTexto(perfil.municipio ?? ""),
-    freguesiaLength: tamanhoTexto(perfil.freguesia ?? ""),
-    temAssinaturaInstitucional: Boolean(perfil.assinaturaInstitucional?.trim()),
-    temLogo: Boolean(perfil.logoUrl?.trim()),
-  };
-}
-
 function codigoDoErro(error: unknown): PerfilErroCodigo {
   if (error instanceof PerfilErro) return error.codigo;
 
@@ -83,16 +68,6 @@ function codigoDoErro(error: unknown): PerfilErroCodigo {
   }
 
   return "ERRO_PERFIL_DESCONHECIDO";
-}
-
-async function diagnosticoSupabase(userId?: string) {
-  const diagnostico = await diagnosticarSessaoSupabase();
-  return {
-    ...diagnostico,
-    userIdCorrespondeAoSupabase: Boolean(
-      userId && diagnostico.supabaseUserId && userId === diagnostico.supabaseUserId,
-    ),
-  };
 }
 
 export function PerfilEleitoForm({
@@ -172,15 +147,6 @@ export function PerfilEleitoForm({
     }
   }
 
-  function registarCampoAlterado(campo: string, valor: string) {
-    console.info("[Tribuno Perfil] Campo alterado", {
-      campo,
-      length: valor.length,
-      userId: user?.id,
-      supabaseConfigurado: isSupabaseConfigured(),
-    });
-  }
-
   function alterarTexto(
     campo: string,
     valor: string,
@@ -188,17 +154,13 @@ export function PerfilEleitoForm({
   ) {
     try {
       limparErro();
-      registarCampoAlterado(campo, valor);
       setter(valor);
       setSaveState("unsaved");
     } catch (error) {
       const codigo = codigoDoErro(error);
       console.error("[Tribuno Perfil] Erro ao alterar campo", {
         codigo,
-        campo,
-        userId: user?.id,
-        supabaseConfigurado: isSupabaseConfigured(),
-        error,
+        operacao: "PROFILE_FIELD_UPDATE_FALHOU",
       });
       setCodigoErro(codigo);
       setErro(mensagensErroPerfil[codigo]);
@@ -213,17 +175,13 @@ export function PerfilEleitoForm({
   ) {
     try {
       limparErro();
-      registarCampoAlterado(campo, valor);
       setter(valor as T);
       setSaveState("unsaved");
     } catch (error) {
       const codigo = codigoDoErro(error);
       console.error("[Tribuno Perfil] Erro ao alterar opção", {
         codigo,
-        campo,
-        userId: user?.id,
-        supabaseConfigurado: isSupabaseConfigured(),
-        error,
+        operacao: "PROFILE_OPTION_UPDATE_FALHOU",
       });
       setCodigoErro(codigo);
       setErro(mensagensErroPerfil[codigo]);
@@ -236,20 +194,9 @@ export function PerfilEleitoForm({
 
     if (!podeGuardar) {
       const codigo: PerfilErroCodigo = "ERRO_PERFIL_VALIDACAO";
-      const diagnostico = await diagnosticoSupabase(user?.id);
       console.warn("[Tribuno Perfil] Validação falhou antes de guardar", {
         codigo,
-        userId: user?.id,
-        diagnostico,
-        campos: {
-          nomeInstitucionalLength: nomeInstitucional.length,
-          temCargo: Boolean(cargo),
-          temOrgao: Boolean(orgao),
-          organizacaoLength: organizacao.length,
-          territorioLength: territorio.length,
-          municipioLength: municipio.length,
-          freguesiaLength: freguesia.length,
-        },
+        operacao: "PROFILE_VALIDATION_FALHOU",
       });
       setCodigoErro(codigo);
       setErro(mensagensErroPerfil[codigo]);
@@ -271,20 +218,14 @@ export function PerfilEleitoForm({
       assinaturaInstitucional: assinaturaInstitucional.trim(),
       logoUrl: logoUrl.trim(),
     };
-    const diagnostico = await diagnosticoSupabase(user?.id);
-
     console.info("[Tribuno Perfil] Submit iniciado", {
-      userId: user?.id,
-      diagnostico,
-      payload: payloadSeguro(payload),
+      operacao: "PROFILE_SUBMIT_INICIADO",
     });
 
     try {
       const atualizado = await guardarPerfilEleito(payload);
       console.info("[Tribuno Perfil] Perfil guardado", {
-        userId: user?.id,
-        diagnostico,
-        payload: payloadSeguro(payload),
+        operacao: "PROFILE_SUBMIT_CONCLUIDO",
       });
       setSaveState("saved");
       onSaved?.(atualizado);
@@ -294,10 +235,7 @@ export function PerfilEleitoForm({
 
       console.error("[Tribuno Perfil] Erro ao guardar perfil", {
         codigo,
-        userId: user?.id,
-        diagnostico,
-        payload: payloadSeguro(payload),
-        error,
+        operacao: "PROFILE_SUBMIT_FALHOU",
       });
 
       setCodigoErro(codigo);
@@ -318,13 +256,11 @@ export function PerfilEleitoForm({
     try {
       const novoLogoUrl = await guardarLogoPerfil(user?.id, file);
       setLogoUrl(novoLogoUrl);
-      registarCampoAlterado("logoUrl", novoLogoUrl);
     } catch (error) {
       const codigo = codigoDoErro(error);
       console.error("[Tribuno Perfil] Erro ao carregar logótipo", {
         codigo,
-        userId: user?.id,
-        error,
+        operacao: "PROFILE_LOGO_UPLOAD_FALHOU",
       });
       setCodigoErro(codigo);
       setErro("Não foi possível carregar o logótipo. Use uma imagem PNG, JPG ou WebP até 2 MB.");
@@ -369,8 +305,7 @@ export function PerfilEleitoForm({
                 const codigo = codigoDoErro(error);
                 console.error("[Tribuno Perfil] Erro no handler do nome", {
                   codigo,
-                  userId: user?.id,
-                  error,
+                  operacao: "PROFILE_NAME_HANDLER_FALHOU",
                 });
                 setCodigoErro(codigo);
                 setErro(mensagensErroPerfil[codigo]);

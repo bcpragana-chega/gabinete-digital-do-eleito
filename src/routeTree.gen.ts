@@ -15,7 +15,6 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppHistoricoRouteImport } from './routes/_app.historico'
 import { Route as AppDefinicoesRouteImport } from './routes/_app.definicoes'
-import { Route as AppDebugDiagnosticsRouteImport } from './routes/_app.debug-diagnostics'
 import { Route as AppCaixaDeEntradaRouteImport } from './routes/_app.caixa-de-entrada'
 import { Route as AppBibliotecaRouteImport } from './routes/_app.biblioteca'
 import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
@@ -75,11 +74,6 @@ const AppHistoricoRoute = AppHistoricoRouteImport.update({
 const AppDefinicoesRoute = AppDefinicoesRouteImport.update({
   id: '/definicoes',
   path: '/definicoes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDebugDiagnosticsRoute = AppDebugDiagnosticsRouteImport.update({
-  id: '/debug-diagnostics',
-  path: '/debug-diagnostics',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCaixaDeEntradaRoute = AppCaixaDeEntradaRouteImport.update({
@@ -264,7 +258,6 @@ export interface FileRoutesByFullPath {
   '/agenda': typeof AppAgendaRoute
   '/biblioteca': typeof AppBibliotecaRouteWithChildren
   '/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
-  '/debug-diagnostics': typeof AppDebugDiagnosticsRoute
   '/definicoes': typeof AppDefinicoesRoute
   '/historico': typeof AppHistoricoRoute
   '/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
@@ -302,7 +295,6 @@ export interface FileRoutesByTo {
   '/agenda': typeof AppAgendaRoute
   '/biblioteca': typeof AppBibliotecaRouteWithChildren
   '/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
-  '/debug-diagnostics': typeof AppDebugDiagnosticsRoute
   '/definicoes': typeof AppDefinicoesRoute
   '/historico': typeof AppHistoricoRoute
   '/': typeof AppIndexRoute
@@ -343,7 +335,6 @@ export interface FileRoutesById {
   '/_app/agenda': typeof AppAgendaRoute
   '/_app/biblioteca': typeof AppBibliotecaRouteWithChildren
   '/_app/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
-  '/_app/debug-diagnostics': typeof AppDebugDiagnosticsRoute
   '/_app/definicoes': typeof AppDefinicoesRoute
   '/_app/historico': typeof AppHistoricoRoute
   '/_app/': typeof AppIndexRoute
@@ -385,7 +376,6 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/biblioteca'
     | '/caixa-de-entrada'
-    | '/debug-diagnostics'
     | '/definicoes'
     | '/historico'
     | '/assembleias/$id'
@@ -423,7 +413,6 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/biblioteca'
     | '/caixa-de-entrada'
-    | '/debug-diagnostics'
     | '/definicoes'
     | '/historico'
     | '/'
@@ -463,7 +452,6 @@ export interface FileRouteTypes {
     | '/_app/agenda'
     | '/_app/biblioteca'
     | '/_app/caixa-de-entrada'
-    | '/_app/debug-diagnostics'
     | '/_app/definicoes'
     | '/_app/historico'
     | '/_app/'
@@ -545,13 +533,6 @@ declare module '@tanstack/react-router' {
       path: '/definicoes'
       fullPath: '/definicoes'
       preLoaderRoute: typeof AppDefinicoesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/debug-diagnostics': {
-      id: '/_app/debug-diagnostics'
-      path: '/debug-diagnostics'
-      fullPath: '/debug-diagnostics'
-      preLoaderRoute: typeof AppDebugDiagnosticsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/caixa-de-entrada': {
@@ -964,7 +945,6 @@ interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
   AppBibliotecaRoute: typeof AppBibliotecaRouteWithChildren
   AppCaixaDeEntradaRoute: typeof AppCaixaDeEntradaRoute
-  AppDebugDiagnosticsRoute: typeof AppDebugDiagnosticsRoute
   AppDefinicoesRoute: typeof AppDefinicoesRoute
   AppHistoricoRoute: typeof AppHistoricoRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -982,7 +962,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
   AppBibliotecaRoute: AppBibliotecaRouteWithChildren,
   AppCaixaDeEntradaRoute: AppCaixaDeEntradaRoute,
-  AppDebugDiagnosticsRoute: AppDebugDiagnosticsRoute,
   AppDefinicoesRoute: AppDefinicoesRoute,
   AppHistoricoRoute: AppHistoricoRoute,
   AppIndexRoute: AppIndexRoute,

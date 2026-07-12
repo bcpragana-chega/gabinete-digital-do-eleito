@@ -32,7 +32,7 @@ function AppLayout() {
 
     if (!hasCompleteProfile) {
       console.info("[Tribuno Auth] Rota protegida precisa de onboarding", {
-        userId: user?.id,
+        operacao: "AUTH_ROUTE_ONBOARDING_NECESSARIO",
         perfilCarregado: Boolean(perfil),
       });
       navigate({ to: "/completar-perfil", replace: true });
@@ -43,14 +43,14 @@ function AppLayout() {
 
     if (onboardingRequired) {
       console.info("[Tribuno Auth] Rota protegida com onboarding inicial pendente", {
-        userId: user?.id,
+        operacao: "AUTH_ROUTE_ONBOARDING_PENDENTE",
       });
       navigate({ to: "/completar-perfil", replace: true });
       return;
     }
 
     console.info("[Tribuno Auth] Rota protegida autorizada", {
-      userId: user?.id,
+      operacao: "AUTH_ROUTE_AUTORIZADA",
       perfilCarregado: Boolean(perfil),
     });
   }, [

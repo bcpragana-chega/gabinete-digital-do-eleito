@@ -33,7 +33,6 @@ function CompletarPerfilPage() {
     if (!initialized) return;
     console.info("[Tribuno Auth] Completar perfil: estado recebido", {
       isAuthenticated,
-      userId: user?.id,
       perfilCarregado: Boolean(perfil),
       perfilCompleto: hasCompleteProfile,
       onboardingVersion,
@@ -55,7 +54,7 @@ function CompletarPerfilPage() {
       onboardingVersion >= 1
     ) {
       console.info("[Tribuno Auth] Completar perfil: perfil completo, a entrar na aplicação.", {
-        userId: user?.id,
+        operacao: "AUTH_PROFILE_COMPLETO",
       });
       navigate({ to: "/", replace: true });
     }

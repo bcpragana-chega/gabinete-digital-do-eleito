@@ -344,8 +344,10 @@ export function useAssembleiasDoDossie(dossieId: string): DossieAssembleiaRelaci
 
     void sincronizarRelacoesRemotas()
       .then(atualizar)
-      .catch((error) => {
-        console.warn("[Tribuno] Não foi possível sincronizar relações assunto-sessão.", error);
+      .catch(() => {
+        console.warn("[Tribuno] Sincronização de relações assunto-sessão falhou.", {
+          operacao: "ASSUNTO_SESSAO_SYNC_FALHOU",
+        });
       });
 
     window.addEventListener(EVENT_NAME, atualizar);

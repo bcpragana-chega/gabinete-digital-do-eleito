@@ -8,7 +8,6 @@ import {
 } from "@/lib/profile-repository";
 import { readJSON, writeJSON } from "@/lib/storage-provider";
 import {
-  diagnosticarSessaoSupabase,
   iniciarSessaoSupabaseComGoogleCredential,
   isSupabaseConfigured,
   terminarSessaoSupabase,
@@ -202,16 +201,13 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
   let perfilRemoto: PerfilEleito | undefined;
 
   console.info("[Tribuno Auth] loginComGoogle iniciado", {
-    userIdInicial: user.id,
     provider: user.provider,
     temGoogleCredential: Boolean(googleCredential),
   });
 
   if (googleCredential && user.provider === "google") {
     try {
-      console.info("[Tribuno Auth] A iniciar autenticação Supabase com Google ID token", {
-        userIdGoogle: user.id,
-      });
+      console.info("[Tribuno Auth] A iniciar autenticação Supabase com Google ID token");
       const supabaseUser = await iniciarSessaoSupabaseComGoogleCredential(googleCredential);
 
       if (supabaseUser?.id) {
@@ -230,23 +226,16 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
           googleSub: user.id,
           supabaseUserId: supabaseUser.id,
         };
-        console.info("[Tribuno Auth] Sessão Supabase criada", {
-          userId: userAutenticado.id,
-          googleSub: userAutenticado.googleSub,
-        });
+        console.info("[Tribuno Auth] Sessão Supabase criada");
         perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userAutenticado.id));
         console.info("[Tribuno Auth] Perfil remoto/local carregado após login", {
-          userId: userAutenticado.id,
           perfilCarregado: Boolean(perfilRemoto),
           perfilCompleto: perfilCompleto(perfilRemoto),
         });
       }
-    } catch (error) {
-      const diagnostico = await diagnosticarSessaoSupabase();
+    } catch {
       console.warn("[Tribuno Auth] Login Supabase indisponível; a usar fallback local.", {
-        userIdGoogle: user.id,
-        diagnostico,
-        error,
+        operacao: "AUTH_LOGIN_FALLBACK_LOCAL",
       });
     }
   }
@@ -258,7 +247,6 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
   };
   guardarAuthState(nextState);
   console.info("[Tribuno Auth] Sessão local guardada", {
-    userId: nextState.user?.id,
     provider: nextState.user?.provider,
     perfilCarregado: Boolean(nextState.perfil),
     onboardingNecessario: !perfilCompleto(nextState.perfil),
@@ -400,7 +388,6 @@ export function useAuth() {
       const perfilAtual = obterPerfilDoUser(stateAtual);
 
       console.info("[Tribuno Auth] Verificação de perfil ao inicializar", {
-        userId,
         perfilLocalCarregado: Boolean(perfilAtual),
         perfilCompleto: perfilCompleto(perfilAtual),
       });
@@ -409,7 +396,6 @@ export function useAuth() {
 
       const perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userId));
       console.info("[Tribuno Auth] Perfil carregado durante inicialização", {
-        userId,
         perfilCarregado: Boolean(perfilRemoto),
         perfilCompleto: perfilCompleto(perfilRemoto),
       });
@@ -464,21 +450,18 @@ export function useAuth() {
             setOnboardingVersion(versao);
             setOnboardingResolved(true);
           }
-        } catch (error) {
+        } catch {
           console.warn("[Tribuno Auth] Não foi possível carregar estado de onboarding.", {
-            userId,
-            error,
+            operacao: "AUTH_ONBOARDING_LOAD_FALHOU",
           });
           if (!cancelled && currentUpdateId === updateId) {
             setOnboardingVersion(undefined);
             setOnboardingResolved(true);
           }
         }
-      } catch (error) {
-        const diagnostico = await diagnosticarSessaoSupabase();
+      } catch {
         console.error("[Tribuno Auth] Erro ao inicializar autenticação/perfil", {
-          diagnostico,
-          error,
+          operacao: "AUTH_INIT_FALHOU",
         });
         if (!cancelled && currentUpdateId === updateId) {
           setState(lerAuthState());

@@ -65,15 +65,13 @@ export async function iniciarSessaoSupabaseComGoogleCredential(
 
   if (error) {
     console.error("[Tribuno Auth] Login Supabase falhou", {
-      supabaseConfigurado: true,
-      error,
+      operacao: "AUTH_LOGIN_SUPABASE_FALHOU",
     });
     throw error;
   }
 
   console.info("[Tribuno Auth] Login Supabase concluído", {
     existeSupabaseUser: Boolean(data.user?.id),
-    supabaseUserId: data.user?.id,
   });
 
   return data.user ?? undefined;
@@ -121,6 +119,8 @@ export async function terminarSessaoSupabase() {
 
   const { error } = await supabase.auth.signOut();
   if (error) {
-    console.warn("[Tribuno] Não foi possível terminar a sessão Supabase.", error);
+    console.warn("[Tribuno Auth] Não foi possível terminar a sessão Supabase.", {
+      operacao: "AUTH_LOGOUT_SUPABASE_FALHOU",
+    });
   }
 }

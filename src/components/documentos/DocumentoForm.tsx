@@ -79,7 +79,10 @@ export function DocumentoForm({
       await adicionarDocumentoComUpload({ ...input, ficheiro });
       onSaved();
     } catch (error) {
-      console.warn("[Tribuno] Não foi possível adicionar o documento.", error);
+      console.warn("[Tribuno Documentos] Criação falhou.", {
+        operacao: "DOCUMENTO_CRIAR_FALHOU",
+        codigo: error instanceof DocumentoStorageErro ? error.codigo : "DOCUMENTO_CRIAR_FALHOU",
+      });
       setErro(
         error instanceof DocumentoStorageErro
           ? error.message

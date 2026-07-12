@@ -15,9 +15,14 @@ import { DossieForm } from "@/components/dossies/DossieForm";
 type EditarDossieDialogProps = {
   dossie: Dossie;
   compact?: boolean;
+  triggerLabel?: string;
 };
 
-export function EditarDossieDialog({ dossie, compact = false }: EditarDossieDialogProps) {
+export function EditarDossieDialog({
+  dossie,
+  compact = false,
+  triggerLabel = "Editar",
+}: EditarDossieDialogProps) {
   const [open, setOpen] = useState(false);
 
   function guardar(values: DossieInput) {
@@ -34,7 +39,7 @@ export function EditarDossieDialog({ dossie, compact = false }: EditarDossieDial
           className={compact ? "px-2.5" : "w-full sm:w-auto"}
         >
           <Pencil className={compact ? "h-4 w-4" : "mr-2 h-4 w-4"} />
-          <span className={compact ? "sr-only" : undefined}>Editar</span>
+          <span className={compact ? "sr-only" : undefined}>{triggerLabel}</span>
         </Button>
       </DialogTrigger>
 

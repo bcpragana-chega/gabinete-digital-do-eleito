@@ -460,9 +460,7 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
       void registrarUsoAi(
         {
           authenticatedUserId: userIdAutenticado,
-          authenticatedOrganizationId: organizacaoUsoSegura(
-            contextoGeracao?.perfil.organizacao,
-          ),
+          authenticatedOrganizationId: organizacaoUsoSegura(contextoGeracao?.perfil.organizacao),
         },
         {
           assuntoId: data.assuntoId,
@@ -581,7 +579,6 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
 
       console.error("[Tribuno AI] Erro na geração", {
         code: diagnosticoErro.code,
-        message: diagnosticoErro.message,
         status: diagnosticoErro.status,
         responseId: diagnosticoErro.responseId || undefined,
         operation: diagnosticoErro.operation,

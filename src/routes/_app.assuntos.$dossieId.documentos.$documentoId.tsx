@@ -53,7 +53,6 @@ import { adicionarEventoAutomaticoTimelineDossie } from "@/lib/dossie-timeline-s
 import { adicionarEventoHistorico } from "@/lib/historico-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
 import { useDossie } from "@/lib/dossies-store";
-import { addDiagnosticEvent } from "@/lib/debug-diagnostics";
 import type { DocumentoCriado, EstadoDocumentoCriado } from "@/lib/types";
 
 const estados: EstadoDocumentoCriado[] = [
@@ -124,24 +123,8 @@ function limparSintaxeMarkdownVisivel(conteudo: string) {
     .trim();
 }
 
-function logEditorDocumentoDev(message: string, data: Record<string, unknown>) {
-  if (!import.meta.env.DEV) return;
-  console.info(`[Tribuno DEV][documento_editor] ${message}`, data);
-}
-
 function DocumentoDoAssuntoPage() {
   const { dossieId, documentoId } = Route.useParams();
-
-  addDiagnosticEvent({
-    area: "documento_editor",
-    message: "route_enter",
-    data: {
-      params: {
-        dossieId,
-        documentoId,
-      },
-    },
-  });
 
   const dossie = useDossie(dossieId);
   const assembleias = useAssembleias();
@@ -424,39 +407,8 @@ function DocumentoDoAssuntoPage() {
   }
 
   if (!documento) {
-    logEditorDocumentoDev("render_not_editor", {
-      params: {
-        dossieId,
-        documentoId,
-      },
-      carregou,
-      assuntoEncontrado: Boolean(dossie),
-      documentoEmEstado: false,
-      motivo: "a aguardar carregamento do documento",
-    });
-
     return null;
   }
-
-  logEditorDocumentoDev("render_editor", {
-    params: {
-      dossieId,
-      documentoId,
-    },
-    documentoId: documento.id,
-    titulo: documento.titulo,
-    origem: documento.origem,
-  });
-
-  addDiagnosticEvent({
-    area: "documento_editor",
-    message: "render_editor",
-    data: {
-      documentoId: documento.id,
-      titulo: documento.titulo,
-      temConteudo: Boolean(documento.conteudo?.trim()),
-    },
-  });
 
   return (
     <>

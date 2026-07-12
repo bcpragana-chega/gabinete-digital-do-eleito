@@ -30,7 +30,11 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
     return response;
   }
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
+  consumeLastCapturedError();
+  console.error("[Tribuno Server] Erro SSR catastrófico", {
+    operacao: "SSR_CATASTROPHIC_RESPONSE",
+    status: response.status,
+  });
   return new Response(renderErrorPage(), {
     status: 500,
     headers: { "content-type": "text/html; charset=utf-8" },
@@ -43,8 +47,10 @@ export default {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
-    } catch (error) {
-      console.error(error);
+    } catch {
+      console.error("[Tribuno Server] Pedido SSR falhou", {
+        operacao: "SSR_REQUEST_FALHOU",
+      });
       return new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },

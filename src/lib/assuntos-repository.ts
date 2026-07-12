@@ -58,20 +58,19 @@ async function obterSupabaseUserIdValido(userId?: string) {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user?.id) {
     if (import.meta.env.DEV) {
-      console.warn("[Tribuno] Sem sessão Supabase válida para sincronizar Assuntos.", error);
+      console.warn("[Tribuno] Sem sessão válida para sincronizar assuntos.", {
+        operacao: "ASSUNTOS_AUTH_INVALIDA",
+        temErro: Boolean(error),
+      });
     }
     return undefined;
   }
 
   if (userId && userId !== data.user.id) {
     if (import.meta.env.DEV) {
-      console.warn(
-        "[Tribuno] Sincronização de Assuntos ignorada: userId não corresponde ao auth.uid().",
-        {
-          storeUserId: userId,
-          supabaseUserId: data.user.id,
-        },
-      );
+      console.warn("[Tribuno] Sincronização de assuntos ignorada.", {
+        operacao: "ASSUNTOS_AUTH_DIVERGENTE",
+      });
     }
     return undefined;
   }

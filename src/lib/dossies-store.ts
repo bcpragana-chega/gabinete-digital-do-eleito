@@ -37,14 +37,20 @@ function guardarDossieRemotamente(dossie: Dossie) {
   const userId = obterUserIdAtual();
   if (!userId) return;
 
-  void guardarAssuntoRemoto(userId, dossie).catch((error) => {
-    console.warn("[Tribuno] Assunto guardado localmente, mas falhou no Supabase.", error);
+  void guardarAssuntoRemoto(userId, dossie).catch(() => {
+    console.warn("[Tribuno] Sincronização de assunto falhou.", {
+      operacao: "ASSUNTO_SYNC_FALHOU",
+      documentoId: dossie.id.slice(0, 8),
+    });
   });
 }
 
 function apagarDossieRemotamente(id: string) {
-  void apagarAssuntoRemoto(id).catch((error) => {
-    console.warn("[Tribuno] Assunto apagado localmente, mas falhou no Supabase.", error);
+  void apagarAssuntoRemoto(id).catch(() => {
+    console.warn("[Tribuno] Eliminação remota de assunto falhou.", {
+      operacao: "ASSUNTO_DELETE_FALHOU",
+      documentoId: id.slice(0, 8),
+    });
   });
 }
 
@@ -54,8 +60,10 @@ async function carregarDossiesRemotosSeDisponivel() {
     if (!remotos) return;
 
     guardarDossiesLocais(remotos);
-  } catch (error) {
-    console.warn("[Tribuno] Não foi possível carregar assuntos do Supabase.", error);
+  } catch {
+    console.warn("[Tribuno] Carregamento remoto de assuntos falhou.", {
+      operacao: "ASSUNTOS_LOAD_FALHOU",
+    });
   }
 }
 

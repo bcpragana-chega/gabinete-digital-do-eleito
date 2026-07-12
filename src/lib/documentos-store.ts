@@ -40,8 +40,11 @@ function guardarDocumentoRemotamente(documento: Documento) {
   const userId = obterUserIdAtual();
   if (!userId) return Promise.resolve();
 
-  return guardarDocumentoRemoto(userId, documento).catch((error) => {
-    console.warn("[Tribuno] Não foi possível sincronizar o documento no Supabase.", error);
+  return guardarDocumentoRemoto(userId, documento).catch(() => {
+    console.warn("[Tribuno Documentos] Sincronização falhou.", {
+      operacao: "DOCUMENTO_SYNC_FALHOU",
+      documentoId: documento.id.slice(0, 8),
+    });
   });
 }
 
@@ -81,8 +84,10 @@ export function carregarDocumentosRemotosSeDisponivel() {
 
       write(mergeDocumentos(locais, remotos));
     })
-    .catch((error) => {
-      console.warn("[Tribuno] Não foi possível carregar documentos do Supabase.", error);
+    .catch(() => {
+      console.warn("[Tribuno Documentos] Carregamento remoto falhou.", {
+        operacao: "DOCUMENTOS_LOAD_FALHOU",
+      });
     })
     .finally(() => {
       remoteLoadPromise = undefined;
@@ -391,8 +396,11 @@ export function useDocumento(docId: string): Documento | undefined {
 
         write(atualizados);
         setDoc((atual) => (atual ? { ...atual, ...remoto } : remoto));
-      } catch (error) {
-        console.warn("[Tribuno] Não foi possível carregar o documento remoto.", error);
+      } catch {
+        console.warn("[Tribuno Documentos] Carregamento por ID falhou.", {
+          operacao: "DOCUMENTO_LOAD_BY_ID_FALHOU",
+          documentoId: docId.slice(0, 8),
+        });
       }
     }
 

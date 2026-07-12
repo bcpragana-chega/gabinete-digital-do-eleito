@@ -79,7 +79,6 @@ export async function registrarUsoAi(
   } catch (error) {
     console.warn("[Tribuno AI] Falha ao registar utilização de IA.", {
       code: error instanceof Error ? error.name : undefined,
-      message: error instanceof Error ? error.message : "Erro desconhecido",
       operation: registro.operation,
       feature: registro.feature,
       model: registro.model,

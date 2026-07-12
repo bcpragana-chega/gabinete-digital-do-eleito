@@ -96,18 +96,17 @@ async function obterSupabaseUserIdValido(userId?: string) {
   );
 
   if (error || !data.user?.id) {
-    console.warn("[Tribuno] Sem sessão Supabase válida para sincronizar Sessões.", error);
+    console.warn("[Tribuno] Sem sessão válida para sincronizar sessões.", {
+      operacao: "SESSOES_AUTH_INVALIDA",
+      temErro: Boolean(error),
+    });
     return undefined;
   }
 
   if (userId && userId !== data.user.id) {
-    console.warn(
-      "[Tribuno] Sincronização de Sessões ignorada: userId não corresponde ao auth.uid().",
-      {
-        storeUserId: userId,
-        supabaseUserId: data.user.id,
-      },
-    );
+    console.warn("[Tribuno] Sincronização de sessões ignorada.", {
+      operacao: "SESSOES_AUTH_DIVERGENTE",
+    });
     return undefined;
   }
 

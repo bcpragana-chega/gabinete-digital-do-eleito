@@ -109,16 +109,15 @@ async function obterSupabaseUserIdValido(userId?: string) {
   );
   if (error || !data.user?.id) {
     console.warn("[Tribuno Perfil] Sem sessão Supabase válida para sincronizar perfil.", {
-      userId,
-      error,
+      operacao: "PROFILE_AUTH_INVALIDA",
+      temErro: Boolean(error),
     });
     return undefined;
   }
 
   if (userId && userId !== data.user.id) {
-    console.warn("[Tribuno Perfil] Sincronização ignorada: userId não corresponde ao auth.uid().", {
-      storeUserId: userId,
-      supabaseUserId: data.user.id,
+    console.warn("[Tribuno Perfil] Sincronização ignorada por divergência de sessão.", {
+      operacao: "PROFILE_AUTH_DIVERGENTE",
     });
     return undefined;
   }
@@ -144,15 +143,12 @@ export function guardarPerfilLocal(userId: string, perfil: PerfilEleito) {
 
 export async function carregarPerfilRemoto(userId?: string) {
   console.info("[Tribuno Perfil] Carregar perfil remoto iniciado", {
-    userId,
     supabaseConfigurado: isSupabaseConfigured(),
   });
 
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) {
-    console.info("[Tribuno Perfil] Carregamento remoto ignorado: sem auth.uid válido.", {
-      userId,
-    });
+    console.info("[Tribuno Perfil] Carregamento remoto ignorado: sem sessão válida.");
     return undefined;
   }
 
@@ -167,8 +163,6 @@ export async function carregarPerfilRemoto(userId?: string) {
   if (error) throw error;
 
   console.info("[Tribuno Perfil] Carregar perfil remoto concluído", {
-    userId,
-    supabaseUserId,
     perfilEncontrado: Boolean(data),
   });
 
@@ -177,15 +171,12 @@ export async function carregarPerfilRemoto(userId?: string) {
 
 export async function carregarOnboardingVersionRemoto(userId?: string) {
   console.info("[Tribuno Perfil] Carregar onboarding remoto iniciado", {
-    userId,
     supabaseConfigurado: isSupabaseConfigured(),
   });
 
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) {
-    console.info("[Tribuno Perfil] Carregamento de onboarding ignorado: sem auth.uid válido.", {
-      userId,
-    });
+    console.info("[Tribuno Perfil] Carregamento de onboarding ignorado: sem sessão válida.");
     return undefined;
   }
 
@@ -208,8 +199,6 @@ export async function carregarOnboardingVersionRemoto(userId?: string) {
     : undefined;
 
   console.info("[Tribuno Perfil] Carregar onboarding remoto concluído", {
-    userId,
-    supabaseUserId,
     onboardingVersion: version,
   });
 
@@ -218,26 +207,13 @@ export async function carregarOnboardingVersionRemoto(userId?: string) {
 
 export async function guardarPerfilRemoto(userId: string, perfil: PerfilEleito) {
   console.info("[Tribuno Perfil] Guardar perfil remoto iniciado", {
-    userId,
     supabaseConfigurado: isSupabaseConfigured(),
-    payload: {
-      nomeInstitucionalLength: perfil.nomeInstitucional.length,
-      cargo: perfil.cargo,
-      orgao: perfil.orgao,
-      organizacaoLength: perfil.organizacao.length,
-      territorioLength: perfil.territorio.length,
-      municipioLength: textoSeguro(perfil.municipio).length,
-      freguesiaLength: textoSeguro(perfil.freguesia).length,
-      temAssinaturaInstitucional: Boolean(perfil.assinaturaInstitucional),
-      temLogo: Boolean(perfil.logoUrl),
-    },
+    temLogo: Boolean(perfil.logoUrl),
   });
 
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) {
-    console.info("[Tribuno Perfil] Gravação remota ignorada: sem auth.uid válido.", {
-      userId,
-    });
+    console.info("[Tribuno Perfil] Gravação remota ignorada: sem sessão válida.");
     return;
   }
 
@@ -253,10 +229,7 @@ export async function guardarPerfilRemoto(userId: string, perfil: PerfilEleito) 
 
   if (error) throw error;
 
-  console.info("[Tribuno Perfil] Guardar perfil remoto concluído", {
-    userId,
-    supabaseUserId,
-  });
+  console.info("[Tribuno Perfil] Guardar perfil remoto concluído");
 }
 
 const LOGO_MAX_BYTES = 2_000_000;
@@ -325,10 +298,9 @@ export async function guardarLogoPerfil(userId: string | undefined, file: File) 
   );
 
   if (error) {
-    console.warn(
-      "[Tribuno Perfil] Upload remoto do logótipo falhou; a usar fallback local.",
-      error,
-    );
+    console.warn("[Tribuno Perfil] Upload remoto do logótipo falhou; a usar fallback local.", {
+      operacao: "PROFILE_LOGO_REMOTE_UPLOAD_FALHOU",
+    });
     return fallbackLocal;
   }
 
@@ -338,16 +310,13 @@ export async function guardarLogoPerfil(userId: string | undefined, file: File) 
 
 export async function guardarOnboardingVersionRemoto(userId: string, version: number) {
   console.info("[Tribuno Perfil] Guardar onboarding remoto iniciado", {
-    userId,
     supabaseConfigurado: isSupabaseConfigured(),
     onboardingVersion: version,
   });
 
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) {
-    console.info("[Tribuno Perfil] Gravação de onboarding ignorada: sem auth.uid válido.", {
-      userId,
-    });
+    console.info("[Tribuno Perfil] Gravação de onboarding ignorada: sem sessão válida.");
     return;
   }
 
@@ -365,8 +334,6 @@ export async function guardarOnboardingVersionRemoto(userId: string, version: nu
   if (error) throw error;
 
   console.info("[Tribuno Perfil] Guardar onboarding remoto concluído", {
-    userId,
-    supabaseUserId,
     onboardingVersion: version,
   });
 }
@@ -381,8 +348,10 @@ export async function carregarPerfilHibrido(userId?: string) {
         guardarPerfilLocal(userId, remoto);
         return remoto;
       }
-    } catch (error) {
-      console.warn("[Tribuno] Não foi possível carregar perfil remoto.", error);
+    } catch {
+      console.warn("[Tribuno Perfil] Carregamento remoto falhou.", {
+        operacao: "PROFILE_LOAD_FALHOU",
+      });
     }
   }
 
@@ -396,8 +365,10 @@ export async function guardarPerfilHibrido(userId: string, perfil: PerfilEleito)
 
   try {
     await guardarPerfilRemoto(userId, perfil);
-  } catch (error) {
-    console.warn("[Tribuno] Perfil guardado localmente, mas falhou no Supabase.", error);
+  } catch {
+    console.warn("[Tribuno Perfil] Sincronização remota falhou.", {
+      operacao: "PROFILE_SYNC_FALHOU",
+    });
   }
 
   return perfil;

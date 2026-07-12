@@ -113,12 +113,8 @@ function getCurrentOrigin() {
   return window.location.origin;
 }
 
-function logAuth(etapa: string, dados: Record<string, unknown> = {}) {
-  console.info(`[Tribuno Auth] ${etapa}`, {
-    origin: getCurrentOrigin(),
-    supabaseConfigurado: isSupabaseConfigured(),
-    ...dados,
-  });
+function logAuth(etapa: string, _dados: Record<string, unknown> = {}) {
+  console.info(`[Tribuno Auth] ${etapa}`);
 }
 
 function codigoLoginDoErro(error: unknown): LoginErroCodigo {
@@ -164,12 +160,9 @@ function LoginPage() {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
 
-    console.log("VITE_GOOGLE_CLIENT_ID:", import.meta.env.VITE_GOOGLE_CLIENT_ID);
-    console.log("[Tribuno auth] VITE_GOOGLE_CLIENT_ID", {
+    console.info("[Tribuno Auth] Configuração Google", {
       status: googleClientIdStatus,
       loaded: googleClientIdStatus === "loaded",
-      length: googleClientId.length,
-      origin,
     });
   }, [googleClientId.length, googleClientIdStatus, origin]);
 
@@ -211,24 +204,18 @@ function LoginPage() {
 
             const googleUser = userFromCredential(response.credential);
             logAuth("Credencial Google lida", {
-              userId: googleUser.id,
               temNome: Boolean(googleUser.nome),
               temEmail: Boolean(googleUser.email),
               temAvatar: Boolean(googleUser.avatarUrl),
             });
 
-            logAuth("Login Supabase iniciado", {
-              userIdGoogle: googleUser.id,
-            });
+            logAuth("Login Supabase iniciado");
 
             const authState = await loginComGoogle(googleUser, response.credential);
             const diagnostico = await diagnosticarSessaoSupabase();
 
             logAuth("Login Supabase/perfil concluído", {
-              userId: authState.user?.id,
-              googleSub: authState.user?.googleSub,
               existeSessaoSupabase: diagnostico.existeSessaoSupabase,
-              supabaseUserId: diagnostico.supabaseUserId,
               perfilCarregado: Boolean(authState.perfil),
               perfilCompleto: perfilCompleto(authState.perfil),
             });
@@ -247,19 +234,12 @@ function LoginPage() {
               replace: true,
             });
 
-            logAuth("Navegação para a aplicação", {
-              userId: authState.user?.id,
-              destino,
-            });
+            logAuth("Navegação para a aplicação", { destino });
           } catch (error) {
             const codigo = codigoLoginDoErro(error);
-            const diagnostico = await diagnosticarSessaoSupabase();
-
             console.error("[Tribuno Auth] Erro no fluxo de login", {
               codigo,
               supabaseConfigurado: isSupabaseConfigured(),
-              diagnostico,
-              error,
             });
 
             setErro(`${mensagensErroLogin[codigo]} Código: ${codigo}`);
@@ -290,7 +270,7 @@ function LoginPage() {
     script.onload = inicializarGoogle;
     script.onerror = () => {
       console.error("[Tribuno Auth] Erro ao carregar script Google Identity Services", {
-        origin: getCurrentOrigin(),
+        operacao: "AUTH_GOOGLE_SCRIPT_FALHOU",
       });
       setErro(
         "Não foi possível carregar o login Google. Verifique a ligação à internet, bloqueadores do browser ou políticas de rede.",

@@ -1,4 +1,5 @@
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
+import { logSignedUrlDocumentoFalhou } from "@/lib/documentos-safe-logging";
 
 export const DOCUMENTOS_STORAGE_BUCKET = "documentos";
 export const PDF_MAX_BYTES = 20 * 1024 * 1024;
@@ -246,11 +247,8 @@ export async function criarUrlAssinadaDocumento(
   );
 
   if (error) {
-    console.error("[Tribuno Documentos] Falha ao gerar URL assinada do PDF", {
-      bucket: DOCUMENTOS_STORAGE_BUCKET,
-      storagePath,
-      error,
-    });
+    const codigo = isBucketInexistente(error) ? "STORAGE_BUCKET_INEXISTENTE" : "PDF_URL_INVALIDA";
+    logSignedUrlDocumentoFalhou(codigo);
 
     if (isBucketInexistente(error)) {
       throw new DocumentoStorageErro(

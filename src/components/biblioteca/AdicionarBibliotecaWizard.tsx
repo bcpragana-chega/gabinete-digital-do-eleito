@@ -184,7 +184,10 @@ export function AdicionarBibliotecaWizard() {
         notas: [`[Biblioteca: ${tipo}]`, descricao.trim()].filter(Boolean).join("\n"),
       });
     } catch (error) {
-      console.warn("[Tribuno] Não foi possível adicionar o documento à Biblioteca.", error);
+      console.warn("[Tribuno Documentos] Criação na biblioteca falhou.", {
+        operacao: "BIBLIOTECA_DOCUMENTO_CRIAR_FALHOU",
+        codigo: error instanceof DocumentoStorageErro ? error.codigo : "DOCUMENTO_CRIAR_FALHOU",
+      });
       setErro(
         error instanceof DocumentoStorageErro
           ? error.message

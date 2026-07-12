@@ -40,8 +40,11 @@ function guardarDocumentoRemotamente(documento: DocumentoCriado) {
   const userId = obterUserIdAtual();
   if (!userId) return;
 
-  guardarDocumentoCriadoRemoto(userId, documento).catch((error) => {
-    console.warn("[Tribuno] Não foi possível sincronizar o documento a criar no Supabase.", error);
+  guardarDocumentoCriadoRemoto(userId, documento).catch(() => {
+    console.warn("[Tribuno Documentos] Sincronização de documento criado falhou.", {
+      operacao: "DOCUMENTO_CRIADO_SYNC_FALHOU",
+      documentoId: documento.id.slice(0, 8),
+    });
   });
 }
 
@@ -57,8 +60,10 @@ export function carregarDocumentosCriadosRemotosSeDisponivel() {
 
       guardarDocumentos(mergeDocumentos(locais, remotos));
     })
-    .catch((error) => {
-      console.warn("[Tribuno] Não foi possível carregar documentos a criar do Supabase.", error);
+    .catch(() => {
+      console.warn("[Tribuno Documentos] Carregamento de documentos criados falhou.", {
+        operacao: "DOCUMENTOS_CRIADOS_LOAD_FALHOU",
+      });
     })
     .finally(() => {
       remoteLoadPromise = undefined;

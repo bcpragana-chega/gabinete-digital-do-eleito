@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  ClipboardList,
-  ListChecks,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, ClipboardList, ListChecks, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -55,6 +50,7 @@ export function PreparationGuidancePanel({
   const [pontosVersion, setPontosVersion] = useState(0);
   const [rascunhosVersion, setRascunhosVersion] = useState(0);
   const [localVersion, setLocalVersion] = useState(0);
+  const [checklistAberta, setChecklistAberta] = useState(false);
 
   const pontos = useMemo(
     () => obterPontosDaAssembleia(assembleiaId),
@@ -92,7 +88,15 @@ export function PreparationGuidancePanel({
   }, []);
 
   const state = useMemo(
-    () => criarEstadoPreparacao({ assembleiaId, documentos, pontos, rascunhos, estrategia, preparacao }),
+    () =>
+      criarEstadoPreparacao({
+        assembleiaId,
+        documentos,
+        pontos,
+        rascunhos,
+        estrategia,
+        preparacao,
+      }),
     [assembleiaId, documentos, pontos, rascunhos, estrategia, preparacao],
   );
 
@@ -113,7 +117,9 @@ export function PreparationGuidancePanel({
               Estado
             </p>
             <p className="text-base font-semibold leading-none text-foreground">{state.score}%</p>
-            <p className="text-xs font-medium leading-none text-foreground">{state.readinessLabel}</p>
+            <p className="text-xs font-medium leading-none text-foreground">
+              {state.readinessLabel}
+            </p>
             <p className="text-[11px] leading-none text-muted-foreground">
               {state.completedCount} de {state.steps.length} passos concluídos
             </p>
@@ -130,8 +136,12 @@ export function PreparationGuidancePanel({
               <Sparkles className="h-3 w-3" />
               Próxima ação
             </p>
-            <h3 className="text-sm font-semibold leading-snug text-foreground">{state.nextAction.title}</h3>
-            <p className="text-[11px] leading-relaxed text-muted-foreground">{state.nextAction.description}</p>
+            <h3 className="text-sm font-semibold leading-snug text-foreground">
+              {state.nextAction.title}
+            </h3>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {state.nextAction.description}
+            </p>
 
             <Button asChild size="sm" className="h-7 w-full justify-center px-2.5 text-[11px]">
               <Link to={state.nextAction.href}>
@@ -143,38 +153,8 @@ export function PreparationGuidancePanel({
 
           <div className="space-y-1 border-b border-border/60 pb-1.5">
             <p className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              <ClipboardList className="h-3 w-3" />
-              Checklist
-            </p>
-
-            <ol className="space-y-0.5">
-              {state.steps.map((step) => (
-                <li
-                  key={step.id}
-                  className="grid grid-cols-[12px_minmax(0,1fr)_auto] items-center gap-1.5 text-[11px] leading-none text-foreground"
-                >
-                  <span
-                    className={[
-                      "shrink-0 text-xs font-semibold leading-none",
-                      step.done ? "text-status-concluida" : "text-muted-foreground",
-                    ].join(" ")}
-                    aria-hidden
-                  >
-                    {step.done ? "✓" : "○"}
-                  </span>
-                  <span className="min-w-0">{step.label}</span>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">
-                    {step.done ? "Concluído" : "Em falta"}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          <div className="space-y-1">
-            <p className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               <ListChecks className="h-3 w-3" />
-              Ainda falta
+              Pendências principais
             </p>
 
             {state.isComplete ? (
@@ -183,9 +163,14 @@ export function PreparationGuidancePanel({
               </p>
             ) : state.missingItems.length > 0 ? (
               <ul className="space-y-0.5">
-                {state.missingItems.map((item) => (
-                  <li key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                    <p className="min-w-0 text-[11px] leading-relaxed text-foreground">• {item.message}</p>
+                {state.missingItems.slice(0, 3).map((item) => (
+                  <li
+                    key={item.id}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"
+                  >
+                    <p className="min-w-0 text-[11px] leading-relaxed text-foreground">
+                      • {item.message}
+                    </p>
                     <Button
                       asChild
                       variant="secondary"
@@ -203,13 +188,50 @@ export function PreparationGuidancePanel({
               </p>
             )}
           </div>
+
+          <div className="space-y-1">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-7 w-full justify-center text-[11px]"
+              aria-expanded={checklistAberta}
+              aria-controls={`checklist-preparacao-${assembleiaId}`}
+              onClick={() => setChecklistAberta((aberta) => !aberta)}
+            >
+              <ClipboardList className="h-3 w-3" />
+              {checklistAberta ? "Ocultar checklist completa" : "Ver checklist completa"}
+            </Button>
+
+            {checklistAberta && (
+              <ol id={`checklist-preparacao-${assembleiaId}`} className="space-y-1 pt-1">
+                {state.steps.map((step) => (
+                  <li
+                    key={step.id}
+                    className="grid grid-cols-[12px_minmax(0,1fr)_auto] items-center gap-1.5 text-[11px] leading-none text-foreground"
+                  >
+                    <span
+                      className={step.done ? "text-status-concluida" : "text-muted-foreground"}
+                      aria-hidden
+                    >
+                      {step.done ? "✓" : "○"}
+                    </span>
+                    <span>{step.label}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {step.done ? "Concluído" : "Em falta"}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
         </div>
       </Card>
     </section>
   );
 }
 
-function criarEstadoPreparacao({
+export function criarEstadoPreparacao({
   assembleiaId,
   documentos,
   pontos,
@@ -245,7 +267,8 @@ function criarEstadoPreparacao({
     estrategia.adversariosPrevisiveis,
     estrategia.notasLivres,
   ].some((item) => item.trim().length > 0);
-  const questionsPrepared = preparacao.perguntas.length > 0 || pontos.some((ponto) => ponto.perguntas.length > 0);
+  const questionsPrepared =
+    preparacao.perguntas.length > 0 || pontos.some((ponto) => ponto.perguntas.length > 0);
   const draftsCreated = rascunhos.length > 0;
   const finalReview =
     documentsUploaded &&
@@ -378,10 +401,9 @@ function criarEstadoPreparacao({
   }
 
   const isComplete = score === 100;
-  const scoreDescription =
-    isComplete
-      ? "Todos os requisitos essenciais estão completos."
-      : `${completedCount} de ${steps.length} passos concluídos.`;
+  const scoreDescription = isComplete
+    ? "Todos os requisitos essenciais estão completos."
+    : `${completedCount} de ${steps.length} passos concluídos.`;
 
   const nextAction = escolherProximaAcao({
     assembleiaId,
@@ -436,7 +458,8 @@ function escolherProximaAcao({
   if (!documentsReviewed) {
     return {
       title: "Analisar documentos carregados",
-      description: "Confirme o estado de cada documento para não deixar matéria crítica por analisar.",
+      description:
+        "Confirme o estado de cada documento para não deixar matéria crítica por analisar.",
       button: "Analisar documentos",
       href: `/sessoes/${assembleiaId}/preparacao/documentos`,
     };

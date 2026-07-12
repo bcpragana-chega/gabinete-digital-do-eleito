@@ -8,6 +8,7 @@ type WorkspaceSectionProps = {
   children?: ReactNode;
   className?: string;
   contentClassName?: string;
+  id?: string;
 };
 
 export function WorkspaceSection({
@@ -17,9 +18,11 @@ export function WorkspaceSection({
   children,
   className,
   contentClassName,
+  id,
 }: WorkspaceSectionProps) {
   return (
     <section
+      id={id}
       className={cn(
         "min-w-0 rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5",
         className,

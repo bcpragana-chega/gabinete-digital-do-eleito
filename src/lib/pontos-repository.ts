@@ -126,18 +126,17 @@ async function obterSupabaseUserIdValido(userId?: string) {
   );
 
   if (error || !data.user?.id) {
-    console.warn("[Tribuno] Sem sessão Supabase válida para sincronizar Pontos.", error);
+    console.warn("[Tribuno] Sem sessão válida para sincronizar pontos.", {
+      operacao: "PONTOS_AUTH_INVALIDA",
+      temErro: Boolean(error),
+    });
     return undefined;
   }
 
   if (userId && userId !== data.user.id) {
-    console.warn(
-      "[Tribuno] Sincronização de Pontos ignorada: userId não corresponde ao auth.uid().",
-      {
-        storeUserId: userId,
-        supabaseUserId: data.user.id,
-      },
-    );
+    console.warn("[Tribuno] Sincronização de pontos ignorada.", {
+      operacao: "PONTOS_AUTH_DIVERGENTE",
+    });
     return undefined;
   }
 

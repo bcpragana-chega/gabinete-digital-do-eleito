@@ -49,7 +49,7 @@ function PreparacaoPage() {
 
           <EmptyState
             title="Sessão não encontrada"
-            description="A preparação da Sessão só fica disponível quando a Sessão existe neste dispositivo."
+            description="Não foi possível encontrar esta sessão. Pode ter sido removida ou já não estar disponível."
             action={
               <Button asChild>
                 <Link to="/sessoes">Ir para Sessões</Link>
@@ -129,8 +129,8 @@ function PreparacaoPage() {
 
           <PreparacaoAreaCard
             icon={FilePlus2}
-            titulo="Documentos a Criar"
-            descricao="Moções, recomendações, requerimentos, declarações de voto e intervenções."
+            titulo="Documentos preparados para esta sessão"
+            descricao="Consulte e prepare os documentos dos assuntos que serão levados a esta sessão."
             to="/sessoes/$id/preparacao/documentos-a-criar"
             params={{ id }}
           />

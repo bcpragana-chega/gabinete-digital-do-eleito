@@ -36,8 +36,8 @@ import { listarDocumentosDoDossie } from "@/lib/dossie-documentos-store";
 import { listarNotasDossie } from "@/lib/dossie-notas-store";
 import { listarEventosTimelineDossie } from "@/lib/dossie-timeline-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
-import { addDiagnosticEvent } from "@/lib/debug-diagnostics";
 import { getSupabaseClient } from "@/lib/supabase";
+import { sugerirTituloDocumento, tipoPorIntencao, type IntencaoDocumento } from "@/lib/assunto-ux";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
 const tiposDocumentos: TipoDocumentoCriado[] = [
@@ -47,6 +47,14 @@ const tiposDocumentos: TipoDocumentoCriado[] = [
   "Declaração de voto",
   "Intervenção",
   "Outro documento",
+];
+
+const intencoes: Array<{ id: IntencaoDocumento; label: string }> = [
+  { id: "proposta", label: "Apresentar uma proposta" },
+  { id: "informacoes", label: "Pedir informações ao executivo" },
+  { id: "posicao", label: "Tomar uma posição política" },
+  { id: "intervencao", label: "Preparar uma intervenção" },
+  { id: "outro", label: "Outro documento" },
 ];
 
 function estadoLabel(estado: string) {
@@ -73,36 +81,29 @@ function mensagemErroGeracao(code?: string, message?: string) {
   const base =
     message?.trim() || "Não foi possível gerar o documento. Verifique a ligação e tente novamente.";
 
-  if (!import.meta.env.DEV || !code) {
-    return base;
-  }
-
   const mensagensConhecidas: Record<string, string> = {
     AUTH_REQUIRED: "A sua sessão expirou. Inicie sessão novamente para gerar documentos.",
     SESSAO_NOT_LINKED_TO_ASSUNTO:
       "A sessão selecionada já não está ligada a este assunto. Volte a associá-la antes de gerar.",
-    AI_TIMEOUT: "A geração demorou demasiado tempo no backend. Tente novamente.",
+    AI_TIMEOUT: "A preparação demorou mais do que o esperado. Tente novamente.",
     AI_EMPTY_RESPONSE:
-      "A OpenAI respondeu, mas não devolveu texto útil para o documento. Verifique o diagnóstico no log do backend.",
-    AI_PROVIDER_ERROR:
-      "A OpenAI devolveu um erro ao gerar o documento. Consulte o log seguro do backend para ver o status HTTP.",
-    AI_CONFIG_MISSING:
-      "A IA não está configurada no backend. Falta a chave OpenAI ou a configuração do provider.",
-    AI_CONFIG_MISSING_MODEL: "O modelo de IA não está configurado no backend.",
-    AI_CONFIG_MISSING_PROVIDER: "O provider de IA não está configurado no backend.",
-    AI_PROVIDER_NOT_SUPPORTED: "O provider de IA configurado não é suportado.",
+      "Não foi possível produzir conteúdo útil. Reveja as indicações e tente novamente.",
+    AI_PROVIDER_ERROR: "O serviço de apoio à escrita está temporariamente indisponível.",
+    AI_CONFIG_MISSING: "O serviço de apoio à escrita não está disponível neste momento.",
+    AI_CONFIG_MISSING_MODEL: "O serviço de apoio à escrita não está disponível neste momento.",
+    AI_CONFIG_MISSING_PROVIDER: "O serviço de apoio à escrita não está disponível neste momento.",
+    AI_PROVIDER_NOT_SUPPORTED: "O serviço de apoio à escrita não está disponível neste momento.",
     INSTITUTIONAL_PROFILE_INCOMPLETE:
       "Complete o seu perfil institucional antes de gerar documentos oficiais. Confirme o município e, quando aplicável, a freguesia.",
     INSTITUTIONAL_CONTEXT_INVALID:
       "Não foi possível validar o contexto institucional deste documento. Reveja os dados institucionais.",
     LEGAL_BASIS_INVALID:
       "Não foi possível validar o enquadramento jurídico deste documento. Reveja os dados institucionais.",
-    SUPABASE_INSERT_DOCUMENTO_CRIADO:
-      "A geração correu, mas a gravação do documento falhou no backend.",
-    AI_GENERATION_ERROR: "Ocorreu um erro inesperado na geração de IA.",
+    SUPABASE_INSERT_DOCUMENTO_CRIADO: "O documento foi preparado, mas não foi possível guardá-lo.",
+    AI_GENERATION_ERROR: "Não foi possível preparar o documento. Tente novamente.",
   };
 
-  return mensagensConhecidas[code] ? `${mensagensConhecidas[code]} [${code}]` : `${base} [${code}]`;
+  return (code && mensagensConhecidas[code]) || base;
 }
 
 export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string }) {
@@ -110,13 +111,45 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
   const dossie = useDossie(dossieId);
   const sessoesRelacionadas = useAssembleiasDoDossie(dossieId);
   const [documentos, setDocumentos] = useState<DocumentoCriado[]>([]);
+  const [intencao, setIntencao] = useState<IntencaoDocumento>();
   const [tipo, setTipo] = useState<TipoDocumentoCriado>("Recomendação");
   const [titulo, setTitulo] = useState("");
+  const [tituloEditado, setTituloEditado] = useState(false);
   const [conteudo, setConteudo] = useState("");
   const [gerando, setGerando] = useState(false);
   const [erroGeracao, setErroGeracao] = useState<string | undefined>();
   const [erroLogo, setErroLogo] = useState<string | undefined>();
   const [erroInstitucional, setErroInstitucional] = useState<string | undefined>();
+  const [documentoCriadoId, setDocumentoCriadoId] = useState<string>();
+  const [sucesso, setSucesso] = useState<string>();
+
+  function escolherIntencao(proxima: IntencaoDocumento) {
+    const proximoTipo = tipoPorIntencao(proxima) as TipoDocumentoCriado;
+    setIntencao(proxima);
+    setTipo(proximoTipo);
+    setTitulo(
+      sugerirTituloDocumento({
+        tipo: proximoTipo,
+        assuntoTitulo: dossie?.titulo ?? "",
+        objetivoPolitico: dossie?.objetivoPolitico,
+      }),
+    );
+    setTituloEditado(false);
+    setSucesso(undefined);
+  }
+
+  function escolherTipo(proximoTipo: TipoDocumentoCriado) {
+    setTipo(proximoTipo);
+    if (!tituloEditado) {
+      setTitulo(
+        sugerirTituloDocumento({
+          tipo: proximoTipo,
+          assuntoTitulo: dossie?.titulo ?? "",
+          objetivoPolitico: dossie?.objetivoPolitico,
+        }),
+      );
+    }
+  }
 
   useEffect(() => {
     function carregar() {
@@ -126,17 +159,6 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
     carregar();
     return subscreverDocumentosACriar(carregar);
   }, [dossieId]);
-
-  useEffect(() => {
-    addDiagnosticEvent({
-      area: "documentos_criados_list",
-      message: "render",
-      data: {
-        dossieId,
-        totalDocumentos: documentos.length,
-      },
-    });
-  });
 
   useEffect(() => {
     const handler = () => setErroLogo(mensagemLogoObrigatorio);
@@ -201,8 +223,12 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
 
       sincronizarDocumentoACriarGerado(response.documento);
 
+      setDocumentoCriadoId(response.documento.id);
+      setSucesso("Documento preparado e guardado. Já pode abri-lo para revisão.");
+      setIntencao(undefined);
       setTipo("Recomendação");
       setTitulo("");
+      setTituloEditado(false);
       setConteudo("");
       setDocumentos(listarDocumentosACriarDoAssunto(dossieId));
     } catch {
@@ -221,93 +247,153 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
       />
 
       <div className="mt-5 grid gap-4 rounded-2xl border border-border bg-background/60 p-4">
-        <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-foreground">Tipo</label>
-            <Select value={tipo} onValueChange={(value) => setTipo(value as TipoDocumentoCriado)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {tiposDocumentos.map((opcao) => (
-                  <SelectItem key={opcao} value={opcao}>
-                    {opcao}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-foreground">Título</label>
-            <Input
-              value={titulo}
-              onChange={(event) => setTitulo(event.target.value)}
-              placeholder="Ex: Recomendação sobre iluminação pública"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-xs font-medium text-foreground">Conteúdo inicial</label>
-          <Textarea
-            value={conteudo}
-            onChange={(event) => setConteudo(event.target.value)}
-            placeholder="Primeira versão, notas ou argumentos base."
-            rows={4}
-          />
-        </div>
-
-        {erroGeracao && (
-          <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            <div className="flex flex-wrap items-start gap-2">
-              <AlertCircle className="mt-0.5 h-4 w-4" />
-              <span className="mr-auto">{erroGeracao}</span>
-              {erroGeracao.includes("perfil institucional") && (
-                <Button asChild type="button" size="sm" variant="outline">
-                  <Link to="/definicoes">Completar perfil</Link>
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {erroLogo && (
-          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            <div className="flex flex-wrap items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              <span className="mr-auto">{erroLogo}</span>
-              <Button asChild type="button" size="sm" variant="outline">
-                <Link to="/definicoes">Ir para Perfil</Link>
+        <fieldset>
+          <legend className="mb-2 text-sm font-semibold text-foreground">
+            O que pretende fazer com este assunto?
+          </legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {intencoes.map((opcao) => (
+              <Button
+                key={opcao.id}
+                type="button"
+                variant={intencao === opcao.id ? "primary" : "secondary"}
+                className="h-auto min-h-11 justify-start whitespace-normal text-left"
+                aria-pressed={intencao === opcao.id}
+                onClick={() => escolherIntencao(opcao.id)}
+              >
+                {opcao.label}
               </Button>
-            </div>
+            ))}
           </div>
-        )}
+        </fieldset>
 
-        {erroInstitucional && (
-          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            <div className="flex flex-wrap items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              <span className="mr-auto">{erroInstitucional}</span>
-              <Button asChild type="button" size="sm" variant="outline">
-                <Link to="/definicoes">Completar perfil</Link>
-              </Button>
+        {intencao && (
+          <>
+            <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
+              <div>
+                <label
+                  htmlFor="documento-tipo"
+                  className="mb-1 block text-xs font-medium text-foreground"
+                >
+                  Tipo documental
+                </label>
+                <Select
+                  value={tipo}
+                  onValueChange={(value) => escolherTipo(value as TipoDocumentoCriado)}
+                >
+                  <SelectTrigger id="documento-tipo">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tiposDocumentos.map((opcao) => (
+                      <SelectItem key={opcao} value={opcao}>
+                        {opcao}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="documento-titulo"
+                  className="mb-1 block text-xs font-medium text-foreground"
+                >
+                  Título sugerido
+                </label>
+                <Input
+                  id="documento-titulo"
+                  value={titulo}
+                  onChange={(event) => {
+                    setTitulo(event.target.value);
+                    setTituloEditado(true);
+                  }}
+                  placeholder="Ex: Recomendação sobre iluminação pública"
+                />
+              </div>
             </div>
-          </div>
-        )}
 
-        <div className="flex justify-end">
-          <Button type="button" onClick={gerarDocumento} disabled={!titulo.trim() || gerando}>
-            {gerando ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />A gerar documento...
-              </>
-            ) : (
-              "Gerar documento"
+            <div>
+              <label
+                htmlFor="documento-informacao"
+                className="mb-1 block text-xs font-medium text-foreground"
+              >
+                Informação adicional para o Tribuno
+              </label>
+              <p className="mb-2 text-xs leading-5 text-muted-foreground">
+                O Tribuno utilizará também o resumo, objetivo, notas, acontecimentos e documentos
+                associados a este assunto.
+              </p>
+              <Textarea
+                id="documento-informacao"
+                value={conteudo}
+                onChange={(event) => setConteudo(event.target.value)}
+                placeholder="Acrescente factos, argumentos, pedidos específicos ou indicações que devam constar do documento."
+                rows={4}
+              />
+            </div>
+
+            {erroGeracao && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                <div className="flex flex-wrap items-start gap-2">
+                  <AlertCircle className="mt-0.5 h-4 w-4" />
+                  <span className="mr-auto">{erroGeracao}</span>
+                  {erroGeracao.includes("perfil institucional") && (
+                    <Button asChild type="button" size="sm" variant="outline">
+                      <Link to="/definicoes">Completar perfil</Link>
+                    </Button>
+                  )}
+                </div>
+              </div>
             )}
-          </Button>
-        </div>
+
+            {erroLogo && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <div className="flex flex-wrap items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="mr-auto">{erroLogo}</span>
+                  <Button asChild type="button" size="sm" variant="outline">
+                    <Link to="/definicoes">Ir para Perfil</Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {erroInstitucional && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <div className="flex flex-wrap items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="mr-auto">{erroInstitucional}</span>
+                  <Button asChild type="button" size="sm" variant="outline">
+                    <Link to="/definicoes">Completar perfil</Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <Button type="button" onClick={gerarDocumento} disabled={!titulo.trim() || gerando}>
+                {gerando ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />A gerar documento...
+                  </>
+                ) : (
+                  "Gerar documento"
+                )}
+              </Button>
+            </div>
+          </>
+        )}
       </div>
+
+      {sucesso && (
+        <div
+          className="mt-4 rounded-lg border border-status-concluida/40 bg-status-concluida/10 px-4 py-3 text-sm text-foreground"
+          role="status"
+        >
+          {sucesso}
+        </div>
+      )}
 
       {documentos.length === 0 ? (
         <EmptyState
@@ -321,15 +407,31 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
           {documentos.map((documento) => (
             <ActionCard
               key={documento.id}
+              className={documento.id === documentoCriadoId ? "ring-2 ring-primary/40" : undefined}
               icon={FileText}
               title={documento.titulo}
               description={metaAssociacao(documento)}
               meta={documento.tipo}
               action={
-                <div className="flex flex-wrap justify-end gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                  {documento.assuntoId ? (
+                    <Button asChild type="button" size="sm">
+                      <Link
+                        to="/assuntos/$dossieId/documentos/$documentoId"
+                        params={{ dossieId: documento.assuntoId, documentoId: documento.id }}
+                      >
+                        Abrir e rever
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button type="button" size="sm" disabled>
+                      Sem assunto associado
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     size="sm"
+                    variant="secondary"
                     onClick={() => {
                       setErroLogo(undefined);
                       setErroInstitucional(undefined);
@@ -341,23 +443,6 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                     <Download className="mr-2 h-4 w-4" />
                     Download PDF
                   </Button>
-                  {documento.assuntoId ? (
-                    <Button asChild type="button" size="sm" variant="secondary">
-                      <Link
-                        to="/assuntos/$dossieId/documentos/$documentoId"
-                        params={{
-                          dossieId: documento.assuntoId,
-                          documentoId: documento.id,
-                        }}
-                      >
-                        Abrir no Tribuno
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Button type="button" size="sm" variant="secondary" disabled>
-                      Sem assunto associado
-                    </Button>
-                  )}
                   <Button
                     type="button"
                     size="sm"
@@ -365,7 +450,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                     onClick={() => exportarDocumentoCriadoWord(documento)}
                   >
                     <Download className="mr-2 h-4 w-4" />
-                    .doc
+                    Exportar para Word
                   </Button>
                 </div>
               }

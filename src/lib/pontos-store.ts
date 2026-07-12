@@ -57,14 +57,20 @@ function guardarPontoRemotamente(ponto: PontoOrdemTrabalhos) {
   const userId = obterUserIdAtual();
   if (!userId) return;
 
-  void guardarPontoRemoto(userId, ponto).catch((error) => {
-    console.warn("[Tribuno] Ponto guardado localmente, mas falhou no Supabase.", error);
+  void guardarPontoRemoto(userId, ponto).catch(() => {
+    console.warn("[Tribuno] Sincronização de ponto falhou.", {
+      operacao: "PONTO_SYNC_FALHOU",
+      documentoId: ponto.id.slice(0, 8),
+    });
   });
 }
 
 function apagarPontoRemotamente(id: string) {
-  void apagarPontoRemoto(id).catch((error) => {
-    console.warn("[Tribuno] Ponto apagado localmente, mas falhou no Supabase.", error);
+  void apagarPontoRemoto(id).catch(() => {
+    console.warn("[Tribuno] Eliminação remota de ponto falhou.", {
+      operacao: "PONTO_DELETE_FALHOU",
+      documentoId: id.slice(0, 8),
+    });
   });
 }
 
@@ -87,8 +93,10 @@ export async function carregarPontosRemotosSeDisponivel() {
     }));
 
     guardarPontos(hidratados);
-  } catch (error) {
-    console.warn("[Tribuno] Não foi possível carregar pontos do Supabase.", error);
+  } catch {
+    console.warn("[Tribuno] Carregamento remoto de pontos falhou.", {
+      operacao: "PONTOS_LOAD_FALHOU",
+    });
   }
 }
 
