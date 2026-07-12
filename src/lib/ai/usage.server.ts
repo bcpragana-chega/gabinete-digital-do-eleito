@@ -1,4 +1,8 @@
-import { construirRegistroUsoAi, type AiUsagePersistInput } from "@/lib/ai/usage";
+import {
+  construirRegistroUsoAi,
+  type AiUsageAuthenticatedContext,
+  type AiUsageOperationalInput,
+} from "@/lib/ai/usage";
 
 function env(name: string) {
   return process.env[name]?.trim();
@@ -12,7 +16,10 @@ function numeroSeguro(valor: unknown) {
   return typeof valor === "number" && Number.isFinite(valor) ? Math.trunc(valor) : null;
 }
 
-export async function registrarUsoAi(input: AiUsagePersistInput) {
+export async function registrarUsoAi(
+  authContext: AiUsageAuthenticatedContext,
+  input: AiUsageOperationalInput,
+) {
   const supabaseUrl = env("SUPABASE_URL") ?? env("VITE_SUPABASE_URL");
   const serviceRole = env("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -24,7 +31,11 @@ export async function registrarUsoAi(input: AiUsagePersistInput) {
     return;
   }
 
-  const registro = construirRegistroUsoAi(input);
+  const registro = construirRegistroUsoAi({
+    ...input,
+    userId: authContext.authenticatedUserId,
+    organizationId: authContext.authenticatedOrganizationId,
+  });
 
   const row = {
     id: registro.id,

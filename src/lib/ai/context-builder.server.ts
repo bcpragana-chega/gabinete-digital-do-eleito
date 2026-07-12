@@ -10,6 +10,10 @@ import type {
 import { construirBaseJuridicaInstitucional } from "@/lib/ai/legal-basis";
 import { resolveInstitutionalContext } from "@/lib/ai/institutional-context";
 
+export type AuthenticatedServerContext = Readonly<{
+  authenticatedUserId: string;
+}>;
+
 type ProfileRow = {
   nome_institucional: string | null;
   cargo: string | null;
@@ -199,9 +203,10 @@ function construirSessao(row?: AssembleiaRow): SessaoContexto | undefined {
 }
 
 export async function construirContextoGeracaoDocumento(
+  authContext: AuthenticatedServerContext,
   input: DadosEntradaGeracaoDocumento,
 ): Promise<ContextoGeracaoDocumento> {
-  const userId = idSeguro(input.userId);
+  const userId = idSeguro(authContext.authenticatedUserId);
   const assuntoId = idSeguro(input.assuntoId);
   const sessaoId = input.sessaoId ? idSeguro(input.sessaoId) : undefined;
   const documentosRelacionadosIds = (input.documentosRelacionadosIds ?? [])

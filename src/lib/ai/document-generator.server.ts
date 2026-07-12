@@ -9,6 +9,7 @@ import { registrarUsoAi } from "@/lib/ai/usage.server";
 import { INSTITUTIONAL_CONTEXT_VERSION } from "@/lib/ai/institutional-context";
 import { LEGAL_BASIS_VERSION } from "@/lib/ai/legal-basis";
 import type {
+  DadosEntradaGeracaoDocumento,
   DocumentoCriadoSerializavel,
   JsonSerializable,
   ResultadoGeracaoDocumento,
@@ -448,31 +449,46 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
       if (!respostaAi || usoRegistrado || !userIdAutenticado) return;
       usoRegistrado = true;
 
-      void registrarUsoAi({
-        userId: userIdAutenticado,
-        organizationId: organizacaoUsoSegura(contextoGeracao?.perfil.organizacao),
-        assuntoId: data.assuntoId,
-        documentoId: documentoGerado?.id ?? null,
-        provider: respostaAi.provider,
-        model: respostaAi.modelo,
-        operation: "generate_document",
-        feature: obterFeatureGeracaoDocumento(data.tipo),
-        documentType: data.tipo,
-        usage: respostaAi.usage,
-        durationMs: Date.now() - inicio,
-        status,
-        errorCode,
-      });
+      void registrarUsoAi(
+        {
+          authenticatedUserId: userIdAutenticado,
+          authenticatedOrganizationId: organizacaoUsoSegura(
+            contextoGeracao?.perfil.organizacao,
+          ),
+        },
+        {
+          assuntoId: data.assuntoId,
+          documentoId: documentoGerado?.id ?? null,
+          provider: respostaAi.provider,
+          model: respostaAi.modelo,
+          operation: "generate_document",
+          feature: obterFeatureGeracaoDocumento(data.tipo),
+          documentType: data.tipo,
+          usage: respostaAi.usage,
+          durationMs: Date.now() - inicio,
+          status,
+          errorCode,
+        },
+      );
     };
 
     try {
       userIdAutenticado = await obterUserIdAutenticado(data.accessToken);
-      const dadosAutorizados = {
-        ...data,
-        userId: userIdAutenticado,
+      const dadosGeracao: DadosEntradaGeracaoDocumento = {
+        assuntoId: data.assuntoId,
+        sessaoId: data.sessaoId,
+        tipo: data.tipo,
+        titulo: data.titulo,
+        conteudoInicial: data.conteudoInicial,
+        documentosRelacionadosIds: data.documentosRelacionadosIds,
+        assuntoNotas: data.assuntoNotas,
+        assuntoTimeline: data.assuntoTimeline,
       };
 
-      contextoGeracao = await construirContextoGeracaoDocumento(dadosAutorizados);
+      contextoGeracao = await construirContextoGeracaoDocumento(
+        { authenticatedUserId: userIdAutenticado },
+        dadosGeracao,
+      );
       if (!contextoGeracao.baseJuridica.valido) {
         throw new Error("LEGAL_BASIS_INVALID");
       }
