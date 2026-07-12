@@ -6,10 +6,11 @@ import {
   carregarDocumentoRemotoPorId,
   carregarDocumentosLocais,
   carregarDocumentosRemotos,
+  apagarDocumentoRemoto,
   guardarDocumentoRemoto,
   guardarDocumentosLocais,
 } from "./documentos-repository";
-import { uploadDocumentoPDF } from "./documentos-storage";
+import { removerDocumentoPDF, uploadDocumentoPDF } from "./documentos-storage";
 import type { Documento, EstadoDocumento, TipoDocumento } from "./types";
 import { obterUserIdAtual } from "./user-storage";
 
@@ -46,9 +47,26 @@ function guardarDocumentoRemotamente(documento: Documento) {
 
 async function guardarDocumentoRemotamenteObrigatorio(documento: Documento) {
   const userId = obterUserIdAtual();
-  if (!userId) return;
+  if (!userId) {
+    throw new Error("Não foi possível concluir o carregamento do documento. Tente novamente.");
+  }
 
-  await guardarDocumentoRemoto(userId, documento);
+  const guardado = await guardarDocumentoRemoto(userId, documento);
+  if (!guardado) {
+    throw new Error("Não foi possível concluir o carregamento do documento. Tente novamente.");
+  }
+}
+
+export class DocumentoOperacaoErro extends Error {
+  causaOriginal: unknown;
+  causaLimpeza?: unknown;
+
+  constructor(mensagem: string, causaOriginal: unknown, causaLimpeza?: unknown) {
+    super(mensagem);
+    this.name = "DocumentoOperacaoErro";
+    this.causaOriginal = causaOriginal;
+    this.causaLimpeza = causaLimpeza;
+  }
 }
 
 export function carregarDocumentosRemotosSeDisponivel() {
@@ -122,7 +140,7 @@ export interface NovoDocumentoInput {
   notas?: string;
 }
 
-function criarDocumento(input: NovoDocumentoInput, id = crypto.randomUUID()): Documento {
+function criarDocumento(input: NovoDocumentoInput, id: string = crypto.randomUUID()): Documento {
   const agora = new Date().toISOString();
   return {
     id,
@@ -147,15 +165,28 @@ export function adicionarDocumento(input: NovoDocumentoInput): Documento {
   return doc;
 }
 
-export async function adicionarDocumentoComUpload(
+type DocumentoUploadDependencias = {
+  gerarId: () => string;
+  upload: typeof uploadDocumentoPDF;
+  guardarObrigatorio: typeof guardarDocumentoRemotamenteObrigatorio;
+  guardarOpcional: typeof guardarDocumentoRemotamente;
+  remover: typeof removerDocumentoPDF;
+  ler: typeof read;
+  escrever: typeof write;
+  registarTimeline: typeof registarDocumentoCriadoNaTimeline;
+};
+
+/** @internal Permite testar atomicidade e rollback sem aceder ao Storage real. */
+export async function adicionarDocumentoComUploadComDependencias(
   input: NovoDocumentoInput & { ficheiro?: File },
+  dependencias: DocumentoUploadDependencias,
 ): Promise<Documento> {
-  const id = crypto.randomUUID();
+  const id = dependencias.gerarId();
   const { ficheiro, ...metadata } = input;
   let camposUpload: Partial<Documento> = {};
 
   if (ficheiro) {
-    camposUpload = await uploadDocumentoPDF(id, ficheiro);
+    camposUpload = await dependencias.upload(id, ficheiro);
   }
 
   const doc = criarDocumento(
@@ -175,23 +206,87 @@ export async function adicionarDocumentoComUpload(
     storagePath: camposUpload.storagePath,
   };
 
-  const docs = read();
-  docs.push(documentoComStorage);
-  write(docs);
+  const docs = dependencias.ler();
 
   if (ficheiro) {
-    console.info("[Tribuno Documentos] A guardar metadados remotos do PDF", {
-      documentoId: documentoComStorage.id,
-      storageBucket: documentoComStorage.storageBucket,
-      storagePath: documentoComStorage.storagePath,
-    });
-    await guardarDocumentoRemotamenteObrigatorio(documentoComStorage);
+    try {
+      await dependencias.guardarObrigatorio(documentoComStorage);
+    } catch (error) {
+      try {
+        if (documentoComStorage.storagePath) {
+          await dependencias.remover(documentoComStorage.storagePath);
+        }
+      } catch (erroLimpeza) {
+        console.error("[Tribuno Documentos] Upload e rollback falharam", {
+          operacao: "DOCUMENTO_UPLOAD_ROLLBACK_FALHOU",
+          documentoId: documentoComStorage.id.slice(0, 8),
+          temFicheiro: Boolean(documentoComStorage.storagePath),
+          codigoErro: "METADADOS_E_STORAGE_DELETE_FALHARAM",
+        });
+        throw new DocumentoOperacaoErro(
+          "Não foi possível concluir o carregamento do documento. Tente novamente.",
+          error,
+          erroLimpeza,
+        );
+      }
+      throw new DocumentoOperacaoErro(
+        "Não foi possível concluir o carregamento do documento. Tente novamente.",
+        error,
+      );
+    }
   } else {
-    void guardarDocumentoRemotamente(documentoComStorage);
+    void dependencias.guardarOpcional(documentoComStorage);
   }
 
-  registarDocumentoCriadoNaTimeline(documentoComStorage);
+  docs.push(documentoComStorage);
+  dependencias.escrever(docs);
+  dependencias.registarTimeline(documentoComStorage);
   return documentoComStorage;
+}
+
+export async function adicionarDocumentoComUpload(
+  input: NovoDocumentoInput & { ficheiro?: File },
+): Promise<Documento> {
+  return adicionarDocumentoComUploadComDependencias(input, {
+    gerarId: () => crypto.randomUUID(),
+    upload: uploadDocumentoPDF,
+    guardarObrigatorio: guardarDocumentoRemotamenteObrigatorio,
+    guardarOpcional: guardarDocumentoRemotamente,
+    remover: removerDocumentoPDF,
+    ler: read,
+    escrever: write,
+    registarTimeline: registarDocumentoCriadoNaTimeline,
+  });
+}
+
+type DocumentoDeleteDependencias = {
+  apagarRemoto: typeof apagarDocumentoRemoto;
+  ler: typeof read;
+  escrever: typeof write;
+};
+
+/** @internal Permite testar que o estado local só muda após sucesso remoto. */
+export async function apagarDocumentoComDependencias(
+  id: string,
+  dependencias: DocumentoDeleteDependencias,
+): Promise<void> {
+  try {
+    await dependencias.apagarRemoto(id);
+  } catch (error) {
+    throw new DocumentoOperacaoErro(
+      "Não foi possível eliminar completamente o documento. Tente novamente.",
+      error,
+    );
+  }
+  dependencias.escrever(dependencias.ler().filter((documento) => documento.id !== id));
+}
+
+export async function apagarDocumento(id: string): Promise<void> {
+  await apagarDocumentoComDependencias(id, {
+    apagarRemoto: apagarDocumentoRemoto,
+    ler: read,
+    escrever: write,
+  });
 }
 
 export function editarDocumento(

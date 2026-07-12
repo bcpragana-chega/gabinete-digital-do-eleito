@@ -7,6 +7,8 @@ export const PDF_MIME_TYPE = "application/pdf";
 export type DocumentoStorageErroCodigo =
   | "STORAGE_BUCKET_INEXISTENTE"
   | "STORAGE_UPLOAD_FALHOU"
+  | "STORAGE_DELETE_FALHOU"
+  | "STORAGE_PATH_INVALIDO"
   | "STORAGE_PATH_AUSENTE"
   | "PDF_URL_INVALIDA"
   | "PDF_MIME_INVALIDO"
@@ -83,32 +85,6 @@ async function obterSupabaseUserId() {
   return data.user.id;
 }
 
-async function diagnosticarSessaoStorage() {
-  const supabase = getSupabaseClient();
-  if (!supabase) {
-    return {
-      supabaseConfigurado: isSupabaseConfigured(),
-      existeSessao: false,
-      sessionUserId: undefined,
-      authUserId: undefined,
-      erroSessao: "Supabase não configurado",
-      erroUser: undefined,
-    };
-  }
-
-  const [{ data: sessionData, error: sessionError }, { data: userData, error: userError }] =
-    await Promise.all([supabase.auth.getSession(), supabase.auth.getUser()]);
-
-  return {
-    supabaseConfigurado: isSupabaseConfigured(),
-    existeSessao: Boolean(sessionData.session?.user.id),
-    sessionUserId: sessionData.session?.user.id,
-    authUserId: userData.user?.id,
-    erroSessao: sessionError?.message,
-    erroUser: userError?.message,
-  };
-}
-
 function isBucketInexistente(error: unknown) {
   if (!error || typeof error !== "object") return false;
   const message = "message" in error && typeof error.message === "string" ? error.message : "";
@@ -122,19 +98,34 @@ function isBucketInexistente(error: unknown) {
   );
 }
 
+function documentoIdMascarado(documentoId: string) {
+  return documentoId.slice(0, 8);
+}
+
+export function validarStoragePathDocumento(storagePath: string, userId: string) {
+  const path = storagePath.trim();
+  const namespace = `${DOCUMENTOS_STORAGE_BUCKET}/${userId}/`;
+
+  if (!path || !path.startsWith(namespace) || path.length <= namespace.length) {
+    throw new DocumentoStorageErro(
+      "STORAGE_PATH_INVALIDO",
+      "Não foi possível eliminar completamente o documento. Tente novamente.",
+    );
+  }
+
+  return path;
+}
+
 export async function uploadDocumentoPDF(documentoId: string, file: File) {
   await validarDocumentoPDF(file);
 
   const supabaseUserId = await obterSupabaseUserId();
   const supabase = getSupabaseClient();
-  const diagnosticoSessao = await diagnosticarSessaoStorage();
 
   if (!supabase || !supabaseUserId) {
     console.error("[Tribuno Documentos][STORAGE DIAG] Sem sessão válida para upload", {
-      diagnosticoSessao,
-      bucket: DOCUMENTOS_STORAGE_BUCKET,
-      documentoId,
-      ficheiroNome: file.name,
+      operacao: "STORAGE_UPLOAD_SEM_SESSAO",
+      documentoId: documentoIdMascarado(documentoId),
     });
     throw new DocumentoStorageErro(
       "STORAGE_UPLOAD_FALHOU",
@@ -145,18 +136,8 @@ export async function uploadDocumentoPDF(documentoId: string, file: File) {
   const path = `documentos/${supabaseUserId}/${documentoId}/${Date.now()}-${limparNomeFicheiro(file.name)}`;
 
   console.info("[Tribuno Documentos] Upload PDF iniciado", {
-    passo: "STORAGE_UPLOAD_PAYLOAD",
-    bucket: DOCUMENTOS_STORAGE_BUCKET,
-    storagePath: path,
-    authUid: supabaseUserId,
-    sessionUserId: diagnosticoSessao.sessionUserId,
-    authUserId: diagnosticoSessao.authUserId,
-    idsIguais:
-      supabaseUserId === diagnosticoSessao.sessionUserId &&
-      supabaseUserId === diagnosticoSessao.authUserId,
-    ficheiroNome: file.name,
-    ficheiroTipo: PDF_MIME_TYPE,
-    ficheiroTamanho: file.size,
+    operacao: "STORAGE_UPLOAD_INICIADO",
+    documentoId: documentoIdMascarado(documentoId),
   });
 
   const { error } = await withSupabaseTimeout(
@@ -171,15 +152,9 @@ export async function uploadDocumentoPDF(documentoId: string, file: File) {
 
   if (error) {
     console.error("[Tribuno Documentos] Upload PDF falhou", {
-      passo: "STORAGE_UPLOAD_ERROR",
-      bucket: DOCUMENTOS_STORAGE_BUCKET,
-      storagePath: path,
-      authUid: supabaseUserId,
-      sessionUserId: diagnosticoSessao.sessionUserId,
-      authUserId: diagnosticoSessao.authUserId,
-      policyEsperada:
-        "bucket_id = 'documentos' and (storage.foldername(name))[1] = 'documentos' and auth.uid()::text = (storage.foldername(name))[2]",
-      error,
+      operacao: "STORAGE_UPLOAD_FALHOU",
+      documentoId: documentoIdMascarado(documentoId),
+      codigo: isBucketInexistente(error) ? "STORAGE_BUCKET_INEXISTENTE" : "STORAGE_UPLOAD_FALHOU",
     });
 
     if (isBucketInexistente(error)) {
@@ -194,10 +169,8 @@ export async function uploadDocumentoPDF(documentoId: string, file: File) {
   }
 
   console.info("[Tribuno Documentos] Upload PDF concluído", {
-    passo: "STORAGE_UPLOAD_SUCCESS",
-    bucket: DOCUMENTOS_STORAGE_BUCKET,
-    storagePath: path,
-    authUid: supabaseUserId,
+    operacao: "STORAGE_UPLOAD_CONCLUIDO",
+    documentoId: documentoIdMascarado(documentoId),
   });
 
   return {
@@ -207,6 +180,44 @@ export async function uploadDocumentoPDF(documentoId: string, file: File) {
     ficheiroTipo: PDF_MIME_TYPE,
     ficheiroTamanho: file.size,
   };
+}
+
+export async function removerDocumentoPDF(storagePath: string): Promise<void> {
+  if (!storagePath.trim()) {
+    throw new DocumentoStorageErro(
+      "STORAGE_PATH_INVALIDO",
+      "Não foi possível eliminar completamente o documento. Tente novamente.",
+    );
+  }
+
+  const supabaseUserId = await obterSupabaseUserId();
+  const supabase = getSupabaseClient();
+
+  if (!supabase || !supabaseUserId) {
+    throw new DocumentoStorageErro(
+      "STORAGE_DELETE_FALHOU",
+      "Não foi possível eliminar completamente o documento. Tente novamente.",
+    );
+  }
+
+  const pathValidado = validarStoragePathDocumento(storagePath, supabaseUserId);
+  const { error } = await withSupabaseTimeout(
+    supabase.storage.from(DOCUMENTOS_STORAGE_BUCKET).remove([pathValidado]),
+    "DOCUMENTOS_STORAGE_DELETE",
+    15000,
+  );
+
+  if (error) {
+    console.error("[Tribuno Documentos] Remoção do PDF falhou", {
+      operacao: "STORAGE_DELETE_FALHOU",
+      codigo: "STORAGE_DELETE_FALHOU",
+    });
+    throw new DocumentoStorageErro(
+      "STORAGE_DELETE_FALHOU",
+      "Não foi possível eliminar completamente o documento. Tente novamente.",
+      error,
+    );
+  }
 }
 
 export async function criarUrlAssinadaDocumento(

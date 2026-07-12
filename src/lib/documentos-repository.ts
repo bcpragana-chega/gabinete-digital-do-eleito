@@ -1,3 +1,4 @@
+import { removerDocumentoPDF, DOCUMENTOS_STORAGE_BUCKET } from "@/lib/documentos-storage";
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
 import type { Documento, EstadoDocumento, TipoDocumento } from "@/lib/types";
 import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "@/lib/user-storage";
@@ -183,48 +184,21 @@ async function obterSupabaseUserIdValido(userId?: string) {
   );
 
   if (error || !data.user?.id) {
-    console.warn("[Tribuno] Sem sessão Supabase válida para sincronizar Documentos.", error);
+    console.warn("[Tribuno] Sem sessão Supabase válida para sincronizar Documentos.", {
+      operacao: "DOCUMENTOS_AUTH_INVALIDA",
+      temErro: Boolean(error),
+    });
     return undefined;
   }
 
   if (userId && userId !== data.user.id) {
-    console.warn(
-      "[Tribuno] Sincronização de Documentos ignorada: userId não corresponde ao auth.uid().",
-      {
-        storeUserId: userId,
-        supabaseUserId: data.user.id,
-      },
-    );
+    console.warn("[Tribuno] Sincronização de Documentos ignorada por divergência de sessão.", {
+      operacao: "DOCUMENTOS_AUTH_DIVERGENTE",
+    });
     return undefined;
   }
 
   return data.user.id;
-}
-
-async function diagnosticarSessaoDocumentos() {
-  const supabase = getSupabaseClient();
-  if (!supabase) {
-    return {
-      supabaseConfigurado: isSupabaseConfigured(),
-      existeSessao: false,
-      sessionUserId: undefined,
-      authUserId: undefined,
-      erroSessao: "Supabase não configurado",
-      erroUser: undefined,
-    };
-  }
-
-  const [{ data: sessionData, error: sessionError }, { data: userData, error: userError }] =
-    await Promise.all([supabase.auth.getSession(), supabase.auth.getUser()]);
-
-  return {
-    supabaseConfigurado: isSupabaseConfigured(),
-    existeSessao: Boolean(sessionData.session?.user.id),
-    sessionUserId: sessionData.session?.user.id,
-    authUserId: userData.user?.id,
-    erroSessao: sessionError?.message,
-    erroUser: userError?.message,
-  };
 }
 
 export function carregarDocumentosLocais() {
@@ -271,28 +245,12 @@ export async function carregarDocumentoRemotoPorId(id: string) {
 
 export async function guardarDocumentoRemoto(userId: string, documento: Documento) {
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
-  if (!supabaseUserId) return;
+  if (!supabaseUserId) return false;
 
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) return false;
 
   const row = toRow(supabaseUserId, documento);
-  const diagnosticoSessao = await diagnosticarSessaoDocumentos();
-
-  console.info("[Tribuno Documentos][RLS DIAG] Payload para public.documentos", {
-    tabela: "public.documentos",
-    operacao: "upsert",
-    authUid: supabaseUserId,
-    sessionUserId: diagnosticoSessao.sessionUserId,
-    authUserId: diagnosticoSessao.authUserId,
-    userIdLocalRecebido: userId,
-    userIdEnviadoNoInsert: row.user_id,
-    authUidIgualUserIdEnviado: supabaseUserId === row.user_id,
-    sessionIgualUserIdEnviado: diagnosticoSessao.sessionUserId === row.user_id,
-    authUserIgualUserIdEnviado: diagnosticoSessao.authUserId === row.user_id,
-    policyInsertEsperada: "with check (auth.uid() = user_id)",
-    payload: row,
-  });
 
   const response = await withSupabaseTimeout(
     supabase
@@ -304,40 +262,84 @@ export async function guardarDocumentoRemoto(userId: string, documento: Document
     "DOCUMENTOS_UPSERT",
   );
 
-  console.info("[Tribuno Documentos][RLS DIAG] Resposta public.documentos", {
-    tabela: "public.documentos",
-    status: response.status,
-    statusText: response.statusText,
-    data: response.data,
-    error: response.error,
-  });
-
   if (response.error) {
-    console.error("[Tribuno Documentos][RLS DIAG] Upsert rejeitado em public.documentos", {
-      authUid: supabaseUserId,
-      sessionUserId: diagnosticoSessao.sessionUserId,
-      authUserId: diagnosticoSessao.authUserId,
-      userIdLocalRecebido: userId,
-      userIdEnviadoNoInsert: row.user_id,
-      policyInsertEsperada: "with check (auth.uid() = user_id)",
-      payload: row,
-      error: response.error,
+    console.error("[Tribuno Documentos] Gravação remota falhou", {
+      operacao: "DOCUMENTOS_UPSERT_FALHOU",
+      documentoId: documento.id.slice(0, 8),
+      temFicheiro: Boolean(documento.storagePath),
     });
     throw response.error;
   }
+
+  return true;
 }
 
 export async function apagarDocumentoRemoto(id: string) {
   const supabaseUserId = await obterSupabaseUserIdValido();
-  if (!supabaseUserId) return;
+  if (!supabaseUserId) {
+    throw new Error("Não foi possível eliminar completamente o documento. Tente novamente.");
+  }
 
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) {
+    throw new Error("Não foi possível eliminar completamente o documento. Tente novamente.");
+  }
 
-  const { error } = await withSupabaseTimeout(
-    supabase.from("documentos").delete().eq("id", id),
-    "DOCUMENTOS_DELETE",
-  );
+  await apagarDocumentoRemotoComDependencias(id, {
+    carregar: async (documentoId) => {
+      const { data, error } = await withSupabaseTimeout(
+        supabase
+          .from("documentos")
+          .select("id, storage_bucket, storage_path")
+          .eq("id", documentoId)
+          .maybeSingle(),
+        "DOCUMENTOS_SELECT_FOR_DELETE",
+      );
+      if (error) throw error;
+      return data;
+    },
+    removerStorage: removerDocumentoPDF,
+    eliminarLinha: async (documentoId) => {
+      const { error } = await withSupabaseTimeout(
+        supabase.from("documentos").delete().eq("id", documentoId),
+        "DOCUMENTOS_DELETE",
+      );
+      if (error) throw error;
+    },
+  });
+}
 
-  if (error) throw error;
+type DocumentoDeleteRow = {
+  id: string;
+  storage_bucket: string | null;
+  storage_path: string | null;
+};
+
+type DocumentoDeleteRemotoDependencias = {
+  carregar: (id: string) => Promise<DocumentoDeleteRow | null>;
+  removerStorage: (storagePath: string) => Promise<void>;
+  eliminarLinha: (id: string) => Promise<void>;
+};
+
+/** @internal Permite testar a ordem da eliminação sem aceder ao Supabase real. */
+export async function apagarDocumentoRemotoComDependencias(
+  id: string,
+  dependencias: DocumentoDeleteRemotoDependencias,
+) {
+  const documento = await dependencias.carregar(id);
+  if (!documento) {
+    throw new Error("O documento não existe ou não está disponível para eliminação.");
+  }
+
+  const storagePath = textoSeguro(documento.storage_path);
+  const storageBucket = textoSeguro(documento.storage_bucket);
+
+  if (storagePath) {
+    if (storageBucket !== DOCUMENTOS_STORAGE_BUCKET) {
+      throw new Error("Não foi possível eliminar completamente o documento. Tente novamente.");
+    }
+    await dependencias.removerStorage(storagePath);
+  }
+
+  await dependencias.eliminarLinha(id);
 }
