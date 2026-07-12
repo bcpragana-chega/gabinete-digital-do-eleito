@@ -19,6 +19,7 @@ import {
   nomeFicheiroDocumento,
   obterDadosInstitucionais,
   obterSecoesDocumentoInstitucional,
+  validarDocumentoInstitucional,
   type ContextoDocumentoInstitucional,
   type SecaoDocumentoInstitucional,
 } from "@/lib/documentos-institucionais";
@@ -79,10 +80,10 @@ function normalizarMarcaInstitucional(valor?: string) {
   return textoSeguro(valor)?.replace(/[!]+$/g, "").replace(/\s+/g, " ").trim();
 }
 
-function obterCabecalhoInstitucional(
+export function obterCabecalhoInstitucionalExportacao(
   contexto: ContextoDocumentoInstitucional | undefined,
   nomeOrgaoFallback: string,
-) {
+): { orgao: string; organizacao?: string } {
   const { perfil } = obterAuthState();
   const perfilContexto = contexto?.perfil ?? perfil;
   const orgao =
@@ -93,15 +94,7 @@ function obterCabecalhoInstitucional(
     normalizarMarcaInstitucional(perfilContexto?.orgao) ||
     normalizarMarcaInstitucional(nomeOrgaoFallback) ||
     "Órgão competente";
-  const organizacao = normalizarMarcaInstitucional(perfilContexto?.organizacao);
-
-  return {
-    orgao,
-    organizacao:
-      organizacao && organizacao.toLocaleLowerCase("pt-PT") !== orgao.toLocaleLowerCase("pt-PT")
-        ? organizacao
-        : undefined,
-  };
+  return { orgao };
 }
 
 function contextoInstitucionalDoDocumento(
@@ -176,25 +169,20 @@ function contextoComSnapshot(
 }
 
 function obterAssinaturaUnica(contexto?: ContextoDocumentoInstitucional) {
-  const { perfil, user } = obterAuthState();
-  const perfilContexto = contexto?.perfil ?? perfil;
-  const assinatura = textoSeguro(perfilContexto?.assinaturaInstitucional);
+  const dados = obterDadosInstitucionais(contexto);
+  return [dados.nomeEleito, dados.cargo, dados.grupoPolitico].filter(Boolean);
+}
 
-  if (assinatura) {
-    return assinatura
-      .split(/\r?\n/)
-      .map((linha) => normalizarMarcaInstitucional(linha))
-      .filter((linha): linha is string => Boolean(linha));
-  }
-
-  const nome =
-    textoSeguro(contexto?.nomeEleito) ||
-    textoSeguro(perfilContexto?.nomeInstitucional) ||
-    textoSeguro(user?.nome) ||
-    "Nome do eleito";
-  const cargo = textoSeguro(perfilContexto?.cargo);
-
-  return [cargo ? `${nome}, ${cargo}` : nome];
+function validarAntesDeExportar(
+  documento: DocumentoCriado,
+  contexto: ContextoDocumentoInstitucional,
+) {
+  const validacao = validarDocumentoInstitucional(documento, contexto);
+  if (validacao.pronto) return true;
+  window.dispatchEvent(
+    new CustomEvent("tribuno:documento-institucional-invalido", { detail: validacao }),
+  );
+  return false;
 }
 
 function linhaPlaceholder(linha: string) {
@@ -298,6 +286,8 @@ export function exportarDocumentoCriadoPDF(
     institutionalContext: contextoExportacao.context,
   };
 
+  if (!validarAntesDeExportar(documento, contextoResolvido)) return false;
+
   if (!perfilTemLogoInstitucional(contextoResolvido)) {
     window.dispatchEvent(new CustomEvent("tribuno:logo-institucional-obrigatorio"));
     return false;
@@ -324,6 +314,8 @@ export function exportarDocumentoCriadoWord(
     institutionalContext: contextoExportacao.context,
   };
 
+  if (!validarAntesDeExportar(documento, contextoResolvido)) return false;
+
   if (!perfilTemLogoInstitucional(contextoResolvido)) {
     window.dispatchEvent(new CustomEvent("tribuno:logo-institucional-obrigatorio"));
     return false;
@@ -347,7 +339,7 @@ export async function criarBlobDocumentoWord(
   contexto?: ContextoDocumentoInstitucional,
 ) {
   const dados = obterDadosInstitucionais(contexto);
-  const cabecalho = obterCabecalhoInstitucional(contexto, dados.nomeOrgao);
+  const cabecalho = obterCabecalhoInstitucionalExportacao(contexto, dados.nomeOrgao);
   const assinatura = obterAssinaturaUnica(contexto);
   const titulo = documento.titulo.trim() || "Documento sem título";
   const corpo = criarLinhasDocumento(documento)
@@ -470,7 +462,7 @@ async function desenharPaginasDocumento(
 ) {
   const dados = obterDadosInstitucionais(contexto);
   const titulo = documento.titulo.trim() || "Documento sem título";
-  const cabecalho = obterCabecalhoInstitucional(contexto, dados.nomeOrgao);
+  const cabecalho = obterCabecalhoInstitucionalExportacao(contexto, dados.nomeOrgao);
   const assinatura = obterAssinaturaUnica(contexto);
   const paginas: PaginaPdf[] = [];
   const criarPagina = () => {

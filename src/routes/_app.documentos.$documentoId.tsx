@@ -52,6 +52,7 @@ import {
   isTipoDocumentoInstitucional,
   obterDadosInstitucionais,
   obterSecoesDocumentoInstitucional,
+  validarDocumentoInstitucional,
   type ContextoDocumentoInstitucional,
 } from "@/lib/documentos-institucionais";
 import { adicionarEventoAutomaticoTimelineDossie } from "@/lib/dossie-timeline-store";
@@ -140,6 +141,7 @@ function DocumentoDoAssuntoPage() {
   const [copiado, setCopiado] = useState(false);
   const [modo, setModo] = useState<ModoDocumento>("visualizar");
   const [downloadPendente, setDownloadPendente] = useState<"pdf" | "word">();
+  const [errosDocumento, setErrosDocumento] = useState<string[]>([]);
   const dossie = useDossie(documento?.assuntoId ?? "");
 
   useEffect(() => {
@@ -338,6 +340,12 @@ function DocumentoDoAssuntoPage() {
   function descarregar(tipo: "pdf" | "word", base = documento) {
     const atual = documentoAtualParaExportar(base);
     if (!atual) return;
+    if (isTipoDocumentoInstitucional(atual.tipo)) {
+      const validacao = validarDocumentoInstitucional(atual, contextoDocumento);
+      setErrosDocumento(validacao.erros);
+      if (!validacao.pronto) return;
+    }
+    setErrosDocumento([]);
     if (tipo === "pdf") exportarDocumentoCriadoPDF(atual, contextoDocumento);
     else exportarDocumentoCriadoWord(atual, contextoDocumento);
   }
@@ -459,6 +467,13 @@ function DocumentoDoAssuntoPage() {
     : [];
   const anexosConsultados = Array.isArray(metadataGeracao?.anexosConsultados)
     ? metadataGeracao.anexosConsultados
+    : [];
+  const factosUtilizados = Array.isArray(metadataGeracao?.factosUtilizados)
+    ? metadataGeracao.factosUtilizados.flatMap((facto) => {
+        if (!facto || typeof facto !== "object" || Array.isArray(facto)) return [];
+        const resumo = (facto as Record<string, unknown>).resumo;
+        return typeof resumo === "string" && resumo.trim() ? [resumo.trim()] : [];
+      })
     : [];
 
   return (
@@ -700,6 +715,23 @@ function DocumentoDoAssuntoPage() {
                           Documentos consultados: {documentosConsultados.length}. Anexos
                           consultados: {anexosConsultados.length}.
                         </p>
+                        <div>
+                          <p className="font-medium text-foreground">
+                            Factos do Assunto utilizados
+                          </p>
+                          {factosUtilizados.length > 0 ? (
+                            <ul className="mt-1 list-disc space-y-1 pl-5">
+                              {factosUtilizados.map((facto, index) => (
+                                <li key={`${index}-${facto}`}>{facto}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="mt-1">
+                              Este Assunto não contém factos específicos suficientes. A redação foi
+                              limitada ao contexto disponível.
+                            </p>
+                          )}
+                        </div>
                         <p>
                           Modelo:{" "}
                           {String(metadataGeracao.modelo ?? documento.iaModelo ?? "Não indicado")}.
@@ -732,6 +764,17 @@ function DocumentoDoAssuntoPage() {
                     : "Edite o conteúdo e o estado do rascunho."
                 }
               />
+
+              {errosDocumento.length > 0 && (
+                <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                  <p className="font-semibold">O documento ainda não está pronto para exportar.</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    {errosDocumento.map((erro) => (
+                      <li key={erro}>{erro}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {modo === "editar" && (
                 <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">

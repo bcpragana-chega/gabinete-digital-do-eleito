@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { construirContextoGeracaoDocumento } from "@/lib/ai/context-builder.server";
+import {
+  construirContextoGeracaoDocumento,
+  construirFactosEspecificos,
+} from "@/lib/ai/context-builder.server";
+import type { AssuntoContexto } from "@/lib/ai/types";
 
 test("contexto de geração inclui assunto, notas, timeline, anteriores, anexos e entrada", async () => {
   const fetchAnterior = globalThis.fetch;
@@ -119,4 +123,43 @@ test("contexto de geração inclui assunto, notas, timeline, anteriores, anexos 
     if (chaveAnterior === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     else process.env.SUPABASE_SERVICE_ROLE_KEY = chaveAnterior;
   }
+});
+
+test("factos específicos distinguem Assuntos com o mesmo título sem contaminação", () => {
+  const base: AssuntoContexto = {
+    id: "assunto",
+    titulo: "Iluminação pública",
+    tags: [],
+    notas: [],
+    timeline: [],
+    historico: [],
+  };
+  const assuntoA = {
+    ...base,
+    id: "assunto-a",
+    descricao:
+      "Rua da Igreja, Porches. Três candeeiros apagados. Situação reportada há dois meses.",
+  };
+  const assuntoB = {
+    ...base,
+    id: "assunto-b",
+    descricao:
+      "Urbanização das Acácias. Troço pedonal sem qualquer ponto de iluminação. Residentes utilizam o percurso durante a noite.",
+  };
+
+  const factosA = construirFactosEspecificos(assuntoA, [], [])
+    .map((facto) => facto.resumo)
+    .join(" ");
+  const factosB = construirFactosEspecificos(assuntoB, [], [])
+    .map((facto) => facto.resumo)
+    .join(" ");
+
+  assert.match(factosA, /Rua da Igreja, Porches/);
+  assert.match(factosA, /Três candeeiros apagados/);
+  assert.match(factosA, /dois meses/);
+  assert.doesNotMatch(factosA, /Urbanização das Acácias|troço pedonal/i);
+  assert.match(factosB, /Urbanização das Acácias/);
+  assert.match(factosB, /Troço pedonal sem qualquer ponto de iluminação/);
+  assert.match(factosB, /durante a noite/);
+  assert.doesNotMatch(factosB, /Rua da Igreja|três candeeiros|dois meses/i);
 });

@@ -5,6 +5,7 @@ import {
   criarBlobDocumentoWord,
   exportarDocumentoCriadoPDF,
   MIME_DOCX,
+  obterCabecalhoInstitucionalExportacao,
 } from "@/lib/documentos-criados-export";
 import type { DocumentoCriado } from "@/lib/types";
 
@@ -13,19 +14,21 @@ function documento(): DocumentoCriado {
     id: "documento-1",
     tipo: "Recomendação",
     titulo: "Proteção da habitação e mobilidade",
-    conteudo: `# Enquadramento
+    conteudo: `## ENQUADRAMENTO
 
 A população de Porches precisa de informação pública clara.
 
-# Deliberação proposta
+## FUNDAMENTAÇÃO
+
+A intervenção deve preservar a segurança e a participação dos cidadãos.
+
+## RECOMENDAÇÃO
 
 1. Reforçar a fiscalização.
 2. Publicar informação atualizada.
 
-# Medidas complementares
-
-- Garantir acessibilidade.
-- Preservar a participação dos cidadãos.`,
+a) Garantir acessibilidade.
+b) Preservar a participação dos cidadãos.`,
     origem: "ia",
     assuntoId: "assunto-1",
     estado: "em revisão",
@@ -66,9 +69,13 @@ describe("exportação DOCX real", () => {
     assert.ok(zip.file("word/document.xml"));
     const xml = await zip.file("word/document.xml")?.async("string");
     assert.match(xml ?? "", /Proteção da habitação e mobilidade/);
+    assert.match(xml ?? "", /ASSEMBLEIA DE FREGUESIA/);
     assert.match(xml ?? "", /Porches precisa de informação pública clara/);
     assert.match(xml ?? "", /João Gonçalves/);
     assert.match(xml ?? "", /participação dos cidadãos/);
+    assert.match(xml ?? "", /Reforçar a fiscalização/);
+    assert.match(xml ?? "", /a\) Garantir acessibilidade/);
+    assert.equal((xml?.match(/João Gonçalves/g) ?? []).length, 1);
   });
 
   it("mantém a proteção institucional da exportação PDF", () => {
@@ -94,5 +101,22 @@ describe("exportação DOCX real", () => {
         window: windowAnterior,
       });
     }
+  });
+
+  it("fornece ao compositor PDF o órgão institucional, não a identidade partidária", () => {
+    const cabecalho = obterCabecalhoInstitucionalExportacao(
+      {
+        assembleia: {
+          nome: "Sessão ordinária",
+          tipo: "ordinaria",
+          orgao: "Assembleia de Freguesia de Porches",
+          data: "2026-07-13",
+          local: "Porches",
+        },
+      },
+      "Chega!",
+    );
+    assert.equal(cabecalho.orgao, "Assembleia de Freguesia de Porches");
+    assert.notEqual(cabecalho.orgao, "Chega!");
   });
 });

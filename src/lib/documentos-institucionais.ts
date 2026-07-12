@@ -29,6 +29,12 @@ type DadosInstitucionais = {
   data: string;
 };
 
+export type ResultadoValidacaoDocumentoInstitucional = {
+  pronto: boolean;
+  erros: string[];
+  avisos: string[];
+};
+
 const tiposInstitucionais: TipoDocumentoInstitucional[] = ["Moção", "Recomendação", "Requerimento"];
 
 const secoesPorTipo: Record<TipoDocumentoInstitucional, string[]> = {
@@ -137,9 +143,6 @@ function obterNomeOrgao(
   perfil?: PerfilEleito,
   assembleia?: ContextoDocumentoInstitucional["assembleia"],
 ) {
-  const organizacao = textoSeguro(perfil?.organizacao);
-  if (organizacao) return organizacao;
-
   const orgao = textoSeguro(assembleia?.orgao) || textoSeguro(perfil?.orgao);
   const territorio = textoSeguro(perfil?.territorio);
 
@@ -215,11 +218,8 @@ export function obterDadosInstitucionais(
     cargo:
       textoSeguro(contexto?.institutionalContext?.electedOfficial.institutionalTitle) ||
       textoSeguro(perfil?.cargo) ||
-      "Cargo",
-    grupoPolitico:
-      textoSeguro(contexto?.grupoPolitico) ||
-      textoSeguro(perfil?.assinaturaInstitucional) ||
-      "Grupo político",
+      "",
+    grupoPolitico: textoSeguro(contexto?.grupoPolitico) || "",
     logoUrl: textoSeguro(perfil?.logoUrl),
     local:
       textoSeguro(contexto?.assembleia?.local) ||
@@ -229,6 +229,68 @@ export function obterDadosInstitucionais(
       "Local",
     data: dataFormatada(contexto?.assembleia?.data),
   };
+}
+
+const placeholdersInstitucionais = [
+  { pattern: /texto\s+por\s+preencher\.?/i, campo: "conteúdo por preencher" },
+  { pattern: /\[data\]/i, campo: "data" },
+  { pattern: /_{3,}\s+de\s+_{3,}/i, campo: "data" },
+  { pattern: /\[(?:local|órgão|orgao|nome|cargo|assinatura)\]/i, campo: "campo institucional" },
+];
+
+export function validarDocumentoInstitucional(
+  documento: Pick<DocumentoCriado, "tipo" | "titulo" | "conteudo">,
+  contexto?: ContextoDocumentoInstitucional,
+): ResultadoValidacaoDocumentoInstitucional {
+  const erros: string[] = [];
+  const avisos: string[] = [];
+  const dados = obterDadosInstitucionais(contexto);
+  const conteudo = documento.conteudo.trim();
+
+  if (!dados.nomeOrgao || dados.nomeOrgao === "Órgão competente") {
+    erros.push("O órgão institucional não está resolvido.");
+  }
+  if (!documento.tipo.trim()) erros.push("O tipo documental está em falta.");
+  if (!documento.titulo.trim()) erros.push("O título está em falta.");
+  if (!conteudo) erros.push("O conteúdo substantivo está em falta.");
+
+  placeholdersInstitucionais.forEach(({ pattern, campo }) => {
+    if (pattern.test(conteudo)) erros.push(`Existe um placeholder não resolvido: ${campo}.`);
+  });
+
+  if (/^\s*(?:#+\s*)?chega!?\s*$/im.test(conteudo.split(/\r?\n/)[0] ?? "")) {
+    erros.push("O conteúdo contém identidade partidária usada como cabeçalho.");
+  }
+
+  const linhasRodape = conteudo.match(
+    /^(?:local e data|data|proponente|assinatura|o proponente|a proponente|grupo político|grupo politico)\s*:?/gim,
+  );
+  if (linhasRodape?.length) {
+    erros.push("O conteúdo contém um rodapé institucional que seria duplicado pelo template.");
+  }
+  if (/^[\p{L} .'-]+,\s*\d{1,2}\s+de\s+[\p{L}]+\s+de\s+\d{4}\s*$/imu.test(conteudo)) {
+    erros.push("O conteúdo contém uma data institucional que seria duplicada pelo template.");
+  }
+  const cauda = conteudo
+    .split(/\r?\n/)
+    .slice(-8)
+    .map((linha) => linha.trim());
+  if (dados.nomeEleito && cauda.includes(dados.nomeEleito)) {
+    erros.push(
+      "O conteúdo contém a identificação do proponente que seria duplicada pelo template.",
+    );
+  }
+
+  if (isTipoDocumentoInstitucional(documento.tipo)) {
+    const vazias = obterSecoesDocumentoInstitucional(documento.tipo, conteudo).filter(
+      (secao) => !secao.conteudo.trim(),
+    );
+    vazias.forEach((secao) => erros.push(`A secção ${secao.titulo} não tem conteúdo.`));
+  }
+
+  if (!dados.grupoPolitico) avisos.push("O grupo político não está configurado e será omitido.");
+
+  return { pronto: erros.length === 0, erros: Array.from(new Set(erros)), avisos };
 }
 
 export function criarConteudoInicialInstitucional(
@@ -628,7 +690,7 @@ export function criarHtmlDocumentoInstitucional(
         <p class="proponente">Proponente:</p>
         <p class="assinatura"><span class="linha-assinatura"></span></p>
         <p class="nome-eleito">${escaparHtml(dados.nomeEleito)}</p>
-        <p class="grupo-politico">${escaparHtml(dados.grupoPolitico)}</p>
+        ${dados.grupoPolitico ? `<p class="grupo-politico">${escaparHtml(dados.grupoPolitico)}</p>` : ""}
       </footer>
     </article>
   </body>

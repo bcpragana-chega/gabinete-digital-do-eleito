@@ -83,6 +83,12 @@ export type AnexoTextualContexto = {
   notas?: string;
 };
 
+export type FactoEspecificoContexto = {
+  origem: "assunto" | "nota" | "timeline" | "documento" | "anexo";
+  campo: string;
+  resumo: string;
+};
+
 export type ContextoGeracaoDocumento = {
   entrada: DadosEntradaGeracaoDocumento;
   perfil: PerfilInstitucionalContexto;
@@ -92,6 +98,7 @@ export type ContextoGeracaoDocumento = {
   institutionalContext: ResolvedInstitutionalContext;
   documentosRelacionados: DocumentoRelacionadoContexto[];
   anexosTextuais: AnexoTextualContexto[];
+  factosEspecificos: FactoEspecificoContexto[];
 };
 
 export type PedidoGeracaoAi = {

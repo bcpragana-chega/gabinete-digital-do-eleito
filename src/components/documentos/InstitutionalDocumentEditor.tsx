@@ -88,7 +88,7 @@ export function InstitutionalDocumentEditor({
           <p className="mb-7 text-left">Proponente:</p>
           <div className="mb-3 w-72 border-t border-slate-950 pt-3" />
           <p className="m-0 text-left">{dados.nomeEleito}</p>
-          <p className="m-0 text-left">{dados.grupoPolitico}</p>
+          {dados.grupoPolitico && <p className="m-0 text-left">{dados.grupoPolitico}</p>}
         </footer>
       </article>
     </div>
@@ -102,7 +102,7 @@ function SecaoRenderizada({ secao }: { secao: SecaoDocumentoInstitucional }) {
     .filter(Boolean);
 
   if (blocos.length === 0) {
-    return <p className="text-left text-slate-500">Texto por preencher.</p>;
+    return <p className="text-left text-slate-500">Sem conteúdo nesta secção.</p>;
   }
 
   return (
@@ -112,7 +112,8 @@ function SecaoRenderizada({ secao }: { secao: SecaoDocumentoInstitucional }) {
           .split(/\r?\n/)
           .map((linha) => linha.trim())
           .filter(Boolean);
-        const todosNumerados = linhas.every((linha) => /^\d+\.\s*/.test(linha));
+        const todosNumerados = linhas.every((linha) => /^\d+\.\s+/.test(linha));
+        const todasAlineas = linhas.every((linha) => /^(?:[a-z]|[ivxlcdm]+\))\s+/i.test(linha));
 
         if (todosNumerados) {
           return (
@@ -121,6 +122,16 @@ function SecaoRenderizada({ secao }: { secao: SecaoDocumentoInstitucional }) {
                 <li key={linha}>{linha.replace(/^\d+\.\s*/, "")}</li>
               ))}
             </ol>
+          );
+        }
+
+        if (todasAlineas) {
+          return (
+            <div key={`${secao.titulo}-${index}`} className="ml-6 space-y-2">
+              {linhas.map((linha) => (
+                <p key={linha}>{linha}</p>
+              ))}
+            </div>
           );
         }
 

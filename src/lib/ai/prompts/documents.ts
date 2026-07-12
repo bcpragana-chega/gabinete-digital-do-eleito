@@ -2,21 +2,12 @@ import type { ContextoGeracaoDocumento } from "@/lib/ai/types";
 import type { TipoDocumentoCriado } from "@/lib/types";
 
 const estruturasPorTipo: Record<TipoDocumentoCriado, string[]> = {
-  Moção: [
-    "Cabeçalho institucional",
-    "Título",
-    "ENQUADRAMENTO",
-    "FUNDAMENTAÇÃO",
-    "PROPOSTA / DELIBERAÇÃO",
-    "Data",
-    "Proponente",
-    "Assinatura",
-  ],
-  Recomendação: ["Destinatário", "Fundamentação", "Recomendação", "Conclusão"],
+  Moção: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "PROPOSTA / DELIBERAÇÃO"],
+  Recomendação: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "RECOMENDAÇÃO"],
   Requerimento: ["Enquadramento", "Fundamentação", "Pedido", "Questões"],
   "Declaração de voto": ["Contexto", "Fundamentação", "Declaração"],
   Intervenção: ["Abertura", "Contexto", "Argumentação", "Conclusão"],
-  "Outro documento": ["Título", "Enquadramento", "Conteúdo", "Conclusão", "Assinatura"],
+  "Outro documento": ["Enquadramento", "Conteúdo", "Conclusão"],
 };
 
 function limitarTexto(texto: string | undefined, max = 4000) {
@@ -36,7 +27,7 @@ function instrucaoOficialMocao() {
     "Especificação oficial para Moções do Tribuno:",
     "- A Moção deve seguir o padrão institucional oficial do Tribuno para este tipo documental.",
     "- Não copies conteúdo, frases ou ideias de modelos anteriores; replica apenas a forma técnica: hierarquia, ritmo, secções, sobriedade e consistência.",
-    "- O documento final deve ter apenas: cabeçalho institucional, título, ENQUADRAMENTO, FUNDAMENTAÇÃO, PROPOSTA / DELIBERAÇÃO, data, proponente e assinatura.",
+    "- O conteúdo deve ter apenas: ENQUADRAMENTO, FUNDAMENTAÇÃO e PROPOSTA / DELIBERAÇÃO.",
     "- Nunca mostres a estrutura de raciocínio interno. É proibido escrever títulos como Factos, Problema, Consequência, Objetivo, Riscos, Notas ou Informação complementar.",
     "- O ENQUADRAMENTO contextualiza o problema e prepara o leitor. Não deve antecipar nem repetir a fundamentação.",
     "- A FUNDAMENTAÇÃO liga os factos, explica a razão da intervenção, enquadra a competência do órgão e usa legislação apenas quando existir no contexto.",
@@ -104,6 +95,16 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
           .map((evento, index) => `Evento ${index + 1}: ${limitarTexto(evento, 900)}`)
           .join("\n")
       : "";
+
+  const factosEspecificos =
+    contexto.factosEspecificos.length > 0
+      ? contexto.factosEspecificos
+          .map(
+            (facto, index) =>
+              `${index + 1}. [${facto.origem}/${facto.campo}] ${limitarTexto(facto.resumo, 2400)}`,
+          )
+          .join("\n")
+      : "Não existem factos específicos suficientes no contexto disponível.";
 
   const sessaoBloco = contexto.sessao
     ? [
@@ -192,12 +193,10 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "- Não acrescentes legislação nem artigos.",
     "- Escreve como Chefe de Gabinete experiente: rigor institucional, utilidade prática e força política sem floreados.",
     "",
-    "Hierarquia institucional obrigatória:",
-    "- Órgão.",
-    "- Grupo parlamentar ou organização, quando existir.",
-    "- Tipo documental.",
-    "- Título.",
-    "- Nunca coloques partido, grupo ou organização com mais destaque do que o órgão.",
+    "Separação obrigatória entre conteúdo e apresentação:",
+    "- Produz apenas o conteúdo substantivo das secções pedidas.",
+    "- Não escrevas cabeçalho, órgão, partido, tipo documental, título geral, local, data, proponente, cargo, grupo político, assinatura ou paginação.",
+    "- O Motor Documental do Tribuno compõe esses elementos uma única vez.",
     "",
     "Raciocínio documental interno obrigatório antes da redação:",
     "- Identifica o problema principal do assunto.",
@@ -240,6 +239,16 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "- Nunca geres duas assinaturas.",
     "",
     contextoInstitucionalBloco,
+    "",
+    "FACTOS ESPECÍFICOS DO ASSUNTO — BASE FACTUAL PRINCIPAL",
+    factosEspecificos,
+    "",
+    "Regras obrigatórias para estes factos:",
+    "- Transporta para o documento os factos concretos relevantes acima disponibilizados.",
+    "- Não substituas locais, ocorrências, quantidades, durações ou impactos concretos por descrições genéricas do tema.",
+    "- Não cries locais, números, datas, prazos, entidades ou ocorrências ausentes do contexto.",
+    "- Se os factos forem insuficientes, mantém uma redação prudente e limitada ao contexto, sem preencher lacunas com conhecimento provável ou texto padrão.",
+    "- Não apresentes o título do Assunto como se fosse um facto específico.",
     "",
     "Tipo documental pretendido:",
     `- ${contexto.entrada.tipo}`,
@@ -305,6 +314,7 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "- Verifica que o documento está adaptado ao tipo documental solicitado.",
     "- Verifica que a linguagem mantém o mesmo nível de formalidade do início ao fim.",
     "- Verifica se existem placeholders, frases demasiado genéricas, linguagem típica de IA ou dados contraditórios.",
+    "- Verifica internamente se os factos específicos do Assunto estão refletidos no texto. Se o documento pudesse ser utilizado sem alterações para outro Assunto com o mesmo título, a redação está demasiado genérica e deve ser revista.",
     "- Elimina repetições, argumentos repetidos, conceitos repetidos, frases desnecessárias, excesso de adjetivos, linguagem emocional, texto redundante e conclusões sem fundamento.",
     "- Se encontrares qualquer problema, corrige automaticamente antes de devolver o documento.",
     '- Pergunta internamente: "Se este documento fosse entregue amanhã numa Assembleia Municipal ou Assembleia de Freguesia, pareceria ter sido redigido por um Chefe de Gabinete experiente?". Se a resposta for negativa, reescreve automaticamente.',
@@ -315,7 +325,7 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "- Entrega apenas o conteúdo final do documento.",
     "- Respeita os títulos das secções adequados ao tipo documental.",
     "- Para Moções, usa obrigatoriamente as secções ENQUADRAMENTO, FUNDAMENTAÇÃO e PROPOSTA / DELIBERAÇÃO, sem revelar etapas internas de raciocínio.",
-    "- Estrutura o texto, sempre que adequado, com: tipo de documento, título, exposição de motivos/enquadramento, fundamentação, deliberação/pedido/recomendação, local e data, assinatura institucional.",
+    "- Não incluas cabeçalho institucional, título geral, local/data, identificação do proponente, grupo político ou assinatura.",
     "- A deliberação, pedido ou recomendação deve ser objetiva e responder diretamente ao problema identificado; não a transformes num novo enquadramento.",
     "- Não incluas avisos, notas, disclaimers, comentários sobre falta de informação ou pedidos de dados adicionais.",
     "- Nunca uses placeholders como Assembleia Municipal/Freguesia, Câmara/Junta ou Presidente da Câmara/Presidente da Junta; usa sempre o órgão e o destinatário determinados pela Base Jurídica Institucional.",

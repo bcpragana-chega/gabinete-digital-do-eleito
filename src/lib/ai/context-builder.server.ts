@@ -4,6 +4,7 @@ import type {
   ContextoGeracaoDocumento,
   DadosEntradaGeracaoDocumento,
   DocumentoRelacionadoContexto,
+  FactoEspecificoContexto,
   PerfilInstitucionalContexto,
   SessaoContexto,
 } from "@/lib/ai/types";
@@ -206,6 +207,41 @@ function construirSessao(row?: AssembleiaRow): SessaoContexto | undefined {
   };
 }
 
+function adicionarFacto(
+  factos: FactoEspecificoContexto[],
+  origem: FactoEspecificoContexto["origem"],
+  campo: string,
+  valor: string | undefined,
+  max = 1800,
+) {
+  const resumo = cortar(valor, max);
+  if (resumo) factos.push({ origem, campo, resumo });
+}
+
+export function construirFactosEspecificos(
+  assunto: AssuntoContexto,
+  documentos: DocumentoRelacionadoContexto[],
+  anexos: AnexoTextualContexto[],
+) {
+  const factos: FactoEspecificoContexto[] = [];
+  adicionarFacto(factos, "assunto", "descricao", assunto.descricao);
+  assunto.notas.forEach((nota, index) => adicionarFacto(factos, "nota", `nota_${index + 1}`, nota));
+  assunto.timeline.forEach((evento, index) =>
+    adicionarFacto(factos, "timeline", `evento_${index + 1}`, evento),
+  );
+  documentos.forEach((documento) => {
+    adicionarFacto(factos, "documento", `${documento.id}:resumo`, documento.resumo);
+    adicionarFacto(factos, "documento", `${documento.id}:notas`, documento.notas);
+    adicionarFacto(factos, "documento", `${documento.id}:conteudo`, documento.conteudo, 2400);
+  });
+  anexos.forEach((anexo) => {
+    adicionarFacto(factos, "anexo", `${anexo.id}:resumo`, anexo.resumo);
+    adicionarFacto(factos, "anexo", `${anexo.id}:notas`, anexo.notas);
+    adicionarFacto(factos, "anexo", `${anexo.id}:texto_extraido`, anexo.textoExtraido, 2400);
+  });
+  return factos;
+}
+
 export async function construirContextoGeracaoDocumento(
   authContext: AuthenticatedServerContext,
   input: DadosEntradaGeracaoDocumento,
@@ -289,6 +325,9 @@ export async function construirContextoGeracaoDocumento(
     : [];
 
   const perfil = construirPerfil(profiles[0]);
+  const assuntoContexto = construirAssunto(assunto, input);
+  const documentosRelacionados = mapearDocumentosRelacionados(documentosCriadosAssunto);
+  const anexosTextuais = mapearAnexos(anexos);
   const sessao = construirSessao(assembleias[0]);
   const baseJuridica = construirBaseJuridicaInstitucional({
     perfil,
@@ -315,11 +354,16 @@ export async function construirContextoGeracaoDocumento(
       assuntoTimeline: normalizarListaContexto(input.assuntoTimeline, 40, 1000),
     },
     perfil,
-    assunto: construirAssunto(assunto, input),
+    assunto: assuntoContexto,
     sessao,
     baseJuridica,
     institutionalContext,
-    documentosRelacionados: mapearDocumentosRelacionados(documentosCriadosAssunto),
-    anexosTextuais: mapearAnexos(anexos),
+    documentosRelacionados,
+    anexosTextuais,
+    factosEspecificos: construirFactosEspecificos(
+      assuntoContexto,
+      documentosRelacionados,
+      anexosTextuais,
+    ),
   };
 }

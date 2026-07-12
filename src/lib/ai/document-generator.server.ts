@@ -569,6 +569,7 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
             })),
             notasAssunto: contextoGeracao.assunto.notas.length,
             timelineAssunto: contextoGeracao.assunto.timeline.length,
+            factosUtilizados: contextoGeracao.factosEspecificos,
             limitacoes: contextoGeracao.institutionalContext.validation.warnings.map(
               (aviso) => aviso.message,
             ),
@@ -651,6 +652,7 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
               geradoEm: new Date().toISOString(),
               persistenciaPendente: true,
               assunto: { id: data.assuntoId, titulo: contextoGeracao?.assunto.titulo },
+              factosUtilizados: contextoGeracao?.factosEspecificos ?? [],
             },
             assuntoId: data.assuntoId,
             assembleiaId: data.sessaoId,
