@@ -37,6 +37,7 @@ import { listarNotasDossie } from "@/lib/dossie-notas-store";
 import { listarEventosTimelineDossie } from "@/lib/dossie-timeline-store";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
 import { addDiagnosticEvent } from "@/lib/debug-diagnostics";
+import { getSupabaseClient } from "@/lib/supabase";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
 const tiposDocumentos: TipoDocumentoCriado[] = [
@@ -77,6 +78,7 @@ function mensagemErroGeracao(code?: string, message?: string) {
   }
 
   const mensagensConhecidas: Record<string, string> = {
+    AUTH_REQUIRED: "A sua sessão expirou. Inicie sessão novamente para gerar documentos.",
     AI_TIMEOUT: "A geração demorou demasiado tempo no backend. Tente novamente.",
     AI_EMPTY_RESPONSE:
       "A OpenAI respondeu, mas não devolveu texto útil para o documento. Verifique o diagnóstico no log do backend.",
@@ -154,13 +156,27 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
     setErroGeracao(undefined);
 
     try {
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        setErroGeracao(mensagemErroGeracao("AUTH_REQUIRED"));
+        return;
+      }
+
+      const { data: sessaoAuth, error: erroSessaoAuth } = await supabase.auth.getSession();
+      const accessToken = sessaoAuth.session?.access_token;
+
+      if (erroSessaoAuth || !accessToken) {
+        setErroGeracao(mensagemErroGeracao("AUTH_REQUIRED"));
+        return;
+      }
+
       const sessoesRelacionadas = listarAssembleiasDoDossie(dossieId);
       const sessaoDeterministicaId =
         sessoesRelacionadas.length === 1 ? sessoesRelacionadas[0].assembleiaId : undefined;
 
       const response = (await gerarDocumentoAssistido({
         data: {
-          userId: user.id,
+          accessToken,
           assuntoId: dossieId,
           sessaoId: sessaoDeterministicaId,
           tipo,

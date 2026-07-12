@@ -16,7 +16,7 @@ import type {
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
 const inputSchema = z.object({
-  userId: z.string().min(1),
+  accessToken: z.string().min(1),
   assuntoId: z.string().min(1),
   sessaoId: z.string().min(1).optional(),
   tipo: z.custom<TipoDocumentoCriado>(),
@@ -58,6 +58,42 @@ function env(name: string) {
 
 function textoSeguro(valor: unknown) {
   return typeof valor === "string" ? valor.trim() : "";
+}
+
+async function obterUserIdAutenticado(accessToken: string) {
+  const supabaseUrl = env("SUPABASE_URL") ?? env("VITE_SUPABASE_URL");
+  const serviceRole = env("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!supabaseUrl || !serviceRole) {
+    throw new Error(
+      "SUPABASE_SERVER_CONFIG_MISSING: defina SUPABASE_URL/VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no backend.",
+    );
+  }
+
+  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/user`, {
+    headers: {
+      apikey: serviceRole,
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const error = new Error("AUTH_REQUIRED");
+    error.name = "AUTH_REQUIRED";
+    throw error;
+  }
+
+  const user = (await response.json()) as { id?: unknown };
+  const userId = textoSeguro(user.id);
+
+  if (!userId) {
+    const error = new Error("AUTH_REQUIRED");
+    error.name = "AUTH_REQUIRED";
+    throw error;
+  }
+
+  return userId;
 }
 
 function organizacaoUsoSegura(valor: unknown) {
@@ -167,6 +203,13 @@ function documentoSerializavel(documento: DocumentoCriado): DocumentoCriadoSeria
 
 function normalizarErro(error: unknown): { code: string; message: string } {
   if (error instanceof Error) {
+    if (error.name === "AUTH_REQUIRED" || error.message.includes("AUTH_REQUIRED")) {
+      return {
+        code: "AUTH_REQUIRED",
+        message: "A sua sessão expirou. Inicie sessão novamente para gerar documentos.",
+      };
+    }
+
     if (error.name === "AI_TIMEOUT") {
       return {
         code: "AI_TIMEOUT",
@@ -399,13 +442,14 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
     let documentoGerado: DocumentoCriado | undefined;
     let usoRegistrado = false;
     let contextoGeracao: Awaited<ReturnType<typeof construirContextoGeracaoDocumento>> | undefined;
+    let userIdAutenticado: string | undefined;
 
     const registrarUso = (status: EstadoUsoAi, errorCode?: string) => {
-      if (!respostaAi || usoRegistrado) return;
+      if (!respostaAi || usoRegistrado || !userIdAutenticado) return;
       usoRegistrado = true;
 
       void registrarUsoAi({
-        userId: data.userId,
+        userId: userIdAutenticado,
         organizationId: organizacaoUsoSegura(contextoGeracao?.perfil.organizacao),
         assuntoId: data.assuntoId,
         documentoId: documentoGerado?.id ?? null,
@@ -422,7 +466,13 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
     };
 
     try {
-      contextoGeracao = await construirContextoGeracaoDocumento(data);
+      userIdAutenticado = await obterUserIdAutenticado(data.accessToken);
+      const dadosAutorizados = {
+        ...data,
+        userId: userIdAutenticado,
+      };
+
+      contextoGeracao = await construirContextoGeracaoDocumento(dadosAutorizados);
       if (!contextoGeracao.baseJuridica.valido) {
         throw new Error("LEGAL_BASIS_INVALID");
       }
@@ -450,7 +500,7 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
 
       try {
         documentoGerado = await guardarDocumentoGeradoRemotamente({
-          userId: data.userId,
+          userId: userIdAutenticado,
           assuntoId: data.assuntoId,
           tipo: data.tipo,
           titulo: data.titulo,
