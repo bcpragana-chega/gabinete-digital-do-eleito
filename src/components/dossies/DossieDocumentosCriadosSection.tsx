@@ -31,7 +31,7 @@ import {
 import { obterAssembleia } from "@/lib/assembleias-store";
 import { useAuth } from "@/lib/auth-store";
 import { useDossie } from "@/lib/dossies-store";
-import { listarAssembleiasDoDossie } from "@/lib/dossie-assembleias-store";
+import { useAssembleiasDoDossie } from "@/lib/dossie-assembleias-store";
 import { listarDocumentosDoDossie } from "@/lib/dossie-documentos-store";
 import { listarNotasDossie } from "@/lib/dossie-notas-store";
 import { listarEventosTimelineDossie } from "@/lib/dossie-timeline-store";
@@ -79,6 +79,8 @@ function mensagemErroGeracao(code?: string, message?: string) {
 
   const mensagensConhecidas: Record<string, string> = {
     AUTH_REQUIRED: "A sua sessão expirou. Inicie sessão novamente para gerar documentos.",
+    SESSAO_NOT_LINKED_TO_ASSUNTO:
+      "A sessão selecionada já não está ligada a este assunto. Volte a associá-la antes de gerar.",
     AI_TIMEOUT: "A geração demorou demasiado tempo no backend. Tente novamente.",
     AI_EMPTY_RESPONSE:
       "A OpenAI respondeu, mas não devolveu texto útil para o documento. Verifique o diagnóstico no log do backend.",
@@ -106,6 +108,7 @@ function mensagemErroGeracao(code?: string, message?: string) {
 export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string }) {
   const { user } = useAuth();
   const dossie = useDossie(dossieId);
+  const sessoesRelacionadas = useAssembleiasDoDossie(dossieId);
   const [documentos, setDocumentos] = useState<DocumentoCriado[]>([]);
   const [tipo, setTipo] = useState<TipoDocumentoCriado>("Recomendação");
   const [titulo, setTitulo] = useState("");
@@ -170,7 +173,6 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
         return;
       }
 
-      const sessoesRelacionadas = listarAssembleiasDoDossie(dossieId);
       const sessaoDeterministicaId =
         sessoesRelacionadas.length === 1 ? sessoesRelacionadas[0].assembleiaId : undefined;
 

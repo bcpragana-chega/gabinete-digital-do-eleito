@@ -366,16 +366,30 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
     });
   }
 
-  function associarAssembleia() {
+  async function associarAssembleia() {
     if (!assembleiaParaAssociar) return;
-    associarAssembleiaAoDossie(dossieId, assembleiaParaAssociar);
-    setAssembleiaParaAssociar("");
+
+    try {
+      await associarAssembleiaAoDossie(dossieId, assembleiaParaAssociar);
+      setAssembleiaParaAssociar("");
+    } catch {
+      window.alert(
+        "Não foi possível ligar esta sessão ao assunto. Confirme a ligação e tente novamente.",
+      );
+    }
   }
 
-  function desassociarAssembleia(assembleia: Assembleia) {
+  async function desassociarAssembleia(assembleia: Assembleia) {
     const confirmado = window.confirm(`Desligar a sessão "${assembleia.nome}" deste assunto?`);
     if (!confirmado) return;
-    desassociarAssembleiaDoDossie(dossieId, assembleia.id);
+
+    try {
+      await desassociarAssembleiaDoDossie(dossieId, assembleia.id);
+    } catch {
+      window.alert(
+        "Não foi possível desligar esta sessão do assunto. Confirme a ligação e tente novamente.",
+      );
+    }
   }
 
   function renderFormulario(
