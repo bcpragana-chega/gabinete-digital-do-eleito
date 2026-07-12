@@ -48,6 +48,7 @@ export type PerfilEleito = {
   organizacao: string;
   territorio: string;
   assinaturaInstitucional?: string;
+  logoUrl?: string;
   updatedAt: string;
 };
 
@@ -117,6 +118,7 @@ export function normalizarPerfilEleito(perfil?: Partial<PerfilEleito> | null) {
   if (!perfil || typeof perfil !== "object") return undefined;
 
   const assinaturaInstitucional = textoSeguro(perfil.assinaturaInstitucional);
+  const logoUrl = textoSeguro(perfil.logoUrl);
 
   return {
     nomeInstitucional: textoSeguro(perfil.nomeInstitucional),
@@ -125,6 +127,7 @@ export function normalizarPerfilEleito(perfil?: Partial<PerfilEleito> | null) {
     organizacao: textoSeguro(perfil.organizacao),
     territorio: textoSeguro(perfil.territorio),
     assinaturaInstitucional: assinaturaInstitucional || undefined,
+    logoUrl: logoUrl || undefined,
     updatedAt: textoSeguro(perfil.updatedAt) || new Date().toISOString(),
   } satisfies PerfilEleito;
 }

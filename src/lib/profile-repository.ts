@@ -10,6 +10,7 @@ type ProfileRow = {
   organizacao: string | null;
   territorio: string | null;
   assinatura_institucional: string | null;
+  logo_url: string | null;
   onboarding_version?: number | null;
   updated_at: string | null;
 };
@@ -67,6 +68,7 @@ function fromRow(row: ProfileRow): PerfilEleito {
     organizacao: textoSeguro(row.organizacao),
     territorio: textoSeguro(row.territorio),
     assinaturaInstitucional: assinaturaInstitucional || undefined,
+    logoUrl: textoSeguro(row.logo_url) || undefined,
     updatedAt: textoSeguro(row.updated_at) || new Date().toISOString(),
   };
 }
@@ -80,6 +82,7 @@ function toRow(userId: string, perfil: PerfilEleito): ProfileRow {
     organizacao: textoSeguro(perfil.organizacao),
     territorio: textoSeguro(perfil.territorio),
     assinatura_institucional: textoSeguro(perfil.assinaturaInstitucional) || null,
+    logo_url: textoSeguro(perfil.logoUrl) || null,
     updated_at: textoSeguro(perfil.updatedAt) || new Date().toISOString(),
   };
 }
@@ -218,6 +221,7 @@ export async function guardarPerfilRemoto(userId: string, perfil: PerfilEleito) 
       organizacaoLength: perfil.organizacao.length,
       territorioLength: perfil.territorio.length,
       temAssinaturaInstitucional: Boolean(perfil.assinaturaInstitucional),
+      temLogo: Boolean(perfil.logoUrl),
     },
   });
 
@@ -245,6 +249,66 @@ export async function guardarPerfilRemoto(userId: string, perfil: PerfilEleito) 
     userId,
     supabaseUserId,
   });
+}
+
+function extensaoLogo(file: File) {
+  const extensaoNome = file.name.split(".").pop()?.toLowerCase();
+  if (extensaoNome && /^[a-z0-9]+$/.test(extensaoNome)) return extensaoNome;
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/jpeg") return "jpg";
+  if (file.type === "image/webp") return "webp";
+  if (file.type === "image/svg+xml") return "svg";
+  return "png";
+}
+
+function ficheiroParaDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") resolve(reader.result);
+      else reject(new Error("LOGO_DATA_URL_INVALIDO"));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("LOGO_DATA_URL_ERRO"));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function guardarLogoPerfil(userId: string | undefined, file: File) {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("LOGO_INVALID_MIME_TYPE");
+  }
+
+  if (file.size > 2_000_000) {
+    throw new Error("LOGO_TOO_LARGE");
+  }
+
+  const fallbackLocal = await ficheiroParaDataUrl(file);
+  const supabaseUserId = await obterSupabaseUserIdValido(userId);
+  const supabase = getSupabaseClient();
+
+  if (!supabase || !supabaseUserId) return fallbackLocal;
+
+  const path = `${supabaseUserId}/logo.${extensaoLogo(file)}`;
+  const { error } = await withSupabaseTimeout(
+    supabase.storage.from("logos").upload(path, file, {
+      cacheControl: "3600",
+      contentType: file.type,
+      upsert: true,
+    }),
+    "PROFILE_LOGO_UPLOAD",
+    15000,
+  );
+
+  if (error) {
+    console.warn(
+      "[Tribuno Perfil] Upload remoto do logótipo falhou; a usar fallback local.",
+      error,
+    );
+    return fallbackLocal;
+  }
+
+  const { data } = supabase.storage.from("logos").getPublicUrl(path);
+  return data.publicUrl || fallbackLocal;
 }
 
 export async function guardarOnboardingVersionRemoto(userId: string, version: number) {

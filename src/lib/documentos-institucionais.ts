@@ -22,6 +22,7 @@ type DadosInstitucionais = {
   nomeEleito: string;
   cargo: string;
   grupoPolitico: string;
+  logoUrl?: string;
   local: string;
   data: string;
 };
@@ -147,6 +148,7 @@ export function obterDadosInstitucionais(
       textoSeguro(contexto?.grupoPolitico) ||
       textoSeguro(perfil?.assinaturaInstitucional) ||
       "Grupo político",
+    logoUrl: textoSeguro(perfil?.logoUrl),
     local: textoSeguro(contexto?.assembleia?.local) || textoSeguro(perfil?.territorio) || "Local",
     data: dataFormatada(contexto?.assembleia?.data),
   };
@@ -555,7 +557,11 @@ export function criarHtmlDocumentoInstitucional(
   <body>
     <article class="documento-institucional">
       <header>
-        <img class="logo" src="/branding/logo.png" alt="" onerror="this.remove()" />
+        ${
+          dados.logoUrl
+            ? `<img class="logo" src="${escaparHtml(dados.logoUrl)}" alt="" onerror="this.remove()" />`
+            : ""
+        }
         <div class="orgao">${escaparHtml(dados.nomeOrgao)}</div>
         <div class="tipo">${escaparHtml(tipo)}</div>
         <h1>${escaparHtml(titulo)}</h1>

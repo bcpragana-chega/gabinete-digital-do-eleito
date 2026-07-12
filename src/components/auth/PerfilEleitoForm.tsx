@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Save } from "lucide-react";
+import { ImagePlus, Save } from "lucide-react";
 import { UserAvatar } from "@/components/auth/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import {
   type PerfilEleito,
   type PerfilErroCodigo,
 } from "@/lib/auth-store";
+import { guardarLogoPerfil } from "@/lib/profile-repository";
 import { diagnosticarSessaoSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 type PerfilEleitoFormProps = {
@@ -59,6 +60,7 @@ function payloadSeguro(perfil: Omit<PerfilEleito, "updatedAt">) {
     organizacaoLength: tamanhoTexto(perfil.organizacao),
     territorioLength: tamanhoTexto(perfil.territorio),
     temAssinaturaInstitucional: Boolean(perfil.assinaturaInstitucional?.trim()),
+    temLogo: Boolean(perfil.logoUrl?.trim()),
   };
 }
 
@@ -117,6 +119,8 @@ export function PerfilEleitoForm({
   const [assinaturaInstitucional, setAssinaturaInstitucional] = useState(
     perfilNormalizado?.assinaturaInstitucional || "",
   );
+  const [logoUrl, setLogoUrl] = useState(perfilNormalizado?.logoUrl || "");
+  const [aCarregarLogo, setACarregarLogo] = useState(false);
   const [aGuardar, setAGuardar] = useState(false);
   const [saveState, setSaveState] = useState<SaveFeedbackState>("saved");
   const [nomeEditadoManualmente, setNomeEditadoManualmente] = useState(false);
@@ -137,6 +141,10 @@ export function PerfilEleitoForm({
       setNomeInstitucional(nomeInicial);
     }
   }, [nomeEditadoManualmente, nomeInicial, perfilNormalizado?.nomeInstitucional]);
+
+  useEffect(() => {
+    setLogoUrl(perfilNormalizado?.logoUrl || "");
+  }, [perfilNormalizado?.logoUrl]);
 
   const podeGuardar = Boolean(
     nomeInstitucional.trim() && cargo && orgao && organizacao.trim() && territorio.trim(),
@@ -243,6 +251,7 @@ export function PerfilEleitoForm({
       organizacao: organizacao.trim(),
       territorio: territorio.trim(),
       assinaturaInstitucional: assinaturaInstitucional.trim(),
+      logoUrl: logoUrl.trim(),
     };
     const diagnostico = await diagnosticoSupabase(user?.id);
 
@@ -278,6 +287,34 @@ export function PerfilEleitoForm({
       setSaveState("error");
     } finally {
       setAGuardar(false);
+    }
+  }
+
+  async function alterarLogo(file?: File) {
+    if (!file || aCarregarLogo) return;
+
+    limparErro();
+    setACarregarLogo(true);
+    setSaveState("unsaved");
+
+    try {
+      const novoLogoUrl = await guardarLogoPerfil(user?.id, file);
+      setLogoUrl(novoLogoUrl);
+      registarCampoAlterado("logoUrl", novoLogoUrl);
+    } catch (error) {
+      const codigo = codigoDoErro(error);
+      console.error("[Tribuno Perfil] Erro ao carregar logótipo", {
+        codigo,
+        userId: user?.id,
+        error,
+      });
+      setCodigoErro(codigo);
+      setErro(
+        "Não foi possível carregar o logótipo. Use uma imagem PNG, JPG, SVG ou WebP até 2 MB.",
+      );
+      setSaveState("error");
+    } finally {
+      setACarregarLogo(false);
     }
   }
 
@@ -387,6 +424,39 @@ export function PerfilEleitoForm({
             placeholder="Nome, cargo e grupo político para usar futuramente em documentos."
             rows={3}
           />
+        </div>
+
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="perfil-logo">Logótipo institucional</Label>
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card/60 p-3 sm:flex-row sm:items-center">
+            <div className="flex h-24 w-32 items-center justify-center rounded-lg border border-dashed border-border bg-background">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt="Logótipo institucional"
+                  className="max-h-20 max-w-28 object-contain"
+                />
+              ) : (
+                <ImagePlus className="h-7 w-7 text-muted-foreground" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <Input
+                id="perfil-logo"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                disabled={aCarregarLogo}
+                onChange={(event) => {
+                  void alterarLogo(event.target.files?.[0]);
+                  event.currentTarget.value = "";
+                }}
+              />
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Obrigatório para gerar documentos oficiais em PDF. Use uma imagem com fundo
+                transparente sempre que possível.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 

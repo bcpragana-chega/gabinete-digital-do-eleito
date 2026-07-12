@@ -27,10 +27,7 @@ export function InstitutionalDocumentEditor({
   onConteudoChange,
 }: InstitutionalDocumentEditorProps) {
   const dados = obterDadosInstitucionais(contexto);
-  const secoes = useMemo(
-    () => obterSecoesDocumentoInstitucional(tipo, conteudo),
-    [conteudo, tipo],
-  );
+  const secoes = useMemo(() => obterSecoesDocumentoInstitucional(tipo, conteudo), [conteudo, tipo]);
 
   function atualizarSecao(tituloSecao: string, proximoConteudo: string) {
     const proximasSecoes = secoes.map((secao) =>
@@ -44,14 +41,16 @@ export function InstitutionalDocumentEditor({
     <div className="rounded-xl border border-border bg-background p-3 md:p-6">
       <article className="mx-auto min-h-[780px] max-w-3xl border border-border bg-white px-8 py-10 font-serif text-[15px] leading-7 text-slate-950 shadow-card md:px-14 md:py-12">
         <header className="border-b border-slate-300 pb-6 text-center">
-          <img
-            src="/branding/logo.png"
-            alt=""
-            className="mx-auto mb-5 max-h-20 max-w-[150px]"
-            onError={(event) => {
-              event.currentTarget.remove();
-            }}
-          />
+          {dados.logoUrl && (
+            <img
+              src={dados.logoUrl}
+              alt=""
+              className="mx-auto mb-5 max-h-20 max-w-[150px] object-contain"
+              onError={(event) => {
+                event.currentTarget.remove();
+              }}
+            />
+          )}
           <div className="font-sans text-[13px] font-bold uppercase tracking-[0.12em] text-slate-700">
             {dados.nomeOrgao}
           </div>
@@ -97,7 +96,10 @@ export function InstitutionalDocumentEditor({
 }
 
 function SecaoRenderizada({ secao }: { secao: SecaoDocumentoInstitucional }) {
-  const blocos = secao.conteudo.split(/\n{2,}/).map((bloco) => bloco.trim()).filter(Boolean);
+  const blocos = secao.conteudo
+    .split(/\n{2,}/)
+    .map((bloco) => bloco.trim())
+    .filter(Boolean);
 
   if (blocos.length === 0) {
     return <p className="text-left text-slate-500">Texto por preencher.</p>;
@@ -106,7 +108,10 @@ function SecaoRenderizada({ secao }: { secao: SecaoDocumentoInstitucional }) {
   return (
     <div className="space-y-3">
       {blocos.map((bloco, index) => {
-        const linhas = bloco.split(/\r?\n/).map((linha) => linha.trim()).filter(Boolean);
+        const linhas = bloco
+          .split(/\r?\n/)
+          .map((linha) => linha.trim())
+          .filter(Boolean);
         const todosNumerados = linhas.every((linha) => /^\d+\.\s*/.test(linha));
 
         if (todosNumerados) {

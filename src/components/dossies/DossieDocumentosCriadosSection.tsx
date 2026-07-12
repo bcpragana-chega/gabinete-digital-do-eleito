@@ -25,6 +25,7 @@ import type { ResultadoGeracaoDocumento } from "@/lib/ai/types";
 import {
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
+  mensagemLogoObrigatorio,
 } from "@/lib/documentos-criados-export";
 import { obterAssembleia } from "@/lib/assembleias-store";
 import { useAuth } from "@/lib/auth-store";
@@ -102,6 +103,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
   const [conteudo, setConteudo] = useState("");
   const [gerando, setGerando] = useState(false);
   const [erroGeracao, setErroGeracao] = useState<string | undefined>();
+  const [erroLogo, setErroLogo] = useState<string | undefined>();
 
   useEffect(() => {
     function carregar() {
@@ -122,6 +124,12 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
       },
     });
   });
+
+  useEffect(() => {
+    const handler = () => setErroLogo(mensagemLogoObrigatorio);
+    window.addEventListener("tribuno:logo-institucional-obrigatorio", handler);
+    return () => window.removeEventListener("tribuno:logo-institucional-obrigatorio", handler);
+  }, []);
 
   async function gerarDocumento() {
     const tituloLimpo = titulo.trim();
@@ -227,6 +235,18 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
           </div>
         )}
 
+        {erroLogo && (
+          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <div className="flex flex-wrap items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              <span className="mr-auto">{erroLogo}</span>
+              <Button asChild type="button" size="sm" variant="outline">
+                <Link to="/definicoes">Ir para Perfil</Link>
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-end">
           <Button type="button" onClick={gerarDocumento} disabled={!titulo.trim() || gerando}>
             {gerando ? (
@@ -261,11 +281,13 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                   <Button
                     type="button"
                     size="sm"
-                    onClick={() =>
-                      exportarDocumentoCriadoPDF(documento, {
+                    onClick={() => {
+                      setErroLogo(undefined);
+                      const exportou = exportarDocumentoCriadoPDF(documento, {
                         assunto: dossie?.titulo,
-                      })
-                    }
+                      });
+                      if (!exportou) setErroLogo(mensagemLogoObrigatorio);
+                    }}
                   >
                     <Download className="mr-2 h-4 w-4" />
                     Download PDF

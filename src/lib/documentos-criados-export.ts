@@ -29,6 +29,8 @@ const margemX = 136;
 const margemTopo = 118;
 const margemFundo = 128;
 const larguraTexto = larguraA4 - margemX * 2;
+export const mensagemLogoObrigatorio =
+  "Para gerar documentos oficiais, adicione primeiro o logótipo institucional no seu perfil.";
 
 function assinaturaInstitucional() {
   const { perfil, user } = obterAuthState();
@@ -171,7 +173,13 @@ export function exportarDocumentoCriadoPDF(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ) {
+  if (!perfilTemLogoInstitucional(contexto)) {
+    window.dispatchEvent(new CustomEvent("tribuno:logo-institucional-obrigatorio"));
+    return false;
+  }
+
   void gerarEDescarregarPdf(documento, contexto);
+  return true;
 }
 
 export const exportarDocumentoCriadoPdf = exportarDocumentoCriadoPDF;
@@ -348,7 +356,7 @@ async function desenharPaginasDocumento(
 
   let pagina = criarPagina();
 
-  desenharCabecalho(pagina, cabecalho, documento.tipo, titulo);
+  await desenharCabecalho(pagina, cabecalho, documento.tipo, titulo, dados.logoUrl);
   pagina.y += 34;
 
   const linhas = criarLinhasDocumento(documento);
@@ -394,70 +402,111 @@ function desenharCabecalho(
   cabecalho: { orgao: string; organizacao?: string },
   tipo: string,
   titulo: string,
+  logoUrl?: string,
 ) {
   const { ctx } = pagina;
 
   ctx.textAlign = "center";
-  const alturaOrgao = desenharTextoQuebrado(
-    ctx,
-    cabecalho.orgao.toLocaleUpperCase("pt-PT"),
-    larguraA4 / 2,
-    pagina.y,
-    {
-      maxWidth: larguraTexto,
-      font: "800 32px Arial, sans-serif",
-      lineHeight: 42,
-      color: "#374151",
-    },
-  );
-  pagina.y += alturaOrgao + 18;
-
-  if (cabecalho.organizacao) {
-    const alturaOrganizacao = desenharTextoQuebrado(
+  return desenharLogoPdf(ctx, logoUrl, pagina.y).then((alturaLogo) => {
+    pagina.y += alturaLogo;
+    desenharTextoQuebrado(
       ctx,
-      cabecalho.organizacao.toLocaleUpperCase("pt-PT"),
+      cabecalho.orgao.toLocaleUpperCase("pt-PT"),
       larguraA4 / 2,
       pagina.y,
       {
         maxWidth: larguraTexto,
-        font: "700 25px Arial, sans-serif",
-        lineHeight: 34,
+        font: "800 32px Arial, sans-serif",
+        lineHeight: 42,
+        color: "#374151",
+      },
+    );
+    pagina.y += 60;
+
+    if (cabecalho.organizacao) {
+      const alturaOrganizacao = desenharTextoQuebrado(
+        ctx,
+        cabecalho.organizacao.toLocaleUpperCase("pt-PT"),
+        larguraA4 / 2,
+        pagina.y,
+        {
+          maxWidth: larguraTexto,
+          font: "700 25px Arial, sans-serif",
+          lineHeight: 34,
+          color: "#111827",
+        },
+      );
+      pagina.y += alturaOrganizacao + 20;
+    }
+
+    desenharTextoQuebrado(ctx, tipo.toLocaleUpperCase("pt-PT"), larguraA4 / 2, pagina.y, {
+      maxWidth: larguraTexto,
+      font: "800 38px Arial, sans-serif",
+      lineHeight: 48,
+      color: "#111827",
+    });
+    pagina.y += 66;
+
+    const alturaTitulo = desenharTextoQuebrado(
+      ctx,
+      titulo.toLocaleUpperCase("pt-PT"),
+      larguraA4 / 2,
+      pagina.y,
+      {
+        maxWidth: larguraTexto,
+        font: "800 42px Arial, sans-serif",
+        lineHeight: 54,
         color: "#111827",
       },
     );
-    pagina.y += alturaOrganizacao + 20;
-  }
+    pagina.y += alturaTitulo + 36;
 
-  desenharTextoQuebrado(ctx, tipo.toLocaleUpperCase("pt-PT"), larguraA4 / 2, pagina.y, {
-    maxWidth: larguraTexto,
-    font: "800 38px Arial, sans-serif",
-    lineHeight: 48,
-    color: "#111827",
+    ctx.strokeStyle = "#d1d5db";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(margemX, pagina.y);
+    ctx.lineTo(larguraA4 - margemX, pagina.y);
+    ctx.stroke();
+    pagina.y += 34;
+    ctx.textAlign = "left";
   });
-  pagina.y += 66;
+}
 
-  const alturaTitulo = desenharTextoQuebrado(
-    ctx,
-    titulo.toLocaleUpperCase("pt-PT"),
-    larguraA4 / 2,
-    pagina.y,
-    {
-      maxWidth: larguraTexto,
-      font: "800 42px Arial, sans-serif",
-      lineHeight: 54,
-      color: "#111827",
-    },
-  );
-  pagina.y += alturaTitulo + 36;
+function perfilTemLogoInstitucional(contexto?: ContextoDocumentoInstitucional) {
+  const { perfil } = obterAuthState();
+  return Boolean(textoSeguro(contexto?.perfil?.logoUrl) || textoSeguro(perfil?.logoUrl));
+}
 
-  ctx.strokeStyle = "#d1d5db";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(margemX, pagina.y);
-  ctx.lineTo(larguraA4 - margemX, pagina.y);
-  ctx.stroke();
-  pagina.y += 34;
-  ctx.textAlign = "left";
+function carregarImagem(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const imagem = new Image();
+    imagem.crossOrigin = "anonymous";
+    imagem.onload = () => resolve(imagem);
+    imagem.onerror = () => reject(new Error("LOGO_LOAD_ERROR"));
+    imagem.src = src;
+  });
+}
+
+async function desenharLogoPdf(
+  ctx: CanvasRenderingContext2D,
+  logoUrl: string | undefined,
+  y: number,
+) {
+  if (!logoUrl) return 0;
+
+  try {
+    const imagem = await carregarImagem(logoUrl);
+    const maxWidth = 240;
+    const maxHeight = 120;
+    const escala = Math.min(maxWidth / imagem.naturalWidth, maxHeight / imagem.naturalHeight, 1);
+    const largura = imagem.naturalWidth * escala;
+    const altura = imagem.naturalHeight * escala;
+
+    ctx.drawImage(imagem, (larguraA4 - largura) / 2, y, largura, altura);
+    return altura + 34;
+  } catch {
+    return 0;
+  }
 }
 
 function criarLinhasDocumento(documento: DocumentoCriado): LinhaPdf[] {
