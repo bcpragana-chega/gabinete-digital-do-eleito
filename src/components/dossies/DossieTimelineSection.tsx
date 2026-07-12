@@ -333,7 +333,7 @@ export function DossieTimelineSection({ dossieId }: DossieTimelineSectionProps) 
                       <div className="flex flex-wrap justify-end gap-2">
                         {evento.origemHref && (
                           <Button asChild type="button" variant="ghost" size="sm">
-                            <Link to={evento.origemHref as never}>Abrir origem</Link>
+                            <a href={evento.origemHref}>Abrir origem</a>
                           </Button>
                         )}
                         <Button

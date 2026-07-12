@@ -61,6 +61,13 @@ function formatarAtualizacao(dossie: Dossie) {
   }).format(new Date(data));
 }
 
+function proximaAcaoDoAssunto(dossie: Dossie) {
+  if (dossie.archivedAt || dossie.estado === "concluido") return "Sem ação definida";
+  if (!dossie.objetivoPolitico.trim()) return "Definir objetivo político";
+  if (!dossie.resumo.trim()) return "Reunir informação";
+  return "Rever assunto";
+}
+
 function DossiesPage() {
   const dossies = useDossies();
   const [filtroAtivo, setFiltroAtivo] = useState<FiltroId>("todos");
@@ -82,7 +89,10 @@ function DossiesPage() {
 
   return (
     <>
-      <TopBar breadcrumb="Assuntos" />
+      <TopBar
+        title="Assuntos"
+        description="Temas, problemas e compromissos acompanhados durante o mandato."
+      />
       <main className={ds.surface.page}>
         <div className={ds.layout.page}>
           <div className="mb-8 flex flex-col gap-5 sm:mb-10 xl:flex-row xl:items-end xl:justify-between">
@@ -151,14 +161,11 @@ function DossieCard({ dossie }: { dossie: Dossie }) {
 
   return (
     <Link to="/assuntos/$dossieId" params={{ dossieId: dossie.id }} className="group block min-w-0">
-      <Card className="flex min-h-72 min-w-0 flex-col overflow-hidden p-5 transition-colors hover:border-border hover:bg-card/95 md:h-72">
+      <Card className="flex min-h-64 min-w-0 flex-col overflow-hidden p-5 transition-colors hover:border-border hover:bg-card/95">
         <div className="flex shrink-0 items-start justify-between gap-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
             <Folder className={ds.icon.md} strokeWidth={1.75} />
           </div>
-          <StatusBadge tone="muted" dot={false}>
-            Tema em acompanhamento
-          </StatusBadge>
         </div>
 
         <div className="mt-5 min-w-0 overflow-hidden">
@@ -182,6 +189,13 @@ function DossieCard({ dossie }: { dossie: Dossie }) {
               {dossie.prioridade}
             </StatusBadge>
           </div>
+        </div>
+
+        <div className="mt-5 border-t border-border/60 pt-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Próxima ação
+          </p>
+          <p className="mt-1 text-sm font-medium text-foreground">{proximaAcaoDoAssunto(dossie)}</p>
         </div>
 
         <div className="mt-auto flex shrink-0 items-end justify-between gap-4 pt-5 text-sm">

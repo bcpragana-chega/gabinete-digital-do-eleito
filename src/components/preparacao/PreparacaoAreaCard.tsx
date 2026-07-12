@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
@@ -60,9 +59,14 @@ export function PreparacaoAreaCard({
     return content;
   }
 
+  const href = Object.entries(params ?? {}).reduce(
+    (path, [param, value]) => path.replace(`$${param}`, encodeURIComponent(value)),
+    to,
+  );
+
   return (
-    <Link to={to as never} params={params as never} className="block">
+    <a href={href} className="block">
       {content}
-    </Link>
+    </a>
   );
 }

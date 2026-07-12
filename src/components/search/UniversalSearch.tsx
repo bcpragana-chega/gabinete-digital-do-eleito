@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import {
   Building2,
   CalendarDays,
@@ -77,7 +77,7 @@ type PaletteItem =
     };
 
 export function UniversalSearch() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -131,10 +131,17 @@ export function UniversalSearch() {
     window.setTimeout(() => paletteInputRef.current?.focus(), 0);
   }, [paletteOpen]);
 
-  const groups = useMemo(() => pesquisarUniversal(query), [query, revision]);
-  const paletteGroups = useMemo(() => pesquisarUniversal(paletteQuery), [paletteQuery, revision]);
+  const groups = useMemo(() => {
+    void revision;
+    return pesquisarUniversal(query);
+  }, [query, revision]);
+  const paletteGroups = useMemo(() => {
+    void revision;
+    return pesquisarUniversal(paletteQuery);
+  }, [paletteQuery, revision]);
   const paletteResults = useMemo(() => flattenGroups(paletteGroups), [paletteGroups]);
   const quickActions = useMemo((): QuickAction[] => {
+    void revision;
     const assembleias = listarAssembleias();
     const assembleiaPreparacao =
       assembleias.find((assembleia) => assembleia.estado === "preparacao") ??
@@ -242,7 +249,7 @@ export function UniversalSearch() {
     setQuery("");
     setPaletteOpen(false);
     resetPalette();
-    void navigate({ to: result.href as never });
+    router.history.push(result.href);
   }
 
   function executeQuickAction(action: QuickAction) {
@@ -250,7 +257,7 @@ export function UniversalSearch() {
     setQuery("");
     setPaletteOpen(false);
     resetPalette();
-    void navigate({ to: action.href as never });
+    router.history.push(action.href);
   }
 
   function executePaletteItem(item: PaletteItem) {
@@ -383,9 +390,9 @@ export function UniversalSearch() {
                       </div>
                       <div className="space-y-1">
                         {group.results.map((result) => (
-                          <Link
+                          <a
                             key={`${result.type}-${result.id}`}
-                            to={result.href as never}
+                            href={result.href}
                             onClick={() => {
                               setFocused(false);
                               setQuery("");
@@ -393,7 +400,7 @@ export function UniversalSearch() {
                             className="flex items-start gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted/70"
                           >
                             {renderResultContent(result)}
-                          </Link>
+                          </a>
                         ))}
                       </div>
                     </section>

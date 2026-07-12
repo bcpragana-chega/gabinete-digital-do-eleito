@@ -4,6 +4,7 @@ import { listarDocumentosLocais } from "@/lib/documentos-store";
 import { listarTodasNotasDossie } from "@/lib/dossie-notas-store";
 import { listarTodosEventosTimelineDossie } from "@/lib/dossie-timeline-store";
 import type { Documento } from "@/lib/types";
+import { rotaDocumentoInstitucional } from "@/lib/document-routes";
 
 export type UniversalSearchType =
   | "assembleias"
@@ -117,7 +118,7 @@ function buildIndex(): UniversalSearchResult[] {
       title: documento.titulo,
       description: documento.notas || documento.tipo,
       meta: documento.estado,
-      href: `/sessoes/${documento.assembleiaId}/documentos/${documento.id}`,
+      href: rotaDocumentoInstitucional(documento),
       terms: [
         documento.titulo,
         documento.tipo,

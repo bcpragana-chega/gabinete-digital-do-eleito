@@ -1,4 +1,5 @@
 import type { DocumentoCriado } from "@/lib/types";
+import { rotaDocumentoCriado } from "@/lib/document-routes";
 import { listarDossiesAssociadosAAssembleia } from "@/lib/dossie-assembleias-store";
 import { adicionarEventoAutomaticoTimelineDossie } from "@/lib/dossie-timeline-store";
 import {
@@ -186,17 +187,7 @@ ${base}`;
 }
 
 function hrefRascunho(documento: DocumentoCriado) {
-  if (documento.assuntoId) {
-    return `/assuntos/${documento.assuntoId}/documentos/${documento.id}`;
-  }
-
-  if (!documento.assembleiaId) return undefined;
-
-  if (!documento.pontoId) {
-    return `/sessoes/${documento.assembleiaId}/preparacao/documentos-a-criar/${documento.id}`;
-  }
-
-  return `/sessoes/${documento.assembleiaId}/preparacao/pontos/${documento.pontoId}/rascunhos/${documento.id}`;
+  return rotaDocumentoCriado(documento);
 }
 
 function registarDocumentoACriarNaTimeline(documento: DocumentoCriado, acao: "criado" | "editado") {

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LogOut, Menu, Scale } from "lucide-react";
+import { LogOut, Menu, Scale, Settings } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { UserAvatar } from "@/components/auth/UserAvatar";
@@ -12,13 +12,71 @@ import { UniversalSearch } from "@/components/search/UniversalSearch";
 import { logout, primeiroNome, saudacaoPorHora, useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-export function TopBar({ breadcrumb: _breadcrumb }: { breadcrumb?: ReactNode }) {
+type TopBarProps = {
+  title?: string;
+  description?: string;
+  breadcrumb?: ReactNode;
+};
+
+const descricoesPorTitulo: Record<string, string> = {
+  Assuntos: "Temas, problemas e compromissos acompanhados durante o mandato.",
+  Sessões: "Prepare reuniões, documentos e intervenções.",
+  Preparação: "Reveja a ordem de trabalhos e defina a posição política.",
+  "Preparação da sessão": "Reveja a ordem de trabalhos e defina a posição política.",
+  "Documentos da sessão": "Consulte e prepare os documentos necessários para a sessão.",
+  "Documentos a criar": "Prepare os documentos ainda pendentes para esta sessão.",
+  "Estratégia da sessão": "Defina objetivos, mensagens e limites para a sessão.",
+  "Pontos da sessão": "Prepare cada ponto da ordem de trabalhos.",
+  "Ponto da sessão": "Analise o ponto e prepare a intervenção necessária.",
+  Sessão: "Consulte o contexto e avance para a preparação da sessão.",
+  Assunto: "Acompanhe o contexto, os documentos e o próximo passo deste assunto.",
+  Documento: "Edite, reveja e finalize o documento institucional.",
+  "Documento do assunto": "Edite, reveja e finalize o documento institucional.",
+  Biblioteca: "Consulte e organize os documentos do mandato.",
+  Agenda: "Acompanhe as próximas sessões e compromissos.",
+  "Caixa de Entrada": "Organize informação recebida e encaminhe o próximo passo.",
+  Definições: "Gira o perfil institucional e as preferências do Tribuno.",
+};
+
+function tituloPorPathname(pathname: string) {
+  if (pathname.includes("/documentos/")) return "Documento";
+  if (pathname.endsWith("/preparacao/documentos-a-criar")) return "Documentos a criar";
+  if (pathname.endsWith("/preparacao/documentos")) return "Documentos da sessão";
+  if (pathname.endsWith("/preparacao/estrategia")) return "Estratégia da sessão";
+  if (pathname.includes("/preparacao/pontos/")) return "Ponto da sessão";
+  if (pathname.endsWith("/preparacao/pontos")) return "Pontos da sessão";
+  if (pathname.endsWith("/preparacao")) return "Preparação da sessão";
+  if (/^\/sessoes\/[^/]+$/.test(pathname)) return "Sessão";
+  if (/^\/assuntos\/[^/]+$/.test(pathname)) return "Assunto";
+  if (pathname === "/sessoes") return "Sessões";
+  if (pathname === "/assuntos") return "Assuntos";
+  if (pathname === "/biblioteca") return "Biblioteca";
+  if (pathname === "/caixa-de-entrada") return "Caixa de Entrada";
+  if (pathname === "/agenda") return "Agenda";
+  if (pathname === "/historico") return "Histórico";
+  if (pathname === "/definicoes") return "Definições";
+  return undefined;
+}
+
+export function TopBar({ title, description, breadcrumb }: TopBarProps) {
   const [menuAberto, setMenuAberto] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, perfil, displayName } = useAuth();
   const greetingName = nomeTopBar(displayName, user?.nome, perfil?.nomeInstitucional);
+  const dashboard = pathname === "/";
+  const tituloContextual =
+    title ?? (typeof breadcrumb === "string" ? breadcrumb : tituloPorPathname(pathname));
+  const descricaoContextual =
+    description ?? (tituloContextual ? descricoesPorTitulo[tituloContextual] : undefined);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/45 bg-background/90 backdrop-blur-xl">
@@ -113,43 +171,68 @@ export function TopBar({ breadcrumb: _breadcrumb }: { breadcrumb?: ReactNode }) 
             </SheetContent>
           </Sheet>
 
-          <div className="min-w-0 leading-tight">
-            <div className="truncate font-display text-xl font-bold leading-6 text-foreground sm:text-2xl lg:text-[1.65rem] lg:leading-8">
-              {saudacaoPorHora()}, {greetingName}{" "}
-              <span className="inline-block align-baseline text-[0.9em]">👋</span>
+          {dashboard ? (
+            <div className="min-w-0 leading-tight">
+              <div className="truncate font-display text-xl font-bold leading-6 text-foreground sm:text-2xl lg:text-[1.65rem] lg:leading-8">
+                {saudacaoPorHora()}, {greetingName}{" "}
+                <span className="inline-block align-baseline text-[0.9em]">👋</span>
+              </div>
+              <div className="mt-0.5 truncate text-[13px] leading-5 text-muted-foreground sm:text-sm">
+                Vamos preparar a próxima sessão.
+              </div>
             </div>
-            <div className="mt-0.5 truncate text-[13px] leading-5 text-muted-foreground sm:text-sm">
-              Vamos preparar a próxima sessão.
+          ) : (
+            <div className="min-w-0 leading-tight">
+              {breadcrumb && breadcrumb !== tituloContextual && (
+                <div className="mb-0.5 truncate text-xs text-muted-foreground">{breadcrumb}</div>
+              )}
+              <div className="truncate font-display text-lg font-semibold leading-6 text-foreground sm:text-xl">
+                {tituloContextual ?? "Tribuno"}
+              </div>
+              {descricaoContextual && (
+                <div className="mt-0.5 hidden truncate text-[13px] leading-5 text-muted-foreground sm:block">
+                  {descricaoContextual}
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
 
         <div className="flex min-w-0 shrink-0 items-center gap-1.5 md:gap-2">
           <UniversalSearch />
 
-          <Link
-            to="/definicoes"
-            className="rounded-full transition-opacity hover:opacity-80"
-            aria-label="Abrir perfil"
-          >
-            <UserAvatar user={user} perfil={perfil} className="h-9 w-9" />
-          </Link>
-
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-transparent text-muted-foreground transition-colors hover:border-border/70 hover:bg-muted/60 hover:text-foreground md:h-9 md:w-9 md:rounded-xl"
-                  aria-label="Terminar sessão"
-                >
-                  <LogOut className="h-4 w-4" strokeWidth={1.75} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Terminar sessão</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                aria-label="Abrir menu do perfil"
+              >
+                <UserAvatar user={user} perfil={perfil} className="h-9 w-9" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="min-w-0">
+                <span className="block truncate">{displayName}</span>
+                {user?.email && (
+                  <span className="mt-0.5 block truncate text-xs font-normal text-muted-foreground">
+                    {user.email}
+                  </span>
+                )}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/definicoes">
+                  <Settings />
+                  Definições e perfil
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => logout()}>
+                <LogOut />
+                Terminar sessão
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
