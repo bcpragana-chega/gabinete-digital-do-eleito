@@ -24,6 +24,7 @@ import { Route as AppAssuntosIndexRouteImport } from './routes/_app.assuntos.ind
 import { Route as AppAssembleiasIndexRouteImport } from './routes/_app.assembleias.index'
 import { Route as AppSessoesIdRouteImport } from './routes/_app.sessoes.$id'
 import { Route as AppDossiesDossieIdRouteImport } from './routes/_app.dossies.$dossieId'
+import { Route as AppDocumentosDocumentoIdRouteImport } from './routes/_app.documentos.$documentoId'
 import { Route as AppAssuntosDossieIdRouteImport } from './routes/_app.assuntos.$dossieId'
 import { Route as AppAssembleiasIdRouteImport } from './routes/_app.assembleias.$id'
 import { Route as AppAssuntosDossieIdIndexRouteImport } from './routes/_app.assuntos.$dossieId.index'
@@ -122,6 +123,12 @@ const AppDossiesDossieIdRoute = AppDossiesDossieIdRouteImport.update({
   path: '/dossies/$dossieId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDocumentosDocumentoIdRoute =
+  AppDocumentosDocumentoIdRouteImport.update({
+    id: '/documentos/$documentoId',
+    path: '/documentos/$documentoId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAssuntosDossieIdRoute = AppAssuntosDossieIdRouteImport.update({
   id: '/assuntos/$dossieId',
   path: '/assuntos/$dossieId',
@@ -269,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/historico': typeof AppHistoricoRoute
   '/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
   '/assuntos/$dossieId': typeof AppAssuntosDossieIdRouteWithChildren
+  '/documentos/$documentoId': typeof AppDocumentosDocumentoIdRoute
   '/dossies/$dossieId': typeof AppDossiesDossieIdRouteWithChildren
   '/sessoes/$id': typeof AppSessoesIdRouteWithChildren
   '/assembleias/': typeof AppAssembleiasIndexRoute
@@ -307,6 +315,7 @@ export interface FileRoutesByTo {
   '/historico': typeof AppHistoricoRoute
   '/': typeof AppIndexRoute
   '/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
+  '/documentos/$documentoId': typeof AppDocumentosDocumentoIdRoute
   '/dossies/$dossieId': typeof AppDossiesDossieIdRouteWithChildren
   '/sessoes/$id': typeof AppSessoesIdRouteWithChildren
   '/assembleias': typeof AppAssembleiasIndexRoute
@@ -348,6 +357,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
   '/_app/assuntos/$dossieId': typeof AppAssuntosDossieIdRouteWithChildren
+  '/_app/documentos/$documentoId': typeof AppDocumentosDocumentoIdRoute
   '/_app/dossies/$dossieId': typeof AppDossiesDossieIdRouteWithChildren
   '/_app/sessoes/$id': typeof AppSessoesIdRouteWithChildren
   '/_app/assembleias/': typeof AppAssembleiasIndexRoute
@@ -389,6 +399,7 @@ export interface FileRouteTypes {
     | '/historico'
     | '/assembleias/$id'
     | '/assuntos/$dossieId'
+    | '/documentos/$documentoId'
     | '/dossies/$dossieId'
     | '/sessoes/$id'
     | '/assembleias/'
@@ -427,6 +438,7 @@ export interface FileRouteTypes {
     | '/historico'
     | '/'
     | '/assembleias/$id'
+    | '/documentos/$documentoId'
     | '/dossies/$dossieId'
     | '/sessoes/$id'
     | '/assembleias'
@@ -467,6 +479,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/assembleias/$id'
     | '/_app/assuntos/$dossieId'
+    | '/_app/documentos/$documentoId'
     | '/_app/dossies/$dossieId'
     | '/_app/sessoes/$id'
     | '/_app/assembleias/'
@@ -607,6 +620,13 @@ declare module '@tanstack/react-router' {
       path: '/dossies/$dossieId'
       fullPath: '/dossies/$dossieId'
       preLoaderRoute: typeof AppDossiesDossieIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/documentos/$documentoId': {
+      id: '/_app/documentos/$documentoId'
+      path: '/documentos/$documentoId'
+      fullPath: '/documentos/$documentoId'
+      preLoaderRoute: typeof AppDocumentosDocumentoIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/assuntos/$dossieId': {
@@ -970,6 +990,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppAssembleiasIdRoute: typeof AppAssembleiasIdRouteWithChildren
   AppAssuntosDossieIdRoute: typeof AppAssuntosDossieIdRouteWithChildren
+  AppDocumentosDocumentoIdRoute: typeof AppDocumentosDocumentoIdRoute
   AppDossiesDossieIdRoute: typeof AppDossiesDossieIdRouteWithChildren
   AppSessoesIdRoute: typeof AppSessoesIdRouteWithChildren
   AppAssembleiasIndexRoute: typeof AppAssembleiasIndexRoute
@@ -987,6 +1008,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppAssembleiasIdRoute: AppAssembleiasIdRouteWithChildren,
   AppAssuntosDossieIdRoute: AppAssuntosDossieIdRouteWithChildren,
+  AppDocumentosDocumentoIdRoute: AppDocumentosDocumentoIdRoute,
   AppDossiesDossieIdRoute: AppDossiesDossieIdRouteWithChildren,
   AppSessoesIdRoute: AppSessoesIdRouteWithChildren,
   AppAssembleiasIndexRoute: AppAssembleiasIndexRoute,

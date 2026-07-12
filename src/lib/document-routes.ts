@@ -8,20 +8,10 @@ export function rotaDocumentoInstitucional(
     : `/biblioteca/documentos/${encodeURIComponent(documento.id)}`;
 }
 
-export function rotaDocumentoCriado(
-  documento: Pick<DocumentoCriado, "id" | "assuntoId" | "assembleiaId" | "pontoId">,
-) {
-  if (documento.assuntoId) {
-    return `/assuntos/${encodeURIComponent(documento.assuntoId)}/documentos/${encodeURIComponent(documento.id)}`;
-  }
+export function rotaDocumentoCriado(documento: Pick<DocumentoCriado, "id">) {
+  return hrefDocumentoCriado(documento.id);
+}
 
-  if (documento.assembleiaId && documento.pontoId) {
-    return `/sessoes/${encodeURIComponent(documento.assembleiaId)}/preparacao/pontos/${encodeURIComponent(documento.pontoId)}/rascunhos/${encodeURIComponent(documento.id)}`;
-  }
-
-  if (documento.assembleiaId) {
-    return `/sessoes/${encodeURIComponent(documento.assembleiaId)}/preparacao/documentos-a-criar/${encodeURIComponent(documento.id)}`;
-  }
-
-  return undefined;
+export function hrefDocumentoCriado(documentoId: string) {
+  return `/documentos/${encodeURIComponent(documentoId)}`;
 }

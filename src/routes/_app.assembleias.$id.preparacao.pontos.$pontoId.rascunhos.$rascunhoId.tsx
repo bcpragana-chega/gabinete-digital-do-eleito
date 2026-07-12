@@ -8,12 +8,7 @@ export const Route = createFileRoute(
 });
 
 function PreparacaoPontoRascunhoRedirect() {
-  const { id, pontoId, rascunhoId } = Route.useParams();
+  const { rascunhoId } = Route.useParams();
 
-  return (
-    <LegacyRedirect
-      to="/sessoes/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId"
-      params={{ id, pontoId, rascunhoId }}
-    />
-  );
+  return <LegacyRedirect to="/documentos/$documentoId" params={{ documentoId: rascunhoId }} />;
 }

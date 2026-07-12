@@ -6,12 +6,6 @@ export const Route = createFileRoute("/_app/dossies/$dossieId/documentos/$docume
 });
 
 function DossieDocumentoRedirect() {
-  const { dossieId, documentoId } = Route.useParams();
-
-  return (
-    <LegacyRedirect
-      to="/assuntos/$dossieId/documentos/$documentoId"
-      params={{ dossieId, documentoId }}
-    />
-  );
+  const { documentoId } = Route.useParams();
+  return <LegacyRedirect to="/documentos/$documentoId" params={{ documentoId }} />;
 }

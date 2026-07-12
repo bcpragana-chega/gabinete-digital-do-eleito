@@ -199,43 +199,8 @@ function DocumentoACriarCentralCard({
     </article>
   );
 
-  if (rascunho.assuntoId) {
-    return (
-      <Link
-        to="/assuntos/$dossieId/documentos/$documentoId"
-        params={{ dossieId: rascunho.assuntoId, documentoId: rascunho.id }}
-        className="block"
-      >
-        {content}
-      </Link>
-    );
-  }
-
-  if (!ponto) {
-    return (
-      <Link
-        to="/sessoes/$id/preparacao/documentos-a-criar/$rascunhoId"
-        params={{
-          id: assembleiaId,
-          rascunhoId: rascunho.id,
-        }}
-        className="block"
-      >
-        {content}
-      </Link>
-    );
-  }
-
   return (
-    <Link
-      to="/sessoes/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId"
-      params={{
-        id: assembleiaId,
-        pontoId: ponto.id,
-        rascunhoId: rascunho.id,
-      }}
-      className="block"
-    >
+    <Link to="/documentos/$documentoId" params={{ documentoId: rascunho.id }} className="block">
       {content}
     </Link>
   );

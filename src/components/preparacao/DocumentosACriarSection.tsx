@@ -171,28 +171,9 @@ export function DocumentosACriarSection({
               meta={`${rascunho.tipo} · ${rascunho.estado}`}
               action={
                 <Button asChild size="sm" variant="secondary">
-                  {rascunho.assuntoId ? (
-                    <Link
-                      to="/assuntos/$dossieId/documentos/$documentoId"
-                      params={{
-                        dossieId: rascunho.assuntoId,
-                        documentoId: rascunho.id,
-                      }}
-                    >
-                      Abrir
-                    </Link>
-                  ) : (
-                    <Link
-                      to="/sessoes/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId"
-                      params={{
-                        id: assembleiaId,
-                        pontoId,
-                        rascunhoId: rascunho.id,
-                      }}
-                    >
-                      Abrir
-                    </Link>
-                  )}
+                  <Link to="/documentos/$documentoId" params={{ documentoId: rascunho.id }}>
+                    Abrir
+                  </Link>
                 </Button>
               }
             >

@@ -463,25 +463,12 @@ function AssembleiaDetailPage() {
                       meta={documento.estado}
                       action={
                         <Button asChild variant="secondary" size="sm">
-                          {documento.pontoId ? (
-                            <Link
-                              to="/sessoes/$id/preparacao/pontos/$pontoId/rascunhos/$rascunhoId"
-                              params={{
-                                id,
-                                pontoId: documento.pontoId,
-                                rascunhoId: documento.id,
-                              }}
-                            >
-                              Abrir
-                            </Link>
-                          ) : (
-                            <Link
-                              to="/sessoes/$id/preparacao/documentos-a-criar/$rascunhoId"
-                              params={{ id, rascunhoId: documento.id }}
-                            >
-                              Abrir
-                            </Link>
-                          )}
+                          <Link
+                            to="/documentos/$documentoId"
+                            params={{ documentoId: documento.id }}
+                          >
+                            Abrir
+                          </Link>
                         </Button>
                       }
                     />

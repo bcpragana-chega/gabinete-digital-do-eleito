@@ -1,4 +1,5 @@
 import type { DocumentoCriado, EstadoDossie } from "@/lib/types";
+import { hrefDocumentoCriado } from "@/lib/document-routes";
 
 export type AcaoAssunto =
   | { tipo: "editar"; label: string }
@@ -112,7 +113,7 @@ export function calcularEstadoUxAssunto(input: {
       acaoPrincipal: {
         tipo: "navegar",
         label: "Abrir e rever",
-        href: `/assuntos/${input.assuntoId}/documentos/${emRevisao.id}`,
+        href: hrefDocumentoCriado(emRevisao.id),
       },
       acoesSecundarias: [{ tipo: "navegar", label: "Ver documentos", href: "#documentos-assunto" }],
       estadoResumido,
