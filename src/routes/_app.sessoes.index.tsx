@@ -2,7 +2,6 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, Clock, FileText, Landmark, ListChecks, MapPin } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
-import { CriarSessaoPorConvocatoriaDialog } from "@/components/assembleias/CriarSessaoPorConvocatoriaDialog";
 import { NovaAssembleiaDialog } from "@/components/assembleias/NovaAssembleiaDialog";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
@@ -91,8 +90,7 @@ function AssembleiasPage() {
                 Reuniões concretas para preparar documentos, pontos e estratégia.
               </p>
             </div>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <CriarSessaoPorConvocatoriaDialog />
+            <div className="w-full sm:w-auto">
               <NovaAssembleiaDialog />
             </div>
           </div>
@@ -127,12 +125,7 @@ function AssembleiasPage() {
               <EmptyState
                 title="Ainda não existem Sessões nesta vista"
                 description="As Sessões organizam documentos, pontos e estratégia do mandato. Crie uma Sessão para começar a preparação."
-                action={
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <CriarSessaoPorConvocatoriaDialog />
-                    <NovaAssembleiaDialog />
-                  </div>
-                }
+                action={<NovaAssembleiaDialog />}
               />
             ) : (
               <div className={ds.layout.gridCards}>

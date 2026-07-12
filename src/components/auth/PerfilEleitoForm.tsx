@@ -20,7 +20,6 @@ import {
   normalizarPerfilEleito,
   orgaosEleito,
   PerfilErro,
-  validarCoerenciaPerfilEleito,
   type AuthUser,
   type CargoEleito,
   type OrgaoEleito,
@@ -111,8 +110,12 @@ export function PerfilEleitoForm({
   const [nomeInstitucional, setNomeInstitucional] = useState(
     perfilNormalizado?.nomeInstitucional || nomeInicial,
   );
-  const [cargo, setCargo] = useState<CargoEleito>(perfilNormalizado?.cargo || "Outro");
-  const [orgao, setOrgao] = useState<OrgaoEleito>(perfilNormalizado?.orgao || "Outro");
+  const [cargo, setCargo] = useState<CargoEleito>(
+    perfilNormalizado?.cargo || "Membro da Assembleia Municipal",
+  );
+  const [orgao, setOrgao] = useState<OrgaoEleito>(
+    perfilNormalizado?.orgao || "Assembleia Municipal",
+  );
   const [organizacao, setOrganizacao] = useState(perfilNormalizado?.organizacao || "");
   const [territorio, setTerritorio] = useState(perfilNormalizado?.territorio || "");
   const [municipio, setMunicipio] = useState(perfilNormalizado?.municipio || "");
@@ -147,42 +150,15 @@ export function PerfilEleitoForm({
     setLogoUrl(perfilNormalizado?.logoUrl || "");
   }, [perfilNormalizado?.logoUrl]);
 
-  useEffect(() => {
-    if (!perfilNormalizado) return;
-    setCargo(perfilNormalizado.cargo);
-    setOrgao(perfilNormalizado.orgao);
-    setOrganizacao(perfilNormalizado.organizacao);
-    setTerritorio(perfilNormalizado.territorio);
-    setMunicipio(perfilNormalizado.municipio || "");
-    setFreguesia(perfilNormalizado.freguesia || "");
-    setAssinaturaInstitucional(perfilNormalizado.assinaturaInstitucional || "");
-    setLogoUrl(perfilNormalizado.logoUrl || "");
-  }, [
-    perfilNormalizado?.assinaturaInstitucional,
-    perfilNormalizado?.cargo,
-    perfilNormalizado?.freguesia,
-    perfilNormalizado?.logoUrl,
-    perfilNormalizado?.municipio,
-    perfilNormalizado?.orgao,
-    perfilNormalizado?.organizacao,
-    perfilNormalizado?.territorio,
-  ]);
-
-  const perfilEmEdicao = {
-    nomeInstitucional: nomeInstitucional.trim(),
-    cargo,
-    orgao,
-    organizacao: organizacao.trim(),
-    territorio: territorio.trim() || freguesia.trim() || municipio.trim(),
-    municipio: municipio.trim(),
-    freguesia:
-      orgao === "Assembleia Municipal" || orgao === "Câmara Municipal" ? "" : freguesia.trim(),
-    assinaturaInstitucional: assinaturaInstitucional.trim(),
-    logoUrl: logoUrl.trim(),
-    updatedAt: new Date().toISOString(),
-  } satisfies PerfilEleito;
-  const validacaoPerfil = validarCoerenciaPerfilEleito(perfilEmEdicao);
-  const podeGuardar = validacaoPerfil.valido;
+  const podeGuardar = Boolean(
+    nomeInstitucional.trim() &&
+    cargo &&
+    orgao &&
+    organizacao.trim() &&
+    (orgao === "Assembleia de Freguesia" || orgao === "Junta de Freguesia"
+      ? municipio.trim() && freguesia.trim()
+      : municipio.trim() || territorio.trim()),
+  );
   const perfilInstitucionalIncompleto =
     orgao === "Assembleia de Freguesia" || orgao === "Junta de Freguesia"
       ? Boolean(territorio.trim() && (!municipio.trim() || !freguesia.trim()))
@@ -276,11 +252,7 @@ export function PerfilEleitoForm({
         },
       });
       setCodigoErro(codigo);
-      setErro(
-        validacaoPerfil.valido
-          ? mensagensErroPerfil[codigo]
-          : validacaoPerfil.erros.join(" "),
-      );
+      setErro(mensagensErroPerfil[codigo]);
       return;
     }
 
@@ -288,7 +260,17 @@ export function PerfilEleitoForm({
     setAGuardar(true);
     setSaveState("saving");
 
-    const payload = validacaoPerfil.perfil;
+    const payload = {
+      nomeInstitucional: nomeInstitucional.trim(),
+      cargo,
+      orgao,
+      organizacao: organizacao.trim(),
+      territorio: territorio.trim() || freguesia.trim() || municipio.trim(),
+      municipio: municipio.trim(),
+      freguesia: freguesia.trim(),
+      assinaturaInstitucional: assinaturaInstitucional.trim(),
+      logoUrl: logoUrl.trim(),
+    };
     const diagnostico = await diagnosticoSupabase(user?.id);
 
     console.info("[Tribuno Perfil] Submit iniciado", {

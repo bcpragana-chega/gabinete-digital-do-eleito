@@ -100,23 +100,6 @@ export const orgaosEleito: OrgaoEleito[] = [
   "Outro",
 ];
 
-const cargosPorOrgao: Record<OrgaoEleito, CargoEleito[]> = {
-  "Assembleia de Freguesia": ["Membro da Assembleia de Freguesia", "Outro"],
-  "Junta de Freguesia": [
-    "Presidente da Junta de Freguesia",
-    "Secretário da Junta de Freguesia",
-    "Tesoureiro da Junta de Freguesia",
-    "Outro",
-  ],
-  "Assembleia Municipal": ["Membro da Assembleia Municipal", "Deputado Municipal", "Outro"],
-  "Câmara Municipal": ["Vereador", "Outro"],
-  Outro: ["Outro"],
-};
-
-export type PerfilValidacaoResultado =
-  | { valido: true; perfil: PerfilEleito }
-  | { valido: false; erros: string[] };
-
 function textoSeguro(valor: unknown) {
   return typeof valor === "string" ? valor.trim() : "";
 }
@@ -151,51 +134,6 @@ export function normalizarPerfilEleito(perfil?: Partial<PerfilEleito> | null) {
     logoUrl: logoUrl || undefined,
     updatedAt: textoSeguro(perfil.updatedAt) || new Date().toISOString(),
   } satisfies PerfilEleito;
-}
-
-export function validarCoerenciaPerfilEleito(
-  perfil?: Partial<PerfilEleito> | null,
-): PerfilValidacaoResultado {
-  const perfilNormalizado = normalizarPerfilEleito(perfil);
-  const erros: string[] = [];
-
-  if (!perfilNormalizado) {
-    return { valido: false, erros: ["Perfil inválido."] };
-  }
-
-  if (!perfilNormalizado.nomeInstitucional) erros.push("Nome institucional em falta.");
-  if (!perfilNormalizado.organizacao) erros.push("Organização em falta.");
-
-  const cargosPermitidosNoOrgao = cargosPorOrgao[perfilNormalizado.orgao] ?? [];
-  if (!cargosPermitidosNoOrgao.includes(perfilNormalizado.cargo)) {
-    erros.push("Cargo incompatível com o órgão selecionado.");
-  }
-
-  const orgaoFreguesia =
-    perfilNormalizado.orgao === "Assembleia de Freguesia" ||
-    perfilNormalizado.orgao === "Junta de Freguesia";
-  const orgaoMunicipal =
-    perfilNormalizado.orgao === "Assembleia Municipal" ||
-    perfilNormalizado.orgao === "Câmara Municipal";
-
-  if (orgaoFreguesia) {
-    if (!perfilNormalizado.municipio) erros.push("Município obrigatório para órgãos de freguesia.");
-    if (!perfilNormalizado.freguesia) erros.push("Freguesia obrigatória para órgãos de freguesia.");
-  }
-
-  if (orgaoMunicipal) {
-    if (!perfilNormalizado.municipio) erros.push("Município obrigatório para órgãos municipais.");
-    if (perfilNormalizado.freguesia) {
-      erros.push("Órgãos municipais não devem ter freguesia institucional definida.");
-    }
-  }
-
-  if (perfilNormalizado.orgao === "Outro") {
-    erros.push("Selecione um órgão institucional válido.");
-  }
-
-  if (erros.length > 0) return { valido: false, erros };
-  return { valido: true, perfil: perfilNormalizado };
 }
 
 function isBrowser() {
@@ -245,28 +183,6 @@ function normalizarAuthState(state: AuthState): AuthState {
 function obterPerfilDoUser(state: AuthState, user = state.user) {
   if (!user?.id) return undefined;
   return normalizarPerfilEleito(lerPerfilDoStorage(user.id) ?? state.perfisPorUserId?.[user.id]);
-}
-
-function atualizarPerfilPersistido(state: AuthState, userId: string, perfil: PerfilEleito) {
-  return {
-    ...state,
-    perfil,
-    perfisPorUserId: {
-      ...perfisPorUserIdSeguro(state.perfisPorUserId),
-      [userId]: perfil,
-    },
-  };
-}
-
-function limparPerfilPersistido(state: AuthState, userId?: string): AuthState {
-  if (!userId) return { ...state, perfil: undefined };
-  const perfisPorUserId = { ...perfisPorUserIdSeguro(state.perfisPorUserId) };
-  delete perfisPorUserId[userId];
-  return {
-    ...state,
-    perfil: undefined,
-    perfisPorUserId,
-  };
 }
 
 function guardarAuthState(state: AuthState) {
@@ -335,16 +251,11 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
     }
   }
 
-  const stateComUser = { ...state, user: userAutenticado };
-  const nextState =
-    perfilRemoto && userAutenticado.id
-      ? atualizarPerfilPersistido(stateComUser, userAutenticado.id, perfilRemoto)
-      : isSupabaseConfigured()
-        ? limparPerfilPersistido(stateComUser, userAutenticado.id)
-        : {
-            ...stateComUser,
-            perfil: obterPerfilDoUser(state, userAutenticado),
-          };
+  const nextState = {
+    ...state,
+    user: userAutenticado,
+    perfil: perfilRemoto ?? obterPerfilDoUser(state, userAutenticado),
+  };
   guardarAuthState(nextState);
   console.info("[Tribuno Auth] Sessão local guardada", {
     userId: nextState.user?.id,
@@ -358,41 +269,47 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
 export async function guardarPerfilEleito(perfil: Omit<PerfilEleito, "updatedAt">) {
   const state = lerAuthState();
   const userId = state.user?.id;
-  const perfilValidado = validarCoerenciaPerfilEleito({
+  const perfilAtualizado = normalizarPerfilEleito({
     ...perfil,
     updatedAt: new Date().toISOString(),
   });
 
-  if (!perfilValidado.valido) {
-    throw new PerfilErro("ERRO_PERFIL_VALIDACAO", perfilValidado.erros.join(" "));
-  }
-
-  if (!userId) {
-    throw new PerfilErro("ERRO_PERFIL_SUPABASE", "Sem utilizador autenticado para guardar perfil.");
-  }
-
-  let perfilPersistido: PerfilEleito;
-  try {
-    perfilPersistido = await guardarPerfilHibrido(userId, perfilValidado.perfil);
-  } catch (error) {
-    throw new PerfilErro(
-      "ERRO_PERFIL_SUPABASE",
-      "Não foi possível confirmar a gravação do perfil no Supabase.",
-      error,
-    );
+  if (!perfilAtualizado) {
+    throw new PerfilErro("ERRO_PERFIL_VALIDACAO", "Perfil inválido.");
   }
 
   try {
-    guardarAuthState(atualizarPerfilPersistido(state, userId, perfilPersistido));
+    guardarAuthState({
+      ...state,
+      perfil: perfilAtualizado,
+      perfisPorUserId: userId
+        ? {
+            ...perfisPorUserIdSeguro(state.perfisPorUserId),
+            [userId]: perfilAtualizado,
+          }
+        : state.perfisPorUserId,
+    });
   } catch (error) {
     throw new PerfilErro(
       "ERRO_PERFIL_LOCAL",
-      "Perfil guardado no Supabase, mas não foi possível atualizar o estado local.",
+      "Não foi possível guardar o perfil localmente.",
       error,
     );
   }
 
-  return perfilPersistido;
+  if (userId) {
+    try {
+      await guardarPerfilHibrido(userId, perfilAtualizado);
+    } catch (error) {
+      throw new PerfilErro(
+        "ERRO_PERFIL_SUPABASE",
+        "Não foi possível sincronizar o perfil remotamente.",
+        error,
+      );
+    }
+  }
+
+  return perfilAtualizado;
 }
 
 export async function concluirOnboarding(version = 1) {
@@ -488,7 +405,7 @@ export function useAuth() {
         perfilCompleto: perfilCompleto(perfilAtual),
       });
 
-      if (!userId) return stateAtual;
+      if (!userId || perfilCompleto(perfilAtual)) return stateAtual;
 
       const perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userId));
       console.info("[Tribuno Auth] Perfil carregado durante inicialização", {
@@ -496,17 +413,16 @@ export function useAuth() {
         perfilCarregado: Boolean(perfilRemoto),
         perfilCompleto: perfilCompleto(perfilRemoto),
       });
-      if (!perfilRemoto) {
-        if (isSupabaseConfigured()) {
-          const nextState = limparPerfilPersistido(stateAtual, userId);
-          guardarAuthState(nextState);
-          return nextState;
-        }
-        if (!perfilCompleto(perfilAtual)) return stateAtual;
-        return stateAtual;
-      }
+      if (!perfilRemoto) return stateAtual;
 
-      const nextState = atualizarPerfilPersistido(stateAtual, userId, perfilRemoto);
+      const nextState = {
+        ...stateAtual,
+        perfil: perfilRemoto,
+        perfisPorUserId: {
+          ...stateAtual.perfisPorUserId,
+          [userId]: perfilRemoto,
+        },
+      };
 
       guardarAuthState(nextState);
       return nextState;
@@ -565,12 +481,7 @@ export function useAuth() {
           error,
         });
         if (!cancelled && currentUpdateId === updateId) {
-          const stateAtual = lerAuthState();
-          setState(
-            isSupabaseConfigured()
-              ? limparPerfilPersistido(stateAtual, stateAtual.user?.id)
-              : stateAtual,
-          );
+          setState(lerAuthState());
           setOnboardingVersion(undefined);
           setOnboardingResolved(true);
         }

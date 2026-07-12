@@ -119,10 +119,7 @@ export interface NovoDocumentoInput {
   ficheiroNome?: string;
   ficheiroTipo?: string;
   ficheiroTamanho?: number;
-  textoExtraido?: string;
-  resumo?: string;
   notas?: string;
-  tags?: string[];
 }
 
 function criarDocumento(input: NovoDocumentoInput, id = crypto.randomUUID()): Documento {

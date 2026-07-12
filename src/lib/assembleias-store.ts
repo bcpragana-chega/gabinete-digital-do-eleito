@@ -13,13 +13,10 @@ const EVENT_NAME = "tribuno:assembleias";
 
 type NovaAssembleiaInput = {
   nome: string;
-  tipo?: string;
-  orgao?: string;
   data: string;
   hora: string;
   local: string;
   estado: EstadoAssembleia;
-  notas?: string;
 };
 
 type EditarAssembleiaInput = NovaAssembleiaInput;
@@ -77,13 +74,10 @@ export function adicionarAssembleia(input: NovaAssembleiaInput): Assembleia {
   const nova: Assembleia = {
     id: `asm-${crypto.randomUUID()}`,
     nome: input.nome,
-    tipo: input.tipo,
-    orgao: input.orgao,
     data: input.data,
     hora: input.hora,
     local: input.local,
     estado: input.estado,
-    notas: input.notas,
     createdAt: agora,
     updatedAt: agora,
   };
@@ -103,13 +97,10 @@ export function editarAssembleia(id: string, input: EditarAssembleiaInput): Asse
       ? {
           ...assembleia,
           nome: input.nome,
-          tipo: input.tipo,
-          orgao: input.orgao,
           data: input.data,
           hora: input.hora,
           local: input.local,
           estado: input.estado,
-          notas: input.notas,
           updatedAt: new Date().toISOString(),
         }
       : assembleia,

@@ -235,35 +235,28 @@ export async function guardarPerfilRemoto(userId: string, perfil: PerfilEleito) 
 
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) {
-    console.warn("[Tribuno Perfil] Gravação remota bloqueada: sem auth.uid válido.", {
+    console.info("[Tribuno Perfil] Gravação remota ignorada: sem auth.uid válido.", {
       userId,
     });
-    throw new Error("PROFILE_REMOTE_AUTH_MISSING");
+    return;
   }
 
   const supabase = getSupabaseClient();
-  if (!supabase) throw new Error("PROFILE_SUPABASE_CLIENT_MISSING");
+  if (!supabase) return;
 
-  const { data, error } = await withSupabaseTimeout(
-    supabase
-      .from("profiles")
-      .upsert(toRow(supabaseUserId, perfil), {
-        onConflict: "user_id",
-      })
-      .select("*")
-      .single<ProfileRow>(),
+  const { error } = await withSupabaseTimeout(
+    supabase.from("profiles").upsert(toRow(supabaseUserId, perfil), {
+      onConflict: "user_id",
+    }),
     "PROFILE_UPSERT",
   );
 
   if (error) throw error;
-  if (!data) throw new Error("PROFILE_UPSERT_EMPTY_RESPONSE");
 
   console.info("[Tribuno Perfil] Guardar perfil remoto concluído", {
     userId,
     supabaseUserId,
   });
-
-  return fromRow(data);
 }
 
 function extensaoLogo(file: File) {
@@ -365,24 +358,30 @@ export async function carregarPerfilHibrido(userId?: string) {
   if (!userId) return undefined;
 
   if (isSupabaseConfigured()) {
-    const remoto = await carregarPerfilRemoto(userId);
-    if (remoto) {
-      guardarPerfilLocal(userId, remoto);
-      return remoto;
+    try {
+      const remoto = await carregarPerfilRemoto(userId);
+      if (remoto) {
+        guardarPerfilLocal(userId, remoto);
+        return remoto;
+      }
+    } catch (error) {
+      console.warn("[Tribuno] Não foi possível carregar perfil remoto.", error);
     }
-    return undefined;
   }
 
   return carregarPerfilLocal(userId);
 }
 
 export async function guardarPerfilHibrido(userId: string, perfil: PerfilEleito) {
-  if (!isSupabaseConfigured()) {
-    guardarPerfilLocal(userId, perfil);
-    return perfil;
+  guardarPerfilLocal(userId, perfil);
+
+  if (!isSupabaseConfigured()) return perfil;
+
+  try {
+    await guardarPerfilRemoto(userId, perfil);
+  } catch (error) {
+    console.warn("[Tribuno] Perfil guardado localmente, mas falhou no Supabase.", error);
   }
 
-  const perfilRemoto = await guardarPerfilRemoto(userId, perfil);
-  guardarPerfilLocal(userId, perfilRemoto);
-  return perfilRemoto;
+  return perfil;
 }
