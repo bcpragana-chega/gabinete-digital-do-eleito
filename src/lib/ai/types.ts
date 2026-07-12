@@ -1,5 +1,6 @@
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 import type { BaseJuridicaInstitucional } from "@/lib/ai/legal-basis";
+import type { ResolvedInstitutionalContext } from "@/lib/ai/institutional-context";
 
 export type JsonSerializable =
   | string
@@ -32,6 +33,8 @@ export type PerfilInstitucionalContexto = {
   orgao: string;
   organizacao: string;
   territorio?: string;
+  municipio?: string;
+  freguesia?: string;
   partido?: string;
   assinatura?: string;
 };
@@ -87,6 +90,7 @@ export type ContextoGeracaoDocumento = {
   assunto: AssuntoContexto;
   sessao?: SessaoContexto;
   baseJuridica: BaseJuridicaInstitucional;
+  institutionalContext: ResolvedInstitutionalContext;
   documentosRelacionados: DocumentoRelacionadoContexto[];
   anexosTextuais: AnexoTextualContexto[];
 };

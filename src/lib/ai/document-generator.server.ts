@@ -6,6 +6,8 @@ import { construirPromptDocumento } from "@/lib/ai/prompts/documents";
 import { obterPromptSistemaTribuno } from "@/lib/ai/prompts/system";
 import { obterFeatureGeracaoDocumento, type EstadoUsoAi } from "@/lib/ai/usage";
 import { registrarUsoAi } from "@/lib/ai/usage.server";
+import { INSTITUTIONAL_CONTEXT_VERSION } from "@/lib/ai/institutional-context";
+import { LEGAL_BASIS_VERSION } from "@/lib/ai/legal-basis";
 import type {
   DocumentoCriadoSerializavel,
   JsonSerializable,
@@ -207,6 +209,30 @@ function normalizarErro(error: unknown): { code: string; message: string } {
       };
     }
 
+    if (error.message.includes("LEGAL_BASIS_INVALID")) {
+      return {
+        code: "LEGAL_BASIS_INVALID",
+        message:
+          "Não foi possível validar o enquadramento jurídico deste documento. Reveja os dados institucionais.",
+      };
+    }
+
+    if (error.message.includes("INSTITUTIONAL_CONTEXT_INVALID")) {
+      return {
+        code: "INSTITUTIONAL_CONTEXT_INVALID",
+        message:
+          "Não foi possível validar o contexto institucional deste documento. Reveja os dados institucionais.",
+      };
+    }
+
+    if (error.message.includes("INSTITUTIONAL_PROFILE_INCOMPLETE")) {
+      return {
+        code: "INSTITUTIONAL_PROFILE_INCOMPLETE",
+        message:
+          "Complete o seu perfil institucional antes de gerar documentos oficiais. Confirme o município e, quando aplicável, a freguesia.",
+      };
+    }
+
     return {
       code: error.name || "AI_GENERATION_ERROR",
       message: error.message || "Não foi possível gerar o documento neste momento.",
@@ -397,6 +423,20 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
 
     try {
       contextoGeracao = await construirContextoGeracaoDocumento(data);
+      if (!contextoGeracao.baseJuridica.valido) {
+        throw new Error("LEGAL_BASIS_INVALID");
+      }
+      if (!contextoGeracao.institutionalContext.validation.valid) {
+        if (
+          contextoGeracao.institutionalContext.validation.errors.some(
+            (erro) => erro.code === "INSTITUTIONAL_PROFILE_INCOMPLETE",
+          )
+        ) {
+          throw new Error("INSTITUTIONAL_PROFILE_INCOMPLETE");
+        }
+        throw new Error("INSTITUTIONAL_CONTEXT_INVALID");
+      }
+
       const provider = criarAiProvider();
       const systemPrompt = obterPromptSistemaTribuno();
       const userPrompt = construirPromptDocumento(contextoGeracao);
@@ -432,7 +472,19 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
               tipoDocumental: contextoGeracao.baseJuridica.tipoDocumental,
               orgaoApresentacao: contextoGeracao.baseJuridica.orgaoApresentacao,
               destinatario: contextoGeracao.baseJuridica.destinatario,
+              artigosAplicaveis: contextoGeracao.baseJuridica.artigosAplicaveis.map((artigo) => ({
+                diploma: artigo.diploma,
+                artigo: artigo.artigo,
+                numero: artigo.numero,
+                alinea: artigo.alinea,
+                finalidade: artigo.finalidade,
+              })),
+              nivelConfianca: contextoGeracao.baseJuridica.nivelConfianca,
             },
+            contextoInstitucional: contextoGeracao.institutionalContext,
+            institutionalContext: contextoGeracao.institutionalContext,
+            institutionalContextVersion: INSTITUTIONAL_CONTEXT_VERSION,
+            legalBasisVersion: LEGAL_BASIS_VERSION,
           },
         });
         registrarUso("success");

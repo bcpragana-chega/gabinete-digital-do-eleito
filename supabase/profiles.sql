@@ -5,6 +5,8 @@ create table if not exists public.profiles (
   orgao text not null,
   organizacao text not null,
   territorio text not null,
+  municipio text,
+  freguesia text,
   assinatura_institucional text,
   logo_url text,
   onboarding_version integer not null default 0,
@@ -12,7 +14,9 @@ create table if not exists public.profiles (
 );
 
 alter table public.profiles
-  add column if not exists logo_url text;
+  add column if not exists logo_url text,
+  add column if not exists municipio text,
+  add column if not exists freguesia text;
 
 alter table public.profiles enable row level security;
 

@@ -59,6 +59,8 @@ function payloadSeguro(perfil: Omit<PerfilEleito, "updatedAt">) {
     orgao: perfil.orgao,
     organizacaoLength: tamanhoTexto(perfil.organizacao),
     territorioLength: tamanhoTexto(perfil.territorio),
+    municipioLength: tamanhoTexto(perfil.municipio ?? ""),
+    freguesiaLength: tamanhoTexto(perfil.freguesia ?? ""),
     temAssinaturaInstitucional: Boolean(perfil.assinaturaInstitucional?.trim()),
     temLogo: Boolean(perfil.logoUrl?.trim()),
   };
@@ -116,6 +118,8 @@ export function PerfilEleitoForm({
   );
   const [organizacao, setOrganizacao] = useState(perfilNormalizado?.organizacao || "");
   const [territorio, setTerritorio] = useState(perfilNormalizado?.territorio || "");
+  const [municipio, setMunicipio] = useState(perfilNormalizado?.municipio || "");
+  const [freguesia, setFreguesia] = useState(perfilNormalizado?.freguesia || "");
   const [assinaturaInstitucional, setAssinaturaInstitucional] = useState(
     perfilNormalizado?.assinaturaInstitucional || "",
   );
@@ -147,8 +151,18 @@ export function PerfilEleitoForm({
   }, [perfilNormalizado?.logoUrl]);
 
   const podeGuardar = Boolean(
-    nomeInstitucional.trim() && cargo && orgao && organizacao.trim() && territorio.trim(),
+    nomeInstitucional.trim() &&
+    cargo &&
+    orgao &&
+    organizacao.trim() &&
+    (orgao === "Assembleia de Freguesia" || orgao === "Junta de Freguesia"
+      ? municipio.trim() && freguesia.trim()
+      : municipio.trim() || territorio.trim()),
   );
+  const perfilInstitucionalIncompleto =
+    orgao === "Assembleia de Freguesia" || orgao === "Junta de Freguesia"
+      ? Boolean(territorio.trim() && (!municipio.trim() || !freguesia.trim()))
+      : Boolean(territorio.trim() && !municipio.trim());
 
   function limparErro() {
     setErro("");
@@ -233,6 +247,8 @@ export function PerfilEleitoForm({
           temOrgao: Boolean(orgao),
           organizacaoLength: organizacao.length,
           territorioLength: territorio.length,
+          municipioLength: municipio.length,
+          freguesiaLength: freguesia.length,
         },
       });
       setCodigoErro(codigo);
@@ -249,7 +265,9 @@ export function PerfilEleitoForm({
       cargo,
       orgao,
       organizacao: organizacao.trim(),
-      territorio: territorio.trim(),
+      territorio: territorio.trim() || freguesia.trim() || municipio.trim(),
+      municipio: municipio.trim(),
+      freguesia: freguesia.trim(),
       assinaturaInstitucional: assinaturaInstitucional.trim(),
       logoUrl: logoUrl.trim(),
     };
@@ -333,6 +351,13 @@ export function PerfilEleitoForm({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        {perfilInstitucionalIncompleto && (
+          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 sm:col-span-2">
+            Complete o seu perfil institucional antes de gerar documentos oficiais. Confirme o
+            município e, quando aplicável, a freguesia.
+          </div>
+        )}
+
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="perfil-nome">Nome público/institucional</Label>
           <Input
@@ -400,12 +425,32 @@ export function PerfilEleitoForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="perfil-territorio">Freguesia/concelho</Label>
+          <Label htmlFor="perfil-municipio">Município</Label>
+          <Input
+            id="perfil-municipio"
+            value={municipio}
+            onChange={(event) => alterarTexto("municipio", event.target.value, setMunicipio)}
+            placeholder="Ex: Lagoa"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="perfil-freguesia">Freguesia</Label>
+          <Input
+            id="perfil-freguesia"
+            value={freguesia}
+            onChange={(event) => alterarTexto("freguesia", event.target.value, setFreguesia)}
+            placeholder="Ex: Porches"
+          />
+        </div>
+
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="perfil-territorio">Território legado</Label>
           <Input
             id="perfil-territorio"
             value={territorio}
             onChange={(event) => alterarTexto("territorio", event.target.value, setTerritorio)}
-            placeholder="Ex: Aveiro"
+            placeholder="Mantido por compatibilidade"
           />
         </div>
 

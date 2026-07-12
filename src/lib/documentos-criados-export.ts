@@ -1,4 +1,10 @@
 import { obterAuthState } from "@/lib/auth-store";
+import { construirBaseJuridicaInstitucional } from "@/lib/ai/legal-basis";
+import {
+  resolveStoredInstitutionalContext,
+  type ResolvedInstitutionalContext,
+} from "@/lib/ai/institutional-context";
+import type { PerfilInstitucionalContexto } from "@/lib/ai/types";
 import {
   criarHtmlDocumentoInstitucional,
   escaparHtml,
@@ -31,6 +37,8 @@ const margemFundo = 128;
 const larguraTexto = larguraA4 - margemX * 2;
 export const mensagemLogoObrigatorio =
   "Para gerar documentos oficiais, adicione primeiro o logótipo institucional no seu perfil.";
+export const mensagemContextoInstitucionalObrigatorio =
+  "Complete o seu perfil institucional antes de gerar documentos oficiais. Confirme o município e, quando aplicável, a freguesia.";
 const titulosRaciocinioInterno = new Set([
   "FACTOS",
   "PROBLEMA",
@@ -88,6 +96,9 @@ function obterCabecalhoInstitucional(
   const { perfil } = obterAuthState();
   const perfilContexto = contexto?.perfil ?? perfil;
   const orgao =
+    normalizarMarcaInstitucional(
+      contexto?.institutionalContext?.institution.deliberativeBody.officialName,
+    ) ||
     normalizarMarcaInstitucional(contexto?.assembleia?.orgao) ||
     normalizarMarcaInstitucional(perfilContexto?.orgao) ||
     normalizarMarcaInstitucional(nomeOrgaoFallback) ||
@@ -101,6 +112,77 @@ function obterCabecalhoInstitucional(
         ? organizacao
         : undefined,
   };
+}
+
+function contextoInstitucionalDoDocumento(
+  documento: DocumentoCriado,
+): ResolvedInstitutionalContext | undefined {
+  const metadata = documento.iaMetadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return undefined;
+  const record = metadata as Record<string, unknown>;
+  const candidato = record.institutionalContext ?? record.contextoInstitucional;
+  if (!candidato || typeof candidato !== "object" || Array.isArray(candidato)) return undefined;
+  return candidato as ResolvedInstitutionalContext;
+}
+
+function perfilParaContexto(): PerfilInstitucionalContexto | undefined {
+  const { perfil } = obterAuthState();
+  if (!perfil) return undefined;
+  return {
+    nome: perfil.nomeInstitucional,
+    cargo: perfil.cargo,
+    orgao: perfil.orgao,
+    organizacao: perfil.organizacao,
+    territorio: perfil.territorio,
+    municipio: perfil.municipio,
+    freguesia: perfil.freguesia,
+    assinatura: perfil.assinaturaInstitucional,
+  };
+}
+
+function perfilContextoDocumento(
+  contexto?: ContextoDocumentoInstitucional,
+): PerfilInstitucionalContexto | undefined {
+  if (!contexto?.perfil) return perfilParaContexto();
+  return {
+    nome: contexto.perfil.nomeInstitucional,
+    cargo: contexto.perfil.cargo,
+    orgao: contexto.perfil.orgao,
+    organizacao: contexto.perfil.organizacao,
+    territorio: contexto.perfil.territorio,
+    municipio: contexto.perfil.municipio,
+    freguesia: contexto.perfil.freguesia,
+    assinatura: contexto.perfil.assinaturaInstitucional,
+  };
+}
+
+function resolverContextoExportacao(
+  documento: DocumentoCriado,
+  contexto?: ContextoDocumentoInstitucional,
+) {
+  const perfil = perfilContextoDocumento(contexto);
+  const baseJuridica = perfil
+    ? construirBaseJuridicaInstitucional({
+        perfil,
+        tipoDocumental: documento.tipo,
+      })
+    : undefined;
+
+  return resolveStoredInstitutionalContext({
+    documento,
+    perfil,
+    baseJuridica,
+  });
+}
+
+function contextoComSnapshot(
+  documento: DocumentoCriado,
+  contexto?: ContextoDocumentoInstitucional,
+): ContextoDocumentoInstitucional | undefined {
+  const institutionalContext =
+    contexto?.institutionalContext ?? contextoInstitucionalDoDocumento(documento);
+  if (!institutionalContext) return contexto;
+  return { ...contexto, institutionalContext };
 }
 
 function obterAssinaturaUnica(contexto?: ContextoDocumentoInstitucional) {
@@ -215,12 +297,23 @@ export function exportarDocumentoCriadoPDF(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ) {
-  if (!perfilTemLogoInstitucional(contexto)) {
+  const contextoFinal = contextoComSnapshot(documento, contexto);
+  const contextoExportacao = resolverContextoExportacao(documento, contextoFinal);
+  if (contextoExportacao.status === "UNRESOLVED") {
+    window.dispatchEvent(new CustomEvent("tribuno:contexto-institucional-obrigatorio"));
+    return false;
+  }
+  const contextoResolvido = {
+    ...contextoFinal,
+    institutionalContext: contextoExportacao.context,
+  };
+
+  if (!perfilTemLogoInstitucional(contextoResolvido)) {
     window.dispatchEvent(new CustomEvent("tribuno:logo-institucional-obrigatorio"));
     return false;
   }
 
-  void gerarEDescarregarPdf(documento, contexto);
+  void gerarEDescarregarPdf(documento, contextoResolvido);
   return true;
 }
 
@@ -231,8 +324,8 @@ export function exportarDocumentoCriadoWord(
   contexto?: ContextoDocumentoInstitucional,
 ) {
   const html = isTipoDocumentoInstitucional(documento.tipo)
-    ? criarHtmlDocumentoInstitucional(documento, contexto)
-    : criarHtmlDocumentoGenerico(documento, contexto);
+    ? criarHtmlDocumentoInstitucional(documento, contextoComSnapshot(documento, contexto))
+    : criarHtmlDocumentoGenerico(documento, contextoComSnapshot(documento, contexto));
   const blob = new Blob(["\ufeff", html], {
     type: "application/msword;charset=utf-8",
   });

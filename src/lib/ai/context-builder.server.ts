@@ -8,6 +8,7 @@ import type {
   SessaoContexto,
 } from "@/lib/ai/types";
 import { construirBaseJuridicaInstitucional } from "@/lib/ai/legal-basis";
+import { resolveInstitutionalContext } from "@/lib/ai/institutional-context";
 
 type ProfileRow = {
   nome_institucional: string | null;
@@ -15,6 +16,8 @@ type ProfileRow = {
   orgao: string | null;
   organizacao: string | null;
   territorio: string | null;
+  municipio: string | null;
+  freguesia: string | null;
   assinatura_institucional: string | null;
 };
 
@@ -125,6 +128,8 @@ function construirPerfil(row?: ProfileRow): PerfilInstitucionalContexto {
     orgao: row?.orgao?.trim() || "Órgão não indicado",
     organizacao: row?.organizacao?.trim() || "Organização não indicada",
     territorio: row?.territorio?.trim() || undefined,
+    municipio: row?.municipio?.trim() || undefined,
+    freguesia: row?.freguesia?.trim() || undefined,
     assinatura: row?.assinatura_institucional?.trim() || undefined,
     partido: undefined,
   };
@@ -205,7 +210,8 @@ export async function construirContextoGeracaoDocumento(
 
   const [profiles, assuntos, documentosCriadosAssunto, documentosAssunto] = await Promise.all([
     supabaseSelect<ProfileRow>("profiles", {
-      select: "nome_institucional,cargo,orgao,organizacao,territorio,assinatura_institucional",
+      select:
+        "nome_institucional,cargo,orgao,organizacao,territorio,municipio,freguesia,assinatura_institucional",
       user_id: `eq.${userId}`,
       limit: "1",
     }),
@@ -261,6 +267,18 @@ export async function construirContextoGeracaoDocumento(
 
   const perfil = construirPerfil(profiles[0]);
   const sessao = construirSessao(assembleias[0]);
+  const baseJuridica = construirBaseJuridicaInstitucional({
+    perfil,
+    sessao,
+    tipoDocumental: input.tipo,
+  });
+  const institutionalContext = resolveInstitutionalContext({
+    electedOfficialId: userId,
+    perfil,
+    sessao,
+    tipoDocumental: input.tipo,
+    baseJuridica,
+  });
 
   return {
     entrada: {
@@ -276,11 +294,8 @@ export async function construirContextoGeracaoDocumento(
     perfil,
     assunto: construirAssunto(assunto, input),
     sessao,
-    baseJuridica: construirBaseJuridicaInstitucional({
-      perfil,
-      sessao,
-      tipoDocumental: input.tipo,
-    }),
+    baseJuridica,
+    institutionalContext,
     documentosRelacionados: mapearDocumentosRelacionados(documentosCriadosAssunto),
     anexosTextuais: mapearAnexos(anexos),
   };

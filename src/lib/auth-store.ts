@@ -47,6 +47,8 @@ export type PerfilEleito = {
   orgao: OrgaoEleito;
   organizacao: string;
   territorio: string;
+  municipio?: string;
+  freguesia?: string;
   assinaturaInstitucional?: string;
   logoUrl?: string;
   updatedAt: string;
@@ -126,6 +128,8 @@ export function normalizarPerfilEleito(perfil?: Partial<PerfilEleito> | null) {
     orgao: orgaoSeguro(perfil.orgao),
     organizacao: textoSeguro(perfil.organizacao),
     territorio: textoSeguro(perfil.territorio),
+    municipio: textoSeguro(perfil.municipio) || undefined,
+    freguesia: textoSeguro(perfil.freguesia) || undefined,
     assinaturaInstitucional: assinaturaInstitucional || undefined,
     logoUrl: logoUrl || undefined,
     updatedAt: textoSeguro(perfil.updatedAt) || new Date().toISOString(),
@@ -337,13 +341,18 @@ export function logout() {
 
 export function perfilCompleto(perfil?: PerfilEleito) {
   const perfilNormalizado = normalizarPerfilEleito(perfil);
+  const dadosTerritoriaisCompletos =
+    perfilNormalizado?.orgao === "Assembleia de Freguesia" ||
+    perfilNormalizado?.orgao === "Junta de Freguesia"
+      ? Boolean(perfilNormalizado.municipio && perfilNormalizado.freguesia)
+      : Boolean(perfilNormalizado?.municipio || perfilNormalizado?.territorio);
 
   return Boolean(
     perfilNormalizado?.nomeInstitucional &&
     perfilNormalizado.cargo &&
     perfilNormalizado.orgao &&
     perfilNormalizado.organizacao &&
-    perfilNormalizado.territorio,
+    dadosTerritoriaisCompletos,
   );
 }
 

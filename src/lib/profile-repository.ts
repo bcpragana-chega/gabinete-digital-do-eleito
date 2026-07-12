@@ -9,6 +9,8 @@ type ProfileRow = {
   orgao: PerfilEleito["orgao"] | null;
   organizacao: string | null;
   territorio: string | null;
+  municipio: string | null;
+  freguesia: string | null;
   assinatura_institucional: string | null;
   logo_url: string | null;
   onboarding_version?: number | null;
@@ -67,6 +69,8 @@ function fromRow(row: ProfileRow): PerfilEleito {
     orgao: orgaoSeguro(row.orgao),
     organizacao: textoSeguro(row.organizacao),
     territorio: textoSeguro(row.territorio),
+    municipio: textoSeguro(row.municipio) || undefined,
+    freguesia: textoSeguro(row.freguesia) || undefined,
     assinaturaInstitucional: assinaturaInstitucional || undefined,
     logoUrl: textoSeguro(row.logo_url) || undefined,
     updatedAt: textoSeguro(row.updated_at) || new Date().toISOString(),
@@ -81,6 +85,8 @@ function toRow(userId: string, perfil: PerfilEleito): ProfileRow {
     orgao: orgaoSeguro(perfil.orgao),
     organizacao: textoSeguro(perfil.organizacao),
     territorio: textoSeguro(perfil.territorio),
+    municipio: textoSeguro(perfil.municipio) || null,
+    freguesia: textoSeguro(perfil.freguesia) || null,
     assinatura_institucional: textoSeguro(perfil.assinaturaInstitucional) || null,
     logo_url: textoSeguro(perfil.logoUrl) || null,
     updated_at: textoSeguro(perfil.updatedAt) || new Date().toISOString(),
@@ -220,6 +226,8 @@ export async function guardarPerfilRemoto(userId: string, perfil: PerfilEleito) 
       orgao: perfil.orgao,
       organizacaoLength: perfil.organizacao.length,
       territorioLength: perfil.territorio.length,
+      municipioLength: textoSeguro(perfil.municipio).length,
+      freguesiaLength: textoSeguro(perfil.freguesia).length,
       temAssinaturaInstitucional: Boolean(perfil.assinaturaInstitucional),
       temLogo: Boolean(perfil.logoUrl),
     },

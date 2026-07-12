@@ -1,4 +1,5 @@
 import { obterAuthState, type PerfilEleito } from "@/lib/auth-store";
+import type { ResolvedInstitutionalContext } from "@/lib/ai/institutional-context";
 import type { Assembleia, DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
 export type TipoDocumentoInstitucional = Extract<
@@ -12,6 +13,7 @@ export type ContextoDocumentoInstitucional = {
   assunto?: string;
   ponto?: string;
   perfil?: PerfilEleito;
+  institutionalContext?: ResolvedInstitutionalContext;
   nomeEleito?: string;
   grupoPolitico?: string;
 };
@@ -198,7 +200,9 @@ export function obterDadosInstitucionais(
   const auth = obterAuthState();
   const perfil = contexto?.perfil ?? auth.perfil;
   const user = auth.user;
-  const nomeOrgao = obterNomeOrgao(perfil, contexto?.assembleia);
+  const nomeOrgao =
+    textoSeguro(contexto?.institutionalContext?.institution.deliberativeBody.officialName) ||
+    obterNomeOrgao(perfil, contexto?.assembleia);
 
   return {
     nomeOrgao,
@@ -208,13 +212,21 @@ export function obterDadosInstitucionais(
       textoSeguro(perfil?.nomeInstitucional) ||
       textoSeguro(user?.nome) ||
       "Nome do eleito",
-    cargo: textoSeguro(perfil?.cargo) || "Cargo",
+    cargo:
+      textoSeguro(contexto?.institutionalContext?.electedOfficial.institutionalTitle) ||
+      textoSeguro(perfil?.cargo) ||
+      "Cargo",
     grupoPolitico:
       textoSeguro(contexto?.grupoPolitico) ||
       textoSeguro(perfil?.assinaturaInstitucional) ||
       "Grupo político",
     logoUrl: textoSeguro(perfil?.logoUrl),
-    local: textoSeguro(contexto?.assembleia?.local) || textoSeguro(perfil?.territorio) || "Local",
+    local:
+      textoSeguro(contexto?.assembleia?.local) ||
+      textoSeguro(contexto?.institutionalContext?.territory.municipalityName) ||
+      textoSeguro(perfil?.municipio) ||
+      textoSeguro(perfil?.territorio) ||
+      "Local",
     data: dataFormatada(contexto?.assembleia?.data),
   };
 }

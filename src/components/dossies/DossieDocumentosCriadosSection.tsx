@@ -25,6 +25,7 @@ import type { ResultadoGeracaoDocumento } from "@/lib/ai/types";
 import {
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
+  mensagemContextoInstitucionalObrigatorio,
   mensagemLogoObrigatorio,
 } from "@/lib/documentos-criados-export";
 import { obterAssembleia } from "@/lib/assembleias-store";
@@ -86,6 +87,12 @@ function mensagemErroGeracao(code?: string, message?: string) {
     AI_CONFIG_MISSING_MODEL: "O modelo de IA não está configurado no backend.",
     AI_CONFIG_MISSING_PROVIDER: "O provider de IA não está configurado no backend.",
     AI_PROVIDER_NOT_SUPPORTED: "O provider de IA configurado não é suportado.",
+    INSTITUTIONAL_PROFILE_INCOMPLETE:
+      "Complete o seu perfil institucional antes de gerar documentos oficiais. Confirme o município e, quando aplicável, a freguesia.",
+    INSTITUTIONAL_CONTEXT_INVALID:
+      "Não foi possível validar o contexto institucional deste documento. Reveja os dados institucionais.",
+    LEGAL_BASIS_INVALID:
+      "Não foi possível validar o enquadramento jurídico deste documento. Reveja os dados institucionais.",
     SUPABASE_INSERT_DOCUMENTO_CRIADO:
       "A geração correu, mas a gravação do documento falhou no backend.",
     AI_GENERATION_ERROR: "Ocorreu um erro inesperado na geração de IA.",
@@ -104,6 +111,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
   const [gerando, setGerando] = useState(false);
   const [erroGeracao, setErroGeracao] = useState<string | undefined>();
   const [erroLogo, setErroLogo] = useState<string | undefined>();
+  const [erroInstitucional, setErroInstitucional] = useState<string | undefined>();
 
   useEffect(() => {
     function carregar() {
@@ -129,6 +137,12 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
     const handler = () => setErroLogo(mensagemLogoObrigatorio);
     window.addEventListener("tribuno:logo-institucional-obrigatorio", handler);
     return () => window.removeEventListener("tribuno:logo-institucional-obrigatorio", handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setErroInstitucional(mensagemContextoInstitucionalObrigatorio);
+    window.addEventListener("tribuno:contexto-institucional-obrigatorio", handler);
+    return () => window.removeEventListener("tribuno:contexto-institucional-obrigatorio", handler);
   }, []);
 
   async function gerarDocumento() {
@@ -228,9 +242,14 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
 
         {erroGeracao && (
           <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            <div className="flex items-start gap-2">
+            <div className="flex flex-wrap items-start gap-2">
               <AlertCircle className="mt-0.5 h-4 w-4" />
-              <span>{erroGeracao}</span>
+              <span className="mr-auto">{erroGeracao}</span>
+              {erroGeracao.includes("perfil institucional") && (
+                <Button asChild type="button" size="sm" variant="outline">
+                  <Link to="/definicoes">Completar perfil</Link>
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -242,6 +261,18 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
               <span className="mr-auto">{erroLogo}</span>
               <Button asChild type="button" size="sm" variant="outline">
                 <Link to="/definicoes">Ir para Perfil</Link>
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {erroInstitucional && (
+          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <div className="flex flex-wrap items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              <span className="mr-auto">{erroInstitucional}</span>
+              <Button asChild type="button" size="sm" variant="outline">
+                <Link to="/definicoes">Completar perfil</Link>
               </Button>
             </div>
           </div>
@@ -283,10 +314,10 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                     size="sm"
                     onClick={() => {
                       setErroLogo(undefined);
-                      const exportou = exportarDocumentoCriadoPDF(documento, {
+                      setErroInstitucional(undefined);
+                      exportarDocumentoCriadoPDF(documento, {
                         assunto: dossie?.titulo,
                       });
-                      if (!exportou) setErroLogo(mensagemLogoObrigatorio);
                     }}
                   >
                     <Download className="mr-2 h-4 w-4" />
