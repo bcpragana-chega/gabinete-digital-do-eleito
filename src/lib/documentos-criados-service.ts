@@ -73,7 +73,6 @@ export async function obterDocumentoCriadoPorIdComDependencias(
     );
   }
   if (estadoSessao === "indisponivel") {
-    if (cache) return cache;
     throw new DocumentoCriadoServiceErro(
       "INDISPONIVEL",
       "Não foi possível carregar o documento. Tente novamente.",
@@ -93,7 +92,6 @@ export async function obterDocumentoCriadoPorIdComDependencias(
         error,
       );
     }
-    if (cache) return cache;
     throw new DocumentoCriadoServiceErro(
       "INDISPONIVEL",
       "Não foi possível carregar o documento. Tente novamente.",

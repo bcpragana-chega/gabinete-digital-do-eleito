@@ -31,9 +31,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import {
-  atualizarDocumentoACriarRascunho,
   criarConteudoInicialDocumento,
+  guardarDocumentoCriadoConfirmado,
 } from "@/lib/documentos-a-criar-store";
+import { executarGravacaoConfirmadaDocumento } from "@/lib/document-save-flow";
 import {
   documentoCriadoPertenceAoAssunto,
   DocumentoCriadoServiceErro,
@@ -236,7 +237,7 @@ function DocumentoDoAssuntoPage() {
     }
   }
 
-  function guardar() {
+  async function guardar() {
     if (!documento || !titulo.trim()) return;
 
     const antesAssembleiaId = documento.assembleiaId;
@@ -244,23 +245,28 @@ function DocumentoDoAssuntoPage() {
     const antesEstado = documento.estado;
 
     try {
-      setSaveState("saving");
-      const atualizado = atualizarDocumentoACriarRascunho(documento.id, {
-        titulo: titulo.trim(),
-        conteudo,
-        estado,
-        assuntoId: dossieId,
-        assembleiaId,
-        pontoId: assembleiaId ? pontoId : undefined,
+      const atualizado = await executarGravacaoConfirmadaDocumento({
+        aoIniciar: () => setSaveState("saving"),
+        persistir: () =>
+          guardarDocumentoCriadoConfirmado(documento.id, {
+            titulo: titulo.trim(),
+            conteudo,
+            estado,
+            assuntoId: dossieId,
+            assembleiaId,
+            pontoId: assembleiaId ? pontoId : undefined,
+          }),
+        aoConfirmar: (persistido) => {
+          setDocumento(persistido);
+          setTitulo(persistido.titulo);
+          setConteudo(persistido.conteudo);
+          setEstado(persistido.estado);
+          setAssembleiaId(persistido.assembleiaId);
+          setPontoId(persistido.pontoId);
+          setSaveState("saved");
+        },
+        aoFalhar: () => setSaveState("error"),
       });
-
-      if (!atualizado) {
-        setSaveState("error");
-        return;
-      }
-
-      setDocumento(atualizado);
-      setSaveState("saved");
 
       if (assembleiaId && assembleiaId !== antesAssembleiaId) {
         registarEvento("Documento associado a sessão", atualizado.titulo, pontoId);
@@ -289,7 +295,7 @@ function DocumentoDoAssuntoPage() {
         registarEvento("Documento marcado como apresentado", atualizado.titulo, pontoId);
       }
     } catch {
-      setSaveState("error");
+      // O texto editado permanece no estado React para permitir nova tentativa.
     }
   }
 
@@ -482,7 +488,11 @@ function DocumentoDoAssuntoPage() {
                       <Copy className="mr-2 h-4 w-4" />
                       Copiar texto
                     </Button>
-                    <Button type="button" onClick={guardar} disabled={!titulo.trim()}>
+                    <Button
+                      type="button"
+                      onClick={() => void guardar()}
+                      disabled={!titulo.trim() || saveState === "saving"}
+                    >
                       <Save className="mr-2 h-4 w-4" />
                       Guardar
                     </Button>

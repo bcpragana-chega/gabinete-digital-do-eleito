@@ -16,11 +16,20 @@ import type {
 } from "@/lib/ai/types";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
-const inputSchema = z.object({
+export const tipoDocumentoCriadoSchema = z.enum([
+  "Moção",
+  "Recomendação",
+  "Requerimento",
+  "Declaração de voto",
+  "Intervenção",
+  "Outro documento",
+]);
+
+export const inputSchema = z.object({
   accessToken: z.string().min(1),
   assuntoId: z.string().min(1),
   sessaoId: z.string().min(1).optional(),
-  tipo: z.custom<TipoDocumentoCriado>(),
+  tipo: tipoDocumentoCriadoSchema,
   titulo: z.string().min(3),
   conteudoInicial: z.string().optional().default(""),
   documentosRelacionadosIds: z.array(z.string().min(1)).optional(),

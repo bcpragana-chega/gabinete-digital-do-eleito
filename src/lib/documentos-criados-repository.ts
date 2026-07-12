@@ -20,7 +20,7 @@ type TipoDocumentoCriadoRemoto =
   | "intervencao"
   | "outro_documento";
 
-type DocumentoCriadoRow = {
+export type DocumentoCriadoRow = {
   id: string;
   user_id: string;
   titulo: string;
@@ -89,7 +89,8 @@ function estadoDeRemoto(estado: unknown): EstadoDocumentoCriado {
   return "rascunho";
 }
 
-function fromRow(row: DocumentoCriadoRow): DocumentoCriado {
+/** @internal Mapeamento canónico da linha confirmada pelo Supabase. */
+export function mapearDocumentoCriadoRemoto(row: DocumentoCriadoRow): DocumentoCriado {
   return {
     id: row.id,
     tipo: tipoDeRemoto(row.tipo),
@@ -161,6 +162,7 @@ function chaveEstrangeiraOpcionalInvalida(error: { message?: string; details?: s
 }
 
 type ResultadoUpsertDocumentoCriado = {
+  data: DocumentoCriadoRow | null;
   error: { code?: string; message?: string; details?: string } | null;
 };
 
@@ -170,7 +172,10 @@ export async function guardarDocumentoCriadoComFallbackDeRelacao(
   executarUpsert: (row: DocumentoCriadoRow) => Promise<ResultadoUpsertDocumentoCriado>,
 ) {
   const response = await executarUpsert(row);
-  if (!response.error) return;
+  if (!response.error) {
+    if (!response.data) throw new Error("DOCUMENTO_CRIADO_UPSERT_SEM_DADOS");
+    return response.data;
+  }
   if (!isErroChaveEstrangeira(response.error)) throw response.error;
 
   const chaveOpcional = chaveEstrangeiraOpcionalInvalida(response.error);
@@ -183,6 +188,8 @@ export async function guardarDocumentoCriadoComFallbackDeRelacao(
 
   const fallback = await executarUpsert({ ...row, [chaveOpcional]: null });
   if (fallback.error) throw fallback.error;
+  if (!fallback.data) throw new Error("DOCUMENTO_CRIADO_UPSERT_SEM_DADOS");
+  return fallback.data;
 }
 
 async function obterSupabaseUserIdValido(userId?: string) {
@@ -238,7 +245,7 @@ export async function carregarDocumentosCriadosRemotos() {
 
   if (error) throw error;
 
-  return (data ?? []).map((row) => fromRow(row as DocumentoCriadoRow));
+  return (data ?? []).map((row) => mapearDocumentoCriadoRemoto(row as DocumentoCriadoRow));
 }
 
 export async function carregarDocumentoCriadoRemotoPorId(id: string) {
@@ -260,28 +267,31 @@ export async function carregarDocumentoCriadoRemotoPorId(id: string) {
   if (error) throw error;
   if (!data) return undefined;
 
-  return fromRow(data as DocumentoCriadoRow);
+  return mapearDocumentoCriadoRemoto(data as DocumentoCriadoRow);
 }
 
 export async function guardarDocumentoCriadoRemoto(userId: string, documento: DocumentoCriado) {
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
-  if (!supabaseUserId) return;
+  if (!supabaseUserId) throw new Error("AUTH_REQUIRED");
 
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
 
   const row = toRow(supabaseUserId, documento);
-  await guardarDocumentoCriadoComFallbackDeRelacao(row, (rowParaGuardar) =>
+  const persistido = await guardarDocumentoCriadoComFallbackDeRelacao(row, (rowParaGuardar) =>
     withSupabaseTimeout(
       supabase
         .from("documentos_criados")
         .upsert(rowParaGuardar, {
           onConflict: "id",
         })
-        .select("*"),
+        .select("*")
+        .single(),
       "DOCUMENTOS_CRIADOS_UPSERT",
     ),
   );
+
+  return mapearDocumentoCriadoRemoto(persistido);
 }
 
 export async function apagarDocumentoCriadoRemoto(id: string) {

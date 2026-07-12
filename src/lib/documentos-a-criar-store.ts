@@ -350,6 +350,62 @@ export function atualizarDocumentoACriarRascunho(
   return atualizado;
 }
 
+type AlteracoesDocumentoCriado = Partial<
+  Pick<DocumentoCriado, "titulo" | "conteudo" | "estado" | "assuntoId" | "assembleiaId" | "pontoId">
+>;
+
+type GuardarDocumentoConfirmadoDependencias = {
+  carregarCache: () => DocumentoCriado[];
+  persistirRemoto: (documento: DocumentoCriado) => Promise<DocumentoCriado>;
+  guardarCache: (documentos: DocumentoCriado[]) => void;
+  depoisDeConfirmar?: (documento: DocumentoCriado) => void;
+  agora: () => string;
+};
+
+/** @internal Expõe a ordem de persistência para testes sem simular sucesso local. */
+export async function guardarDocumentoCriadoConfirmadoComDependencias(
+  documentoId: string,
+  data: AlteracoesDocumentoCriado,
+  dependencias: GuardarDocumentoConfirmadoDependencias,
+) {
+  const documentos = dependencias.carregarCache();
+  const existente = documentos.find((documento) => documento.id === documentoId);
+  if (!existente) throw new Error("DOCUMENTO_CRIADO_NAO_ENCONTRADO");
+
+  const candidato: DocumentoCriado = {
+    ...existente,
+    ...data,
+    updatedAt: dependencias.agora(),
+  };
+  const persistido = await dependencias.persistirRemoto(candidato);
+  if (!persistido || persistido.id !== existente.id) {
+    throw new Error("DOCUMENTO_CRIADO_PERSISTENCIA_INVALIDA");
+  }
+
+  const cacheConfirmada = documentos.map((documento) =>
+    documento.id === persistido.id ? persistido : documento,
+  );
+  dependencias.guardarCache(cacheConfirmada);
+  dependencias.depoisDeConfirmar?.(persistido);
+  return persistido;
+}
+
+export async function guardarDocumentoCriadoConfirmado(
+  documentoId: string,
+  data: AlteracoesDocumentoCriado,
+) {
+  const userId = obterUserIdAtual();
+  if (!userId) throw new Error("AUTH_REQUIRED");
+
+  return guardarDocumentoCriadoConfirmadoComDependencias(documentoId, data, {
+    carregarCache: carregarDocumentosCriadosLocais,
+    persistirRemoto: (documento) => guardarDocumentoCriadoRemoto(userId, documento),
+    guardarCache: guardarDocumentos,
+    depoisDeConfirmar: (documento) => registarDocumentoACriarNaTimeline(documento, "editado"),
+    agora: () => new Date().toISOString(),
+  });
+}
+
 export function associarDocumentoCriadoASessaoEPonto(
   rascunhoId: string,
   data: Pick<DocumentoCriado, "assembleiaId" | "pontoId">,

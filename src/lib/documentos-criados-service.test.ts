@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { mesclarDocumentoCriadoNaCache } from "@/lib/documentos-a-criar-store";
-import { guardarDocumentoCriadoComFallbackDeRelacao } from "@/lib/documentos-criados-repository";
+import {
+  guardarDocumentoCriadoConfirmadoComDependencias,
+  mesclarDocumentoCriadoNaCache,
+} from "@/lib/documentos-a-criar-store";
+import {
+  guardarDocumentoCriadoComFallbackDeRelacao,
+  mapearDocumentoCriadoRemoto,
+  type DocumentoCriadoRow,
+} from "@/lib/documentos-criados-repository";
+import { executarGravacaoConfirmadaDocumento } from "@/lib/document-save-flow";
 import {
   documentoCriadoPertenceAoAssunto,
   DocumentoCriadoServiceErro,
@@ -79,12 +87,13 @@ describe("serviço canónico de documentos criados", () => {
     assert.equal(resultado?.titulo, "Remoto");
   });
 
-  it("usa cache quando o remoto está tecnicamente indisponível", async () => {
+  it("não apresenta cache como confirmada quando o remoto está indisponível", async () => {
     const cache = documento();
     const contexto = dependenciasService({ cache: [cache], sessao: "indisponivel" });
-    assert.equal(
-      await obterDocumentoCriadoPorIdComDependencias(cache.id, contexto.dependencias),
-      cache,
+    await assert.rejects(
+      obterDocumentoCriadoPorIdComDependencias(cache.id, contexto.dependencias),
+      (error: unknown) =>
+        error instanceof DocumentoCriadoServiceErro && error.codigo === "INDISPONIVEL",
     );
   });
 
@@ -171,6 +180,13 @@ describe("relação e navegação por assunto", () => {
 });
 
 describe("hidratação da cache", () => {
+  it("mantém o ID canónico devolvido pelo servidor", () => {
+    const gerado = documento({ id: "id-do-servidor", origem: "ia" });
+    const sincronizados = mesclarDocumentoCriadoNaCache([], gerado);
+    assert.equal(sincronizados[0]?.id, "id-do-servidor");
+    assert.equal(sincronizados.length, 1);
+  });
+
   it("não duplica e substitui versão local antiga", () => {
     const antigo = documento({ titulo: "Antigo", updatedAt: "2026-07-11T10:00:00.000Z" });
     const remoto = documento({ titulo: "Remoto" });
@@ -199,7 +215,7 @@ describe("persistência das relações", () => {
     const guardados: (typeof rowBase)[] = [];
     await guardarDocumentoCriadoComFallbackDeRelacao(rowBase, async (row) => {
       guardados.push(row);
-      return { error: null };
+      return { data: row, error: null };
     });
     assert.equal(guardados[0]?.assunto_id, "assunto-1");
   });
@@ -209,8 +225,8 @@ describe("persistência das relações", () => {
     await guardarDocumentoCriadoComFallbackDeRelacao(rowBase, async (row) => {
       guardados.push(row);
       return guardados.length === 1
-        ? { error: { code: "23503", message: "assembleia_id foreign key" } }
-        : { error: null };
+        ? { data: null, error: { code: "23503", message: "assembleia_id foreign key" } }
+        : { data: row, error: null };
     });
     assert.equal(guardados[1]?.assunto_id, "assunto-1");
     assert.equal(guardados[1]?.assembleia_id, null);
@@ -223,9 +239,156 @@ describe("persistência das relações", () => {
     await assert.rejects(
       guardarDocumentoCriadoComFallbackDeRelacao(rowBase, async () => {
         tentativas += 1;
-        return { error: { code: "23503", message: "assunto_id foreign key" } };
+        return {
+          data: null,
+          error: { code: "23503", message: "assunto_id foreign key" },
+        };
       }),
     );
     assert.equal(tentativas, 1);
+  });
+
+  it("não assume sucesso quando o Supabase não devolve uma linha", async () => {
+    await assert.rejects(
+      guardarDocumentoCriadoComFallbackDeRelacao(rowBase, async () => ({
+        data: null,
+        error: null,
+      })),
+      /DOCUMENTO_CRIADO_UPSERT_SEM_DADOS/,
+    );
+  });
+});
+
+describe("gravação confirmada", () => {
+  it("só atualiza cache e devolve sucesso depois da confirmação remota", async () => {
+    const inicial = documento({ conteudo: "Antes" });
+    const ordem: string[] = [];
+    const cache: DocumentoCriado[][] = [];
+
+    const resultado = await guardarDocumentoCriadoConfirmadoComDependencias(
+      inicial.id,
+      { conteudo: "Depois" },
+      {
+        carregarCache: () => [inicial],
+        persistirRemoto: async (candidato) => {
+          ordem.push("remoto");
+          return { ...candidato, updatedAt: "2026-07-12T11:00:00.000Z" };
+        },
+        guardarCache: (documentos) => {
+          ordem.push("cache");
+          cache.push(documentos);
+        },
+        depoisDeConfirmar: () => ordem.push("evento"),
+        agora: () => "2026-07-12T10:30:00.000Z",
+      },
+    );
+
+    assert.deepEqual(ordem, ["remoto", "cache", "evento"]);
+    assert.equal(resultado.conteudo, "Depois");
+    assert.equal(cache[0]?.[0]?.conteudo, "Depois");
+  });
+
+  it("falha remota não altera cache nem emite evento", async () => {
+    const inicial = documento({ conteudo: "Persistido" });
+    let cacheAlterada = false;
+    let eventoEmitido = false;
+
+    await assert.rejects(
+      guardarDocumentoCriadoConfirmadoComDependencias(
+        inicial.id,
+        { conteudo: "Texto pendente" },
+        {
+          carregarCache: () => [inicial],
+          persistirRemoto: async () => {
+            throw new Error("rede");
+          },
+          guardarCache: () => {
+            cacheAlterada = true;
+          },
+          depoisDeConfirmar: () => {
+            eventoEmitido = true;
+          },
+          agora: () => "2026-07-12T10:30:00.000Z",
+        },
+      ),
+    );
+
+    assert.equal(cacheAlterada, false);
+    assert.equal(eventoEmitido, false);
+  });
+
+  it("editor não marca saved nem apaga conteúdo quando a persistência falha", async () => {
+    let estado = "unsaved";
+    let conteudoEditor = "Texto que o eleito acabou de editar";
+
+    await assert.rejects(
+      executarGravacaoConfirmadaDocumento({
+        aoIniciar: () => {
+          estado = "saving";
+        },
+        persistir: async () => {
+          throw new Error("Supabase indisponível");
+        },
+        aoConfirmar: (persistido) => {
+          estado = "saved";
+          conteudoEditor = persistido.conteudo;
+        },
+        aoFalhar: () => {
+          estado = "error";
+        },
+      }),
+    );
+
+    assert.equal(estado, "error");
+    assert.equal(conteudoEditor, "Texto que o eleito acabou de editar");
+  });
+
+  it("reabertura devolve exatamente o conteúdo remoto confirmado", async () => {
+    const remoto = documento({ conteudo: "Versão persistida exata" });
+    const contexto = dependenciasService({
+      cache: [documento({ conteudo: "Versão antiga" })],
+      remoto,
+    });
+    const reaberto = await obterDocumentoCriadoPorIdComDependencias(
+      remoto.id,
+      contexto.dependencias,
+    );
+    assert.equal(reaberto?.conteudo, "Versão persistida exata");
+  });
+});
+
+describe("mapeamento remoto", () => {
+  it("mapeia a linha confirmada sem alterar ID nem conteúdo", () => {
+    const row: DocumentoCriadoRow = {
+      id: "id-remoto",
+      user_id: "user-1",
+      titulo: "Título persistido",
+      tipo: "recomendacao",
+      estado: "em_revisao",
+      conteudo: "Conteúdo persistido",
+      conteudo_json: null,
+      formato_conteudo: "markdown",
+      resumo: null,
+      notas: null,
+      tags: [],
+      origem: "ia",
+      origem_prompt: null,
+      ia_modelo: null,
+      ia_metadata: null,
+      assunto_id: "assunto-1",
+      assembleia_id: null,
+      ponto_id: null,
+      documento_final_id: null,
+      created_at: "2026-07-12T10:00:00.000Z",
+      updated_at: "2026-07-12T11:00:00.000Z",
+      archived_at: null,
+      finalizado_em: null,
+      apresentado_em: null,
+    };
+
+    const resultado = mapearDocumentoCriadoRemoto(row);
+    assert.equal(resultado.id, row.id);
+    assert.equal(resultado.conteudo, row.conteudo);
+    assert.equal(resultado.estado, "em revisão");
   });
 });
