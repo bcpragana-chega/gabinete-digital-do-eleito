@@ -32,6 +32,13 @@ export type AiUsagePersistInput = {
   errorCode?: string;
 };
 
+export type AiUsageAuthenticatedContext = Readonly<{
+  authenticatedUserId: string;
+  authenticatedOrganizationId?: string;
+}>;
+
+export type AiUsageOperationalInput = Omit<AiUsagePersistInput, "userId" | "organizationId">;
+
 export type AiUsagePersistido = AiUsagePersistInput & {
   id: string;
   createdAt: string;

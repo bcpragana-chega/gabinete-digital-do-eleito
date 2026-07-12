@@ -16,7 +16,6 @@ export type DocumentoCriadoSerializavel = Omit<DocumentoCriado, "conteudoJson" |
 };
 
 export type DadosEntradaGeracaoDocumento = {
-  userId: string;
   assuntoId: string;
   sessaoId?: string;
   tipo: TipoDocumentoCriado;
@@ -85,7 +84,7 @@ export type AnexoTextualContexto = {
 };
 
 export type ContextoGeracaoDocumento = {
-  entrada: Omit<DadosEntradaGeracaoDocumento, "userId">;
+  entrada: DadosEntradaGeracaoDocumento;
   perfil: PerfilInstitucionalContexto;
   assunto: AssuntoContexto;
   sessao?: SessaoContexto;
