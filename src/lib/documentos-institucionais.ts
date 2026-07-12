@@ -35,6 +35,30 @@ const secoesPorTipo: Record<TipoDocumentoInstitucional, string[]> = {
   Requerimento: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "REQUERIMENTO"],
 };
 
+const titulosRaciocinioInterno = new Set([
+  "FACTOS",
+  "PROBLEMA",
+  "CONSEQUENCIA",
+  "CONSEQUÊNCIA",
+  "OBJETIVO",
+  "OBJECTIVO",
+  "OBJETIVO POLITICO",
+  "OBJETIVO POLÍTICO",
+  "OBJECTIVO POLITICO",
+  "OBJECTIVO POLÍTICO",
+  "RISCOS",
+  "RISCO",
+  "NOTAS",
+  "NOTA",
+  "AVISO",
+  "INFORMACAO COMPLEMENTAR",
+  "INFORMAÇÃO COMPLEMENTAR",
+  "ANALISE",
+  "ANÁLISE",
+  "RACIOCINIO",
+  "RACIOCÍNIO",
+]);
+
 export type SecaoDocumentoInstitucional = {
   titulo: string;
   conteudo: string;
@@ -61,6 +85,32 @@ export function escaparHtml(valor: string) {
 
 function capitalizarTipo(tipo: string) {
   return tipo.toLocaleUpperCase("pt-PT");
+}
+
+function linhaPlaceholderInstitucional(linha: string) {
+  const texto = linha.trim();
+  if (!texto) return false;
+
+  return (
+    /^\[[^\]]+\]$/.test(texto) ||
+    /\[(descrever|primeiro|segundo|terceiro|forma de|prazo|medida|fundamento|escrever|conteúdo|conteudo|entidade responsável|posição a aprovar)/i.test(
+      texto,
+    )
+  );
+}
+
+function linhaRaciocinioInterno(linha: string) {
+  const titulo = normalizarTituloSecao(linha);
+  return titulosRaciocinioInterno.has(titulo);
+}
+
+function normalizarConteudoInstitucionalVisivel(conteudo: string) {
+  return conteudo
+    .split(/\r?\n/)
+    .filter((linha) => !linhaPlaceholderInstitucional(linha) && !linhaRaciocinioInterno(linha))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function dataFormatada(data?: string) {
@@ -166,70 +216,45 @@ export function criarConteudoInicialInstitucional(
   if (tipo === "Moção") {
     return `## ENQUADRAMENTO
 
-${notasPreparacao || "[Descrever de forma objetiva o contexto institucional, social ou político que justifica a apresentação da moção.]"}
+${notasPreparacao || ""}
 
 ## FUNDAMENTAÇÃO
 
 Considerando que:
 
-1. [Primeiro fundamento relevante para a deliberação.]
-2. [Segundo fundamento, com impacto para a população ou para o interesse público.]
-3. [Terceiro fundamento, incluindo enquadramento legal, administrativo ou histórico quando aplicável.]
-
 ## PROPOSTA / DELIBERAÇÃO
 
 Face ao exposto,
-${dados.entidadeDeliberativa} delibera:
-
-1. [Primeira deliberação ou posição a aprovar.]
-2. [Segunda deliberação, recomendação ou compromisso institucional.]
-3. [Terceira deliberação, entidade destinatária ou medida de acompanhamento.]
-4. [Forma de comunicação, execução ou remessa da presente moção.]`;
+${dados.entidadeDeliberativa} delibera:`;
   }
 
   if (tipo === "Recomendação") {
     return `## ENQUADRAMENTO
 
-[Descrever a situação concreta que justifica a recomendação, identificando o problema e a sua relevância pública.]
+${notasPreparacao || ""}
 
 ## FUNDAMENTAÇÃO
 
 Considerando que:
-
-1. [Primeiro fundamento factual ou administrativo.]
-2. [Segundo fundamento relativo ao impacto na comunidade.]
-3. [Terceiro fundamento sobre oportunidade, responsabilidade ou exequibilidade.]
 
 ## RECOMENDAÇÃO
 
 Face ao exposto,
-recomenda-se ao Executivo competente que:
-
-1. [Primeira medida recomendada.]
-2. [Segunda medida recomendada.]
-3. [Prazo, forma de acompanhamento ou entidade responsável.]`;
+recomenda-se ao Executivo competente que:`;
   }
 
   return `## ENQUADRAMENTO
 
-[Descrever o contexto que justifica o pedido de informação ou esclarecimento.]
+${notasPreparacao || ""}
 
 ## FUNDAMENTAÇÃO
 
 Considerando que:
 
-1. [Primeiro fundamento do interesse público do pedido.]
-2. [Segundo fundamento relacionado com transparência, fiscalização ou acompanhamento.]
-3. [Terceiro fundamento sobre documentação, execução ou responsabilidade administrativa.]
-
 ## REQUERIMENTO
 
 Face ao exposto,
-requer-se ao Executivo competente que informe:
-
-1. [Primeira informação, documento ou esclarecimento requerido.]
-2. [Segunda informação, documento ou esclarecimento requerido.]
-3. [Prazo, detalhe, formato ou entidade responsável pela resposta.]`;
+requer-se ao Executivo competente que informe:`;
 }
 
 function removerTituloMarkdown(conteudo: string, titulo: string) {
@@ -319,16 +344,9 @@ export function obterSecoesDocumentoInstitucional(
     secoes.get(secaoAtual)?.push(linha);
   }
 
-  const defaults = criarConteudoInicialInstitucional(tipo, "");
-
   return secoesEsperadas.map((titulo) => ({
     titulo,
-    conteudo:
-      secoes.get(titulo)?.join("\n").trim() ||
-      obterSecoesDocumentoInstitucionalSemFallback(tipo, defaults).find(
-        (secao) => secao.titulo === titulo,
-      )?.conteudo ||
-      "",
+    conteudo: normalizarConteudoInstitucionalVisivel(secoes.get(titulo)?.join("\n") ?? ""),
   }));
 }
 
@@ -364,7 +382,14 @@ function obterSecoesDocumentoInstitucionalSemFallback(
 }
 
 export function serializarSecoesDocumentoInstitucional(secoes: SecaoDocumentoInstitucional[]) {
-  return secoes.map((secao) => `## ${secao.titulo}\n\n${secao.conteudo.trim()}`).join("\n\n");
+  return secoes
+    .map((secao) => ({
+      ...secao,
+      conteudo: normalizarConteudoInstitucionalVisivel(secao.conteudo),
+    }))
+    .filter((secao) => secao.conteudo)
+    .map((secao) => `## ${secao.titulo}\n\n${secao.conteudo}`)
+    .join("\n\n");
 }
 
 function renderMarkdownInstitucional(markdown: string) {
@@ -436,7 +461,7 @@ function cssDocumentoInstitucional() {
         margin: 0;
         color: #111827;
         background: #ffffff;
-        font-family: Georgia, "Times New Roman", serif;
+        font-family: "Times New Roman", Times, serif;
         font-size: 12.5pt;
         line-height: 1.62;
       }
@@ -459,7 +484,7 @@ function cssDocumentoInstitucional() {
       }
       .orgao {
         color: #374151;
-        font-family: Inter, Arial, sans-serif;
+        font-family: Arial, sans-serif;
         font-size: 10.5pt;
         font-weight: 700;
         letter-spacing: 0.08em;
@@ -467,7 +492,7 @@ function cssDocumentoInstitucional() {
       }
       .tipo {
         color: #111827;
-        font-family: Inter, Arial, sans-serif;
+        font-family: Arial, sans-serif;
         font-size: 15pt;
         font-weight: 800;
         letter-spacing: 0.16em;
@@ -476,7 +501,7 @@ function cssDocumentoInstitucional() {
       }
       h1 {
         color: #111827;
-        font-family: Inter, Arial, sans-serif;
+        font-family: Arial, sans-serif;
         font-size: 18pt;
         font-weight: 800;
         letter-spacing: 0.02em;
@@ -486,7 +511,7 @@ function cssDocumentoInstitucional() {
       }
       main h2 {
         color: #111827;
-        font-family: Inter, Arial, sans-serif;
+        font-family: Arial, sans-serif;
         font-size: 11.5pt;
         font-weight: 800;
         letter-spacing: 0.08em;
@@ -567,7 +592,7 @@ export function criarHtmlDocumentoInstitucional(
         <h1>${escaparHtml(titulo)}</h1>
       </header>
       <main>
-        ${renderMarkdownInstitucional(conteudo || "[Escrever conteúdo do documento.]")}
+        ${renderMarkdownInstitucional(conteudo)}
       </main>
       <footer>
         <p class="data">${escaparHtml(dados.local)}, ${escaparHtml(dados.data)}</p>

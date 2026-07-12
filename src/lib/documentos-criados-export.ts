@@ -31,6 +31,29 @@ const margemFundo = 128;
 const larguraTexto = larguraA4 - margemX * 2;
 export const mensagemLogoObrigatorio =
   "Para gerar documentos oficiais, adicione primeiro o logótipo institucional no seu perfil.";
+const titulosRaciocinioInterno = new Set([
+  "FACTOS",
+  "PROBLEMA",
+  "CONSEQUENCIA",
+  "CONSEQUÊNCIA",
+  "OBJETIVO",
+  "OBJECTIVO",
+  "OBJETIVO POLITICO",
+  "OBJETIVO POLÍTICO",
+  "OBJECTIVO POLITICO",
+  "OBJECTIVO POLÍTICO",
+  "RISCOS",
+  "RISCO",
+  "NOTAS",
+  "NOTA",
+  "AVISO",
+  "INFORMACAO COMPLEMENTAR",
+  "INFORMAÇÃO COMPLEMENTAR",
+  "ANALISE",
+  "ANÁLISE",
+  "RACIOCINIO",
+  "RACIOCÍNIO",
+]);
 
 function assinaturaInstitucional() {
   const { perfil, user } = obterAuthState();
@@ -120,6 +143,20 @@ function linhaAvisoInterno(linha: string) {
   );
 }
 
+function normalizarTituloInterno(valor: string) {
+  return valor
+    .trim()
+    .replace(/^#{1,6}\s*/, "")
+    .replace(/:$/, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleUpperCase("pt-PT");
+}
+
+function linhaRaciocinioInterno(linha: string) {
+  return titulosRaciocinioInterno.has(normalizarTituloInterno(linha));
+}
+
 function linhaRodapeOuAssinatura(linha: string) {
   return /^(local e data|data|proponente|assinatura|assinado|assinada|o eleito|a eleita|grupo político|grupo politico)\s*:?\s*$/i.test(
     linha.trim(),
@@ -147,7 +184,9 @@ function normalizarConteudoDocumento(conteudo: string) {
     }
 
     if (ignorarRodape) return;
-    if (linhaPlaceholder(texto) || linhaAvisoInterno(texto)) return;
+    if (linhaPlaceholder(texto) || linhaAvisoInterno(texto) || linhaRaciocinioInterno(texto)) {
+      return;
+    }
 
     resultado.push(linha);
   });
@@ -162,7 +201,10 @@ function normalizarConteudoDocumento(conteudo: string) {
 function normalizarConteudoSecao(conteudo: string) {
   return conteudo
     .split(/\r?\n/)
-    .filter((linha) => !linhaPlaceholder(linha) && !linhaAvisoInterno(linha))
+    .filter(
+      (linha) =>
+        !linhaPlaceholder(linha) && !linhaAvisoInterno(linha) && !linhaRaciocinioInterno(linha),
+    )
     .join("\n")
     .replace(/\bCHEGA!/g, "CHEGA")
     .replace(/\n{3,}/g, "\n\n")
@@ -368,12 +410,12 @@ async function desenharPaginasDocumento(
   pagina = garantirEspaco(pagina, paginas, 280);
   pagina.y += 54;
   pagina = desenharParagrafo(pagina, paginas, `${dados.local}, ${dados.data}`, {
-    font: "32px Georgia, 'Times New Roman', serif",
+    font: "32px 'Times New Roman', Times, serif",
     lineHeight: 48,
   });
   pagina.y += 46;
   pagina = desenharParagrafo(pagina, paginas, "Proponente:", {
-    font: "30px Georgia, 'Times New Roman', serif",
+    font: "30px 'Times New Roman', Times, serif",
     lineHeight: 44,
   });
   pagina.y += 44;
@@ -388,8 +430,8 @@ async function desenharPaginasDocumento(
     pagina = desenharParagrafo(pagina, paginas, linha, {
       font:
         index === 0
-          ? "30px Georgia, 'Times New Roman', serif"
-          : "28px Georgia, 'Times New Roman', serif",
+          ? "30px 'Times New Roman', Times, serif"
+          : "28px 'Times New Roman', Times, serif",
       lineHeight: index === 0 ? 44 : 42,
     });
   });
@@ -611,7 +653,7 @@ function desenharLinhaDocumento(pagina: PaginaPdf, paginas: PaginaPdf[], linha: 
 
   if (linha.tipo === "item") {
     return desenharParagrafo(pagina, paginas, `${linha.marcador} ${linha.texto}`, {
-      font: "29px Georgia, 'Times New Roman', serif",
+      font: "29px 'Times New Roman', Times, serif",
       lineHeight: 43,
       x: margemX + 22,
       maxWidth: larguraTexto - 22,
@@ -619,7 +661,7 @@ function desenharLinhaDocumento(pagina: PaginaPdf, paginas: PaginaPdf[], linha: 
   }
 
   return desenharParagrafo(pagina, paginas, linha.texto.replace(/\n/g, " "), {
-    font: "30px Georgia, 'Times New Roman', serif",
+    font: "30px 'Times New Roman', Times, serif",
     lineHeight: 46,
   });
 }

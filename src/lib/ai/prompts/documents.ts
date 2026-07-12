@@ -2,7 +2,16 @@ import type { ContextoGeracaoDocumento } from "@/lib/ai/types";
 import type { TipoDocumentoCriado } from "@/lib/types";
 
 const estruturasPorTipo: Record<TipoDocumentoCriado, string[]> = {
-  Moção: ["Título", "Enquadramento", "Fundamentação", "Deliberação", "Local", "Data", "Assinatura"],
+  Moção: [
+    "Cabeçalho institucional",
+    "Título",
+    "ENQUADRAMENTO",
+    "FUNDAMENTAÇÃO",
+    "PROPOSTA / DELIBERAÇÃO",
+    "Data",
+    "Proponente",
+    "Assinatura",
+  ],
   Recomendação: ["Destinatário", "Fundamentação", "Recomendação", "Conclusão"],
   Requerimento: ["Enquadramento", "Fundamentação", "Pedido", "Questões"],
   "Declaração de voto": ["Contexto", "Fundamentação", "Declaração"],
@@ -20,6 +29,25 @@ function limitarTexto(texto: string | undefined, max = 4000) {
 
 export function obterEstruturaDocumentoPorTipo(tipo: TipoDocumentoCriado) {
   return estruturasPorTipo[tipo] ?? estruturasPorTipo["Outro documento"];
+}
+
+function instrucaoOficialMocao() {
+  return [
+    "Especificação oficial para Moções do Tribuno:",
+    "- A Moção deve seguir o padrão institucional oficial do Tribuno para este tipo documental.",
+    "- Não copies conteúdo, frases ou ideias de modelos anteriores; replica apenas a forma técnica: hierarquia, ritmo, secções, sobriedade e consistência.",
+    "- O documento final deve ter apenas: cabeçalho institucional, título, ENQUADRAMENTO, FUNDAMENTAÇÃO, PROPOSTA / DELIBERAÇÃO, data, proponente e assinatura.",
+    "- Nunca mostres a estrutura de raciocínio interno. É proibido escrever títulos como Factos, Problema, Consequência, Objetivo, Riscos, Notas ou Informação complementar.",
+    "- O ENQUADRAMENTO contextualiza o problema e prepara o leitor. Não deve antecipar nem repetir a fundamentação.",
+    "- A FUNDAMENTAÇÃO liga os factos, explica a razão da intervenção, enquadra a competência do órgão e usa legislação apenas quando existir no contexto.",
+    "- A PROPOSTA / DELIBERAÇÃO deve ser curta, objetiva e diretamente decorrente da fundamentação.",
+    "- Usa parágrafos curtos, linguagem institucional, natural, fluida e em português europeu.",
+    "- Evita juridiquês excessivo, adjetivos inúteis, linguagem de chatbot, frases genéricas e enumerações que pareçam relatório.",
+    "- Adapta sempre a Moção ao tema concreto: histórico, taxa turística, iluminação pública, parque infantil ou qualquer outro assunto recebido no contexto.",
+    "- Nunca escrevas placeholders, campos por preencher, instruções entre parêntesis ou texto entre parêntesis retos.",
+    "- Nunca inventes município, freguesia, órgão, resultado de votação, cargo, proponente, assinatura, factos, datas, números ou legislação.",
+    "- Antes de devolver, compara internamente a Moção com o padrão oficial do Tribuno. Se não tiver a mesma qualidade, estrutura, linguagem e consistência, reescreve automaticamente.",
+  ].join("\n");
 }
 
 export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
@@ -153,6 +181,8 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "Estrutura institucional obrigatória para este tipo:",
     estrutura,
     "",
+    contexto.entrada.tipo === "Moção" ? instrucaoOficialMocao() : "",
+    "",
     "Dados introduzidos pelo utilizador:",
     `- Título: ${contexto.entrada.titulo}`,
     `- Conteúdo inicial: ${limitarTexto(contexto.entrada.conteudoInicial, 3500) || "(vazio)"}`,
@@ -212,6 +242,7 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "Instruções finais de saída:",
     "- Entrega apenas o conteúdo final do documento.",
     "- Respeita os títulos das secções adequados ao tipo documental.",
+    "- Para Moções, usa obrigatoriamente as secções ENQUADRAMENTO, FUNDAMENTAÇÃO e PROPOSTA / DELIBERAÇÃO, sem revelar etapas internas de raciocínio.",
     "- Estrutura o texto, sempre que adequado, com: tipo de documento, título, exposição de motivos/enquadramento, fundamentação, deliberação/pedido/recomendação, local e data, assinatura institucional.",
     "- A deliberação, pedido ou recomendação deve ser objetiva e responder diretamente ao problema identificado; não a transformes num novo enquadramento.",
     "- Não incluas avisos, notas, disclaimers, comentários sobre falta de informação ou pedidos de dados adicionais.",
