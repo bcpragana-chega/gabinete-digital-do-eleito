@@ -10,7 +10,10 @@ function fonte(nome: string) {
 describe("composição das rotas de Assunto", () => {
   const layout = fonte("_app.assuntos.$dossieId.tsx");
   const index = fonte("_app.assuntos.$dossieId.index.tsx");
-  const editor = fonte("_app.assuntos.$dossieId.documentos.$documentoId.tsx");
+  const editor = fonte("_app.documentos.$documentoId.tsx");
+  const legado = fonte("_app.assuntos.$dossieId.documentos.$documentoId.tsx");
+  const legadoDossie = fonte("_app.dossies.$dossieId.documentos.$documentoId.tsx");
+  const legadoSessao = fonte("_app.sessoes.$id.preparacao.documentos-a-criar.$rascunhoId.tsx");
 
   it("rota-pai é exclusivamente um layout com Outlet", () => {
     assert.match(layout, /return <Outlet \/>/);
@@ -23,8 +26,11 @@ describe("composição das rotas de Assunto", () => {
     assert.match(index, /<DossieDocumentosCriadosSection dossieId=\{dossie\.id\}/);
   });
 
-  it("rota documental monta apenas o editor documental", () => {
-    assert.match(editor, /component: DocumentoDoAssuntoPage/);
+  it("rota canónica monta apenas o editor documental e a antiga redireciona", () => {
+    assert.match(editor, /createFileRoute\("\/_app\/documentos\/\$documentoId"\)/);
     assert.doesNotMatch(editor, /DossieDocumentosCriadosSection|function DossieDetalhePage/);
+    assert.match(legado, /to="\/documentos\/\$documentoId"/);
+    assert.match(legadoDossie, /to="\/documentos\/\$documentoId"/);
+    assert.match(legadoSessao, /to="\/documentos\/\$documentoId"/);
   });
 });

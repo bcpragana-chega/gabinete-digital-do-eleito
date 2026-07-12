@@ -5,7 +5,7 @@ import {
   mesclarDocumentoCriadoNaCache,
 } from "@/lib/documentos-a-criar-store";
 import {
-  guardarDocumentoCriadoComFallbackDeRelacao,
+  guardarDocumentoCriadoSemRemoverRelacoes,
   mapearDocumentoCriadoRemoto,
   type DocumentoCriadoRow,
 } from "@/lib/documentos-criados-repository";
@@ -105,6 +105,29 @@ describe("serviço canónico de documentos criados", () => {
     );
   });
 
+  it("não revela documento de outra conta mesmo que exista numa cache alheia", async () => {
+    const documentoContaA = documento({ id: "documento-conta-a", titulo: "Título privado" });
+    const contextoContaB = dependenciasService({ cache: [documentoContaA] });
+    const resultado = await obterDocumentoCriadoPorIdComDependencias(
+      documentoContaA.id,
+      contextoContaB.dependencias,
+    );
+    assert.equal(resultado, undefined);
+  });
+
+  it("recupera apenas texto explicitamente marcado como geração pendente", async () => {
+    const pendente = documento({
+      conteudo: "Texto gerado que o Supabase não conseguiu guardar",
+      iaMetadata: { persistenciaPendente: true },
+    });
+    const contexto = dependenciasService({ cache: [pendente] });
+    const resultado = await obterDocumentoCriadoPorIdComDependencias(
+      pendente.id,
+      contexto.dependencias,
+    );
+    assert.equal(resultado?.conteudo, pendente.conteudo);
+  });
+
   it("distingue sessão expirada", async () => {
     const contexto = dependenciasService({ sessao: "expirada" });
     await assert.rejects(
@@ -173,9 +196,12 @@ describe("relação e navegação por assunto", () => {
   it("gera link somente com o assunto real do documento", () => {
     assert.equal(
       hrefDocumentoCriadoNoAssunto(documento({ assuntoId: "assunto-real" })),
-      "/assuntos/assunto-real/documentos/documento-1",
+      "/documentos/documento-1",
     );
-    assert.equal(hrefDocumentoCriadoNoAssunto(documento({ assuntoId: undefined })), undefined);
+    assert.equal(
+      hrefDocumentoCriadoNoAssunto(documento({ assuntoId: undefined })),
+      "/documentos/documento-1",
+    );
   });
 });
 
@@ -209,35 +235,34 @@ describe("persistência das relações", () => {
     assembleia_id: "sessao-1",
     ponto_id: "ponto-1",
     documento_final_id: "final-1",
-  } as Parameters<typeof guardarDocumentoCriadoComFallbackDeRelacao>[0];
+  } as Parameters<typeof guardarDocumentoCriadoSemRemoverRelacoes>[0];
 
   it("mantém assunto_id numa gravação bem-sucedida", async () => {
     const guardados: (typeof rowBase)[] = [];
-    await guardarDocumentoCriadoComFallbackDeRelacao(rowBase, async (row) => {
+    await guardarDocumentoCriadoSemRemoverRelacoes(rowBase, async (row) => {
       guardados.push(row);
       return { data: row, error: null };
     });
     assert.equal(guardados[0]?.assunto_id, "assunto-1");
   });
 
-  it("erro de FK opcional remove apenas essa relação", async () => {
+  it("erro de FK opcional não remove silenciosamente a relação", async () => {
     const guardados: (typeof rowBase)[] = [];
-    await guardarDocumentoCriadoComFallbackDeRelacao(rowBase, async (row) => {
-      guardados.push(row);
-      return guardados.length === 1
-        ? { data: null, error: { code: "23503", message: "assembleia_id foreign key" } }
-        : { data: row, error: null };
-    });
-    assert.equal(guardados[1]?.assunto_id, "assunto-1");
-    assert.equal(guardados[1]?.assembleia_id, null);
-    assert.equal(guardados[1]?.ponto_id, "ponto-1");
-    assert.equal(guardados[1]?.documento_final_id, "final-1");
+    await assert.rejects(
+      guardarDocumentoCriadoSemRemoverRelacoes(rowBase, async (row) => {
+        guardados.push(row);
+        return { data: null, error: { code: "23503", message: "assembleia_id foreign key" } };
+      }),
+    );
+    assert.equal(guardados.length, 1);
+    assert.equal(guardados[0]?.assembleia_id, "sessao-1");
+    assert.equal(guardados[0]?.ponto_id, "ponto-1");
   });
 
   it("erro de assunto_id falha sem fallback destrutivo", async () => {
     let tentativas = 0;
     await assert.rejects(
-      guardarDocumentoCriadoComFallbackDeRelacao(rowBase, async () => {
+      guardarDocumentoCriadoSemRemoverRelacoes(rowBase, async () => {
         tentativas += 1;
         return {
           data: null,
@@ -250,7 +275,7 @@ describe("persistência das relações", () => {
 
   it("não assume sucesso quando o Supabase não devolve uma linha", async () => {
     await assert.rejects(
-      guardarDocumentoCriadoComFallbackDeRelacao(rowBase, async () => ({
+      guardarDocumentoCriadoSemRemoverRelacoes(rowBase, async () => ({
         data: null,
         error: null,
       })),
@@ -354,6 +379,27 @@ describe("gravação confirmada", () => {
       contexto.dependencias,
     );
     assert.equal(reaberto?.conteudo, "Versão persistida exata");
+  });
+
+  it("repete dez gravações confirmadas sem perder conteúdo", async () => {
+    let cache = [documento({ conteudo: "Versão 0" })];
+    for (let indice = 1; indice <= 10; indice += 1) {
+      const esperado = `Versão ${indice}`;
+      const persistido = await guardarDocumentoCriadoConfirmadoComDependencias(
+        "documento-1",
+        { conteudo: esperado },
+        {
+          carregarCache: () => cache,
+          persistirRemoto: async (candidato) => ({ ...candidato, conteudo: esperado }),
+          guardarCache: (documentos) => {
+            cache = documentos;
+          },
+          agora: () => `2026-07-12T11:${String(indice).padStart(2, "0")}:00.000Z`,
+        },
+      );
+      assert.equal(persistido.conteudo, esperado);
+      assert.equal(cache[0]?.conteudo, esperado);
+    }
   });
 });
 
