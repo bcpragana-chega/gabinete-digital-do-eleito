@@ -48,7 +48,7 @@ values (
   'logos',
   true,
   2097152,
-  array['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
+  array['image/png', 'image/jpeg', 'image/webp']
 )
 on conflict (id) do update
 set

@@ -327,9 +327,7 @@ export function PerfilEleitoForm({
         error,
       });
       setCodigoErro(codigo);
-      setErro(
-        "Não foi possível carregar o logótipo. Use uma imagem PNG, JPG, SVG ou WebP até 2 MB.",
-      );
+      setErro("Não foi possível carregar o logótipo. Use uma imagem PNG, JPG ou WebP até 2 MB.");
       setSaveState("error");
     } finally {
       setACarregarLogo(false);
@@ -489,7 +487,7 @@ export function PerfilEleitoForm({
               <Input
                 id="perfil-logo"
                 type="file"
-                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
                 disabled={aCarregarLogo}
                 onChange={(event) => {
                   void alterarLogo(event.target.files?.[0]);
@@ -498,7 +496,7 @@ export function PerfilEleitoForm({
               />
               <p className="mt-2 text-xs leading-5 text-muted-foreground">
                 Obrigatório para gerar documentos oficiais em PDF. Use uma imagem com fundo
-                transparente sempre que possível.
+                transparente sempre que possível. PNG, JPG ou WebP, até 2 MB.
               </p>
             </div>
           </div>

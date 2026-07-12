@@ -259,14 +259,38 @@ export async function guardarPerfilRemoto(userId: string, perfil: PerfilEleito) 
   });
 }
 
-function extensaoLogo(file: File) {
-  const extensaoNome = file.name.split(".").pop()?.toLowerCase();
-  if (extensaoNome && /^[a-z0-9]+$/.test(extensaoNome)) return extensaoNome;
-  if (file.type === "image/png") return "png";
-  if (file.type === "image/jpeg") return "jpg";
-  if (file.type === "image/webp") return "webp";
-  if (file.type === "image/svg+xml") return "svg";
-  return "png";
+const LOGO_MAX_BYTES = 2_000_000;
+
+const LOGO_EXTENSOES_POR_MIME = {
+  "image/png": ["png"],
+  "image/jpeg": ["jpg", "jpeg"],
+  "image/webp": ["webp"],
+} as const;
+
+type LogoMime = keyof typeof LOGO_EXTENSOES_POR_MIME;
+
+function validarLogo(file: File) {
+  if (!Object.prototype.hasOwnProperty.call(LOGO_EXTENSOES_POR_MIME, file.type)) {
+    throw new Error("LOGO_INVALID_MIME_TYPE");
+  }
+
+  if (file.size > LOGO_MAX_BYTES) {
+    throw new Error("LOGO_TOO_LARGE");
+  }
+
+  const mimeType = file.type as LogoMime;
+  const ultimoPonto = file.name.lastIndexOf(".");
+  const extensaoNome = ultimoPonto >= 0 ? file.name.slice(ultimoPonto + 1).toLowerCase() : "";
+  const extensoesPermitidas = LOGO_EXTENSOES_POR_MIME[mimeType] as readonly string[];
+
+  if (!extensaoNome || !extensoesPermitidas.includes(extensaoNome)) {
+    throw new Error("LOGO_INVALID_EXTENSION");
+  }
+
+  return {
+    mimeType,
+    extensao: extensoesPermitidas[0],
+  };
 }
 
 function ficheiroParaDataUrl(file: File) {
@@ -282,25 +306,18 @@ function ficheiroParaDataUrl(file: File) {
 }
 
 export async function guardarLogoPerfil(userId: string | undefined, file: File) {
-  if (!file.type.startsWith("image/")) {
-    throw new Error("LOGO_INVALID_MIME_TYPE");
-  }
-
-  if (file.size > 2_000_000) {
-    throw new Error("LOGO_TOO_LARGE");
-  }
-
+  const { mimeType, extensao } = validarLogo(file);
   const fallbackLocal = await ficheiroParaDataUrl(file);
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
   const supabase = getSupabaseClient();
 
   if (!supabase || !supabaseUserId) return fallbackLocal;
 
-  const path = `${supabaseUserId}/logo.${extensaoLogo(file)}`;
+  const path = `${supabaseUserId}/logo.${extensao}`;
   const { error } = await withSupabaseTimeout(
     supabase.storage.from("logos").upload(path, file, {
       cacheControl: "3600",
-      contentType: file.type,
+      contentType: mimeType,
       upsert: true,
     }),
     "PROFILE_LOGO_UPLOAD",
