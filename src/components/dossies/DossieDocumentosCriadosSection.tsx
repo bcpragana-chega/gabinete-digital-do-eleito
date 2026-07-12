@@ -217,6 +217,15 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
       })) as ResultadoGeracaoDocumento;
 
       if (!response.ok) {
+        if (response.documentoPendente) {
+          sincronizarDocumentoACriarGerado(response.documentoPendente);
+          setDocumentoCriadoId(response.documentoPendente.id);
+          setSucesso(
+            "Documento gerado, mas ainda não guardado. Abra-o para rever e tentar guardar novamente.",
+          );
+          setDocumentos(listarDocumentosACriarDoAssunto(dossieId));
+          return;
+        }
         setErroGeracao(mensagemErroGeracao(response.code, response.message));
         return;
       }
@@ -416,10 +425,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
                   {documento.assuntoId ? (
                     <Button asChild type="button" size="sm">
-                      <Link
-                        to="/assuntos/$dossieId/documentos/$documentoId"
-                        params={{ dossieId: documento.assuntoId, documentoId: documento.id }}
-                      >
+                      <Link to="/documentos/$documentoId" params={{ documentoId: documento.id }}>
                         Abrir e rever
                       </Link>
                     </Button>

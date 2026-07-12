@@ -541,12 +541,40 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
           promptOrigem: data.conteudoInicial,
           metadata: {
             ...respostaAi.metadata,
+            provider: respostaAi.provider,
+            modelo: respostaAi.modelo,
+            geradoEm: new Date().toISOString(),
             documentosRelacionados: contextoGeracao.documentosRelacionados.length,
             anexosTextuais: contextoGeracao.anexosTextuais.length,
-            assunto: contextoGeracao.assunto.titulo,
-            sessaoId: contextoGeracao.sessao?.id,
+            assunto: {
+              id: contextoGeracao.assunto.id,
+              titulo: contextoGeracao.assunto.titulo,
+            },
+            sessao: contextoGeracao.sessao
+              ? {
+                  id: contextoGeracao.sessao.id,
+                  tipo: contextoGeracao.sessao.tipo,
+                  orgao: contextoGeracao.sessao.orgao,
+                }
+              : null,
+            documentosConsultados: contextoGeracao.documentosRelacionados.map((documento) => ({
+              id: documento.id,
+              titulo: documento.titulo,
+              tipo: documento.tipo,
+            })),
+            anexosConsultados: contextoGeracao.anexosTextuais.map((anexo) => ({
+              id: anexo.id,
+              titulo: anexo.titulo,
+              tipo: anexo.tipo,
+            })),
             notasAssunto: contextoGeracao.assunto.notas.length,
             timelineAssunto: contextoGeracao.assunto.timeline.length,
+            limitacoes: contextoGeracao.institutionalContext.validation.warnings.map(
+              (aviso) => aviso.message,
+            ),
+            elementosNaoConfirmados: contextoGeracao.institutionalContext.validation.errors.map(
+              (erro) => erro.message,
+            ),
             baseJuridica: {
               diploma: contextoGeracao.baseJuridica.diploma,
               tipoOrgao: contextoGeracao.baseJuridica.tipoOrgao,
@@ -607,11 +635,36 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
       }
 
       const normalizado = normalizarErro(error);
+      const documentoPendente = respostaAi
+        ? documentoSerializavel({
+            id: crypto.randomUUID(),
+            tipo: data.tipo,
+            titulo: data.titulo,
+            conteudo: respostaAi.texto,
+            formatoConteudo: "markdown",
+            origem: "ia",
+            origemPrompt: data.conteudoInicial,
+            iaModelo: respostaAi.modelo,
+            iaMetadata: {
+              provider: respostaAi.provider,
+              modelo: respostaAi.modelo,
+              geradoEm: new Date().toISOString(),
+              persistenciaPendente: true,
+              assunto: { id: data.assuntoId, titulo: contextoGeracao?.assunto.titulo },
+            },
+            assuntoId: data.assuntoId,
+            assembleiaId: data.sessaoId,
+            estado: "rascunho",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          })
+        : undefined;
 
       return {
         ok: false,
         code: normalizado.code,
         message: normalizado.message,
+        documentoPendente,
       };
     }
   });

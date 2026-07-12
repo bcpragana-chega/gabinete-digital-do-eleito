@@ -129,4 +129,5 @@ export type ResultadoGeracaoDocumento =
       ok: false;
       code: string;
       message: string;
+      documentoPendente?: DocumentoCriadoSerializavel;
     };
