@@ -302,14 +302,24 @@ export function sincronizarDocumentoACriarGerado(documento: DocumentoCriado) {
 
 export function hidratarDocumentoACriarLocal(documento: DocumentoCriado) {
   const documentos = carregarDocumentosCriadosLocais();
-  const existe = documentos.some((item) => item.id === documento.id);
-
-  const atualizados = existe
-    ? documentos.map((item) => (item.id === documento.id ? { ...item, ...documento } : item))
-    : [documento, ...documentos];
+  const atualizados = mesclarDocumentoCriadoNaCache(documentos, documento);
 
   guardarDocumentos(atualizados);
   return documento;
+}
+
+export function mesclarDocumentoCriadoNaCache(
+  documentos: DocumentoCriado[],
+  remoto: DocumentoCriado,
+) {
+  const local = documentos.find((item) => item.id === remoto.id);
+  if (!local) return [remoto, ...documentos];
+
+  const localMaisRecente =
+    local.updatedAt && remoto.updatedAt && local.updatedAt.localeCompare(remoto.updatedAt) > 0;
+  if (localMaisRecente) return documentos;
+
+  return documentos.map((item) => (item.id === remoto.id ? { ...item, ...remoto } : item));
 }
 
 export function atualizarDocumentoACriarRascunho(

@@ -148,18 +148,41 @@ function toRow(userId: string, documento: DocumentoCriado): DocumentoCriadoRow {
   };
 }
 
-function semChavesOpcionais(row: DocumentoCriadoRow): DocumentoCriadoRow {
-  return {
-    ...row,
-    assunto_id: null,
-    assembleia_id: null,
-    ponto_id: null,
-    documento_final_id: null,
-  };
-}
-
 function isErroChaveEstrangeira(error: { code?: string; message?: string }) {
   return error.code === "23503" || error.message?.toLowerCase().includes("foreign key");
+}
+
+type ChaveEstrangeiraOpcional = "assembleia_id" | "ponto_id" | "documento_final_id";
+
+function chaveEstrangeiraOpcionalInvalida(error: { message?: string; details?: string }) {
+  const detalhe = `${error.message ?? ""} ${error.details ?? ""}`.toLowerCase();
+  const chaves: ChaveEstrangeiraOpcional[] = ["assembleia_id", "ponto_id", "documento_final_id"];
+  return chaves.find((chave) => detalhe.includes(chave));
+}
+
+type ResultadoUpsertDocumentoCriado = {
+  error: { code?: string; message?: string; details?: string } | null;
+};
+
+/** @internal Mantém assunto_id e remove apenas uma FK opcional identificada com segurança. */
+export async function guardarDocumentoCriadoComFallbackDeRelacao(
+  row: DocumentoCriadoRow,
+  executarUpsert: (row: DocumentoCriadoRow) => Promise<ResultadoUpsertDocumentoCriado>,
+) {
+  const response = await executarUpsert(row);
+  if (!response.error) return;
+  if (!isErroChaveEstrangeira(response.error)) throw response.error;
+
+  const chaveOpcional = chaveEstrangeiraOpcionalInvalida(response.error);
+  if (!chaveOpcional) throw response.error;
+
+  console.warn("[Tribuno] Relação opcional inválida removida de documento criado.", {
+    operacao: "DOCUMENTOS_CRIADOS_FK_OPCIONAL_INVALIDA",
+    relacao: chaveOpcional,
+  });
+
+  const fallback = await executarUpsert({ ...row, [chaveOpcional]: null });
+  if (fallback.error) throw fallback.error;
 }
 
 async function obterSupabaseUserIdValido(userId?: string) {
@@ -224,10 +247,14 @@ export async function carregarDocumentosCriadosRemotos() {
 
 export async function carregarDocumentoCriadoRemotoPorId(id: string) {
   const supabaseUserId = await obterSupabaseUserIdValido();
-  if (!supabaseUserId) return undefined;
+  if (!supabaseUserId) {
+    const error = new Error("Sessão necessária para carregar o documento.");
+    error.name = "AuthSessionMissingError";
+    throw error;
+  }
 
   const supabase = getSupabaseClient();
-  if (!supabase) return undefined;
+  if (!supabase) throw new Error("Serviço remoto indisponível.");
 
   const { data, error } = await withSupabaseTimeout(
     supabase.from("documentos_criados").select("*").eq("id", id).maybeSingle(),
@@ -248,34 +275,17 @@ export async function guardarDocumentoCriadoRemoto(userId: string, documento: Do
   if (!supabase) return;
 
   const row = toRow(supabaseUserId, documento);
-  const response = await withSupabaseTimeout(
-    supabase
-      .from("documentos_criados")
-      .upsert(row, {
-        onConflict: "id",
-      })
-      .select("*"),
-    "DOCUMENTOS_CRIADOS_UPSERT",
-  );
-
-  if (!response.error) return;
-
-  if (isErroChaveEstrangeira(response.error)) {
-    const fallback = await withSupabaseTimeout(
+  await guardarDocumentoCriadoComFallbackDeRelacao(row, (rowParaGuardar) =>
+    withSupabaseTimeout(
       supabase
         .from("documentos_criados")
-        .upsert(semChavesOpcionais(row), {
+        .upsert(rowParaGuardar, {
           onConflict: "id",
         })
         .select("*"),
-      "DOCUMENTOS_CRIADOS_UPSERT_SEM_FKS",
-    );
-
-    if (fallback.error) throw fallback.error;
-    return;
-  }
-
-  throw response.error;
+      "DOCUMENTOS_CRIADOS_UPSERT",
+    ),
+  );
 }
 
 export async function apagarDocumentoCriadoRemoto(id: string) {

@@ -14,6 +14,13 @@ Este documento define o modelo de dados alvo do Tribuno 2.0 como plataforma comp
 - Separar objetos permanentes de estados temporários de UI.
 - Guardar metadados suficientes para histórico, auditoria e pesquisa.
 
+### Fonte de verdade documental
+
+- `documentos` contém documentos recebidos, ficheiros carregados e arquivo documental.
+- `documentos_criados` contém documentos institucionais editáveis e rascunhos de trabalho.
+- Store e `localStorage` são cache e estado reativo; não são fonte canónica nem autorização.
+- A relação com um assunto é determinada exclusivamente por `documentos.assunto_origem_id` ou `documentos_criados.assunto_id`, conforme a categoria do documento.
+
 ## 2. Entidades principais
 
 ### Mandato

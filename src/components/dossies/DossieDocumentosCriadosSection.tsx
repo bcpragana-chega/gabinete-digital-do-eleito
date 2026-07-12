@@ -341,14 +341,23 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                     <Download className="mr-2 h-4 w-4" />
                     Download PDF
                   </Button>
-                  <Button asChild type="button" size="sm" variant="secondary">
-                    <Link
-                      to="/assuntos/$dossieId/documentos/$documentoId"
-                      params={{ dossieId, documentoId: documento.id }}
-                    >
-                      Abrir no Tribuno
-                    </Link>
-                  </Button>
+                  {documento.assuntoId ? (
+                    <Button asChild type="button" size="sm" variant="secondary">
+                      <Link
+                        to="/assuntos/$dossieId/documentos/$documentoId"
+                        params={{
+                          dossieId: documento.assuntoId,
+                          documentoId: documento.id,
+                        }}
+                      >
+                        Abrir no Tribuno
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button type="button" size="sm" variant="secondary" disabled>
+                      Sem assunto associado
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     size="sm"

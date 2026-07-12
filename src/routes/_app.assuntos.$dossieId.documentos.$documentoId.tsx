@@ -32,17 +32,13 @@ import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components
 import { useAssembleias } from "@/lib/assembleias-store";
 import {
   atualizarDocumentoACriarRascunho,
-  carregarDocumentosCriadosRemotosSeDisponivel,
   criarConteudoInicialDocumento,
-  hidratarDocumentoACriarLocal,
-  obterDocumentoACriarGlobal,
-  subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
 import {
-  carregarDocumentoCriadoRemotoPorId,
-  carregarDocumentosCriadosLocais,
-  carregarDocumentosCriadosRemotos,
-} from "@/lib/documentos-criados-repository";
+  documentoCriadoPertenceAoAssunto,
+  DocumentoCriadoServiceErro,
+  obterDocumentoCriadoPorId,
+} from "@/lib/documentos-criados-service";
 import {
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
@@ -70,6 +66,12 @@ const estados: EstadoDocumentoCriado[] = [
 ];
 
 type ModoDocumento = "visualizar" | "editar";
+type ErroCarregamento =
+  | "ASSUNTO_INEXISTENTE"
+  | "DOCUMENTO_INEXISTENTE"
+  | "ASSUNTO_INCORRETO"
+  | "SESSAO_EXPIRADA"
+  | "INDISPONIVEL";
 
 export const Route = createFileRoute("/_app/assuntos/$dossieId/documentos/$documentoId")({
   head: () => ({
@@ -142,10 +144,11 @@ function DocumentoDoAssuntoPage() {
   });
 
   const dossie = useDossie(dossieId);
-  const assuntoEncontrado = Boolean(dossie);
   const assembleias = useAssembleias();
   const [documento, setDocumento] = useState<DocumentoCriado | undefined>();
   const [carregou, setCarregou] = useState(false);
+  const [erroCarregamento, setErroCarregamento] = useState<ErroCarregamento>();
+  const [tentativa, setTentativa] = useState(0);
   const [titulo, setTitulo] = useState("");
   const [conteudo, setConteudo] = useState("");
   const [estado, setEstado] = useState<EstadoDocumentoCriado>("rascunho");
@@ -158,148 +161,53 @@ function DocumentoDoAssuntoPage() {
   useEffect(() => {
     let ativo = true;
 
-    logEditorDocumentoDev("route_params", {
-      dossieId,
-      documentoId,
-      assuntoEncontrado,
-    });
-
     async function carregar() {
-      if (!ativo) return;
-
-      addDiagnosticEvent({
-        area: "documento_editor",
-        message: "before_local_lookup",
-        data: {
-          documentoId,
-        },
-      });
-
-      const proximo = obterDocumentoACriarGlobal(documentoId);
-      const documentosLocais = carregarDocumentosCriadosLocais();
-      const documentoLocal = documentosLocais.find((item) => item.id === documentoId);
-
-      addDiagnosticEvent({
-        area: "documento_editor",
-        message: "after_local_lookup",
-        data: {
-          found: Boolean(documentoLocal),
-        },
-      });
-
-      addDiagnosticEvent({
-        area: "documento_editor",
-        message: "before_remote_lookup",
-        data: {
-          table: "documentos_criados",
-          documentoId,
-        },
-      });
-
-      let documentosRemotos: Awaited<ReturnType<typeof carregarDocumentosCriadosRemotos>>;
-      let documentoRemotoPorId: DocumentoCriado | undefined;
-      let erroRemoteLookup: string | undefined;
-
       try {
+        const proximo = await obterDocumentoCriadoPorId(documentoId);
+        if (!ativo) return;
+
         if (!proximo) {
-          documentoRemotoPorId = await carregarDocumentoCriadoRemotoPorId(documentoId);
+          setDocumento(undefined);
+          setErroCarregamento("DOCUMENTO_INEXISTENTE");
+          return;
         }
-        documentosRemotos = documentoRemotoPorId
-          ? [documentoRemotoPorId]
-          : await carregarDocumentosCriadosRemotos();
-      } catch (error) {
-        erroRemoteLookup = error instanceof Error ? error.message : String(error);
-        documentosRemotos = undefined;
-      }
 
-      const documentoRemoto = documentosRemotos?.find((item) => item.id === documentoId);
-      const documentoParaEditor = proximo ?? documentoRemoto;
+        if (!documentoCriadoPertenceAoAssunto(proximo, dossieId)) {
+          setDocumento(undefined);
+          setErroCarregamento("ASSUNTO_INCORRETO");
+          return;
+        }
 
-      logEditorDocumentoDev("lookup_result", {
-        params: {
-          dossieId,
-          documentoId,
-        },
-        documentoLocalEncontrado: Boolean(documentoLocal),
-        documentoStoreEncontrado: Boolean(proximo),
-        documentoRemotoEncontrado: Boolean(documentoRemoto),
-        assuntoEncontrado,
-        documentoLocalOrigem: documentoLocal?.origem,
-        documentoStoreOrigem: proximo?.origem,
-        documentoStoreAssuntoId: proximo?.assuntoId,
-        documentoRemotoOrigem: documentoRemoto?.origem,
-        documentoRemotoAssuntoId: documentoRemoto?.assuntoId,
-        erroRemoteLookup,
-      });
-
-      addDiagnosticEvent({
-        area: "documento_editor",
-        message: "after_remote_lookup",
-        data: {
-          found: Boolean(documentoRemoto),
-          error: erroRemoteLookup,
-        },
-      });
-
-      const pertenceAoAssunto =
-        documentoParaEditor?.assuntoId === dossieId || documentoParaEditor?.origem === "ia";
-
-      if (documentoParaEditor && documentoParaEditor === documentoRemoto) {
-        hidratarDocumentoACriarLocal(documentoParaEditor);
-      }
-
-      logEditorDocumentoDev("render_decision_source", {
-        documentoId,
-        assuntoEncontrado,
-        pertenceAoAssunto,
-        motivoSeNaoRenderizarEditor: !assuntoEncontrado
-          ? "assunto não encontrado"
-          : !documentoParaEditor
-            ? "documento não encontrado no store local nem em documentos_criados"
-            : !pertenceAoAssunto
-              ? "documento encontrado, mas assuntoId/origem não permitem abrir neste assunto"
-              : undefined,
-        fonteDocumento: proximo
-          ? "store_local"
-          : documentoRemoto
-            ? "documentos_criados"
-            : undefined,
-      });
-
-      setDocumento(pertenceAoAssunto ? documentoParaEditor : undefined);
-
-      if (documentoParaEditor && pertenceAoAssunto) {
-        setTitulo(documentoParaEditor.titulo);
+        setDocumento(proximo);
+        setErroCarregamento(undefined);
+        setTitulo(proximo.titulo);
         setConteudo(
-          documentoParaEditor.conteudo?.trim()
-            ? documentoParaEditor.conteudo
-            : criarConteudoInicialDocumento(documentoParaEditor),
+          proximo.conteudo?.trim() ? proximo.conteudo : criarConteudoInicialDocumento(proximo),
         );
-        setEstado(documentoParaEditor.estado);
-        setAssembleiaId(documentoParaEditor.assembleiaId);
-        setPontoId(documentoParaEditor.pontoId);
+        setEstado(proximo.estado);
+        setAssembleiaId(proximo.assembleiaId);
+        setPontoId(proximo.pontoId);
+      } catch (error) {
+        if (!ativo) return;
+        setDocumento(undefined);
+        setErroCarregamento(
+          error instanceof DocumentoCriadoServiceErro && error.codigo === "SESSAO_EXPIRADA"
+            ? "SESSAO_EXPIRADA"
+            : "INDISPONIVEL",
+        );
+      } finally {
+        if (ativo) setCarregou(true);
       }
-
-      setCarregou(true);
     }
 
     setCarregou(false);
-    void carregarDocumentosCriadosRemotosSeDisponivel().finally(() => {
-      void carregar();
-    });
-    const unsubscribe = subscreverDocumentosACriar(carregar);
+    setErroCarregamento(undefined);
+    void carregar();
 
     return () => {
       ativo = false;
-      unsubscribe();
     };
-  }, [documentoId, dossieId, assuntoEncontrado]);
-
-  const motivoNaoAbrir = !dossie
-    ? "assunto não encontrado"
-    : carregou && !documento
-      ? "documento não encontrado para os parâmetros recebidos"
-      : undefined;
+  }, [documentoId, dossieId, tentativa]);
 
   const pontosDaSessao = useMemo(
     () => (assembleiaId ? obterPontosDaAssembleia(assembleiaId) : []),
@@ -463,24 +371,18 @@ function DocumentoDoAssuntoPage() {
   }
 
   if (!dossie || (carregou && !documento)) {
-    logEditorDocumentoDev("render_not_editor", {
-      params: {
-        dossieId,
-        documentoId,
-      },
-      carregou,
-      assuntoEncontrado: Boolean(dossie),
-      documentoEmEstado: Boolean(documento),
-      motivo: motivoNaoAbrir ?? "desconhecido",
-    });
-
-    addDiagnosticEvent({
-      area: "documento_editor",
-      message: "render_not_found",
-      data: {
-        motivo: motivoNaoAbrir ?? "desconhecido",
-      },
-    });
+    const erro = !dossie ? "ASSUNTO_INEXISTENTE" : erroCarregamento;
+    const mensagem =
+      erro === "ASSUNTO_INEXISTENTE"
+        ? "O assunto não foi encontrado."
+        : erro === "DOCUMENTO_INEXISTENTE"
+          ? "O documento não foi encontrado."
+          : erro === "ASSUNTO_INCORRETO"
+            ? "Este documento não pertence a este assunto."
+            : erro === "SESSAO_EXPIRADA"
+              ? "A sua sessão expirou. Inicie sessão novamente."
+              : "Não foi possível carregar o documento. Tente novamente.";
+    const podeTentarNovamente = erro === "INDISPONIVEL";
 
     return (
       <>
@@ -494,14 +396,25 @@ function DocumentoDoAssuntoPage() {
               </Link>
             </Button>
             <EmptyState
-              title="Documento não encontrado"
-              description="Este documento pode ter sido removido ou não pertencer a este assunto."
+              title="Documento indisponível"
+              description={mensagem}
               action={
-                <Button asChild>
-                  <Link to="/assuntos/$dossieId" params={{ dossieId }}>
-                    Voltar ao assunto
-                  </Link>
-                </Button>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button asChild>
+                    <Link to="/assuntos/$dossieId" params={{ dossieId }}>
+                      Voltar ao assunto
+                    </Link>
+                  </Button>
+                  {podeTentarNovamente && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setTentativa((valor) => valor + 1)}
+                    >
+                      Tentar novamente
+                    </Button>
+                  )}
+                </div>
               }
             />
           </div>
