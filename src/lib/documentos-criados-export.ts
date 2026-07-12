@@ -1,4 +1,13 @@
 import { obterAuthState } from "@/lib/auth-store";
+import {
+  AlignmentType,
+  Document,
+  HeadingLevel,
+  LevelFormat,
+  Packer,
+  Paragraph,
+  TextRun,
+} from "docx";
 import { construirBaseJuridicaInstitucional } from "@/lib/ai/legal-basis";
 import {
   resolveStoredInstitutionalContext,
@@ -6,8 +15,6 @@ import {
 } from "@/lib/ai/institutional-context";
 import type { PerfilInstitucionalContexto } from "@/lib/ai/types";
 import {
-  criarHtmlDocumentoInstitucional,
-  escaparHtml,
   isTipoDocumentoInstitucional,
   nomeFicheiroDocumento,
   obterDadosInstitucionais,
@@ -35,6 +42,7 @@ const margemX = 136;
 const margemTopo = 118;
 const margemFundo = 128;
 const larguraTexto = larguraA4 - margemX * 2;
+export const MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 export const mensagemLogoObrigatorio =
   "Para gerar documentos oficiais, adicione primeiro o logótipo institucional no seu perfil.";
 export const mensagemContextoInstitucionalObrigatorio =
@@ -62,24 +70,6 @@ const titulosRaciocinioInterno = new Set([
   "RACIOCINIO",
   "RACIOCÍNIO",
 ]);
-
-function assinaturaInstitucional() {
-  const { perfil, user } = obterAuthState();
-  return (
-    perfil?.assinaturaInstitucional?.trim() ||
-    perfil?.nomeInstitucional?.trim() ||
-    user?.nome?.trim() ||
-    "Tribuno"
-  );
-}
-
-function dataAtualFormatada() {
-  return new Intl.DateTimeFormat("pt-PT", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date());
-}
 
 function textoSeguro(valor?: string) {
   return valor?.trim() || undefined;
@@ -323,126 +313,138 @@ export function exportarDocumentoCriadoWord(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ) {
-  const html = isTipoDocumentoInstitucional(documento.tipo)
-    ? criarHtmlDocumentoInstitucional(documento, contextoComSnapshot(documento, contexto))
-    : criarHtmlDocumentoGenerico(documento, contextoComSnapshot(documento, contexto));
-  const blob = new Blob(["\ufeff", html], {
-    type: "application/msword;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
+  const contextoFinal = contextoComSnapshot(documento, contexto);
+  const contextoExportacao = resolverContextoExportacao(documento, contextoFinal);
+  if (contextoExportacao.status === "UNRESOLVED") {
+    window.dispatchEvent(new CustomEvent("tribuno:contexto-institucional-obrigatorio"));
+    return false;
+  }
+  const contextoResolvido = {
+    ...contextoFinal,
+    institutionalContext: contextoExportacao.context,
+  };
 
-  link.href = url;
-  link.download = nomeFicheiroDocumento(documento, "doc");
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  if (!perfilTemLogoInstitucional(contextoResolvido)) {
+    window.dispatchEvent(new CustomEvent("tribuno:logo-institucional-obrigatorio"));
+    return false;
+  }
+
+  void criarBlobDocumentoWord(documento, contextoResolvido).then((blob) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = nomeFicheiroDocumento(documento, "docx");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  return true;
 }
 
-function criarHtmlDocumentoGenerico(
+export async function criarBlobDocumentoWord(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ) {
+  const dados = obterDadosInstitucionais(contexto);
+  const cabecalho = obterCabecalhoInstitucional(contexto, dados.nomeOrgao);
+  const assinatura = obterAssinaturaUnica(contexto);
   const titulo = documento.titulo.trim() || "Documento sem título";
-  const tipo = documento.tipo;
-  const conteudo = documento.conteudo.trim() || "";
-  const data = dataAtualFormatada();
-  const assinatura = assinaturaInstitucional();
-  const detalhes = [
-    contexto?.assunto ? `Assunto: ${contexto.assunto}` : undefined,
-    contexto?.sessao ? `Sessão: ${contexto.sessao}` : undefined,
-    contexto?.ponto ? `Ponto: ${contexto.ponto}` : undefined,
-  ].filter(Boolean);
+  const corpo = criarLinhasDocumento(documento)
+    .filter((linha) => linha.tipo !== "espaco")
+    .map((linha) => paragrafoDocx(linha));
+  const documentoDocx = new Document({
+    numbering: {
+      config: [
+        {
+          reference: "tribuno-numerada",
+          levels: [
+            {
+              level: 0,
+              format: LevelFormat.DECIMAL,
+              text: "%1.",
+              alignment: AlignmentType.START,
+              style: { paragraph: { indent: { left: 720, hanging: 360 } } },
+            },
+          ],
+        },
+      ],
+    },
+    sections: [
+      {
+        properties: {
+          page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } },
+        },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({ text: cabecalho.orgao.toLocaleUpperCase("pt-PT"), bold: true }),
+            ],
+          }),
+          ...(cabecalho.organizacao
+            ? [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: cabecalho.organizacao, bold: true })],
+                }),
+              ]
+            : []),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 240 },
+            children: [
+              new TextRun({ text: documento.tipo.toLocaleUpperCase("pt-PT"), bold: true }),
+            ],
+          }),
+          new Paragraph({
+            heading: HeadingLevel.TITLE,
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 240, after: 480 },
+            children: [new TextRun({ text: titulo, bold: true })],
+          }),
+          ...corpo,
+          new Paragraph({ spacing: { before: 600 }, text: `${dados.local}, ${dados.data}` }),
+          new Paragraph({ spacing: { before: 480 }, children: [new TextRun("Proponente:")] }),
+          ...assinatura.map(
+            (linha, index) =>
+              new Paragraph({
+                children: [new TextRun({ text: linha, bold: index === 0 })],
+              }),
+          ),
+        ],
+      },
+    ],
+  });
 
-  return `<!doctype html>
-<html lang="pt">
-  <head>
-    <meta charset="utf-8" />
-    <title>${escaparHtml(titulo)}</title>
-    <style>
-      @page { margin: 24mm; }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        color: #111827;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        line-height: 1.65;
-      }
-      header {
-        border-bottom: 1px solid #e5e7eb;
-        margin-bottom: 32px;
-        padding-bottom: 24px;
-        text-align: center;
-      }
-      .brand {
-        color: #6b7280;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-      }
-      .type {
-        color: #374151;
-        font-size: 13px;
-        font-weight: 700;
-        margin-top: 10px;
-        text-transform: uppercase;
-      }
-      h1 {
-        font-size: 28px;
-        line-height: 1.2;
-        margin: 28px 0 0;
-      }
-      .meta {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        color: #4b5563;
-        font-size: 13px;
-        margin-bottom: 32px;
-        padding: 16px 18px;
-      }
-      .content {
-        font-size: 15px;
-        white-space: pre-wrap;
-      }
-      footer {
-        margin-top: 56px;
-        page-break-inside: avoid;
-      }
-      .date {
-        margin-bottom: 48px;
-      }
-      .signature {
-        border-top: 1px solid #9ca3af;
-        display: inline-block;
-        min-width: 260px;
-        padding-top: 10px;
-      }
-      @media print {
-        body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <div class="brand">Tribuno</div>
-      <div class="type">${escaparHtml(tipo)}</div>
-      <h1>${escaparHtml(titulo)}</h1>
-    </header>
-    ${
-      detalhes.length > 0
-        ? `<section class="meta">${detalhes.map((item) => escaparHtml(item ?? "")).join("<br />")}</section>`
-        : ""
+  const blob = await Packer.toBlob(documentoDocx);
+  return new Blob([blob], { type: MIME_DOCX });
+}
+
+function paragrafoDocx(linha: Exclude<LinhaPdf, { tipo: "espaco" }>) {
+  if (linha.tipo === "secao") {
+    return new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      spacing: { before: 300, after: 120 },
+      children: [new TextRun({ text: linha.texto, bold: true })],
+    });
+  }
+  if (linha.tipo === "item") {
+    if (/^\d+\.$/.test(linha.marcador)) {
+      return new Paragraph({
+        numbering: { reference: "tribuno-numerada", level: 0 },
+        children: [new TextRun(linha.texto)],
+      });
     }
-    <main class="content">${escaparHtml(conteudo)}</main>
-    <footer>
-      <p class="date">Data: ${escaparHtml(data)}</p>
-      <p class="signature">${escaparHtml(assinatura)}</p>
-    </footer>
-  </body>
-</html>`;
+    if (/^[-*•]$/.test(linha.marcador)) {
+      return new Paragraph({ bullet: { level: 0 }, children: [new TextRun(linha.texto)] });
+    }
+    return new Paragraph({ text: `${linha.marcador} ${linha.texto}` });
+  }
+  return new Paragraph({
+    spacing: { after: 160 },
+    children: [new TextRun(linha.texto.replace(/\n/g, " "))],
+  });
 }
 
 async function gerarEDescarregarPdf(
@@ -662,6 +664,16 @@ function criarLinhasDocumento(documento: DocumentoCriado): LinhaPdf[] {
     .flatMap((bloco): LinhaPdf[] => {
       const tituloMarkdown = bloco.match(/^#{1,3}\s+(.+)$/m);
       if (tituloMarkdown?.[1]) return [{ tipo: "secao", texto: tituloMarkdown[1].trim() }];
+      const linhas = bloco
+        .split(/\r?\n/)
+        .map((linha) => linha.trim())
+        .filter(Boolean);
+      if (linhas.every((linha) => /^(\d+\.|[-*•])\s+/.test(linha))) {
+        return linhas.flatMap((linha): LinhaPdf[] => {
+          const item = linha.match(/^(\d+\.|[-*•])\s+(.+)$/);
+          return item?.[1] && item[2] ? [{ tipo: "item", marcador: item[1], texto: item[2] }] : [];
+        });
+      }
       return [{ tipo: "paragrafo", texto: bloco.replace(/^[-*]\s+/gm, "") }];
     });
 }
