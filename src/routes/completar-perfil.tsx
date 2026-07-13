@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { OnboardingInicialWizard } from "@/components/auth/OnboardingInicialWizard";
 import { concluirOnboarding, useAuth } from "@/lib/auth-store";
+import { carregarOnboardingLocal } from "@/lib/onboarding-state";
 
 export const Route = createFileRoute("/completar-perfil")({
   head: () => ({
@@ -56,7 +57,12 @@ function CompletarPerfilPage() {
       console.info("[Tribuno Auth] Completar perfil: perfil completo, a entrar na aplicação.", {
         operacao: "AUTH_PROFILE_COMPLETO",
       });
-      navigate({ to: "/", replace: true });
+      const local = carregarOnboardingLocal(user?.id);
+      if (local?.sessaoId) {
+        navigate({ to: "/sessoes/$id", params: { id: local.sessaoId }, replace: true });
+      } else {
+        navigate({ to: "/", replace: true });
+      }
     }
   }, [
     hasCompleteProfile,
@@ -70,6 +76,14 @@ function CompletarPerfilPage() {
     user?.id,
   ]);
 
+  if (!initialized) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+        <p className="text-sm text-muted-foreground">A recuperar a configuração…</p>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-muted/30 px-4 py-8">
       <div className="mx-auto max-w-2xl">
@@ -79,7 +93,6 @@ function CompletarPerfilPage() {
           perfilConfigurado={hasCompleteProfile}
           onConcluir={async () => {
             await concluirOnboarding();
-            navigate({ to: "/", replace: true });
           }}
         />
       </div>

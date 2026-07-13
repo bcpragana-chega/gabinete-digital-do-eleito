@@ -34,6 +34,7 @@ type PerfilEleitoFormProps = {
   submitLabel?: string;
   onSaved?: (perfil: PerfilEleito) => void;
   afterSave?: (perfil: PerfilEleito) => void;
+  modoOnboarding?: boolean;
 };
 
 const mensagensErroPerfil: Record<PerfilErroCodigo, string> = {
@@ -76,6 +77,7 @@ export function PerfilEleitoForm({
   submitLabel = "Guardar perfil",
   onSaved,
   afterSave,
+  modoOnboarding = false,
 }: PerfilEleitoFormProps) {
   const perfilNormalizado = useMemo(() => normalizarPerfilEleito(perfil), [perfil]);
   const nomeInicial = useMemo(
@@ -272,17 +274,19 @@ export function PerfilEleitoForm({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 rounded-2xl border border-border bg-muted/25 p-4">
-        <UserAvatar user={user} perfil={perfilNormalizado} className="h-12 w-12" />
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-foreground">
-            {user?.nome || "Conta autenticada"}
-          </div>
-          <div className="truncate text-sm text-muted-foreground">
-            {user?.email || "Email da conta Google"}
+      {!modoOnboarding && (
+        <div className="flex items-center gap-4 rounded-2xl border border-border bg-muted/25 p-4">
+          <UserAvatar user={user} perfil={perfilNormalizado} className="h-12 w-12" />
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-foreground">
+              {user?.nome || "Conta autenticada"}
+            </div>
+            <div className="truncate text-sm text-muted-foreground">
+              {user?.email || "Email da conta Google"}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {perfilInstitucionalIncompleto && (
@@ -293,7 +297,9 @@ export function PerfilEleitoForm({
         )}
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="perfil-nome">Nome público/institucional</Label>
+          <Label htmlFor="perfil-nome">
+            {modoOnboarding ? "Nome institucional" : "Nome público/institucional"}
+          </Label>
           <Input
             id="perfil-nome"
             value={nomeInstitucional}
@@ -316,7 +322,7 @@ export function PerfilEleitoForm({
         </div>
 
         <div className="space-y-2">
-          <Label>Função/cargo</Label>
+          <Label>Cargo</Label>
           <Select value={cargo} onValueChange={(value) => alterarOpcao("cargo", value, setCargo)}>
             <SelectTrigger>
               <SelectValue />
@@ -348,7 +354,9 @@ export function PerfilEleitoForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="perfil-organizacao">Organização/partido/lista/movimento</Label>
+          <Label htmlFor="perfil-organizacao">
+            {modoOnboarding ? "Grupo político" : "Organização/partido/lista/movimento"}
+          </Label>
           <Input
             id="perfil-organizacao"
             value={organizacao}
@@ -367,45 +375,60 @@ export function PerfilEleitoForm({
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="perfil-freguesia">Freguesia</Label>
-          <Input
-            id="perfil-freguesia"
-            value={freguesia}
-            onChange={(event) => alterarTexto("freguesia", event.target.value, setFreguesia)}
-            placeholder="Ex: Porches"
-          />
-        </div>
+        {(orgao === "Assembleia de Freguesia" ||
+          orgao === "Junta de Freguesia" ||
+          !modoOnboarding) && (
+          <div className="space-y-2">
+            <Label htmlFor="perfil-freguesia">Freguesia</Label>
+            <Input
+              id="perfil-freguesia"
+              value={freguesia}
+              onChange={(event) => alterarTexto("freguesia", event.target.value, setFreguesia)}
+              placeholder="Ex: Porches"
+            />
+          </div>
+        )}
+
+        {!modoOnboarding && (
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="perfil-territorio">Território legado</Label>
+            <Input
+              id="perfil-territorio"
+              value={territorio}
+              onChange={(event) => alterarTexto("territorio", event.target.value, setTerritorio)}
+              placeholder="Mantido por compatibilidade"
+            />
+          </div>
+        )}
+
+        {!modoOnboarding && (
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="perfil-assinatura">Assinatura institucional opcional</Label>
+            <Textarea
+              id="perfil-assinatura"
+              value={assinaturaInstitucional}
+              onChange={(event) =>
+                alterarTexto(
+                  "assinaturaInstitucional",
+                  event.target.value,
+                  setAssinaturaInstitucional,
+                )
+              }
+              placeholder="Nome, cargo e grupo político para usar futuramente em documentos."
+              rows={3}
+            />
+          </div>
+        )}
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="perfil-territorio">Território legado</Label>
-          <Input
-            id="perfil-territorio"
-            value={territorio}
-            onChange={(event) => alterarTexto("territorio", event.target.value, setTerritorio)}
-            placeholder="Mantido por compatibilidade"
-          />
-        </div>
-
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="perfil-assinatura">Assinatura institucional opcional</Label>
-          <Textarea
-            id="perfil-assinatura"
-            value={assinaturaInstitucional}
-            onChange={(event) =>
-              alterarTexto(
-                "assinaturaInstitucional",
-                event.target.value,
-                setAssinaturaInstitucional,
-              )
-            }
-            placeholder="Nome, cargo e grupo político para usar futuramente em documentos."
-            rows={3}
-          />
-        </div>
-
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="perfil-logo">Logótipo institucional</Label>
+          <Label htmlFor="perfil-logo">
+            {modoOnboarding ? "Logótipo do grupo político" : "Logótipo institucional"}
+          </Label>
+          {modoOnboarding && (
+            <p className="text-sm text-muted-foreground">
+              Será usado automaticamente nos documentos institucionais que criares.
+            </p>
+          )}
           <div className="flex flex-col gap-3 rounded-xl border border-border bg-card/60 p-3 sm:flex-row sm:items-center">
             <div className="flex h-24 w-32 items-center justify-center rounded-lg border border-dashed border-border bg-background">
               {logoUrl ? (
@@ -429,9 +452,17 @@ export function PerfilEleitoForm({
                   event.currentTarget.value = "";
                 }}
               />
+              <p className="mt-2 text-sm font-medium" aria-live="polite">
+                {aCarregarLogo
+                  ? "A carregar o logótipo…"
+                  : logoUrl
+                    ? "Logótipo adicionado."
+                    : "Adicionar logótipo"}
+              </p>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                Obrigatório para gerar documentos oficiais em PDF. Use uma imagem com fundo
-                transparente sempre que possível. PNG, JPG ou WebP, até 2 MB.
+                {modoOnboarding
+                  ? "Opcional. PNG, JPG ou WebP, até 2 MB."
+                  : "Obrigatório para gerar documentos oficiais em PDF. Use uma imagem com fundo transparente sempre que possível. PNG, JPG ou WebP, até 2 MB."}
               </p>
             </div>
           </div>
@@ -441,7 +472,7 @@ export function PerfilEleitoForm({
       <div className="flex justify-end">
         {erro && (
           <p className="mr-auto max-w-md text-sm leading-6 text-destructive" role="alert">
-            {erro} {codigoErro ? `Código: ${codigoErro}` : null}
+            {erro} {!modoOnboarding && codigoErro ? `Código: ${codigoErro}` : null}
           </p>
         )}
         {!erro && <SaveFeedback state={saveState} className="mr-3 self-center" />}

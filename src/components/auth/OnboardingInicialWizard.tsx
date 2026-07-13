@@ -1,334 +1,361 @@
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { CheckCircle2, FileSearch, Upload } from "lucide-react";
 import { PerfilEleitoForm } from "@/components/auth/PerfilEleitoForm";
+import { ReviewForm } from "@/components/documentos/InstitutionalDocumentIntake";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { adicionarAssembleia } from "@/lib/assembleias-store";
-import { adicionarDossie } from "@/lib/dossies-store";
+  analisarDocumentoCarregado,
+  carregarDocumentoParaAnalise,
+  confirmarAnaliseDocumento,
+} from "@/lib/institutional-document-flow";
+import { gerarTituloSessaoInstitucional } from "@/lib/institutional-session-title";
+import {
+  carregarOnboardingLocal,
+  guardarOnboardingLocal,
+  marcarProximaAcaoConvocatoria,
+  type OnboardingPasso,
+} from "@/lib/onboarding-state";
 import type { AuthUser, PerfilEleito } from "@/lib/auth-store";
+import type { AnaliseDocumentoInstitucional, Documento } from "@/lib/types";
 
-const tiposSessao = ["Ordinária", "Extraordinária", "Reunião de câmara", "Outra"] as const;
+type Passo = OnboardingPasso | "analise" | "revisao" | "duplicado";
 
-type OnboardingInicialWizardProps = {
+type Props = {
   user?: AuthUser;
   perfil?: PerfilEleito;
   perfilConfigurado: boolean;
   onConcluir: () => Promise<void>;
 };
 
-function formatarDataCurta(dataISO: string) {
-  if (!dataISO) return "";
+const mensagensAnalise = [
+  "A analisar a convocatória…",
+  "A identificar a sessão e a ordem de trabalhos…",
+  "A organizar a preparação…",
+];
 
-  const data = new Date(`${dataISO}T00:00:00`);
-  if (Number.isNaN(data.getTime())) return dataISO;
-
-  return new Intl.DateTimeFormat("pt-PT", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(data);
-}
-
-export function OnboardingInicialWizard({
-  user,
-  perfil,
-  perfilConfigurado,
-  onConcluir,
-}: OnboardingInicialWizardProps) {
-  const [passo, setPasso] = useState(perfilConfigurado ? 2 : 1);
-  const [aConcluir, setAConcluir] = useState(false);
-
-  const [assuntoTitulo, setAssuntoTitulo] = useState("");
-  const [assuntoDescricao, setAssuntoDescricao] = useState("");
-  const [assuntoCriadoTitulo, setAssuntoCriadoTitulo] = useState<string | null>(null);
-
-  const [querCriarSessao, setQuerCriarSessao] = useState<boolean | null>(null);
-  const [dataSessao, setDataSessao] = useState("");
-  const [horaSessao, setHoraSessao] = useState("");
-  const [tipoSessao, setTipoSessao] = useState<(typeof tiposSessao)[number]>("Ordinária");
-  const [sessaoCriadaTitulo, setSessaoCriadaTitulo] = useState<string | null>(null);
+export function OnboardingInicialWizard({ user, perfil, perfilConfigurado, onConcluir }: Props) {
+  const navigate = useNavigate();
+  const local = carregarOnboardingLocal(user?.id);
+  const [passo, setPasso] = useState<Passo>(
+    perfilConfigurado ? (local?.passo ?? "confirmacao") : "identidade",
+  );
+  const [perfilAtual, setPerfilAtual] = useState(perfil);
+  const [file, setFile] = useState<File>();
+  const [documento, setDocumento] = useState<Documento>();
+  const [analise, setAnalise] = useState<AnaliseDocumentoInstitucional>();
+  const [titulo, setTitulo] = useState("Sessão");
+  const [tituloPersonalizado, setTituloPersonalizado] = useState(false);
+  const [duplicateId, setDuplicateId] = useState("");
+  const [erro, setErro] = useState(
+    local?.processoInterrompido
+      ? "Por segurança, seleciona novamente o ficheiro para continuar."
+      : "",
+  );
+  const [aviso, setAviso] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const [mensagemIndex, setMensagemIndex] = useState(0);
 
   useEffect(() => {
-    if (perfilConfigurado && passo === 1) {
-      setPasso(2);
+    if (passo !== "analise") return;
+    const interval = window.setInterval(
+      () => setMensagemIndex((value) => Math.min(value + 1, mensagensAnalise.length - 1)),
+      1800,
+    );
+    return () => window.clearInterval(interval);
+  }, [passo]);
+
+  useEffect(() => {
+    if (local?.sessaoId && local.concluido) {
+      void navigate({ to: "/sessoes/$id", params: { id: local.sessaoId }, replace: true });
     }
-  }, [perfilConfigurado, passo]);
+  }, [local?.concluido, local?.sessaoId, navigate]);
 
-  const podeCriarAssunto = assuntoTitulo.trim().length > 0;
-  const podeCriarSessao = Boolean(dataSessao && horaSessao);
-
-  const resumo = useMemo(
-    () => [
-      {
-        id: "perfil",
-        done: true,
-        label: "Perfil configurado",
-        detalhe: perfil?.nomeInstitucional || user?.nome || "Perfil institucional",
-      },
-      {
-        id: "assunto",
-        done: Boolean(assuntoCriadoTitulo),
-        label: "Assunto criado",
-        detalhe: assuntoCriadoTitulo || "Ignorado",
-      },
-      {
-        id: "sessao",
-        done: Boolean(sessaoCriadaTitulo),
-        label: "Sessão criada",
-        detalhe: sessaoCriadaTitulo || "Ignorado",
-      },
-    ],
-    [assuntoCriadoTitulo, perfil?.nomeInstitucional, sessaoCriadaTitulo, user?.nome],
-  );
-
-  function criarAssunto() {
-    if (!podeCriarAssunto) return;
-
-    const novo = adicionarDossie({
-      titulo: assuntoTitulo.trim(),
-      estado: "ativo",
-      prioridade: "Média",
-      objetivoPolitico: "",
-      resumo: assuntoDescricao.trim(),
-      tags: [],
-    });
-
-    setAssuntoCriadoTitulo(novo.titulo);
-    setPasso(3);
+  function persistirPasso(next: OnboardingPasso) {
+    if (user?.id) guardarOnboardingLocal(user.id, { passo: next, processoInterrompido: false });
+    setPasso(next);
+    setErro("");
   }
 
-  function ignorarAssunto() {
-    setAssuntoCriadoTitulo(null);
-    setPasso(3);
-  }
-
-  function criarSessao() {
-    if (!podeCriarSessao) return;
-
-    const titulo = `Sessão ${tipoSessao.toLowerCase()} — ${formatarDataCurta(dataSessao)}`;
-
-    const nova = adicionarAssembleia({
-      nome: titulo,
-      data: dataSessao,
-      hora: horaSessao,
-      local: "Local por definir",
-      estado: "preparacao",
-    });
-
-    setSessaoCriadaTitulo(nova.nome);
-    setPasso(4);
-  }
-
-  async function concluir() {
-    if (aConcluir) return;
-    setAConcluir(true);
+  async function analisar() {
+    if (!file || ocupado || !user?.id) return;
+    setOcupado(true);
+    setErro("");
+    setAviso("");
+    setMensagemIndex(0);
+    setPasso("analise");
+    guardarOnboardingLocal(user.id, { passo: "convocatoria", processoInterrompido: true });
     try {
-      await onConcluir();
+      const uploaded = await carregarDocumentoParaAnalise(file);
+      setDocumento(uploaded);
+      const result = await analisarDocumentoCarregado(uploaded.id);
+      setAnalise(result.analise);
+      setTitulo(gerarTituloSessaoInstitucional(result.analise.sessao));
+      setTituloPersonalizado(false);
+      if (result.estado === "necessita_confirmacao")
+        setAviso(
+          "Consegui compreender parte do documento, mas preciso que confirmes alguns detalhes.",
+        );
+      setPasso("revisao");
+    } catch {
+      setErro(
+        "Não foi possível analisar esta convocatória. Tenta novamente ou escolhe outro ficheiro.",
+      );
+      setPasso("convocatoria");
     } finally {
-      setAConcluir(false);
+      setOcupado(false);
     }
+  }
+
+  async function repetirAnalise() {
+    if (!documento || ocupado) return;
+    setOcupado(true);
+    setPasso("analise");
+    setErro("");
+    try {
+      const result = await analisarDocumentoCarregado(documento.id);
+      setAnalise(result.analise);
+      if (!tituloPersonalizado) setTitulo(gerarTituloSessaoInstitucional(result.analise.sessao));
+      setPasso("revisao");
+    } catch {
+      setErro("A análise falhou. Podes tentar novamente ou escolher outro ficheiro.");
+      setPasso("revisao");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function concluirSemConvocatoria() {
+    if (!user?.id || ocupado) return;
+    setOcupado(true);
+    marcarProximaAcaoConvocatoria(user.id, true);
+    await onConcluir();
+    await navigate({ to: "/", replace: true });
+  }
+
+  async function confirmar(modo: "criar" | "atualizar" | "criar_novo" = "criar") {
+    if (!user?.id || !documento || !analise || ocupado) return;
+    if (!analise.sessao?.orgao || !analise.sessao.data || !analise.sessao.hora) {
+      setErro("Confirma o órgão, a data e a hora antes de preparar a sessão.");
+      return;
+    }
+    setOcupado(true);
+    setErro("");
+    let sessaoId: string;
+    try {
+      const result = await confirmarAnaliseDocumento({
+        documentoId: documento.id,
+        analise: { ...analise, tituloSessao: titulo },
+        modo: modo === "criar_novo" ? "criar_novo" : modo,
+        sessaoExistenteId: modo === "atualizar" ? duplicateId : undefined,
+      });
+      if (result.status === "duplicado") {
+        setDuplicateId(result.sessaoId);
+        setPasso("duplicado");
+        setOcupado(false);
+        return;
+      }
+      sessaoId = result.sessaoId;
+    } catch {
+      setErro(
+        "Não foi possível criar a sessão. Nenhuma criação parcial foi confirmada; tenta novamente.",
+      );
+      setPasso("revisao");
+      setOcupado(false);
+      return;
+    }
+
+    try {
+      guardarOnboardingLocal(user.id, {
+        concluido: true,
+        processoInterrompido: false,
+        semConvocatoria: false,
+        sessaoId,
+      });
+      sessionStorage.setItem(
+        `tribuno:onboarding-wow:${sessaoId}`,
+        JSON.stringify({
+          origem: "onboarding",
+          sessaoId,
+          data: analise.sessao.data,
+          pontos: analise.pontosOrdemTrabalhos.length,
+        }),
+      );
+      await onConcluir();
+    } catch {
+      console.warn("[Tribuno Onboarding] Sessão criada com sincronização pendente.", {
+        operacao: "ONBOARDING_CONCLUSAO_LOCAL_PENDENTE",
+      });
+    } finally {
+      setOcupado(false);
+    }
+    await navigate({ to: "/sessoes/$id", params: { id: sessaoId }, replace: true });
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-3xl font-semibold text-foreground">
-          Configuração inicial
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Em poucos passos, deixamos o Tribuno pronto para começar.
-        </p>
-      </div>
+      <header>
+        <p className="text-sm font-medium text-primary">Onboarding Beta</p>
+        <h1 className="mt-1 font-display text-3xl font-semibold">Prepara a primeira sessão</h1>
+      </header>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {[1, 2, 3, 4].map((numero) => (
-          <span
-            key={numero}
-            className={[
-              "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium",
-              numero === passo
-                ? "border-foreground/20 bg-foreground text-background"
-                : numero < passo
-                  ? "border-border bg-muted text-foreground"
-                  : "border-border bg-card text-muted-foreground",
-            ].join(" ")}
-          >
-            Passo {numero}
-          </span>
-        ))}
-      </div>
-
-      {passo === 1 && (
-        <Card className="p-5 shadow-none sm:p-6">
-          <h2 className="mb-4 text-base font-semibold text-foreground">Passo 1 — Perfil</h2>
+      {passo === "identidade" && (
+        <Card className="p-5 sm:p-6">
+          <h2 className="mb-4 text-lg font-semibold">Identidade institucional</h2>
           <PerfilEleitoForm
             user={user}
-            perfil={perfil}
+            perfil={perfilAtual}
+            modoOnboarding
             submitLabel="Guardar e continuar"
-            afterSave={() => setPasso(2)}
+            afterSave={(value) => {
+              setPerfilAtual(value);
+              persistirPasso("confirmacao");
+            }}
           />
         </Card>
       )}
 
-      {passo === 2 && (
-        <Card className="p-5 shadow-none sm:p-6">
-          <h2 className="text-base font-semibold text-foreground">Passo 2 — Assunto inicial</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Existe algum assunto que pretende começar a acompanhar?
-          </p>
-
-          <div className="mt-5 grid gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="onboarding-assunto-titulo">Título</Label>
-              <Input
-                id="onboarding-assunto-titulo"
-                value={assuntoTitulo}
-                onChange={(event) => setAssuntoTitulo(event.target.value)}
-                placeholder="Ex.: Habitação"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="onboarding-assunto-descricao">Descrição (opcional)</Label>
-              <Textarea
-                id="onboarding-assunto-descricao"
-                value={assuntoDescricao}
-                onChange={(event) => setAssuntoDescricao(event.target.value)}
-                rows={3}
-                placeholder="Contexto inicial do assunto."
-              />
-            </div>
+      {passo === "confirmacao" && perfilAtual && (
+        <Card className="p-5 sm:p-6">
+          <CheckCircle2 className="h-8 w-8 text-primary" />
+          <h2 className="mt-4 text-xl font-semibold">Confirma o teu contexto</h2>
+          <div className="mt-5 space-y-1 rounded-xl border bg-muted/20 p-4">
+            <p className="font-semibold">{perfilAtual.nomeInstitucional}</p>
+            <p>{perfilAtual.cargo}</p>
+            <p>
+              {perfilAtual.orgao}
+              {perfilAtual.freguesia
+                ? ` de ${perfilAtual.freguesia}`
+                : perfilAtual.municipio
+                  ? ` de ${perfilAtual.municipio}`
+                  : ""}
+            </p>
+            <p>{perfilAtual.organizacao}</p>
           </div>
-
-          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="ghost" onClick={ignorarAssunto}>
-              Ignorar
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="secondary" onClick={() => persistirPasso("identidade")}>
+              Corrigir dados
             </Button>
-            <Button type="button" onClick={criarAssunto} disabled={!podeCriarAssunto}>
-              Criar Assunto
-            </Button>
+            <Button onClick={() => persistirPasso("convocatoria")}>Continuar</Button>
           </div>
         </Card>
       )}
 
-      {passo === 3 && (
-        <Card className="p-5 shadow-none sm:p-6">
-          <h2 className="text-base font-semibold text-foreground">Passo 3 — Próxima sessão</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Já sabe quando será a próxima sessão?
+      {passo === "convocatoria" && (
+        <Card className="p-5 sm:p-6">
+          <Upload className="h-8 w-8 text-primary" />
+          <h2 className="mt-4 text-xl font-semibold">Vamos preparar a tua primeira sessão.</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Carrega uma convocatória e o Tribuno organiza o trabalho por ti.
           </p>
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant={querCriarSessao === true ? "primary" : "secondary"}
-              onClick={() => setQuerCriarSessao(true)}
-            >
-              Sim
-            </Button>
-            <Button
-              type="button"
-              variant={querCriarSessao === false ? "primary" : "secondary"}
-              onClick={() => setQuerCriarSessao(false)}
-            >
-              Não
-            </Button>
+          <div className="mt-6 space-y-2">
+            <Label htmlFor="onboarding-convocatoria">Convocatória em PDF</Label>
+            <Input
+              id="onboarding-convocatoria"
+              type="file"
+              accept="application/pdf,.pdf"
+              disabled={ocupado}
+              onChange={(event) => setFile(event.target.files?.[0])}
+            />
           </div>
-
-          {querCriarSessao === true && (
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="onboarding-sessao-data">Data</Label>
-                <Input
-                  id="onboarding-sessao-data"
-                  type="date"
-                  value={dataSessao}
-                  onChange={(event) => setDataSessao(event.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="onboarding-sessao-hora">Hora</Label>
-                <Input
-                  id="onboarding-sessao-hora"
-                  type="time"
-                  value={horaSessao}
-                  onChange={(event) => setHoraSessao(event.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Tipo de sessão</Label>
-                <Select
-                  value={tipoSessao}
-                  onValueChange={(value) => setTipoSessao(value as (typeof tiposSessao)[number])}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tiposSessao.map((tipo) => (
-                      <SelectItem key={tipo} value={tipo}>
-                        {tipo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+          {erro && (
+            <p role="alert" className="mt-4 text-sm text-destructive">
+              {erro}
+            </p>
           )}
-
-          <div className="mt-5 flex justify-end">
-            {querCriarSessao === false ? (
-              <Button type="button" onClick={() => setPasso(4)}>
-                Continuar
-              </Button>
-            ) : (
-              <Button type="button" onClick={criarSessao} disabled={!podeCriarSessao}>
-                Criar Sessão
-              </Button>
-            )}
+          <div className="mt-6 flex flex-col gap-2">
+            <Button className="w-full" disabled={!file || ocupado} onClick={analisar}>
+              Carregar convocatória
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              disabled={ocupado}
+              onClick={concluirSemConvocatoria}
+            >
+              Ainda não tenho uma convocatória
+            </Button>
           </div>
         </Card>
       )}
 
-      {passo === 4 && (
-        <Card className="p-5 shadow-none sm:p-6">
-          <h2 className="text-base font-semibold text-foreground">Passo 4 — Resumo</h2>
+      {passo === "analise" && (
+        <Card className="py-14 text-center">
+          <FileSearch className="mx-auto h-10 w-10 animate-pulse text-primary" />
+          <p className="mt-4 font-semibold" aria-live="polite">
+            {mensagensAnalise[mensagemIndex]}
+          </p>
+        </Card>
+      )}
 
-          <ul className="mt-4 space-y-3">
-            {resumo.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-3"
-              >
-                <CheckCircle2
-                  className={[
-                    "mt-0.5 h-4 w-4 shrink-0",
-                    item.done ? "text-status-concluida" : "text-muted-foreground",
-                  ].join(" ")}
-                />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground">{item.label}</p>
-                  <p className="mt-0.5 text-sm text-muted-foreground">{item.detalhe}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+      {passo === "revisao" && analise && (
+        <Card className="max-h-[75dvh] overflow-y-auto p-4 sm:p-6">
+          <h2 className="text-xl font-semibold">Confirma os dados da sessão</h2>
+          {aviso && (
+            <p className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+              {aviso}
+            </p>
+          )}
+          <div className="mt-5">
+            <ReviewForm
+              analise={analise}
+              onChange={setAnalise}
+              titulo={titulo}
+              tituloPersonalizado={tituloPersonalizado}
+              onTituloAutomaticoChange={setTitulo}
+              onTituloChange={(value) => {
+                if (value.trim()) {
+                  setTitulo(value);
+                  setTituloPersonalizado(true);
+                } else {
+                  setTitulo(gerarTituloSessaoInstitucional(analise.sessao));
+                  setTituloPersonalizado(false);
+                }
+              }}
+            />
+          </div>
+          {erro && (
+            <p role="alert" className="mt-4 text-sm text-destructive">
+              {erro}
+            </p>
+          )}
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setFile(undefined);
+                persistirPasso("convocatoria");
+              }}
+            >
+              Escolher outro ficheiro
+            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button variant="secondary" disabled={ocupado} onClick={repetirAnalise}>
+                Tentar análise novamente
+              </Button>
+              <Button disabled={ocupado} onClick={() => confirmar()}>
+                Confirmar e preparar sessão
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
-          <div className="mt-5 flex justify-end">
-            <Button type="button" onClick={concluir} disabled={aConcluir}>
-              {aConcluir ? "A concluir..." : "Entrar no Tribuno"}
+      {passo === "duplicado" && (
+        <Card className="p-5 sm:p-6">
+          <h2 className="text-xl font-semibold">Encontrei uma possível sessão duplicada</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Escolhe se queres atualizar a sessão existente ou criar outra.
+          </p>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+            <Button disabled={ocupado} onClick={() => confirmar("atualizar")}>
+              Atualizar sessão existente
+            </Button>
+            <Button variant="secondary" disabled={ocupado} onClick={() => confirmar("criar_novo")}>
+              Criar outra sessão
             </Button>
           </div>
         </Card>

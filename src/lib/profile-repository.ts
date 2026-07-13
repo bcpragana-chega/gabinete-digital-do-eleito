@@ -316,12 +316,11 @@ export async function guardarOnboardingVersionRemoto(userId: string, version: nu
 
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) {
-    console.info("[Tribuno Perfil] Gravação de onboarding ignorada: sem sessão válida.");
-    return;
+    throw new Error("ONBOARDING_REMOTE_SESSION_UNAVAILABLE");
   }
 
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) throw new Error("ONBOARDING_REMOTE_UNAVAILABLE");
 
   const { error } = await withSupabaseTimeout(
     supabase

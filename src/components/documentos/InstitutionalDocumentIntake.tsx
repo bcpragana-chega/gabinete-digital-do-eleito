@@ -30,15 +30,20 @@ import {
   resolverTituloSessaoInstitucional,
 } from "@/lib/institutional-session-title";
 import type { AnaliseDocumentoInstitucional, Documento } from "@/lib/types";
+import { useAuth } from "@/lib/auth-store";
+import { marcarProximaAcaoConvocatoria } from "@/lib/onboarding-state";
 
 type Step = "file" | "analysing" | "review" | "duplicate";
 
 export function InstitutionalDocumentIntake({
   documentoInicial,
+  triggerLabel,
 }: {
   documentoInicial?: Documento;
+  triggerLabel?: string;
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("file");
   const [file, setFile] = useState<File>();
@@ -157,6 +162,7 @@ export function InstitutionalDocumentIntake({
         `tribuno:sessao-preparada:${result.sessaoId}`,
         String(analise.pontosOrdemTrabalhos.length),
       );
+      if (user?.id) marcarProximaAcaoConvocatoria(user.id, false);
       setOpen(false);
       reset();
       await navigate({ to: "/sessoes/$id", params: { id: result.sessaoId } });
@@ -175,7 +181,7 @@ export function InstitutionalDocumentIntake({
           size={documentoInicial ? "sm" : "default"}
         >
           <FileSearch className="h-4 w-4" />
-          {documentoInicial ? "Compreender" : "Compreender PDF"}
+          {triggerLabel ?? (documentoInicial ? "Compreender" : "Compreender PDF")}
         </Button>
       </DialogTrigger>
       <DialogContent className="flex max-h-[92dvh] max-w-3xl flex-col overflow-hidden">
@@ -306,7 +312,7 @@ function analiseVazia(): AnaliseDocumentoInstitucional {
   };
 }
 
-function ReviewForm({
+export function ReviewForm({
   analise,
   onChange,
   titulo,

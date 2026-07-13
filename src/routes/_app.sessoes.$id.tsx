@@ -117,7 +117,11 @@ function AssembleiaDetailPage() {
   const [assuntoParaAssociar, setAssuntoParaAssociar] = useState("");
   const [flowError, setFlowError] = useState("");
   const [flowSaving, setFlowSaving] = useState(false);
-  const [arrivalPoints, setArrivalPoints] = useState<number>();
+  const [arrival, setArrival] = useState<{
+    origem: "onboarding" | "institucional";
+    data?: string;
+    pontos: number;
+  }>();
   const criticalSignature = `${documentos.map((documento) => `${documento.id}:${documento.estado}:${documento.updatedAt ?? ""}`).join("|")}::${pontos.map((ponto) => `${ponto.id}:${ponto.numero}:${ponto.updatedAt ?? ""}`).join("|")}`;
   const previousCriticalSignature = useRef<string | undefined>(undefined);
 
@@ -145,11 +149,32 @@ function AssembleiaDetailPage() {
     }
   }, [assembleia?.preparacaoEstado, criticalSignature, id]);
   useEffect(() => {
-    const key = `tribuno:sessao-preparada:${id}`;
-    const value = sessionStorage.getItem(key);
-    if (value !== null) {
-      setArrivalPoints(Number(value));
-      sessionStorage.removeItem(key);
+    const onboardingKey = `tribuno:onboarding-wow:${id}`;
+    const onboardingValue = sessionStorage.getItem(onboardingKey);
+    if (onboardingValue) {
+      try {
+        const parsed = JSON.parse(onboardingValue) as {
+          origem?: unknown;
+          data?: unknown;
+          pontos?: unknown;
+        };
+        if (parsed.origem === "onboarding" && Number.isFinite(parsed.pontos))
+          setArrival({
+            origem: "onboarding",
+            data: typeof parsed.data === "string" ? parsed.data : undefined,
+            pontos: Number(parsed.pontos),
+          });
+      } catch {
+        // Um payload efémero inválido é ignorado com segurança.
+      }
+      sessionStorage.removeItem(onboardingKey);
+      return;
+    }
+    const legacyKey = `tribuno:sessao-preparada:${id}`;
+    const legacyValue = sessionStorage.getItem(legacyKey);
+    if (legacyValue !== null) {
+      setArrival({ origem: "institucional", pontos: Number(legacyValue) });
+      sessionStorage.removeItem(legacyKey);
     }
   }, [id]);
 
@@ -379,20 +404,39 @@ function AssembleiaDetailPage() {
               </>
             }
           >
-            {arrivalPoints !== undefined && (
+            {arrival && (
               <WorkspaceSection>
                 <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-                  <h2 className="font-semibold text-foreground">Sessão preparada.</h2>
+                  <h2 className="font-semibold text-foreground">
+                    {arrival.origem === "onboarding"
+                      ? "A tua sessão está preparada."
+                      : "Sessão preparada."}
+                  </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Identifiquei {arrivalPoints} {arrivalPoints === 1 ? "ponto" : "pontos"} na ordem
-                    de trabalhos.
+                    {arrival.data ? `Sessão de ${formatarData(arrival.data)} identificada. ` : ""}
+                    {arrival.pontos} {arrival.pontos === 1 ? "ponto" : "pontos"} na ordem de
+                    trabalhos.
                   </p>
+                  {arrival.origem === "onboarding" && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      O Tribuno criou a sessão e organizou a tua preparação.
+                    </p>
+                  )}
                   <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Começa por aqui
+                    {arrival.origem === "onboarding" ? "Próxima ação" : "Começa por aqui"}
                   </p>
-                  <Button asChild size="sm" className="mt-2">
-                    <a href={flow.nextAction.href}>{flow.nextAction.action}</a>
-                  </Button>
+                  {arrival.origem === "onboarding" ? (
+                    <>
+                      <p className="mt-1 text-sm font-medium">Preparar esta sessão</p>
+                      <Button size="sm" className="mt-2" onClick={() => setWizardAberto(true)}>
+                        Começar preparação
+                      </Button>
+                    </>
+                  ) : (
+                    <Button asChild size="sm" className="mt-2">
+                      <a href={flow.nextAction.href}>{flow.nextAction.action}</a>
+                    </Button>
+                  )}
                 </div>
               </WorkspaceSection>
             )}

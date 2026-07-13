@@ -8,6 +8,11 @@ import {
 } from "@/lib/profile-repository";
 import { readJSON, writeJSON } from "@/lib/storage-provider";
 import {
+  carregarOnboardingLocal,
+  guardarOnboardingLocal,
+  ONBOARDING_VERSION,
+} from "@/lib/onboarding-state";
+import {
   iniciarSessaoSupabaseComGoogleCredential,
   isSupabaseConfigured,
   terminarSessaoSupabase,
@@ -304,18 +309,30 @@ export async function concluirOnboarding(version = 1) {
   const state = lerAuthState();
   const userId = state.user?.id;
 
-  if (!userId || !isSupabaseConfigured()) {
-    if (isBrowser()) {
-      window.dispatchEvent(new Event(EVENT_NAME));
-    }
-    return;
-  }
+  if (!userId) return { sincronizado: false };
+  guardarOnboardingLocal(userId, {
+    version,
+    concluido: true,
+    sincronizacaoPendente: isSupabaseConfigured(),
+  });
 
-  await guardarOnboardingVersionRemoto(userId, version);
+  let sincronizado = !isSupabaseConfigured();
+  if (isSupabaseConfigured()) {
+    try {
+      await guardarOnboardingVersionRemoto(userId, version);
+      guardarOnboardingLocal(userId, { sincronizacaoPendente: false });
+      sincronizado = true;
+    } catch {
+      console.warn("[Tribuno Auth] Conclusão do onboarding guardada localmente.", {
+        operacao: "AUTH_ONBOARDING_SYNC_PENDENTE",
+      });
+    }
+  }
 
   if (isBrowser()) {
     window.dispatchEvent(new Event(EVENT_NAME));
   }
+  return { sincronizado };
 }
 
 export function logout() {
@@ -376,8 +393,7 @@ export function useAuth() {
   const perfil = obterPerfilDoUser(state);
   const hasCompleteProfile = perfilCompleto(perfil);
 
-  const onboardingRequired =
-    hasCompleteProfile && isSupabaseConfigured() && onboardingVersion === 0;
+  const onboardingRequired = hasCompleteProfile && (onboardingVersion ?? 0) < ONBOARDING_VERSION;
 
   useEffect(() => {
     let cancelled = false;
@@ -438,14 +454,27 @@ export function useAuth() {
         const userId = nextState.user?.id;
         const perfilAtual = obterPerfilDoUser(nextState);
 
-        if (!userId || !perfilCompleto(perfilAtual) || !isSupabaseConfigured()) {
+        if (!userId || !perfilCompleto(perfilAtual)) {
           setOnboardingVersion(undefined);
           setOnboardingResolved(true);
           return;
         }
 
+        const local = carregarOnboardingLocal(userId);
+        if (!isSupabaseConfigured()) {
+          setOnboardingVersion(local?.concluido ? local.version : 0);
+          setOnboardingResolved(true);
+          return;
+        }
+
         try {
-          const versao = await carregarOnboardingVersionRemoto(userId);
+          const versaoRemota = await carregarOnboardingVersionRemoto(userId);
+          const versao = Math.max(versaoRemota ?? 0, local?.concluido ? local.version : 0);
+          if (local?.sincronizacaoPendente && local.concluido) {
+            void guardarOnboardingVersionRemoto(userId, local.version)
+              .then(() => guardarOnboardingLocal(userId, { sincronizacaoPendente: false }))
+              .catch(() => undefined);
+          }
           if (!cancelled && currentUpdateId === updateId) {
             setOnboardingVersion(versao);
             setOnboardingResolved(true);
@@ -455,7 +484,7 @@ export function useAuth() {
             operacao: "AUTH_ONBOARDING_LOAD_FALHOU",
           });
           if (!cancelled && currentUpdateId === updateId) {
-            setOnboardingVersion(undefined);
+            setOnboardingVersion(local?.concluido ? local.version : 0);
             setOnboardingResolved(true);
           }
         }

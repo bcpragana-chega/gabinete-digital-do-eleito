@@ -42,6 +42,9 @@ import { labelEstadoDocumento } from "@/lib/ui-labels";
 import { obterEstrategiaDaAssembleia } from "@/lib/estrategia-store";
 import { cn } from "@/lib/utils";
 import type { Assembleia, Documento, DocumentoCriado, Dossie } from "@/lib/types";
+import { InstitutionalDocumentIntake } from "@/components/documentos/InstitutionalDocumentIntake";
+import { useAuth } from "@/lib/auth-store";
+import { temProximaAcaoConvocatoria } from "@/lib/onboarding-state";
 
 type TaskTone = "orange" | "red" | "green" | "blue" | "slate";
 type AlertTone = "red" | "orange" | "yellow" | "green";
@@ -87,6 +90,8 @@ function hrefComParametros(to: string, params?: Record<string, string>) {
 }
 
 export function DashboardPage() {
+  const { user } = useAuth();
+  const onboardingSemConvocatoria = temProximaAcaoConvocatoria(user?.id);
   const assembleias = useAssembleias();
   const documentos = useDocumentos();
   const dossies = useDossies();
@@ -161,6 +166,23 @@ export function DashboardPage() {
       <TopBar />
       <main className="min-h-screen bg-[#fbfcfe]">
         <div className="mx-auto flex max-w-[1504px] flex-col gap-5 px-4 pb-6 pt-4 sm:px-6 lg:px-8">
+          {onboardingSemConvocatoria && (
+            <Card className="rounded-[14px] border-primary/20 bg-primary/5 p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                Próxima ação prioritária
+              </p>
+              <h2 className="mt-2 text-xl font-semibold">
+                Adicionar a convocatória da próxima sessão
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Quando tiveres a convocatória, o Tribuno identifica a sessão e organiza a ordem de
+                trabalhos.
+              </p>
+              <div className="mt-4">
+                <InstitutionalDocumentIntake triggerLabel="Carregar convocatória" />
+              </div>
+            </Card>
+          )}
           <section className="grid gap-4 xl:grid-cols-[minmax(0,1.38fr)_minmax(360px,0.98fr)_minmax(330px,0.86fr)]">
             <MissionCard
               mission={mission}
