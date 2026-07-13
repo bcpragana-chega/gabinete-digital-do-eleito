@@ -46,6 +46,16 @@ describe("composição das rotas de Assunto", () => {
       documentosAssunto,
       /to: "\/documentos\/\$documentoId",\s+params: \{ documentoId: response\.documento\.id \}/,
     );
+    const respostaPersistida = documentosAssunto.indexOf(
+      "const response = (await gerarDocumentoAssistido",
+    );
+    const sucesso = documentosAssunto.indexOf(
+      'setSucesso("Documento preparado e guardado. Já pode abri-lo para revisão.")',
+    );
+    const navegacao = documentosAssunto.indexOf("params: { documentoId: response.documento.id }");
+    assert.ok(respostaPersistida >= 0);
+    assert.ok(sucesso > respostaPersistida);
+    assert.ok(navegacao > sucesso);
   });
 
   it("editor apresenta loading e estados recuperáveis em vez de página vazia", () => {

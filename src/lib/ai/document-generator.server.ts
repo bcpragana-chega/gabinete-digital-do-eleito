@@ -380,7 +380,8 @@ function diagnosticarErroAi(error: unknown) {
   };
 }
 
-async function guardarDocumentoGeradoRemotamente(input: {
+/** @internal Exportado para testar o contrato do insert remoto sem simular toda a aplicação. */
+export async function guardarDocumentoGeradoRemotamente(input: {
   userId: string;
   assuntoId: string;
   tipo: TipoDocumentoCriado;
