@@ -3,7 +3,9 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
   analiseTemTextoSuficiente,
+  analiseDocumentoInstitucionalSchema,
   criarDiagnosticoRespostaSeguro,
+  criarDiagnosticoIssuesZod,
   criarInputFilePdfVisual,
   executarAnaliseComFallback,
   extrairTextoRespostaOpenAI,
@@ -190,23 +192,25 @@ export const analisarDocumentoInstitucional = createServerFn({ method: "POST" })
                 payload,
               }),
             );
-          try {
-            return normalizarAnaliseDocumentoInstitucional(parseJson(extracted.text));
-          } catch (error) {
-            if (error instanceof InstitutionalAnalysisError) throw error;
+          const json = parseJson(extracted.text);
+          const schemaResult = analiseDocumentoInstitucionalSchema.safeParse(json);
+          if (!schemaResult.success)
             throw new InstitutionalAnalysisError(
               "OPENAI_SCHEMA_INVALID",
               "A resposta da análise não respeita a estrutura esperada.",
-              criarDiagnosticoRespostaSeguro({
-                code: "OPENAI_SCHEMA_INVALID",
-                documentId: data.documentoId,
-                model,
-                httpStatus: response.status,
-                requestId: response.headers.get("x-request-id"),
-                payload,
-              }),
+              {
+                ...criarDiagnosticoRespostaSeguro({
+                  code: "OPENAI_SCHEMA_INVALID",
+                  documentId: data.documentoId,
+                  model,
+                  httpStatus: response.status,
+                  requestId: response.headers.get("x-request-id"),
+                  payload,
+                }),
+                ...criarDiagnosticoIssuesZod(schemaResult.error.issues),
+              },
             );
-          }
+          return normalizarAnaliseDocumentoInstitucional(schemaResult.data);
         },
       });
       const estado: EstadoAnaliseDocumento =

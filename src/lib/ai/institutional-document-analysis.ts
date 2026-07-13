@@ -145,12 +145,12 @@ export const INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT = {
             additionalProperties: false,
             required: ["orgao", "entidade", "tipo", "data", "hora", "local"],
             properties: {
-              orgao: { type: ["string", "null"] },
-              entidade: { type: ["string", "null"] },
+              orgao: { type: ["string", "null"], maxLength: 500 },
+              entidade: { type: ["string", "null"], maxLength: 500 },
               tipo: { type: "string", enum: ["ordinaria", "extraordinaria", "desconhecida"] },
-              data: { type: ["string", "null"] },
-              hora: { type: ["string", "null"] },
-              local: { type: ["string", "null"] },
+              data: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+              hora: { type: ["string", "null"], pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
+              local: { type: ["string", "null"], maxLength: 500 },
             },
           },
           { type: "null" },
@@ -164,11 +164,12 @@ export const INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT = {
           required: ["numero", "titulo", "descricao", "confianca"],
           properties: {
             numero: { type: ["integer", "null"], minimum: 1 },
-            titulo: { type: "string" },
-            descricao: { type: ["string", "null"] },
+            titulo: { type: "string", minLength: 1, maxLength: 500 },
+            descricao: { type: ["string", "null"], maxLength: 4000 },
             confianca: { type: "number", minimum: 0, maximum: 1 },
           },
         },
+        maxItems: 100,
       },
       informacaoRelevante: {
         type: "array",
@@ -177,11 +178,12 @@ export const INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT = {
           additionalProperties: false,
           required: ["titulo", "descricao", "referenciaDocumento"],
           properties: {
-            titulo: { type: "string" },
-            descricao: { type: "string" },
-            referenciaDocumento: { type: ["string", "null"] },
+            titulo: { type: "string", minLength: 1, maxLength: 500 },
+            descricao: { type: "string", minLength: 1, maxLength: 4000 },
+            referenciaDocumento: { type: ["string", "null"], maxLength: 500 },
           },
         },
+        maxItems: 50,
       },
       camposIncertos: {
         type: "array",
@@ -189,10 +191,14 @@ export const INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT = {
           type: "object",
           additionalProperties: false,
           required: ["campo", "motivo"],
-          properties: { campo: { type: "string" }, motivo: { type: "string" } },
+          properties: {
+            campo: { type: "string", minLength: 1, maxLength: 200 },
+            motivo: { type: "string", minLength: 1, maxLength: 1000 },
+          },
         },
+        maxItems: 50,
       },
-      resumoCompreensao: { type: "string" },
+      resumoCompreensao: { type: "string", maxLength: 4000 },
     },
   },
 };
@@ -291,6 +297,31 @@ const textoOpcional = z.preprocess(
     .optional()
     .transform((v) => v || undefined),
 );
+const textoOpcionalLongo = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z
+    .string()
+    .trim()
+    .max(4000)
+    .optional()
+    .transform((v) => v || undefined),
+);
+const dataOpcional = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+);
+const horaOpcional = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z
+    .string()
+    .trim()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .optional(),
+);
 const confianca = z.number().finite().min(0).max(1);
 
 export const analiseDocumentoInstitucionalSchema = z.object({
@@ -314,18 +345,8 @@ export const analiseDocumentoInstitucionalSchema = z.object({
         orgao: textoOpcional,
         entidade: textoOpcional,
         tipo: z.enum(["ordinaria", "extraordinaria", "desconhecida"]).catch("desconhecida"),
-        data: z
-          .string()
-          .trim()
-          .regex(/^\d{4}-\d{2}-\d{2}$/)
-          .optional()
-          .catch(undefined),
-        hora: z
-          .string()
-          .trim()
-          .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-          .optional()
-          .catch(undefined),
+        data: dataOpcional,
+        hora: horaOpcional,
         local: textoOpcional,
       })
       .optional(),
@@ -338,12 +359,7 @@ export const analiseDocumentoInstitucionalSchema = z.object({
           z.number().int().positive().optional(),
         ),
         titulo: z.string().trim().min(1).max(500),
-        descricao: z
-          .string()
-          .trim()
-          .max(4000)
-          .optional()
-          .transform((v) => v || undefined),
+        descricao: textoOpcionalLongo,
         confianca,
       }),
     )
@@ -381,6 +397,21 @@ export function normalizarAnaliseDocumentoInstitucional(
       ...ponto,
       numero: ponto.numero ?? index + 1,
     })),
+  };
+}
+
+export function criarDiagnosticoIssuesZod(issues: z.ZodIssue[]) {
+  return {
+    schemaIssueCount: issues.length,
+    schemaIssues: issues.map((issue) => {
+      const typedIssue = issue as z.ZodIssue & { expected?: unknown; received?: unknown };
+      return {
+        path: issue.path.join("."),
+        code: issue.code,
+        ...(typeof typedIssue.expected === "string" ? { expected: typedIssue.expected } : {}),
+        ...(typeof typedIssue.received === "string" ? { received: typedIssue.received } : {}),
+      };
+    }),
   };
 }
 

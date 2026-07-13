@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   analiseTemTextoSuficiente,
+  analiseDocumentoInstitucionalSchema,
+  criarDiagnosticoIssuesZod,
   criarDiagnosticoRespostaSeguro,
   criarInputFilePdfVisual,
   executarAnaliseComFallback,
@@ -273,5 +275,94 @@ describe("análise institucional de documentos", () => {
     assert.equal(INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT.type, "json_schema");
     assert.equal(INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT.strict, true);
     assert.equal(INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT.schema.additionalProperties, false);
+  });
+
+  it("aceita descricao null do Structured Output e preserva a convocatória", () => {
+    const input = {
+      tipoDocumento: "convocatoria",
+      confiancaGlobal: 0.98,
+      sessao: {
+        orgao: "Assembleia de Freguesia de Porches",
+        entidade: "Freguesia de Porches",
+        tipo: "ordinaria",
+        data: "2026-04-28",
+        hora: "21:30",
+        local: "Centro Cultural D. Dinis",
+      },
+      pontosOrdemTrabalhos: [
+        {
+          numero: 1,
+          titulo: "Apreciação e votação da ata",
+          descricao: null,
+          confianca: 0.95,
+        },
+      ],
+      informacaoRelevante: [],
+      camposIncertos: [],
+      resumoCompreensao: "Convocatória para sessão ordinária.",
+    };
+    const parsed = analiseDocumentoInstitucionalSchema.safeParse(input);
+    assert.equal(parsed.success, true);
+    const result = normalizarAnaliseDocumentoInstitucional(input);
+    assert.equal(result.pontosOrdemTrabalhos[0].descricao, undefined);
+    assert.equal(result.pontosOrdemTrabalhos[0].titulo, "Apreciação e votação da ata");
+    assert.equal(result.sessao?.local, "Centro Cultural D. Dinis");
+    assert.equal(result.confiancaGlobal, 0.98);
+  });
+
+  it("normaliza null em todos os campos nullable do JSON Schema", () => {
+    const result = normalizarAnaliseDocumentoInstitucional({
+      ...base,
+      sessao: {
+        orgao: null,
+        entidade: null,
+        tipo: "desconhecida",
+        data: null,
+        hora: null,
+        local: null,
+      },
+      pontosOrdemTrabalhos: [
+        { numero: null, titulo: "Ponto sem detalhe", descricao: null, confianca: 0.8 },
+      ],
+      informacaoRelevante: [{ titulo: "Nota", descricao: "Informação", referenciaDocumento: null }],
+    });
+    assert.equal(result.sessao?.tipo, "desconhecida");
+    assert.equal(result.sessao?.orgao, undefined);
+    assert.equal(result.sessao?.entidade, undefined);
+    assert.equal(result.sessao?.data, undefined);
+    assert.equal(result.sessao?.hora, undefined);
+    assert.equal(result.sessao?.local, undefined);
+    assert.deepEqual(result.pontosOrdemTrabalhos[0], {
+      numero: 1,
+      titulo: "Ponto sem detalhe",
+      descricao: undefined,
+      confianca: 0.8,
+    });
+    assert.equal(result.informacaoRelevante[0].referenciaDocumento, undefined);
+  });
+
+  it("normaliza sessao null para undefined", () => {
+    const result = normalizarAnaliseDocumentoInstitucional({ ...base, sessao: null });
+    assert.equal(result.sessao, undefined);
+  });
+
+  it("reduz issues Zod a metadados seguros", () => {
+    const parsed = analiseDocumentoInstitucionalSchema.safeParse({
+      ...base,
+      pontosOrdemTrabalhos: [
+        { numero: 1, titulo: "Ponto", descricao: { segredo: "privado" }, confianca: 0.8 },
+      ],
+    });
+    assert.equal(parsed.success, false);
+    if (parsed.success) return;
+    const diagnostic = criarDiagnosticoIssuesZod(parsed.error.issues);
+    assert.equal(diagnostic.schemaIssueCount, 1);
+    assert.deepEqual(diagnostic.schemaIssues[0], {
+      path: "pontosOrdemTrabalhos.0.descricao",
+      code: "invalid_type",
+      expected: "string",
+      received: "object",
+    });
+    assert.doesNotMatch(JSON.stringify(diagnostic), /segredo|privado/);
   });
 });
