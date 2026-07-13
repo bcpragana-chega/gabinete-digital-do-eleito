@@ -105,13 +105,11 @@ export function TopBar({ title, description, breadcrumb }: TopBarProps) {
               <div className="flex h-full flex-col">
                 <div className="border-b border-border/60 px-5 py-5">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-foreground text-background">
-                      <img
+                    <img
                       src="/logo.png"
                       alt="Tribuno"
-                      className="h-8 w-8 rounded-lg object-contain"
+                      className="h-12 w-12 shrink-0 object-contain"
                     />
-                    </div>
                     <div className="leading-tight">
                       <div className="font-display text-base font-semibold">Tribuno</div>
                       <div className="text-[11px] uppercase text-muted-foreground">
