@@ -85,6 +85,7 @@ export class PerfilErro extends Error {
 
 const STORAGE_KEY = "tribuno.auth.v1";
 const EVENT_NAME = "tribuno:auth";
+let logoutEmCurso: Promise<void> | undefined;
 
 export const cargosEleito: CargoEleito[] = [
   "Membro da Assembleia de Freguesia",
@@ -373,13 +374,72 @@ export async function concluirOnboarding(version = 1) {
   return { sincronizado };
 }
 
-export function logout() {
+export function limparCachesTransitoriasDaConta(userId?: string) {
   if (!isBrowser()) return;
+  const prefixes = ["tribuno:onboarding-wow:", "tribuno:sessao-preparada:"];
+  for (let index = window.sessionStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.sessionStorage.key(index);
+    if (!key || !prefixes.some((prefix) => key.startsWith(prefix))) continue;
+    try {
+      const raw = window.sessionStorage.getItem(key);
+      const payload = raw ? (JSON.parse(raw) as { userId?: unknown }) : undefined;
+      if (!userId || !payload?.userId || payload.userId === userId) {
+        window.sessionStorage.removeItem(key);
+      }
+    } catch {
+      // Formatos legados não isolados são transitórios e devem desaparecer na troca de conta.
+      window.sessionStorage.removeItem(key);
+    }
+  }
+}
 
-  void terminarSessaoSupabase();
+export function resolverEstadoLocalAposLogout(state: {
+  perfisPorUserId?: Record<string, PerfilEleito>;
+}): AuthState {
+  return { perfisPorUserId: state.perfisPorUserId };
+}
 
-  const state = lerAuthState();
-  guardarAuthState({ perfisPorUserId: state.perfisPorUserId });
+export function criarExecutorLogout(deps: {
+  terminarRemoto: () => Promise<void>;
+  finalizarLocal: () => void;
+}) {
+  let emCurso: Promise<void> | undefined;
+  return function executar() {
+    if (emCurso) return emCurso;
+    emCurso = (async () => {
+      try {
+        await deps.terminarRemoto();
+      } catch {
+        console.warn("[Tribuno Auth] Logout remoto indisponível; sessão local terminada.", {
+          operacao: "AUTH_LOGOUT_FALLBACK_LOCAL",
+        });
+      } finally {
+        deps.finalizarLocal();
+      }
+    })().finally(() => {
+      emCurso = undefined;
+    });
+    return emCurso;
+  };
+}
+
+export async function logout(): Promise<void> {
+  if (!isBrowser()) return;
+  if (logoutEmCurso) return logoutEmCurso;
+
+  const executar = criarExecutorLogout({
+    terminarRemoto: terminarSessaoSupabase,
+    finalizarLocal: () => {
+      const state = lerAuthState();
+      limparCachesTransitoriasDaConta(state.user?.id);
+      guardarAuthState(resolverEstadoLocalAposLogout(state));
+      window.google?.accounts.id.disableAutoSelect?.();
+    },
+  });
+  logoutEmCurso = executar().finally(() => {
+    logoutEmCurso = undefined;
+  });
+  return logoutEmCurso;
 }
 
 export function perfilCompleto(perfil?: PerfilEleito) {

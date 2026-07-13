@@ -117,10 +117,11 @@ export async function terminarSessaoSupabase() {
   const supabase = getSupabaseClient();
   if (!supabase) return;
 
-  const { error } = await supabase.auth.signOut();
+  const { error } = await withSupabaseTimeout(supabase.auth.signOut(), "SIGN_OUT", 8000);
   if (error) {
     console.warn("[Tribuno Auth] Não foi possível terminar a sessão Supabase.", {
       operacao: "AUTH_LOGOUT_SUPABASE_FALHOU",
     });
+    throw error;
   }
 }

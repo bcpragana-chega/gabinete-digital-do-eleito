@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, FileSearch, Upload } from "lucide-react";
+import { CheckCircle2, FileSearch, LogOut, Upload } from "lucide-react";
 import { PerfilEleitoForm } from "@/components/auth/PerfilEleitoForm";
 import { ReviewForm } from "@/components/documentos/InstitutionalDocumentIntake";
 import { Button } from "@/components/ui/button";
@@ -17,10 +17,23 @@ import {
   carregarOnboardingLocal,
   guardarOnboardingLocal,
   marcarProximaAcaoConvocatoria,
+  resolverInterrupcaoOnboarding,
   type OnboardingPasso,
 } from "@/lib/onboarding-state";
-import type { AuthUser, PerfilEleito } from "@/lib/auth-store";
+import { logout, type AuthUser, type PerfilEleito } from "@/lib/auth-store";
 import type { AnaliseDocumentoInstitucional, Documento } from "@/lib/types";
+import { chaveTransitoriaPorUtilizador } from "@/lib/session-transient-state";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type Passo = OnboardingPasso | "analise" | "revisao" | "duplicado";
 
@@ -58,6 +71,7 @@ export function OnboardingInicialWizard({ user, perfil, perfilConfigurado, onCon
   const [aviso, setAviso] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [mensagemIndex, setMensagemIndex] = useState(0);
+  const [aSair, setASair] = useState(false);
 
   useEffect(() => {
     if (passo !== "analise") return;
@@ -78,6 +92,27 @@ export function OnboardingInicialWizard({ user, perfil, perfilConfigurado, onCon
     if (user?.id) guardarOnboardingLocal(user.id, { passo: next, processoInterrompido: false });
     setPasso(next);
     setErro("");
+  }
+
+  async function sairEContinuarMaisTarde() {
+    if (aSair) return;
+    setASair(true);
+    try {
+      if (user?.id) {
+        guardarOnboardingLocal(
+          user.id,
+          resolverInterrupcaoOnboarding({ passo, temFicheiro: Boolean(file) }),
+        );
+      }
+      setFile(undefined);
+      setDocumento(undefined);
+      setAnalise(undefined);
+      setDuplicateId("");
+      await logout();
+      await navigate({ to: "/login", replace: true });
+    } finally {
+      setASair(false);
+    }
   }
 
   async function analisar() {
@@ -175,15 +210,18 @@ export function OnboardingInicialWizard({ user, perfil, perfilConfigurado, onCon
         semConvocatoria: false,
         sessaoId,
       });
-      sessionStorage.setItem(
-        `tribuno:onboarding-wow:${sessaoId}`,
-        JSON.stringify({
-          origem: "onboarding",
-          sessaoId,
-          data: analise.sessao.data,
-          pontos: analise.pontosOrdemTrabalhos.length,
-        }),
-      );
+      const wowKey = chaveTransitoriaPorUtilizador("tribuno:onboarding-wow", sessaoId, user.id);
+      if (wowKey)
+        sessionStorage.setItem(
+          wowKey,
+          JSON.stringify({
+            origem: "onboarding",
+            userId: user.id,
+            sessaoId,
+            data: analise.sessao.data,
+            pontos: analise.pontosOrdemTrabalhos.length,
+          }),
+        );
       await onConcluir();
     } catch {
       console.warn("[Tribuno Onboarding] Sessão criada com sincronização pendente.", {
@@ -197,9 +235,42 @@ export function OnboardingInicialWizard({ user, perfil, perfilConfigurado, onCon
 
   return (
     <div className="space-y-6">
-      <header>
-        <p className="text-sm font-medium text-primary">Onboarding Beta</p>
-        <h1 className="mt-1 font-display text-3xl font-semibold">Prepara a primeira sessão</h1>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-primary">Onboarding Beta</p>
+          <h1 className="mt-1 font-display text-3xl font-semibold">Prepara a primeira sessão</h1>
+        </div>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="sm" disabled={aSair} className="shrink-0">
+              <LogOut className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Sair e continuar mais tarde</span>
+              <span className="sr-only sm:hidden">Sair e continuar mais tarde</span>
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Sair da configuração inicial?</AlertDialogTitle>
+              <AlertDialogDescription>
+                O progresso já guardado ficará disponível quando iniciares sessão novamente. O
+                Tribuno não criará nem apagará nenhum dado.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={aSair}>Continuar configuração</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={aSair}
+                onClick={(event) => {
+                  event.preventDefault();
+                  void sairEContinuarMaisTarde();
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {aSair ? "A terminar sessão…" : "Sair"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </header>
 
       {passo === "identidade" && (

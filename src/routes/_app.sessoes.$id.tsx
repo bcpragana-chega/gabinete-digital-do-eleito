@@ -68,6 +68,8 @@ import {
   useDossiesAssociadosAAssembleia,
 } from "@/lib/dossie-assembleias-store";
 import { calcularFluxoSessao } from "@/lib/session-flow";
+import { useAuth } from "@/lib/auth-store";
+import { chaveTransitoriaPorUtilizador } from "@/lib/session-transient-state";
 import type { Dossie, EstadoAssembleia } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/sessoes/$id")({
@@ -98,6 +100,7 @@ function estadoTone(estado: EstadoAssembleia) {
 }
 
 function AssembleiaDetailPage() {
+  const { user } = useAuth();
   const { id } = Route.useParams();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const assembleia = useAssembleia(id);
@@ -149,8 +152,8 @@ function AssembleiaDetailPage() {
     }
   }, [assembleia?.preparacaoEstado, criticalSignature, id]);
   useEffect(() => {
-    const onboardingKey = `tribuno:onboarding-wow:${id}`;
-    const onboardingValue = sessionStorage.getItem(onboardingKey);
+    const onboardingKey = chaveTransitoriaPorUtilizador("tribuno:onboarding-wow", id, user?.id);
+    const onboardingValue = onboardingKey ? sessionStorage.getItem(onboardingKey) : null;
     if (onboardingValue) {
       try {
         const parsed = JSON.parse(onboardingValue) as {
@@ -167,16 +170,23 @@ function AssembleiaDetailPage() {
       } catch {
         // Um payload efémero inválido é ignorado com segurança.
       }
-      sessionStorage.removeItem(onboardingKey);
+      if (onboardingKey) sessionStorage.removeItem(onboardingKey);
       return;
     }
-    const legacyKey = `tribuno:sessao-preparada:${id}`;
-    const legacyValue = sessionStorage.getItem(legacyKey);
+    const legacyKey = chaveTransitoriaPorUtilizador("tribuno:sessao-preparada", id, user?.id);
+    const legacyValue = legacyKey ? sessionStorage.getItem(legacyKey) : null;
     if (legacyValue !== null) {
-      setArrival({ origem: "institucional", pontos: Number(legacyValue) });
-      sessionStorage.removeItem(legacyKey);
+      try {
+        const parsed = JSON.parse(legacyValue) as { pontos?: unknown; userId?: unknown };
+        if (parsed.userId === user?.id && Number.isFinite(parsed.pontos)) {
+          setArrival({ origem: "institucional", pontos: Number(parsed.pontos) });
+        }
+      } catch {
+        // Um marcador transitório inválido não é reutilizado.
+      }
+      if (legacyKey) sessionStorage.removeItem(legacyKey);
     }
-  }, [id]);
+  }, [id, user?.id]);
 
   const assuntosDaSessao = useMemo(() => {
     return relacoesAssuntos

@@ -88,8 +88,7 @@ function AppLayout() {
             <Button
               variant="secondary"
               onClick={() => {
-                logout();
-                void navigate({ to: "/login", replace: true });
+                void logout().then(() => navigate({ to: "/login", replace: true }));
               }}
             >
               Terminar sessão

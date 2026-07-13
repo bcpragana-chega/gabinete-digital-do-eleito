@@ -25,6 +25,7 @@ declare global {
               width?: string | number;
             },
           ) => void;
+          disableAutoSelect?: () => void;
         };
       };
     };

@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Scale } from "lucide-react";
+import { LogOut, Scale } from "lucide-react";
+import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
 import {
   isSidebarItemActive,
   sidebarFooterItems,
@@ -71,6 +72,17 @@ export function AppSidebar() {
             </Link>
           );
         })}
+        <LogoutConfirmDialog
+          trigger={
+            <button
+              type="button"
+              className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
+              <span>Terminar sessão</span>
+            </button>
+          }
+        />
       </nav>
     </aside>
   );

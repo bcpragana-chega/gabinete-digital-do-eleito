@@ -3,13 +3,14 @@ import { LogOut, Menu, Scale, Settings } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { UserAvatar } from "@/components/auth/UserAvatar";
+import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
 import {
   isSidebarItemActive,
   sidebarFooterItems,
   sidebarItems,
 } from "@/components/layout/sidebar-config";
 import { UniversalSearch } from "@/components/search/UniversalSearch";
-import { logout, primeiroNome, saudacaoPorHora, useAuth } from "@/lib/auth-store";
+import { primeiroNome, saudacaoPorHora, useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -166,6 +167,18 @@ export function TopBar({ title, description, breadcrumb }: TopBarProps) {
                       </Link>
                     );
                   })}
+                  <LogoutConfirmDialog
+                    onFinished={() => setMenuAberto(false)}
+                    trigger={
+                      <button
+                        type="button"
+                        className="flex min-h-11 w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-[15px] text-muted-foreground transition-all hover:bg-muted/70 hover:text-foreground"
+                      >
+                        <LogOut className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
+                        <span>Terminar sessão</span>
+                      </button>
+                    }
+                  />
                 </div>
               </div>
             </SheetContent>
@@ -227,10 +240,14 @@ export function TopBar({ title, description, breadcrumb }: TopBarProps) {
                   Definições e perfil
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => logout()}>
-                <LogOut />
-                Terminar sessão
-              </DropdownMenuItem>
+              <LogoutConfirmDialog
+                trigger={
+                  <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+                    <LogOut />
+                    Terminar sessão
+                  </DropdownMenuItem>
+                }
+              />
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

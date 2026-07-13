@@ -4,6 +4,19 @@ export const ONBOARDING_VERSION = 1;
 
 export type OnboardingPasso = "identidade" | "confirmacao" | "convocatoria";
 
+export function resolverInterrupcaoOnboarding(input: {
+  passo: OnboardingPasso | "analise" | "revisao" | "duplicado";
+  temFicheiro?: boolean;
+}) {
+  if (input.passo === "identidade" || input.passo === "confirmacao") {
+    return { passo: input.passo, processoInterrompido: false } as const;
+  }
+  return {
+    passo: "convocatoria",
+    processoInterrompido: input.passo !== "convocatoria" || Boolean(input.temFicheiro),
+  } as const;
+}
+
 type OnboardingLocal = {
   version: number;
   passo: OnboardingPasso;

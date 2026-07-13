@@ -32,6 +32,7 @@ import {
 import type { AnaliseDocumentoInstitucional, Documento } from "@/lib/types";
 import { useAuth } from "@/lib/auth-store";
 import { marcarProximaAcaoConvocatoria } from "@/lib/onboarding-state";
+import { chaveTransitoriaPorUtilizador } from "@/lib/session-transient-state";
 
 type Step = "file" | "analysing" | "review" | "duplicate";
 
@@ -158,10 +159,17 @@ export function InstitutionalDocumentIntake({
         setStep("duplicate");
         return;
       }
-      sessionStorage.setItem(
-        `tribuno:sessao-preparada:${result.sessaoId}`,
-        String(analise.pontosOrdemTrabalhos.length),
+      const arrivalKey = chaveTransitoriaPorUtilizador(
+        "tribuno:sessao-preparada",
+        result.sessaoId,
+        user?.id,
       );
+      if (arrivalKey) {
+        sessionStorage.setItem(
+          arrivalKey,
+          JSON.stringify({ userId: user?.id, pontos: analise.pontosOrdemTrabalhos.length }),
+        );
+      }
       if (user?.id) marcarProximaAcaoConvocatoria(user.id, false);
       setOpen(false);
       reset();
