@@ -26,6 +26,7 @@ import {
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
   mensagemContextoInstitucionalObrigatorio,
+  mensagemDataInstitucionalProvisoria,
   mensagemLogoObrigatorio,
 } from "@/lib/documentos-criados-export";
 import { obterAssembleia } from "@/lib/assembleias-store";
@@ -166,6 +167,15 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
     const handler = () => setErroLogo(mensagemLogoObrigatorio);
     window.addEventListener("tribuno:logo-institucional-obrigatorio", handler);
     return () => window.removeEventListener("tribuno:logo-institucional-obrigatorio", handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () =>
+      setErroInstitucional(
+        `${mensagemDataInstitucionalProvisoria} Abra o documento para confirmar o download ou associar uma Sessão.`,
+      );
+    window.addEventListener("tribuno:data-institucional-provisoria", handler);
+    return () => window.removeEventListener("tribuno:data-institucional-provisoria", handler);
   }, []);
 
   useEffect(() => {

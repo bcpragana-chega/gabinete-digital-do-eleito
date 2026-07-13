@@ -53,6 +53,7 @@ import {
   obterContextoInstitucionalGuardado,
   obterDadosInstitucionais,
   obterSecoesDocumentoInstitucional,
+  resolverDataInstitucionalDocumento,
   validarDocumentoInstitucional,
   type ContextoDocumentoInstitucional,
 } from "@/lib/documentos-institucionais";
@@ -142,6 +143,7 @@ function DocumentoDoAssuntoPage() {
   const [copiado, setCopiado] = useState(false);
   const [modo, setModo] = useState<ModoDocumento>("visualizar");
   const [downloadPendente, setDownloadPendente] = useState<"pdf" | "word">();
+  const [downloadDataProvisoria, setDownloadDataProvisoria] = useState<"pdf" | "word">();
   const [errosDocumento, setErrosDocumento] = useState<string[]>([]);
   const dossie = useDossie(documento?.assuntoId ?? "");
 
@@ -339,17 +341,23 @@ function DocumentoDoAssuntoPage() {
     };
   }
 
-  function descarregar(tipo: "pdf" | "word", base = documento) {
+  function descarregar(tipo: "pdf" | "word", base = documento, permitirDataProvisoria = false) {
     const atual = documentoAtualParaExportar(base);
     if (!atual) return;
+    const dataInstitucional = resolverDataInstitucionalDocumento(contextoDocumento);
+    if (dataInstitucional.provisoria && !permitirDataProvisoria) {
+      setDownloadDataProvisoria(tipo);
+      return;
+    }
+    const contextoExportacao = { ...contextoDocumento, permitirDataProvisoria };
     if (isTipoDocumentoInstitucional(atual.tipo)) {
-      const validacao = validarDocumentoInstitucional(atual, contextoDocumento);
+      const validacao = validarDocumentoInstitucional(atual, contextoExportacao);
       setErrosDocumento(validacao.erros);
       if (!validacao.pronto) return;
     }
     setErrosDocumento([]);
-    if (tipo === "pdf") exportarDocumentoCriadoPDF(atual, contextoDocumento);
-    else exportarDocumentoCriadoWord(atual, contextoDocumento);
+    if (tipo === "pdf") exportarDocumentoCriadoPDF(atual, contextoExportacao);
+    else exportarDocumentoCriadoWord(atual, contextoExportacao);
   }
 
   function pedirDownload(tipo: "pdf" | "word") {
@@ -477,6 +485,7 @@ function DocumentoDoAssuntoPage() {
         return typeof resumo === "string" && resumo.trim() ? [resumo.trim()] : [];
       })
     : [];
+  const dataInstitucional = resolverDataInstitucionalDocumento(contextoDocumento);
 
   return (
     <>
@@ -511,6 +520,52 @@ function DocumentoDoAssuntoPage() {
               disabled={saveState === "saving"}
             >
               Guardar e descarregar
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={Boolean(downloadDataProvisoria)}
+        onOpenChange={(open) => !open && setDownloadDataProvisoria(undefined)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Data institucional provisória</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este documento não está associado a uma Sessão. A data apresentada é provisória.
+              Pretende descarregar mesmo assim?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDownloadDataProvisoria(undefined)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setDownloadDataProvisoria(undefined);
+                setModo("editar");
+                window.requestAnimationFrame(() =>
+                  document.getElementById("documento-sessao")?.focus(),
+                );
+              }}
+            >
+              Associar a uma Sessão
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                const tipo = downloadDataProvisoria;
+                setDownloadDataProvisoria(undefined);
+                if (tipo) descarregar(tipo, documento, true);
+              }}
+            >
+              Descarregar com data provisória
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -634,7 +689,7 @@ function DocumentoDoAssuntoPage() {
                         Sessão
                       </label>
                       <Select value={assembleiaId} onValueChange={escolherAssembleia}>
-                        <SelectTrigger>
+                        <SelectTrigger id="documento-sessao">
                           <SelectValue placeholder="Sem sessão associada" />
                         </SelectTrigger>
                         <SelectContent>
@@ -737,7 +792,13 @@ function DocumentoDoAssuntoPage() {
                         <p>
                           Modelo:{" "}
                           {String(metadataGeracao.modelo ?? documento.iaModelo ?? "Não indicado")}.
-                          Data: {String(metadataGeracao.geradoEm ?? documento.createdAt)}.
+                          Gerado pela IA em:{" "}
+                          {String(metadataGeracao.geradoEm ?? documento.createdAt)}.
+                        </p>
+                        <p>
+                          {dataInstitucional.provisoria
+                            ? `Data institucional provisória: ${dataInstitucional.dataFormatada}. Associe o documento a uma Sessão para definir a data de apresentação.`
+                            : `Data institucional: ${dataInstitucional.dataFormatada}. Origem da data institucional: Sessão associada.`}
                         </p>
                         {Boolean(metadataGeracao.legalBasisVersion) && (
                           <p>

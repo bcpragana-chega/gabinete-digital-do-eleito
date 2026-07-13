@@ -47,6 +47,8 @@ export const mensagemLogoObrigatorio =
   "Para gerar documentos oficiais, adicione primeiro o logótipo institucional no seu perfil.";
 export const mensagemContextoInstitucionalObrigatorio =
   "Complete o seu perfil institucional antes de gerar documentos oficiais. Confirme o município e, quando aplicável, a freguesia.";
+export const mensagemDataInstitucionalProvisoria =
+  "Este documento não está associado a uma Sessão. A data apresentada é provisória.";
 const titulosRaciocinioInterno = new Set([
   "FACTOS",
   "PROBLEMA",
@@ -260,6 +262,12 @@ export function exportarDocumentoCriadoPDF(
     institutionalContext: contextoExportacao.context,
   };
 
+  const dados = obterDadosInstitucionais(contextoResolvido);
+  if (dados.dataProvisoria && !contextoResolvido.permitirDataProvisoria) {
+    window.dispatchEvent(new CustomEvent("tribuno:data-institucional-provisoria"));
+    return false;
+  }
+
   if (!validarAntesDeExportar(documento, contextoResolvido)) return false;
 
   if (!perfilTemLogoInstitucional(contextoResolvido)) {
@@ -287,6 +295,12 @@ export function exportarDocumentoCriadoWord(
     ...contextoFinal,
     institutionalContext: contextoExportacao.context,
   };
+
+  const dados = obterDadosInstitucionais(contextoResolvido);
+  if (dados.dataProvisoria && !contextoResolvido.permitirDataProvisoria) {
+    window.dispatchEvent(new CustomEvent("tribuno:data-institucional-provisoria"));
+    return false;
+  }
 
   if (!validarAntesDeExportar(documento, contextoResolvido)) return false;
 

@@ -44,7 +44,7 @@ describe("exportação DOCX real", () => {
         nome: "Sessão ordinária",
         tipo: "ordinaria",
         orgao: "Assembleia de Freguesia",
-        data: "2026-07-12",
+        data: "2026-07-30",
         local: "Porches",
       },
       nomeEleito: "João Gonçalves",
@@ -85,6 +85,9 @@ describe("exportação DOCX real", () => {
     assert.match(xml ?? "", /Porches precisa de informação pública clara/);
     assert.match(xml ?? "", /João Gonçalves/);
     assert.match(xml ?? "", /Membro da Assembleia de Freguesia/);
+    assert.match(xml ?? "", /30 de julho de 2026/);
+    assert.doesNotMatch(xml ?? "", /12 de julho de 2026/);
+    assert.equal((xml?.match(/30 de julho de 2026/g) ?? []).length, 1);
     assert.match(xml ?? "", /participação dos cidadãos/);
     assert.match(xml ?? "", /Reforçar a fiscalização/);
     assert.match(xml ?? "", /a\) Garantir acessibilidade/);
@@ -128,5 +131,45 @@ describe("exportação DOCX real", () => {
     });
     assert.equal(cabecalho.orgao, "Assembleia de Freguesia de Porches");
     assert.notEqual(cabecalho.orgao, "Chega!");
+  });
+
+  it("bloqueia exportação sem Sessão até existir confirmação da data provisória", () => {
+    const eventos: string[] = [];
+    const windowAnterior = globalThis.window;
+    const customEventAnterior = globalThis.CustomEvent;
+    class CustomEventTeste extends Event {
+      constructor(type: string) {
+        super(type);
+      }
+    }
+    Object.assign(globalThis, {
+      CustomEvent: CustomEventTeste,
+      window: { dispatchEvent: (evento: Event) => eventos.push(evento.type) },
+    });
+
+    try {
+      assert.equal(
+        exportarDocumentoCriadoPDF(documento(), {
+          perfil: {
+            nomeInstitucional: "João Gonçalves",
+            cargo: "Membro da Assembleia de Freguesia",
+            orgao: "Assembleia de Freguesia",
+            organizacao: "",
+            territorio: "Porches",
+            municipio: "Lagoa",
+            freguesia: "Porches",
+            logoUrl: "data:image/png;base64,AA==",
+            updatedAt: "2026-07-13T10:00:00.000Z",
+          },
+        }),
+        false,
+      );
+      assert.deepEqual(eventos, ["tribuno:data-institucional-provisoria"]);
+    } finally {
+      Object.assign(globalThis, {
+        CustomEvent: customEventAnterior,
+        window: windowAnterior,
+      });
+    }
   });
 });

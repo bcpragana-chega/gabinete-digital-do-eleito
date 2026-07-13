@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { readFileSync } from "node:fs";
 import { construirPromptDocumento } from "@/lib/ai/prompts/documents";
 import { construirBaseJuridicaInstitucional } from "@/lib/ai/legal-basis";
 import { resolveInstitutionalContext } from "@/lib/ai/institutional-context";
 import {
   criarHtmlDocumentoInstitucional,
   normalizarGrupoPolitico,
+  obterDadosInstitucionais,
+  resolverDataInstitucionalDocumento,
   resolverOrgaoInstitucional,
   validarDocumentoInstitucional,
   type ContextoDocumentoInstitucional,
@@ -59,6 +62,83 @@ function perfil(overrides: Partial<PerfilEleito> = {}): PerfilEleito {
 }
 
 describe("validação e composição institucional", () => {
+  it("usa a data da Sessão associada em vez da criação ou geração", () => {
+    const resultado = resolverDataInstitucionalDocumento(
+      {
+        ...contexto,
+        assembleia: { ...contexto.assembleia!, data: "2026-07-30" },
+      },
+      new Date("2026-07-13T10:00:00Z"),
+    );
+    assert.deepEqual(resultado, {
+      data: "2026-07-30",
+      dataFormatada: "30 de julho de 2026",
+      origem: "sessao",
+      provisoria: false,
+    });
+    assert.doesNotMatch(resultado.dataFormatada, /13 de julho/);
+  });
+
+  it("não usa generatedAt nem created_at para substituir a data da Sessão", () => {
+    const contextoComDatasAlheias = {
+      ...contexto,
+      assembleia: { ...contexto.assembleia!, data: "2026-07-30" },
+      generatedAt: "2026-07-13T09:00:00Z",
+      created_at: "2026-07-13T08:00:00Z",
+    };
+    assert.equal(
+      resolverDataInstitucionalDocumento(contextoComDatasAlheias).dataFormatada,
+      "30 de julho de 2026",
+    );
+  });
+
+  it("sem Sessão usa uma data provisória explícita", () => {
+    const resultado = resolverDataInstitucionalDocumento(
+      undefined,
+      new Date("2026-07-13T12:00:00Z"),
+    );
+    assert.equal(resultado.dataFormatada, "13 de julho de 2026");
+    assert.equal(resultado.origem, "provisoria");
+    assert.equal(resultado.provisoria, true);
+  });
+
+  it("associar e remover a Sessão alterna entre data definitiva e provisória", () => {
+    const agora = new Date("2026-07-13T12:00:00Z");
+    const associada = resolverDataInstitucionalDocumento(
+      { ...contexto, assembleia: { ...contexto.assembleia!, data: "2026-07-30" } },
+      agora,
+    );
+    const removida = resolverDataInstitucionalDocumento(undefined, agora);
+    const reaberta = resolverDataInstitucionalDocumento(
+      { ...contexto, assembleia: { ...contexto.assembleia!, data: "2026-07-30" } },
+      agora,
+    );
+    assert.equal(associada.dataFormatada, "30 de julho de 2026");
+    assert.equal(removida.provisoria, true);
+    assert.deepEqual(reaberta, associada);
+  });
+
+  it("o editor mostra o aviso fora do conteúdo quando a data é provisória", () => {
+    const source = readFileSync(
+      new URL("../components/documentos/InstitutionalDocumentEditor.tsx", import.meta.url),
+      "utf8",
+    );
+    assert.match(source, /Data provisória — associe este documento a uma Sessão/);
+    assert.doesNotMatch(recomendacao.conteudo, /Data provisória/);
+  });
+
+  it("HTML e restantes compositores recebem a mesma data resolvida", () => {
+    const contextoSessao = {
+      ...contexto,
+      assembleia: { ...contexto.assembleia!, data: "2026-07-30" },
+    };
+    const dados = obterDadosInstitucionais(contextoSessao);
+    const html = criarHtmlDocumentoInstitucional(recomendacao, contextoSessao);
+    assert.equal(dados.data, "30 de julho de 2026");
+    assert.equal(dados.dataOrigem, "sessao");
+    assert.equal((html.match(/30 de julho de 2026/g) ?? []).length, 1);
+  });
+
   it("resolve o órgão do perfil sem usar organização partidária", () => {
     assert.deepEqual(resolverOrgaoInstitucional({ perfil: perfil() }), {
       nome: "Assembleia de Freguesia de Porches",

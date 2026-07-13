@@ -16,6 +16,7 @@ export type ContextoDocumentoInstitucional = {
   institutionalContext?: ResolvedInstitutionalContext;
   nomeEleito?: string;
   grupoPolitico?: string;
+  permitirDataProvisoria?: boolean;
 };
 
 type DadosInstitucionais = {
@@ -27,6 +28,15 @@ type DadosInstitucionais = {
   logoUrl?: string;
   local: string;
   data: string;
+  dataOrigem: DataInstitucionalResolvida["origem"];
+  dataProvisoria: boolean;
+};
+
+export type DataInstitucionalResolvida = {
+  data: string;
+  dataFormatada: string;
+  origem: "sessao" | "provisoria";
+  provisoria: boolean;
 };
 
 export type OrgaoInstitucionalResolvido = {
@@ -212,22 +222,41 @@ function normalizarConteudoInstitucionalVisivel(conteudo: string) {
     .trim();
 }
 
-function dataFormatada(data?: string) {
-  const dataBase = data ? new Date(data) : new Date();
-
-  if (Number.isNaN(dataBase.getTime())) {
-    return new Intl.DateTimeFormat("pt-PT", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }).format(new Date());
-  }
-
+function formatarDataInstitucional(data: Date) {
   return new Intl.DateTimeFormat("pt-PT", {
     day: "2-digit",
     month: "long",
     year: "numeric",
-  }).format(dataBase);
+  }).format(data);
+}
+
+function interpretarDataSessao(valor?: string) {
+  const texto = textoSeguro(valor);
+  if (!texto) return undefined;
+  const data = /^\d{4}-\d{2}-\d{2}$/.test(texto) ? new Date(`${texto}T12:00:00`) : new Date(texto);
+  return Number.isNaN(data.getTime()) ? undefined : data;
+}
+
+export function resolverDataInstitucionalDocumento(
+  contexto?: ContextoDocumentoInstitucional,
+  agora = new Date(),
+): DataInstitucionalResolvida {
+  const dataSessao = interpretarDataSessao(contexto?.assembleia?.data);
+  if (dataSessao) {
+    return {
+      data: contexto?.assembleia?.data ?? dataSessao.toISOString(),
+      dataFormatada: formatarDataInstitucional(dataSessao),
+      origem: "sessao",
+      provisoria: false,
+    };
+  }
+
+  return {
+    data: agora.toISOString(),
+    dataFormatada: formatarDataInstitucional(agora),
+    origem: "provisoria",
+    provisoria: true,
+  };
 }
 
 function obterEntidadeDeliberativa(
@@ -281,6 +310,7 @@ export function obterDadosInstitucionais(
   const perfil = contexto?.perfil ?? auth.perfil;
   const user = auth.user;
   const nomeOrgao = resolverOrgaoInstitucional(contexto, auth.perfil).nome ?? "";
+  const dataInstitucional = resolverDataInstitucionalDocumento(contexto);
 
   return {
     nomeOrgao,
@@ -302,7 +332,9 @@ export function obterDadosInstitucionais(
       textoSeguro(perfil?.municipio) ||
       textoSeguro(perfil?.territorio) ||
       "Local",
-    data: dataFormatada(contexto?.assembleia?.data),
+    data: dataInstitucional.dataFormatada,
+    dataOrigem: dataInstitucional.origem,
+    dataProvisoria: dataInstitucional.provisoria,
   };
 }
 
@@ -364,6 +396,9 @@ export function validarDocumentoInstitucional(
   }
 
   if (!dados.grupoPolitico) avisos.push("O grupo político não está configurado e será omitido.");
+  if (dados.dataProvisoria) {
+    avisos.push("O documento não está associado a uma Sessão; a data é provisória.");
+  }
 
   return { pronto: erros.length === 0, erros: Array.from(new Set(erros)), avisos };
 }

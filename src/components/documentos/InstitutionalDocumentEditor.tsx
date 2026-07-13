@@ -39,6 +39,11 @@ export function InstitutionalDocumentEditor({
 
   return (
     <div className="rounded-xl border border-border bg-background p-3 md:p-6">
+      {dados.dataProvisoria && (
+        <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 font-sans text-sm text-amber-900">
+          Data provisória — associe este documento a uma Sessão para usar a data da apresentação.
+        </div>
+      )}
       <article className="mx-auto min-h-[780px] max-w-3xl border border-border bg-white px-8 py-10 font-serif text-[15px] leading-7 text-slate-950 shadow-card md:px-14 md:py-12">
         <header className="border-b border-slate-300 pb-6 text-center">
           {dados.logoUrl && (
