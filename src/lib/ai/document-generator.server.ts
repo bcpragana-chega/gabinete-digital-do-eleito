@@ -8,6 +8,10 @@ import { obterFeatureGeracaoDocumento, type EstadoUsoAi } from "@/lib/ai/usage";
 import { registrarUsoAi } from "@/lib/ai/usage.server";
 import { INSTITUTIONAL_CONTEXT_VERSION } from "@/lib/ai/institutional-context";
 import { LEGAL_BASIS_VERSION } from "@/lib/ai/legal-basis";
+import {
+  GENERATION_PIPELINE,
+  persistirRespostaGeracaoCanonica,
+} from "@/lib/ai/document-generation-pipeline";
 import type {
   DadosEntradaGeracaoDocumento,
   DocumentoCriadoSerializavel,
@@ -224,6 +228,14 @@ function normalizarErro(error: unknown): { code: string; message: string } {
       return {
         code: "AI_TIMEOUT",
         message: "A geração demorou demasiado tempo. Tente novamente.",
+      };
+    }
+
+    if (error.name === "AI_INVALID_DOCUMENT_CONTENT") {
+      return {
+        code: "AI_INVALID_DOCUMENT_CONTENT",
+        message:
+          "O conteúdo produzido não respeitou a estrutura documental. Tente gerar novamente.",
       };
     }
 
@@ -459,6 +471,7 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
       | undefined;
     let documentoGerado: DocumentoCriado | undefined;
     let usoRegistrado = false;
+    let respostaValidadaPeloPipeline = false;
     let contextoGeracao: Awaited<ReturnType<typeof construirContextoGeracaoDocumento>> | undefined;
     let userIdAutenticado: string | undefined;
 
@@ -530,73 +543,85 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
       });
 
       try {
-        documentoGerado = await guardarDocumentoGeradoRemotamente({
-          userId: userIdAutenticado,
-          assuntoId: data.assuntoId,
-          tipo: data.tipo,
-          titulo: data.titulo,
-          conteudo: respostaAi.texto,
-          modelo: respostaAi.modelo,
-          provider: respostaAi.provider,
-          promptOrigem: data.conteudoInicial,
-          metadata: {
-            ...respostaAi.metadata,
-            provider: respostaAi.provider,
-            modelo: respostaAi.modelo,
-            geradoEm: new Date().toISOString(),
-            documentosRelacionados: contextoGeracao.documentosRelacionados.length,
-            anexosTextuais: contextoGeracao.anexosTextuais.length,
-            assunto: {
-              id: contextoGeracao.assunto.id,
-              titulo: contextoGeracao.assunto.titulo,
-            },
-            sessao: contextoGeracao.sessao
-              ? {
-                  id: contextoGeracao.sessao.id,
-                  tipo: contextoGeracao.sessao.tipo,
-                  orgao: contextoGeracao.sessao.orgao,
-                }
-              : null,
-            documentosConsultados: contextoGeracao.documentosRelacionados.map((documento) => ({
-              id: documento.id,
-              titulo: documento.titulo,
-              tipo: documento.tipo,
-            })),
-            anexosConsultados: contextoGeracao.anexosTextuais.map((anexo) => ({
-              id: anexo.id,
-              titulo: anexo.titulo,
-              tipo: anexo.tipo,
-            })),
-            notasAssunto: contextoGeracao.assunto.notas.length,
-            timelineAssunto: contextoGeracao.assunto.timeline.length,
-            factosUtilizados: contextoGeracao.factosEspecificos,
-            limitacoes: contextoGeracao.institutionalContext.validation.warnings.map(
-              (aviso) => aviso.message,
-            ),
-            elementosNaoConfirmados: contextoGeracao.institutionalContext.validation.errors.map(
-              (erro) => erro.message,
-            ),
-            baseJuridica: {
-              diploma: contextoGeracao.baseJuridica.diploma,
-              tipoOrgao: contextoGeracao.baseJuridica.tipoOrgao,
-              tipoDocumental: contextoGeracao.baseJuridica.tipoDocumental,
-              orgaoApresentacao: contextoGeracao.baseJuridica.orgaoApresentacao,
-              destinatario: contextoGeracao.baseJuridica.destinatario,
-              artigosAplicaveis: contextoGeracao.baseJuridica.artigosAplicaveis.map((artigo) => ({
-                diploma: artigo.diploma,
-                artigo: artigo.artigo,
-                numero: artigo.numero,
-                alinea: artigo.alinea,
-                finalidade: artigo.finalidade,
+        const userIdPersistencia = userIdAutenticado;
+        const respostaPersistencia = respostaAi;
+        documentoGerado = await persistirRespostaGeracaoCanonica(
+          {
+            tipo: data.tipo,
+            conteudo: respostaAi.texto,
+            metadata: {
+              ...respostaAi.metadata,
+              provider: respostaAi.provider,
+              modelo: respostaAi.modelo,
+              geradoEm: new Date().toISOString(),
+              documentosRelacionados: contextoGeracao.documentosRelacionados.length,
+              anexosTextuais: contextoGeracao.anexosTextuais.length,
+              assunto: {
+                id: contextoGeracao.assunto.id,
+                titulo: contextoGeracao.assunto.titulo,
+              },
+              sessao: contextoGeracao.sessao
+                ? {
+                    id: contextoGeracao.sessao.id,
+                    tipo: contextoGeracao.sessao.tipo,
+                    orgao: contextoGeracao.sessao.orgao,
+                  }
+                : null,
+              documentosConsultados: contextoGeracao.documentosRelacionados.map((documento) => ({
+                id: documento.id,
+                titulo: documento.titulo,
+                tipo: documento.tipo,
               })),
-              nivelConfianca: contextoGeracao.baseJuridica.nivelConfianca,
+              anexosConsultados: contextoGeracao.anexosTextuais.map((anexo) => ({
+                id: anexo.id,
+                titulo: anexo.titulo,
+                tipo: anexo.tipo,
+              })),
+              notasAssunto: contextoGeracao.assunto.notas.length,
+              timelineAssunto: contextoGeracao.assunto.timeline.length,
+              factosUtilizados: contextoGeracao.factosEspecificos,
+              limitacoes: contextoGeracao.institutionalContext.validation.warnings.map(
+                (aviso) => aviso.message,
+              ),
+              elementosNaoConfirmados: contextoGeracao.institutionalContext.validation.errors.map(
+                (erro) => erro.message,
+              ),
+              baseJuridica: {
+                diploma: contextoGeracao.baseJuridica.diploma,
+                tipoOrgao: contextoGeracao.baseJuridica.tipoOrgao,
+                tipoDocumental: contextoGeracao.baseJuridica.tipoDocumental,
+                orgaoApresentacao: contextoGeracao.baseJuridica.orgaoApresentacao,
+                destinatario: contextoGeracao.baseJuridica.destinatario,
+                artigosAplicaveis: contextoGeracao.baseJuridica.artigosAplicaveis.map((artigo) => ({
+                  diploma: artigo.diploma,
+                  artigo: artigo.artigo,
+                  numero: artigo.numero,
+                  alinea: artigo.alinea,
+                  finalidade: artigo.finalidade,
+                })),
+                nivelConfianca: contextoGeracao.baseJuridica.nivelConfianca,
+              },
+              contextoInstitucional: contextoGeracao.institutionalContext,
+              institutionalContext: contextoGeracao.institutionalContext,
+              institutionalContextVersion: INSTITUTIONAL_CONTEXT_VERSION,
+              legalBasisVersion: LEGAL_BASIS_VERSION,
             },
-            contextoInstitucional: contextoGeracao.institutionalContext,
-            institutionalContext: contextoGeracao.institutionalContext,
-            institutionalContextVersion: INSTITUTIONAL_CONTEXT_VERSION,
-            legalBasisVersion: LEGAL_BASIS_VERSION,
           },
-        });
+          ({ conteudo: conteudoValidado, metadata }) => {
+            respostaValidadaPeloPipeline = true;
+            return guardarDocumentoGeradoRemotamente({
+              userId: userIdPersistencia,
+              assuntoId: data.assuntoId,
+              tipo: data.tipo,
+              titulo: data.titulo,
+              conteudo: conteudoValidado,
+              modelo: respostaPersistencia.modelo,
+              provider: respostaPersistencia.provider,
+              promptOrigem: data.conteudoInicial,
+              metadata,
+            });
+          },
+        );
         registrarUso("success");
       } catch (error) {
         registrarUso(
@@ -636,31 +661,36 @@ export const gerarDocumentoAssistido = createServerFn({ method: "POST" })
       }
 
       const normalizado = normalizarErro(error);
-      const documentoPendente = respostaAi
-        ? documentoSerializavel({
-            id: crypto.randomUUID(),
-            tipo: data.tipo,
-            titulo: data.titulo,
-            conteudo: respostaAi.texto,
-            formatoConteudo: "markdown",
-            origem: "ia",
-            origemPrompt: data.conteudoInicial,
-            iaModelo: respostaAi.modelo,
-            iaMetadata: {
-              provider: respostaAi.provider,
-              modelo: respostaAi.modelo,
-              geradoEm: new Date().toISOString(),
-              persistenciaPendente: true,
-              assunto: { id: data.assuntoId, titulo: contextoGeracao?.assunto.titulo },
-              factosUtilizados: contextoGeracao?.factosEspecificos ?? [],
-            },
-            assuntoId: data.assuntoId,
-            assembleiaId: data.sessaoId,
-            estado: "rascunho",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          })
-        : undefined;
+      const conteudoInvalido = normalizado.code === "AI_INVALID_DOCUMENT_CONTENT";
+      const documentoPendente =
+        respostaAi && !conteudoInvalido
+          ? documentoSerializavel({
+              id: crypto.randomUUID(),
+              tipo: data.tipo,
+              titulo: data.titulo,
+              conteudo: respostaAi.texto,
+              formatoConteudo: "markdown",
+              origem: "ia",
+              origemPrompt: data.conteudoInicial,
+              iaModelo: respostaAi.modelo,
+              iaMetadata: {
+                provider: respostaAi.provider,
+                modelo: respostaAi.modelo,
+                geradoEm: new Date().toISOString(),
+                persistenciaPendente: true,
+                assunto: { id: data.assuntoId, titulo: contextoGeracao?.assunto.titulo },
+                factosUtilizados: contextoGeracao?.factosEspecificos ?? [],
+                ...(respostaValidadaPeloPipeline
+                  ? { generationPipeline: GENERATION_PIPELINE }
+                  : {}),
+              },
+              assuntoId: data.assuntoId,
+              assembleiaId: data.sessaoId,
+              estado: "rascunho",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            })
+          : undefined;
 
       return {
         ok: false,

@@ -4,7 +4,7 @@ import type { TipoDocumentoCriado } from "@/lib/types";
 const estruturasPorTipo: Record<TipoDocumentoCriado, string[]> = {
   Moção: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "PROPOSTA / DELIBERAÇÃO"],
   Recomendação: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "RECOMENDAÇÃO"],
-  Requerimento: ["Enquadramento", "Fundamentação", "Pedido", "Questões"],
+  Requerimento: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "REQUERIMENTO"],
   "Declaração de voto": ["Contexto", "Fundamentação", "Declaração"],
   Intervenção: ["Abertura", "Contexto", "Argumentação", "Conclusão"],
   "Outro documento": ["Enquadramento", "Conteúdo", "Conclusão"],

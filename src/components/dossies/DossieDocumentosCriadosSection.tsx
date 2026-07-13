@@ -88,6 +88,8 @@ function mensagemErroGeracao(code?: string, message?: string) {
     AI_TIMEOUT: "A preparação demorou mais do que o esperado. Tente novamente.",
     AI_EMPTY_RESPONSE:
       "Não foi possível produzir conteúdo útil. Reveja as indicações e tente novamente.",
+    AI_INVALID_DOCUMENT_CONTENT:
+      "O conteúdo produzido não respeitou a estrutura documental. Tente gerar novamente.",
     AI_PROVIDER_ERROR: "O serviço de apoio à escrita está temporariamente indisponível.",
     AI_CONFIG_MISSING: "O serviço de apoio à escrita não está disponível neste momento.",
     AI_CONFIG_MISSING_MODEL: "O serviço de apoio à escrita não está disponível neste momento.",
