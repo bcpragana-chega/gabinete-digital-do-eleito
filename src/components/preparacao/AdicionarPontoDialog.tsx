@@ -3,6 +3,7 @@ import {
   type CampoPreparacao,
 } from "@/components/preparacao/AdicionarItemPreparacao";
 import { adicionarPonto, type NivelPrioridade } from "@/lib/pontos-store";
+import { useRef, useState } from "react";
 
 type Props = {
   assembleiaId: string;
@@ -40,6 +41,8 @@ const campos: CampoPreparacao[] = [
 ];
 
 export function AdicionarPontoDialog({ assembleiaId, onAdicionar }: Props) {
+  const [erro, setErro] = useState("");
+  const tentativaId = useRef<string | undefined>(undefined);
   return (
     <AdicionarItemPreparacao
       tituloFormulario="Novo ponto"
@@ -52,15 +55,31 @@ export function AdicionarPontoDialog({ assembleiaId, onAdicionar }: Props) {
         prioridade: "Média",
         tempoEstimado: "",
       }}
-      onGuardar={(valores) => {
-        adicionarPonto(assembleiaId, {
-          titulo: valores.titulo.trim(),
-          descricao: valores.descricao.trim(),
-          prioridade: valores.prioridade as NivelPrioridade,
-          tempoEstimado: valores.tempoEstimado ? Number(valores.tempoEstimado) : undefined,
-        });
-
-        onAdicionar();
+      erroGuardar={erro}
+      onCancelar={() => {
+        tentativaId.current = undefined;
+        setErro("");
+      }}
+      onGuardar={async (valores) => {
+        setErro("");
+        try {
+          tentativaId.current ??= `ponto-${crypto.randomUUID()}`;
+          await adicionarPonto(
+            assembleiaId,
+            {
+              titulo: valores.titulo.trim(),
+              descricao: valores.descricao.trim(),
+              prioridade: valores.prioridade as NivelPrioridade,
+              tempoEstimado: valores.tempoEstimado ? Number(valores.tempoEstimado) : undefined,
+            },
+            { id: tentativaId.current },
+          );
+          tentativaId.current = undefined;
+          onAdicionar();
+        } catch {
+          setErro("Não foi possível adicionar o ponto. Confirma a ligação e tenta novamente.");
+          throw new Error("PONTO_NAO_GUARDADO");
+        }
       }}
     />
   );

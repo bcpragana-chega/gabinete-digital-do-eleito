@@ -8,9 +8,11 @@ import {
   atualizarPreparacaoAssembleiaRemota,
   guardarAssembleiasLocais as persistirAssembleiasLocais,
 } from "@/lib/assembleias-repository";
-import { obterUserIdAtual } from "@/lib/user-storage";
+import { executarHidratacaoIsolada, executarMutacaoIsolada } from "@/lib/confirmed-mutation";
+import { obterUtilizadorSupabaseValidado } from "@/lib/supabase";
 
 const EVENT_NAME = "tribuno:assembleias";
+let hidratacaoAtual = 0;
 
 type NovaAssembleiaInput = {
   nome: string;
@@ -22,42 +24,36 @@ type NovaAssembleiaInput = {
 
 type EditarAssembleiaInput = NovaAssembleiaInput;
 
-function lerAssembleiasLocais(): Assembleia[] {
-  return carregarAssembleiasLocais();
+function lerAssembleiasLocais(userId?: string): Assembleia[] {
+  return carregarAssembleiasLocais(userId);
 }
 
-function guardarAssembleiasLocais(assembleias: Assembleia[]) {
-  persistirAssembleiasLocais(assembleias);
+function guardarAssembleiasLocais(assembleias: Assembleia[], userId?: string) {
+  persistirAssembleiasLocais(assembleias, userId);
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 
-function guardarAssembleiaRemotamente(assembleia: Assembleia) {
-  const userId = obterUserIdAtual();
-  if (!userId) return;
-
-  void guardarAssembleiaRemota(userId, assembleia).catch(() => {
-    console.warn("[Tribuno] Sincronização de sessão falhou.", {
-      operacao: "SESSAO_SYNC_FALHOU",
-      documentoId: assembleia.id.slice(0, 8),
-    });
-  });
+async function obterUserIdValidado() {
+  const user = await obterUtilizadorSupabaseValidado();
+  if (!user?.id) throw new Error("AUTH_REQUIRED");
+  return user.id;
 }
 
-function apagarAssembleiaRemotamente(id: string) {
-  void apagarAssembleiaRemota(id).catch(() => {
-    console.warn("[Tribuno] Eliminação remota de sessão falhou.", {
-      operacao: "SESSAO_DELETE_FALHOU",
-      documentoId: id.slice(0, 8),
-    });
-  });
+async function guardarAssembleiaRemotamente(userId: string, assembleia: Assembleia) {
+  await guardarAssembleiaRemota(userId, assembleia);
 }
 
 async function carregarAssembleiasRemotasSeDisponivel() {
   try {
-    const remotas = await carregarAssembleiasRemotas();
-    if (!remotas) return;
-
-    guardarAssembleiasLocais(remotas);
+    const hidratacaoId = ++hidratacaoAtual;
+    const userId = await obterUserIdValidado();
+    await executarHidratacaoIsolada({
+      userId,
+      carregarRemoto: carregarAssembleiasRemotas,
+      obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+      isAtual: () => hidratacaoId === hidratacaoAtual,
+      confirmarLocal: (ownerId, remotas) => guardarAssembleiasLocais(remotas ?? [], ownerId),
+    });
   } catch {
     console.warn("[Tribuno] Carregamento remoto de sessões falhou.", {
       operacao: "SESSOES_LOAD_FALHOU",
@@ -78,10 +74,14 @@ export function obterAssembleia(id: string): Assembleia | undefined {
   return listarAssembleias().find((assembleia) => assembleia.id === id);
 }
 
-export function adicionarAssembleia(input: NovaAssembleiaInput): Assembleia {
+export async function adicionarAssembleia(
+  input: NovaAssembleiaInput,
+  options?: { id?: string },
+): Promise<Assembleia> {
+  const userId = await obterUserIdValidado();
   const agora = new Date().toISOString();
   const nova: Assembleia = {
-    id: `asm-${crypto.randomUUID()}`,
+    id: options?.id ?? `asm-${crypto.randomUUID()}`,
     nome: input.nome,
     data: input.data,
     hora: input.hora,
@@ -91,15 +91,21 @@ export function adicionarAssembleia(input: NovaAssembleiaInput): Assembleia {
     updatedAt: agora,
   };
 
-  const atuais = lerAssembleiasLocais();
-  guardarAssembleiasLocais([...atuais, nova]);
-  guardarAssembleiaRemotamente(nova);
-
-  return nova;
+  return executarMutacaoIsolada({
+    userId,
+    persistirRemoto: (ownerId) => guardarAssembleiaRemotamente(ownerId, nova),
+    obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+    confirmarLocal: (ownerId) => {
+      const atuais = lerAssembleiasLocais(ownerId);
+      guardarAssembleiasLocais([...atuais.filter((item) => item.id !== nova.id), nova], ownerId);
+      return nova;
+    },
+  });
 }
 
-export function editarAssembleia(id: string, input: EditarAssembleiaInput): Assembleia | undefined {
-  const atuais = lerAssembleiasLocais();
+export async function editarAssembleia(id: string, input: EditarAssembleiaInput) {
+  const userId = await obterUserIdValidado();
+  const atuais = lerAssembleiasLocais(userId);
 
   const atualizadas = atuais.map((assembleia) =>
     assembleia.id === id
@@ -119,15 +125,22 @@ export function editarAssembleia(id: string, input: EditarAssembleiaInput): Asse
       : assembleia,
   );
 
-  guardarAssembleiasLocais(atualizadas);
   const atualizada = atualizadas.find((assembleia) => assembleia.id === id);
-  if (atualizada) guardarAssembleiaRemotamente(atualizada);
-
-  return atualizada;
+  if (!atualizada) return undefined;
+  return executarMutacaoIsolada({
+    userId,
+    persistirRemoto: (ownerId) => guardarAssembleiaRemotamente(ownerId, atualizada),
+    obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+    confirmarLocal: (ownerId) => {
+      guardarAssembleiasLocais(atualizadas, ownerId);
+      return atualizada;
+    },
+  });
 }
 
 export async function editarAssembleiaConfirmada(id: string, input: EditarAssembleiaInput) {
-  const atual = lerAssembleiasLocais().find((assembleia) => assembleia.id === id);
+  const userId = await obterUserIdValidado();
+  const atual = lerAssembleiasLocais(userId).find((assembleia) => assembleia.id === id);
   if (!atual) throw new Error("ASSEMBLEIA_NOT_FOUND");
   const atualizada: Assembleia = {
     ...atual,
@@ -138,15 +151,19 @@ export async function editarAssembleiaConfirmada(id: string, input: EditarAssemb
     prontaEm: undefined,
     updatedAt: new Date().toISOString(),
   };
-  const userId = obterUserIdAtual();
-  if (!userId) throw new Error("AUTH_REQUIRED");
   await guardarAssembleiaRemota(userId, atualizada);
-  return substituirAssembleiaLocal(atualizada);
+  if ((await obterUtilizadorSupabaseValidado())?.id !== userId) {
+    throw new Error("AUTH_CONTEXT_CHANGED");
+  }
+  return substituirAssembleiaLocal(atualizada, userId);
 }
 
-function substituirAssembleiaLocal(assembleia: Assembleia) {
-  const atuais = lerAssembleiasLocais();
-  guardarAssembleiasLocais([assembleia, ...atuais.filter((item) => item.id !== assembleia.id)]);
+function substituirAssembleiaLocal(assembleia: Assembleia, userId?: string) {
+  const atuais = lerAssembleiasLocais(userId);
+  guardarAssembleiasLocais(
+    [assembleia, ...atuais.filter((item) => item.id !== assembleia.id)],
+    userId,
+  );
   return assembleia;
 }
 
@@ -159,9 +176,18 @@ export async function persistirPreparacaoConfirmadaComDependencias(
   return persistirLocal(confirmada);
 }
 
+async function persistirPreparacaoIsolada(persistirRemoto: () => Promise<Assembleia>) {
+  const userId = await obterUserIdValidado();
+  const confirmada = await persistirRemoto();
+  if ((await obterUtilizadorSupabaseValidado())?.id !== userId) {
+    throw new Error("AUTH_CONTEXT_CHANGED");
+  }
+  return substituirAssembleiaLocal(confirmada, userId);
+}
+
 export async function confirmarDadosAssembleia(id: string) {
   const agora = new Date().toISOString();
-  return persistirPreparacaoConfirmadaComDependencias(() =>
+  return persistirPreparacaoIsolada(() =>
     atualizarPreparacaoAssembleiaRemota(id, {
       dados_confirmados_at: agora,
       revisao_final_confirmada_at: null,
@@ -172,7 +198,7 @@ export async function confirmarDadosAssembleia(id: string) {
 }
 
 export async function confirmarRevisaoFinalAssembleia(id: string) {
-  return persistirPreparacaoConfirmadaComDependencias(() =>
+  return persistirPreparacaoIsolada(() =>
     atualizarPreparacaoAssembleiaRemota(id, {
       revisao_final_confirmada_at: new Date().toISOString(),
       preparacao_estado: "em_preparacao",
@@ -182,7 +208,7 @@ export async function confirmarRevisaoFinalAssembleia(id: string) {
 }
 
 export async function marcarAssembleiaPronta(id: string) {
-  return persistirPreparacaoConfirmadaComDependencias(() =>
+  return persistirPreparacaoIsolada(() =>
     atualizarPreparacaoAssembleiaRemota(id, {
       preparacao_estado: "pronta",
       pronta_em: new Date().toISOString(),
@@ -191,7 +217,7 @@ export async function marcarAssembleiaPronta(id: string) {
 }
 
 export async function reabrirPreparacaoAssembleia(id: string) {
-  return persistirPreparacaoConfirmadaComDependencias(() =>
+  return persistirPreparacaoIsolada(() =>
     atualizarPreparacaoAssembleiaRemota(id, {
       preparacao_estado: "em_preparacao",
       revisao_final_confirmada_at: null,
@@ -200,8 +226,9 @@ export async function reabrirPreparacaoAssembleia(id: string) {
   );
 }
 
-export function arquivarAssembleia(id: string): Assembleia | undefined {
-  const atuais = lerAssembleiasLocais();
+export async function arquivarAssembleia(id: string) {
+  const userId = await obterUserIdValidado();
+  const atuais = lerAssembleiasLocais(userId);
   const agora = new Date().toISOString();
 
   const atualizadas = atuais.map((assembleia) =>
@@ -215,23 +242,35 @@ export function arquivarAssembleia(id: string): Assembleia | undefined {
       : assembleia,
   );
 
-  guardarAssembleiasLocais(atualizadas);
   const atualizada = atualizadas.find((assembleia) => assembleia.id === id);
-  if (atualizada) guardarAssembleiaRemotamente(atualizada);
-
-  return atualizada;
+  if (!atualizada) return undefined;
+  return executarMutacaoIsolada({
+    userId,
+    persistirRemoto: (ownerId) => guardarAssembleiaRemotamente(ownerId, atualizada),
+    obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+    confirmarLocal: (ownerId) => {
+      guardarAssembleiasLocais(atualizadas, ownerId);
+      return atualizada;
+    },
+  });
 }
 
-export function apagarAssembleia(id: string): boolean {
-  const atuais = lerAssembleiasLocais();
+export async function apagarAssembleia(id: string): Promise<boolean> {
+  const userId = await obterUserIdValidado();
+  const atuais = lerAssembleiasLocais(userId);
   const atualizadas = atuais.filter((assembleia) => assembleia.id !== id);
 
   if (atualizadas.length === atuais.length) return false;
 
-  guardarAssembleiasLocais(atualizadas);
-  apagarAssembleiaRemotamente(id);
-
-  return true;
+  return executarMutacaoIsolada({
+    userId,
+    persistirRemoto: () => apagarAssembleiaRemota(id),
+    obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+    confirmarLocal: (ownerId) => {
+      guardarAssembleiasLocais(atualizadas, ownerId);
+      return true;
+    },
+  });
 }
 
 export function useAssembleias(): Assembleia[] {

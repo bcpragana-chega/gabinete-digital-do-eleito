@@ -6,7 +6,8 @@ import {
   reordenarPontosRemotos,
   guardarPontosLocais as persistirPontosLocais,
 } from "@/lib/pontos-repository";
-import { obterUserIdAtual } from "@/lib/user-storage";
+import { executarHidratacaoIsolada, executarMutacaoIsolada } from "@/lib/confirmed-mutation";
+import { obterUtilizadorSupabaseValidado } from "@/lib/supabase";
 
 export type NivelPrioridade = "Alta" | "Média" | "Baixa";
 
@@ -41,60 +42,54 @@ export type PontoOrdemTrabalhos = {
 };
 
 const EVENT_NAME = "tribuno:pontos";
+let hidratacaoAtual = 0;
 
 function gerarId() {
   return `ponto-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function lerPontos(): PontoOrdemTrabalhos[] {
-  return carregarPontosLocais();
+function lerPontos(userId?: string): PontoOrdemTrabalhos[] {
+  return carregarPontosLocais(userId);
 }
 
-function guardarPontos(pontos: PontoOrdemTrabalhos[]) {
-  persistirPontosLocais(pontos);
+function guardarPontos(pontos: PontoOrdemTrabalhos[], userId?: string) {
+  persistirPontosLocais(pontos, userId);
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 
-function guardarPontoRemotamente(ponto: PontoOrdemTrabalhos) {
-  const userId = obterUserIdAtual();
-  if (!userId) return;
-
-  void guardarPontoRemoto(userId, ponto).catch(() => {
-    console.warn("[Tribuno] Sincronização de ponto falhou.", {
-      operacao: "PONTO_SYNC_FALHOU",
-      documentoId: ponto.id.slice(0, 8),
-    });
-  });
+async function obterUserIdValidado() {
+  const user = await obterUtilizadorSupabaseValidado();
+  if (!user?.id) throw new Error("AUTH_REQUIRED");
+  return user.id;
 }
 
-function apagarPontoRemotamente(id: string) {
-  void apagarPontoRemoto(id).catch(() => {
-    console.warn("[Tribuno] Eliminação remota de ponto falhou.", {
-      operacao: "PONTO_DELETE_FALHOU",
-      documentoId: id.slice(0, 8),
-    });
-  });
+async function guardarPontoRemotamente(userId: string, ponto: PontoOrdemTrabalhos) {
+  await guardarPontoRemoto(userId, ponto);
 }
 
 export async function carregarPontosRemotosSeDisponivel() {
   try {
-    const remotos = await carregarPontosRemotos();
-    if (!remotos) return;
-
-    const locais = lerPontos();
-    if (remotos.length === 0 && locais.length > 0) return;
-
-    const locaisPorId = new Map(locais.map((ponto) => [ponto.id, ponto]));
-    const hidratados = remotos.map((remoto) => ({
-      ...remoto,
-      documentos: locaisPorId.get(remoto.id)?.documentos ?? remoto.documentos,
-      perguntas: locaisPorId.get(remoto.id)?.perguntas ?? remoto.perguntas,
-      acoes: locaisPorId.get(remoto.id)?.acoes ?? remoto.acoes,
-      documentosACriar: locaisPorId.get(remoto.id)?.documentosACriar ?? remoto.documentosACriar,
-      notas: locaisPorId.get(remoto.id)?.notas ?? remoto.notas,
-    }));
-
-    guardarPontos(hidratados);
+    const hidratacaoId = ++hidratacaoAtual;
+    const userId = await obterUserIdValidado();
+    await executarHidratacaoIsolada({
+      userId,
+      carregarRemoto: carregarPontosRemotos,
+      obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+      isAtual: () => hidratacaoId === hidratacaoAtual,
+      confirmarLocal: (ownerId, resposta) => {
+        const remotos = resposta ?? [];
+        const locaisPorId = new Map(lerPontos(ownerId).map((ponto) => [ponto.id, ponto]));
+        const hidratados = remotos.map((remoto) => ({
+          ...remoto,
+          documentos: locaisPorId.get(remoto.id)?.documentos ?? remoto.documentos,
+          perguntas: locaisPorId.get(remoto.id)?.perguntas ?? remoto.perguntas,
+          acoes: locaisPorId.get(remoto.id)?.acoes ?? remoto.acoes,
+          documentosACriar: locaisPorId.get(remoto.id)?.documentosACriar ?? remoto.documentosACriar,
+          notas: locaisPorId.get(remoto.id)?.notas ?? remoto.notas,
+        }));
+        guardarPontos(hidratados, ownerId);
+      },
+    });
   } catch {
     console.warn("[Tribuno] Carregamento remoto de pontos falhou.", {
       operacao: "PONTOS_LOAD_FALHOU",
@@ -115,13 +110,15 @@ export function obterPontoPorId(
   return obterPontosDaAssembleia(assembleiaId).find((ponto) => ponto.id === pontoId);
 }
 
-export function adicionarPonto(
+export async function adicionarPonto(
   assembleiaId: string,
   data: Pick<PontoOrdemTrabalhos, "titulo" | "descricao" | "prioridade"> & {
     tempoEstimado?: number;
   },
+  options?: { id?: string },
 ) {
-  const pontos = lerPontos();
+  const userId = await obterUserIdValidado();
+  const pontos = lerPontos(userId);
   const pontosDaAssembleia = pontos.filter((ponto) => ponto.assembleiaId === assembleiaId);
   const agora = new Date().toISOString();
 
@@ -131,7 +128,7 @@ export function adicionarPonto(
       : 1;
 
   const novoPonto: PontoOrdemTrabalhos = {
-    id: gerarId(),
+    id: options?.id ?? gerarId(),
     assembleiaId,
     numero: proximoNumero,
     titulo: data.titulo,
@@ -155,17 +152,24 @@ export function adicionarPonto(
     updatedAt: agora,
   };
 
-  guardarPontos([novoPonto, ...pontos]);
-  guardarPontoRemotamente(novoPonto);
-
-  return novoPonto;
+  return executarMutacaoIsolada({
+    userId,
+    persistirRemoto: (ownerId) => guardarPontoRemotamente(ownerId, novoPonto),
+    obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+    confirmarLocal: (ownerId) => {
+      const atuais = lerPontos(ownerId);
+      guardarPontos([novoPonto, ...atuais.filter((item) => item.id !== novoPonto.id)], ownerId);
+      return novoPonto;
+    },
+  });
 }
 
-export function atualizarPonto(
+export async function atualizarPonto(
   pontoId: string,
   data: Partial<Omit<PontoOrdemTrabalhos, "id" | "assembleiaId" | "numero">>,
 ) {
-  const pontos = lerPontos();
+  const userId = await obterUserIdValidado();
+  const pontos = lerPontos(userId);
 
   const pontosAtualizados = pontos.map((ponto) =>
     ponto.id === pontoId
@@ -177,45 +181,75 @@ export function atualizarPonto(
       : ponto,
   );
 
-  guardarPontos(pontosAtualizados);
   const atualizado = pontosAtualizados.find((ponto) => ponto.id === pontoId);
-  if (atualizado) guardarPontoRemotamente(atualizado);
-
-  return atualizado;
+  if (!atualizado) return undefined;
+  return executarMutacaoIsolada({
+    userId,
+    persistirRemoto: (ownerId) => guardarPontoRemotamente(ownerId, atualizado),
+    obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+    confirmarLocal: (ownerId) => {
+      guardarPontos(pontosAtualizados, ownerId);
+      return atualizado;
+    },
+  });
 }
 
-export function removerPonto(id: string) {
-  const pontos = lerPontos();
-
-  guardarPontos(pontos.filter((ponto) => ponto.id !== id));
-  apagarPontoRemotamente(id);
+export async function removerPonto(id: string) {
+  const userId = await obterUserIdValidado();
+  const pontos = lerPontos(userId);
+  return executarMutacaoIsolada({
+    userId,
+    persistirRemoto: () => apagarPontoRemoto(id),
+    obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+    confirmarLocal: (ownerId) =>
+      guardarPontos(
+        pontos.filter((ponto) => ponto.id !== id),
+        ownerId,
+      ),
+  });
 }
 
 export async function atualizarPontoConfirmado(
   pontoId: string,
   data: Partial<Omit<PontoOrdemTrabalhos, "id" | "assembleiaId" | "numero">>,
 ) {
-  const atual = lerPontos().find((ponto) => ponto.id === pontoId);
+  const userId = await obterUserIdValidado();
+  const atual = lerPontos(userId).find((ponto) => ponto.id === pontoId);
   if (!atual) return undefined;
   const atualizado = { ...atual, ...data, updatedAt: new Date().toISOString() };
-  const userId = obterUserIdAtual();
-  if (!userId) throw new Error("AUTH_REQUIRED");
   await guardarPontoRemoto(userId, atualizado);
-  guardarPontos(lerPontos().map((ponto) => (ponto.id === pontoId ? atualizado : ponto)));
+  if ((await obterUtilizadorSupabaseValidado())?.id !== userId) {
+    throw new Error("AUTH_CONTEXT_CHANGED");
+  }
+  guardarPontos(
+    lerPontos(userId).map((ponto) => (ponto.id === pontoId ? atualizado : ponto)),
+    userId,
+  );
   return atualizado;
 }
 
 export async function removerPontoConfirmado(id: string) {
+  const userId = await obterUserIdValidado();
   await apagarPontoRemoto(id);
-  guardarPontos(lerPontos().filter((ponto) => ponto.id !== id));
+  if ((await obterUtilizadorSupabaseValidado())?.id !== userId) {
+    throw new Error("AUTH_CONTEXT_CHANGED");
+  }
+  guardarPontos(
+    lerPontos(userId).filter((ponto) => ponto.id !== id),
+    userId,
+  );
 }
 
 export async function reordenarPontosConfirmado(assembleiaId: string, idsOrdenados: string[]) {
-  const todos = lerPontos();
+  const userId = await obterUserIdValidado();
+  const todos = lerPontos(userId);
   const ordenados = criarPontosReordenados(todos, assembleiaId, idsOrdenados);
   await reordenarPontosRemotos(assembleiaId, idsOrdenados);
+  if ((await obterUtilizadorSupabaseValidado())?.id !== userId) {
+    throw new Error("AUTH_CONTEXT_CHANGED");
+  }
   const ids = new Set(idsOrdenados);
-  guardarPontos([...todos.filter((ponto) => !ids.has(ponto.id)), ...ordenados]);
+  guardarPontos([...todos.filter((ponto) => !ids.has(ponto.id)), ...ordenados], userId);
   return ordenados;
 }
 

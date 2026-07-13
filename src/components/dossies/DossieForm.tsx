@@ -16,7 +16,9 @@ import { Textarea } from "@/components/ui/textarea";
 type DossieFormProps = {
   initialValues?: Dossie;
   submitLabel?: string;
-  onSubmit: (values: DossieInput) => void;
+  onSubmit: (values: DossieInput) => Promise<void> | void;
+  submitting?: boolean;
+  error?: string;
 };
 
 const estados: Array<{ value: EstadoDossie; label: string }> = [
@@ -38,6 +40,8 @@ export function DossieForm({
   initialValues,
   submitLabel = "Guardar assunto",
   onSubmit,
+  submitting = false,
+  error,
 }: DossieFormProps) {
   const [titulo, setTitulo] = useState(initialValues?.titulo ?? "");
   const [estado, setEstado] = useState<EstadoDossie>(initialValues?.estado ?? "ativo");
@@ -50,10 +54,10 @@ export function DossieForm({
 
   const formularioValido = Boolean(titulo.trim());
 
-  function guardar() {
-    if (!formularioValido) return;
+  async function guardar() {
+    if (!formularioValido || submitting) return;
 
-    onSubmit({
+    await onSubmit({
       titulo: titulo.trim(),
       estado,
       prioridade,
@@ -148,14 +152,19 @@ export function DossieForm({
       </div>
 
       <div className="shrink-0 border-t border-border/70 bg-background px-4 py-3 sm:px-6 sm:py-4">
+        {error && (
+          <p role="alert" className="mb-3 text-sm text-destructive">
+            {error}
+          </p>
+        )}
         <div className="flex justify-end">
           <Button
             type="button"
-            onClick={guardar}
-            disabled={!formularioValido}
+            onClick={() => void guardar()}
+            disabled={!formularioValido || submitting}
             className="w-full sm:w-auto"
           >
-            {submitLabel}
+            {submitting ? "A guardar…" : submitLabel}
           </Button>
         </div>
       </div>

@@ -6,7 +6,7 @@ import {
   guardarOnboardingVersionRemoto,
   guardarPerfilHibrido,
 } from "@/lib/profile-repository";
-import { readJSON, writeJSON } from "@/lib/storage-provider";
+import { readJSON, removeItem, writeJSON } from "@/lib/storage-provider";
 import {
   carregarOnboardingLocal,
   guardarOnboardingLocal,
@@ -14,10 +14,13 @@ import {
   resolverVersaoOnboarding,
 } from "@/lib/onboarding-state";
 import {
+  getSupabaseClient,
   iniciarSessaoSupabaseComGoogleCredential,
   isSupabaseConfigured,
+  obterUtilizadorSupabaseValidado,
   terminarSessaoSupabase,
 } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 export type CargoEleito =
   | "Membro da Assembleia de Freguesia"
@@ -84,6 +87,7 @@ export class PerfilErro extends Error {
 }
 
 const STORAGE_KEY = "tribuno.auth.v1";
+const LOGOUT_BLOCK_KEY = "tribuno.auth.logout-block.v1";
 const EVENT_NAME = "tribuno:auth";
 let logoutEmCurso: Promise<void> | undefined;
 
@@ -198,6 +202,19 @@ function guardarAuthState(state: AuthState, options?: { emitirEvento?: boolean }
   if (options?.emitirEvento !== false) window.dispatchEvent(new Event(EVENT_NAME));
 }
 
+function lerUtilizadorBloqueadoPorLogout() {
+  return isBrowser() ? readJSON<string | undefined>(LOGOUT_BLOCK_KEY, undefined) : undefined;
+}
+
+function bloquearRestauroAposLogout(userId?: string) {
+  if (!isBrowser() || !userId) return;
+  writeJSON(LOGOUT_BLOCK_KEY, userId);
+}
+
+function limparBloqueioLogout() {
+  if (isBrowser()) removeItem(LOGOUT_BLOCK_KEY);
+}
+
 export type DestinoAcesso = "loading" | "login" | "onboarding" | "app";
 
 export function resolverDestinoAcesso(input: {
@@ -239,63 +256,92 @@ export function obterAuthState() {
   return lerAuthState();
 }
 
+function authUserDaSessao(user: User, local?: AuthUser): AuthUser {
+  const metadata = user.user_metadata;
+  return {
+    id: user.id,
+    email: user.email ?? local?.email ?? "",
+    nome:
+      textoSeguro(metadata?.full_name) ||
+      textoSeguro(metadata?.name) ||
+      local?.nome ||
+      user.email ||
+      "Utilizador",
+    avatarUrl:
+      textoSeguro(metadata?.avatar_url) || textoSeguro(metadata?.picture) || local?.avatarUrl,
+    provider: "google",
+    googleSub: local?.googleSub,
+    supabaseUserId: user.id,
+  };
+}
+
+export function resolverEstadoComSessaoValidada(
+  state: AuthState,
+  supabaseUser?: Pick<User, "id" | "email" | "user_metadata">,
+  userIdBloqueado?: string,
+): AuthState {
+  if (!supabaseUser?.id || supabaseUser.id === userIdBloqueado) {
+    return resolverEstadoLocalAposLogout(state);
+  }
+  const local = state.user?.id === supabaseUser.id ? state.user : undefined;
+  const user = authUserDaSessao(supabaseUser as User, local);
+  return {
+    ...state,
+    user,
+    perfil: obterPerfilDoUser(state, user),
+  };
+}
+
+export async function executarLoginSupabaseConfirmado<T>(input: {
+  iniciar: () => Promise<User | undefined>;
+  confirmar: (user: User) => Promise<T> | T;
+}) {
+  const user = await input.iniciar();
+  if (!user?.id) throw new Error("AUTH_REQUIRED");
+  return input.confirmar(user);
+}
+
 export async function loginComGoogle(user: AuthUser, googleCredential?: string) {
   const state = lerAuthState();
-  let userAutenticado = user;
-  let perfilRemoto: PerfilEleito | undefined;
 
   console.info("[Tribuno Auth] loginComGoogle iniciado", {
     provider: user.provider,
     temGoogleCredential: Boolean(googleCredential),
   });
 
-  if (googleCredential && user.provider === "google") {
-    try {
-      console.info("[Tribuno Auth] A iniciar autenticação Supabase com Google ID token");
-      const supabaseUser = await iniciarSessaoSupabaseComGoogleCredential(googleCredential);
-
-      if (supabaseUser?.id) {
-        userAutenticado = {
-          ...user,
-          id: supabaseUser.id,
-          email: supabaseUser.email || user.email,
-          nome:
-            (supabaseUser.user_metadata?.full_name as string | undefined) ||
-            (supabaseUser.user_metadata?.name as string | undefined) ||
-            user.nome,
-          avatarUrl:
-            (supabaseUser.user_metadata?.avatar_url as string | undefined) ||
-            (supabaseUser.user_metadata?.picture as string | undefined) ||
-            user.avatarUrl,
-          googleSub: user.id,
-          supabaseUserId: supabaseUser.id,
-        };
-        console.info("[Tribuno Auth] Sessão Supabase criada");
-        perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userAutenticado.id));
-        console.info("[Tribuno Auth] Perfil remoto/local carregado após login", {
-          perfilCarregado: Boolean(perfilRemoto),
-          perfilCompleto: perfilCompleto(perfilRemoto),
-        });
-      }
-    } catch {
-      console.warn("[Tribuno Auth] Login Supabase indisponível; a usar fallback local.", {
-        operacao: "AUTH_LOGIN_FALLBACK_LOCAL",
-      });
-    }
+  if (!googleCredential || user.provider !== "google") {
+    guardarAuthState(resolverEstadoLocalAposLogout(state));
+    throw new Error("AUTH_REQUIRED");
   }
 
-  const nextState = {
-    ...state,
-    user: userAutenticado,
-    perfil: perfilRemoto ?? obterPerfilDoUser(state, userAutenticado),
-  };
-  guardarAuthState(nextState);
-  console.info("[Tribuno Auth] Sessão local guardada", {
-    provider: nextState.user?.provider,
-    perfilCarregado: Boolean(nextState.perfil),
-    onboardingNecessario: !perfilCompleto(nextState.perfil),
-  });
-  return nextState;
+  try {
+    console.info("[Tribuno Auth] A iniciar autenticação Supabase com Google ID token");
+    return await executarLoginSupabaseConfirmado({
+      iniciar: () => iniciarSessaoSupabaseComGoogleCredential(googleCredential),
+      confirmar: async (supabaseUser) => {
+        limparBloqueioLogout();
+        const userAutenticado = authUserDaSessao(supabaseUser, { ...user, googleSub: user.id });
+        const perfilRemoto = normalizarPerfilEleito(
+          await carregarPerfilHibrido(userAutenticado.id),
+        );
+        const nextState = {
+          ...state,
+          user: userAutenticado,
+          perfil: perfilRemoto ?? obterPerfilDoUser(state, userAutenticado),
+        };
+        guardarAuthState(nextState);
+        console.info("[Tribuno Auth] Sessão local guardada", {
+          provider: nextState.user?.provider,
+          perfilCarregado: Boolean(nextState.perfil),
+          onboardingNecessario: !perfilCompleto(nextState.perfil),
+        });
+        return nextState;
+      },
+    });
+  } catch (error) {
+    guardarAuthState(resolverEstadoLocalAposLogout(state));
+    throw error;
+  }
 }
 
 export async function guardarPerfilEleito(perfil: Omit<PerfilEleito, "updatedAt">) {
@@ -431,6 +477,7 @@ export async function logout(): Promise<void> {
     terminarRemoto: terminarSessaoSupabase,
     finalizarLocal: () => {
       const state = lerAuthState();
+      bloquearRestauroAposLogout(state.user?.id);
       limparCachesTransitoriasDaConta(state.user?.id);
       guardarAuthState(resolverEstadoLocalAposLogout(state));
       window.google?.accounts.id.disableAutoSelect?.();
@@ -534,11 +581,27 @@ export function useAuth() {
       const inicial = primeiraExecucao;
       primeiraExecucao = false;
       try {
-        const stateAtual = lerAuthState();
+        const stateLocal = lerAuthState();
         if (inicial) {
           setInitialized(false);
           setOnboardingResolved(false);
         }
+        const supabaseUser = await obterUtilizadorSupabaseValidado();
+        const userIdBloqueado = lerUtilizadorBloqueadoPorLogout();
+        const stateAtual = resolverEstadoComSessaoValidada(
+          stateLocal,
+          supabaseUser,
+          userIdBloqueado,
+        );
+        if (!supabaseUser || supabaseUser.id === userIdBloqueado) {
+          limparCachesTransitoriasDaConta(stateLocal.user?.id);
+          guardarAuthState(stateAtual, { emitirEvento: false });
+          setState(stateAtual);
+          setOnboardingVersion(undefined);
+          setOnboardingResolved(true);
+          return;
+        }
+        guardarAuthState(stateAtual, { emitirEvento: false });
         setState(stateAtual);
 
         const nextState = await carregarPerfilAntesDeInicializar(stateAtual);
@@ -571,12 +634,6 @@ export function useAuth() {
           setOnboardingResolved(true);
           setInitialized(true);
         }
-        if (!isSupabaseConfigured()) {
-          setOnboardingVersion(local?.concluido ? local.version : 0);
-          setOnboardingResolved(true);
-          return;
-        }
-
         try {
           const versaoRemota = await carregarOnboardingVersionRemoto(userId);
           const versao = resolverVersaoOnboarding({ versaoRemota, local });
@@ -603,10 +660,12 @@ export function useAuth() {
           operacao: "AUTH_INIT_FALHOU",
         });
         if (!cancelled) {
-          setState(lerAuthState());
-          const fallbackUserId = lerAuthState().user?.id;
-          const fallbackLocal = carregarOnboardingLocal(fallbackUserId);
-          setOnboardingVersion(fallbackLocal?.concluido ? fallbackLocal.version : 0);
+          const local = lerAuthState();
+          limparCachesTransitoriasDaConta(local.user?.id);
+          const semSessao = resolverEstadoLocalAposLogout(local);
+          guardarAuthState(semSessao, { emitirEvento: false });
+          setState(semSessao);
+          setOnboardingVersion(undefined);
           setOnboardingResolved(true);
         }
       } finally {
@@ -622,11 +681,16 @@ export function useAuth() {
     void atualizar();
     window.addEventListener(EVENT_NAME, atualizar);
     window.addEventListener("storage", atualizar);
+    const authSubscription = getSupabaseClient()?.auth.onAuthStateChange(() => {
+      if (logoutEmCurso) return;
+      void atualizar();
+    });
 
     return () => {
       cancelled = true;
       window.removeEventListener(EVENT_NAME, atualizar);
       window.removeEventListener("storage", atualizar);
+      authSubscription?.data.subscription.unsubscribe();
     };
   }, []);
 

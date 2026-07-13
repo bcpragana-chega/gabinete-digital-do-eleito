@@ -1,6 +1,11 @@
 import type { Assembleia, EstadoAssembleia } from "@/lib/types";
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
-import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "@/lib/user-storage";
+import {
+  guardarJSONParaUtilizador,
+  guardarJSONPorUtilizador,
+  lerJSONParaUtilizador,
+  lerJSONPorUtilizador,
+} from "@/lib/user-storage";
 
 const STORAGE_KEY = "tribuno:assembleias";
 
@@ -125,17 +130,20 @@ async function obterSupabaseUserIdValido(userId?: string) {
   return data.user.id;
 }
 
-export function carregarAssembleiasLocais() {
-  const parsed = lerJSONPorUtilizador<Assembleia[]>(STORAGE_KEY, []);
+export function carregarAssembleiasLocais(userId?: string) {
+  const parsed = userId
+    ? lerJSONParaUtilizador<Assembleia[]>(STORAGE_KEY, userId, [])
+    : lerJSONPorUtilizador<Assembleia[]>(STORAGE_KEY, []);
   return Array.isArray(parsed) ? parsed : [];
 }
 
-export function guardarAssembleiasLocais(assembleias: Assembleia[]) {
-  guardarJSONPorUtilizador(STORAGE_KEY, assembleias);
+export function guardarAssembleiasLocais(assembleias: Assembleia[], userId?: string) {
+  if (userId) guardarJSONParaUtilizador(STORAGE_KEY, userId, assembleias);
+  else guardarJSONPorUtilizador(STORAGE_KEY, assembleias);
 }
 
-export async function carregarAssembleiasRemotas() {
-  const supabaseUserId = await obterSupabaseUserIdValido();
+export async function carregarAssembleiasRemotas(userId?: string) {
+  const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) return undefined;
 
   const supabase = getSupabaseClient();
@@ -148,39 +156,50 @@ export async function carregarAssembleiasRemotas() {
 
   if (error) throw error;
 
+  if ((data ?? []).some((row) => row.user_id !== supabaseUserId)) {
+    throw new Error("ASSEMBLEIAS_OWNER_MISMATCH");
+  }
+
   return (data ?? []).map((row) => fromRow(row as AssembleiaRow));
 }
 
 export async function guardarAssembleiaRemota(userId: string, assembleia: Assembleia) {
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
-  if (!supabaseUserId) return;
+  if (!supabaseUserId) throw new Error("SUPABASE_AUTH_REQUIRED");
 
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
 
-  const { error } = await withSupabaseTimeout(
-    supabase.from("assembleias").upsert(toRow(supabaseUserId, assembleia), {
-      onConflict: "id",
-    }),
+  const { data, error } = await withSupabaseTimeout(
+    supabase
+      .from("assembleias")
+      .upsert(toRow(supabaseUserId, assembleia), { onConflict: "id" })
+      .select("id,user_id")
+      .single(),
     "ASSEMBLEIAS_UPSERT",
   );
 
   if (error) throw error;
+  if (!data?.id || data.id !== assembleia.id || data.user_id !== supabaseUserId) {
+    throw new Error("ASSEMBLEIA_SAVE_NOT_CONFIRMED");
+  }
+  return data;
 }
 
 export async function apagarAssembleiaRemota(id: string) {
   const supabaseUserId = await obterSupabaseUserIdValido();
-  if (!supabaseUserId) return;
+  if (!supabaseUserId) throw new Error("SUPABASE_AUTH_REQUIRED");
 
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
 
-  const { error } = await withSupabaseTimeout(
-    supabase.from("assembleias").delete().eq("id", id),
+  const { data, error } = await withSupabaseTimeout(
+    supabase.from("assembleias").delete().eq("id", id).select("id").single(),
     "ASSEMBLEIAS_DELETE",
   );
 
   if (error) throw error;
+  if (!data?.id) throw new Error("ASSEMBLEIA_DELETE_NOT_CONFIRMED");
 }
 
 export async function atualizarPreparacaoAssembleiaRemota(

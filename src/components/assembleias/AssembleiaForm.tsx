@@ -22,13 +22,15 @@ export type AssembleiaFormValues = {
 type AssembleiaFormProps = {
   initialValues?: Assembleia;
   submitLabel?: string;
-  onSubmit: (values: AssembleiaFormValues) => void;
+  onSubmit: (values: AssembleiaFormValues) => Promise<void> | void;
+  submitting?: boolean;
 };
 
 export function AssembleiaForm({
   initialValues,
   submitLabel = "Guardar sessão",
   onSubmit,
+  submitting = false,
 }: AssembleiaFormProps) {
   const [nome, setNome] = useState(initialValues?.nome ?? "");
   const [data, setData] = useState(initialValues?.data ?? "");
@@ -38,10 +40,10 @@ export function AssembleiaForm({
 
   const formularioValido = Boolean(nome.trim() && data && hora && local.trim());
 
-  function guardar() {
-    if (!formularioValido) return;
+  async function guardar() {
+    if (!formularioValido || submitting) return;
 
-    onSubmit({
+    await onSubmit({
       nome: nome.trim(),
       data,
       hora,
@@ -110,8 +112,12 @@ export function AssembleiaForm({
 
       <div className="shrink-0 border-t border-border/70 bg-background px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex justify-end">
-          <Button onClick={guardar} disabled={!formularioValido} className="w-full sm:w-auto">
-            {submitLabel}
+          <Button
+            onClick={() => void guardar()}
+            disabled={!formularioValido || submitting}
+            className="w-full sm:w-auto"
+          >
+            {submitting ? "A guardar…" : submitLabel}
           </Button>
         </div>
       </div>

@@ -33,7 +33,6 @@ import {
 import { useDossies } from "@/lib/dossies-store";
 import { listarDocumentosLocais } from "@/lib/documentos-store";
 import {
-  atualizarPonto,
   atualizarPontoConfirmado,
   carregarPontosRemotosSeDisponivel,
   obterPontoPorId,
@@ -41,8 +40,9 @@ import {
 } from "@/lib/pontos-store";
 import { obterPreparacaoDaAssembleia } from "@/lib/preparacao-store";
 import {
-  criarRelacaoTribuno,
-  removerRelacaoTribunoPorObjetos,
+  associarDocumentoAoPontoConfirmado,
+  hidratarRelacoesPontoDocumento,
+  removerDocumentoDoPontoConfirmado,
   useRelacoesPorObjeto,
 } from "@/lib/relacoes-store";
 import { adicionarEventoHistorico } from "@/lib/historico-store";
@@ -106,7 +106,8 @@ function PreparacaoPontoDetalhePage() {
     void carregarPontosRemotosSeDisponivel().finally(() => {
       setVersaoPonto((valor) => valor + 1);
     });
-  }, []);
+    void hidratarRelacoesPontoDocumento(pontoId).catch(() => setSaveState("error"));
+  }, [pontoId]);
 
   const camposIniciais = useMemo<CamposPreparacaoPonto>(
     () => ({
@@ -187,7 +188,6 @@ function PreparacaoPontoDetalhePage() {
     onSave: guardarCampos,
   });
 
-  const [documentosAssociadosIds, setDocumentosAssociadosIds] = useState<string[]>([]);
   const [rascunhos, setRascunhos] = useState<DocumentoCriado[]>([]);
   const [assuntoParaAssociar, setAssuntoParaAssociar] = useState("");
   const [documentoParaAssociar, setDocumentoParaAssociar] = useState("");
@@ -224,10 +224,7 @@ function PreparacaoPontoDetalhePage() {
     [relacoesDocumentos],
   );
 
-  const documentosLigadosIds = useMemo(
-    () => new Set([...documentosAssociadosIds, ...Array.from(documentosRelacionadosIds)]),
-    [documentosAssociadosIds, documentosRelacionadosIds],
-  );
+  const documentosLigadosIds = documentosRelacionadosIds;
 
   const documentosLigados = useMemo(
     () => documentosBiblioteca.filter((documento) => documentosLigadosIds.has(documento.id)),
@@ -244,10 +241,6 @@ function PreparacaoPontoDetalhePage() {
       criarDashboardDoPonto(ponto, campos, documentosLigadosIds.size, rascunhos, preparacao.acoes),
     [campos, documentosLigadosIds.size, ponto, preparacao.acoes, rascunhos],
   );
-
-  useEffect(() => {
-    setDocumentosAssociadosIds(ponto?.documentos ?? []);
-  }, [ponto]);
 
   useEffect(() => {
     function carregarRascunhos() {
@@ -283,17 +276,18 @@ function PreparacaoPontoDetalhePage() {
     void removerAssuntoDoPonto(dossie.id, pontoId).catch(() => setSaveState("error"));
   }
 
-  function associarDocumentoAoPonto() {
+  async function associarDocumentoAoPonto() {
     if (!documentoParaAssociar) return;
     const documento = documentosBiblioteca.find((item) => item.id === documentoParaAssociar);
 
-    criarRelacaoTribuno({
-      origemTipo: "ponto",
-      origemId: pontoId,
-      destinoTipo: "documento",
-      destinoId: documentoParaAssociar,
-      tipoRelacao: "usado_em",
-    });
+    try {
+      setSaveState("saving");
+      await associarDocumentoAoPontoConfirmado(pontoId, documentoParaAssociar);
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+      return;
+    }
     adicionarEventoHistorico({
       pontoId,
       tipo: "documento",
@@ -305,31 +299,24 @@ function PreparacaoPontoDetalhePage() {
     setDocumentoParaAssociar("");
   }
 
-  function desassociarDocumentoDoPonto(documento: Documento) {
+  async function desassociarDocumentoDoPonto(documento: Documento) {
     const confirmado = window.confirm(`Remover o documento "${documento.titulo}" deste ponto?`);
     if (!confirmado || !ponto) return;
 
-    removerRelacaoTribunoPorObjetos({
-      origemTipo: "ponto",
-      origemId: pontoId,
-      destinoTipo: "documento",
-      destinoId: documento.id,
-      tipoRelacao: "usado_em",
-    });
+    try {
+      setSaveState("saving");
+      await removerDocumentoDoPontoConfirmado(pontoId, documento.id);
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+      return;
+    }
     adicionarEventoHistorico({
       pontoId,
       tipo: "documento",
       acao: "Documento removido",
       descricao: `Documento "${documento.titulo}" removido.`,
     });
-
-    if (documentosAssociadosIds.includes(documento.id)) {
-      const proximos = documentosAssociadosIds.filter(
-        (documentoId) => documentoId !== documento.id,
-      );
-      setDocumentosAssociadosIds(proximos);
-      atualizarPonto(ponto.id, { documentos: proximos });
-    }
   }
 
   if (pathname.includes(`/sessoes/${id}/preparacao/pontos/${pontoId}/rascunhos/`)) {
@@ -524,7 +511,7 @@ function PreparacaoPontoDetalhePage() {
               documentosLigados={documentosLigados}
               documentosDisponiveis={documentosDisponiveis}
               documentosRelacionadosIds={documentosRelacionadosIds}
-              documentosLegadosIds={new Set(documentosAssociadosIds)}
+              documentosLegadosIds={new Set()}
               documentoParaAssociar={documentoParaAssociar}
               onDocumentoChange={setDocumentoParaAssociar}
               onAssociarDocumento={associarDocumentoAoPonto}

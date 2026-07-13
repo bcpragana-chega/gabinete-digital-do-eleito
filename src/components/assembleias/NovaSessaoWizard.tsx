@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   CalendarDays,
@@ -16,6 +16,10 @@ import { adicionarAssembleia } from "@/lib/assembleias-store";
 import { adicionarDocumento } from "@/lib/documentos-store";
 import { guardarEstrategiaDaAssembleia } from "@/lib/estrategia-store";
 import { adicionarPonto, type NivelPrioridade } from "@/lib/pontos-store";
+import {
+  executarTentativaCriacaoSessao,
+  type TentativaCriacaoSessao,
+} from "@/lib/session-creation-attempt";
 import { Button } from "@/components/ui/button";
 import { EntityCard, InfoCard } from "@/components/ui/cards";
 import {
@@ -146,6 +150,12 @@ export function NovaSessaoWizard() {
   const [objetivoPolitico, setObjetivoPolitico] = useState("");
   const [linhaGeral, setLinhaGeral] = useState("");
   const [riscos, setRiscos] = useState("");
+  const [aGuardar, setAGuardar] = useState(false);
+  const [erroGuardar, setErroGuardar] = useState("");
+  const guardarEmCurso = useRef(false);
+  const tentativaRef = useRef<
+    TentativaCriacaoSessao<Awaited<ReturnType<typeof adicionarAssembleia>>> | undefined
+  >(undefined);
 
   const dadosValidos = Boolean(titulo.trim() && data && hora && local.trim());
   const nomeSessao = `Sessão ${tipoSessao.toLowerCase()} — ${titulo.trim()}`;
@@ -165,6 +175,8 @@ export function NovaSessaoWizard() {
     setObjetivoPolitico("");
     setLinhaGeral("");
     setRiscos("");
+    setErroGuardar("");
+    tentativaRef.current = undefined;
   }
 
   function abrirFormularioDocumento() {
@@ -194,55 +206,98 @@ export function NovaSessaoWizard() {
 
   function adicionarPontoTemporario() {
     if (!ponto.titulo.trim()) return;
-    setPontos((atuais) => [...atuais, { ...ponto, id: gerarId(), titulo: ponto.titulo.trim() }]);
+    setPontos((atuais) => [
+      ...atuais,
+      { ...ponto, id: `ponto-${crypto.randomUUID()}`, titulo: ponto.titulo.trim() },
+    ]);
     setPonto({ id: "", titulo: "", descricao: "", prioridade: "Média" });
   }
 
-  function criarSessao() {
-    if (!dadosValidos) return;
+  async function criarSessao() {
+    if (!dadosValidos || guardarEmCurso.current) return;
+    guardarEmCurso.current = true;
+    setAGuardar(true);
+    setErroGuardar("");
+    try {
+      const tentativa =
+        tentativaRef.current ??
+        ({
+          sessaoId: `asm-${crypto.randomUUID()}`,
+          pontosConfirmados: new Set<string>(),
+        } satisfies TentativaCriacaoSessao<Awaited<ReturnType<typeof adicionarAssembleia>>>);
+      tentativaRef.current = tentativa;
 
-    const sessao = adicionarAssembleia({
-      nome: nomeSessao,
-      data,
-      hora,
-      local: local.trim(),
-      estado: "preparacao",
-    });
-
-    documentos.forEach((item) => {
-      adicionarDocumento({
-        assembleiaId: sessao.id,
-        titulo: item.titulo,
-        tipo: item.tipo,
-        data: item.data || data,
-        estado: item.estado,
-        notas: item.notas.trim() || undefined,
-        ficheiroNome: item.ficheiroNome,
-        ficheiroTipo: item.ficheiroTipo,
+      const resultado = await executarTentativaCriacaoSessao({
+        tentativa,
+        pontos: pontos.map((item) => ({ id: item.id, value: item })),
+        criarSessao: (sessaoId) =>
+          adicionarAssembleia(
+            {
+              nome: nomeSessao,
+              data,
+              hora,
+              local: local.trim(),
+              estado: "preparacao",
+            },
+            { id: sessaoId },
+          ),
+        criarPonto: (sessao, item, pontoId) =>
+          adicionarPonto(
+            sessao.id,
+            {
+              titulo: item.titulo,
+              descricao: item.descricao.trim(),
+              prioridade: item.prioridade,
+            },
+            { id: pontoId },
+          ),
       });
-    });
+      if (!resultado.concluida || !resultado.tentativa.sessao) {
+        setErroGuardar(
+          resultado.tentativa.sessao
+            ? "A sessão foi criada, mas não foi possível guardar toda a preparação. Os dados pendentes foram mantidos; tenta novamente."
+            : "Não foi possível confirmar a sessão. Os dados foram mantidos; tenta novamente.",
+        );
+        return;
+      }
+      const sessao = resultado.tentativa.sessao;
 
-    pontos.forEach((item) => {
-      adicionarPonto(sessao.id, {
-        titulo: item.titulo,
-        descricao: item.descricao.trim(),
-        prioridade: item.prioridade,
+      documentos.forEach((item) => {
+        adicionarDocumento({
+          assembleiaId: sessao.id,
+          titulo: item.titulo,
+          tipo: item.tipo,
+          data: item.data || data,
+          estado: item.estado,
+          notas: item.notas.trim() || undefined,
+          ficheiroNome: item.ficheiroNome,
+          ficheiroTipo: item.ficheiroTipo,
+        });
       });
-    });
 
-    if (objetivoPolitico.trim() || linhaGeral.trim() || riscos.trim()) {
-      guardarEstrategiaDaAssembleia(sessao.id, {
-        objetivoPolitico: objetivoPolitico.trim(),
-        mensagemPrincipal: linhaGeral.trim(),
-        naoFazer: riscos.trim(),
-        adversariosPrevisiveis: "",
-        notasLivres: "",
-      });
+      if (objetivoPolitico.trim() || linhaGeral.trim() || riscos.trim()) {
+        guardarEstrategiaDaAssembleia(sessao.id, {
+          objetivoPolitico: objetivoPolitico.trim(),
+          mensagemPrincipal: linhaGeral.trim(),
+          naoFazer: riscos.trim(),
+          adversariosPrevisiveis: "",
+          notasLivres: "",
+        });
+      }
+
+      setOpen(false);
+      reset();
+      await navigate({ to: "/sessoes/$id", params: { id: sessao.id } });
+    } catch {
+      setErroGuardar(
+        tentativaRef.current?.sessao
+          ? "A sessão foi criada, mas não foi possível guardar toda a preparação. Os dados pendentes foram mantidos; tenta novamente."
+          : "Não foi possível confirmar a sessão. Os dados foram mantidos; tenta novamente.",
+      );
+    } finally {
+      guardarEmCurso.current = false;
+      setAGuardar(false);
     }
-
-    setOpen(false);
-    reset();
-    navigate({ to: "/sessoes/$id", params: { id: sessao.id } });
   }
 
   function avancar() {
@@ -257,8 +312,9 @@ export function NovaSessaoWizard() {
     <Dialog
       open={open}
       onOpenChange={(value) => {
+        if (!value && aGuardar) return;
         setOpen(value);
-        if (!value) reset();
+        if (!value && !aGuardar) reset();
       }}
     >
       <DialogTrigger asChild>
@@ -647,11 +703,16 @@ export function NovaSessaoWizard() {
         </div>
 
         <div className="shrink-0 border-t border-border/70 bg-card px-5 py-4 sm:px-7">
+          {erroGuardar && (
+            <p role="alert" className="mb-3 text-sm text-destructive">
+              {erroGuardar}
+            </p>
+          )}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Button
               type="button"
               variant="ghost"
-              disabled={step === 0}
+              disabled={step === 0 || aGuardar}
               onClick={() => setStep((atual) => Math.max(0, atual - 1))}
               className="w-full sm:w-auto"
             >
@@ -662,7 +723,7 @@ export function NovaSessaoWizard() {
               <Button
                 type="button"
                 onClick={avancar}
-                disabled={step === 0 && !dadosValidos}
+                disabled={aGuardar || (step === 0 && !dadosValidos)}
                 className="w-full sm:w-auto"
               >
                 Seguinte
@@ -672,11 +733,11 @@ export function NovaSessaoWizard() {
               <Button
                 type="button"
                 onClick={criarSessao}
-                disabled={!dadosValidos}
+                disabled={!dadosValidos || aGuardar}
                 className="w-full sm:w-auto"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                Criar Sessão
+                {aGuardar ? "A guardar…" : "Criar Sessão"}
               </Button>
             )}
           </div>

@@ -113,15 +113,49 @@ export async function diagnosticarSessaoSupabase() {
   }
 }
 
-export async function terminarSessaoSupabase() {
+export async function obterUtilizadorSupabaseValidado(): Promise<User | undefined> {
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) return undefined;
 
-  const { error } = await withSupabaseTimeout(supabase.auth.signOut(), "SIGN_OUT", 8000);
-  if (error) {
+  const { data, error } = await withSupabaseTimeout(supabase.auth.getUser(), "AUTH_GET_USER", 8000);
+  if (error || !data.user?.id) return undefined;
+  return data.user;
+}
+
+export async function terminarSessaoSupabaseComDependencias(input: {
+  terminarGlobal: () => Promise<{ error: unknown }>;
+  terminarLocal: () => Promise<{ error: unknown }>;
+}) {
+  let erroGlobal: unknown;
+  try {
+    const { error } = await input.terminarGlobal();
+    erroGlobal = error;
+  } catch (error) {
+    erroGlobal = error;
+  }
+  if (!erroGlobal) return;
+
+  console.warn("[Tribuno Auth] Revogação global indisponível; a terminar sessão local.", {
+    operacao: "AUTH_LOGOUT_GLOBAL_FALHOU",
+  });
+  try {
+    const { error: localError } = await input.terminarLocal();
+    if (!localError) return;
+    throw localError;
+  } catch (error) {
     console.warn("[Tribuno Auth] Não foi possível terminar a sessão Supabase.", {
       operacao: "AUTH_LOGOUT_SUPABASE_FALHOU",
     });
     throw error;
   }
+}
+
+export async function terminarSessaoSupabase() {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  return terminarSessaoSupabaseComDependencias({
+    terminarGlobal: () => withSupabaseTimeout(supabase.auth.signOut(), "SIGN_OUT", 8000),
+    terminarLocal: () =>
+      withSupabaseTimeout(supabase.auth.signOut({ scope: "local" }), "SIGN_OUT_LOCAL", 8000),
+  });
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   CheckCircle2,
@@ -92,6 +92,10 @@ export function NovoAssuntoWizard() {
   const [objetivoPolitico, setObjetivoPolitico] = useState("");
   const [criarNota, setCriarNota] = useState(false);
   const [notaInicial, setNotaInicial] = useState("");
+  const [aGuardar, setAGuardar] = useState(false);
+  const [erroGuardar, setErroGuardar] = useState("");
+  const guardarEmCurso = useRef(false);
+  const tentativaId = useRef<string | undefined>(undefined);
 
   const dadosValidos = titulo.trim().length > 0;
 
@@ -104,6 +108,8 @@ export function NovoAssuntoWizard() {
     setObjetivoPolitico("");
     setCriarNota(false);
     setNotaInicial("");
+    setErroGuardar("");
+    tentativaId.current = undefined;
   }
 
   function avancar() {
@@ -111,33 +117,44 @@ export function NovoAssuntoWizard() {
     setStep((atual) => Math.min(atual + 1, passos.length - 1));
   }
 
-  function criarAssunto() {
-    if (!dadosValidos) return;
+  async function criarAssunto() {
+    if (!dadosValidos || guardarEmCurso.current) return;
+    guardarEmCurso.current = true;
+    setAGuardar(true);
+    setErroGuardar("");
+    try {
+      tentativaId.current ??= `dossie-${crypto.randomUUID()}`;
+      const assunto = await adicionarDossie(
+        {
+          titulo: titulo.trim(),
+          estado: "ativo",
+          prioridade,
+          objetivoPolitico: objetivoPolitico.trim(),
+          resumo: resumo.trim(),
+          tags: [categoria.toLowerCase()],
+        },
+        { id: tentativaId.current },
+      );
 
-    const assunto = adicionarDossie({
-      titulo: titulo.trim(),
-      estado: "ativo",
-      prioridade,
-      objetivoPolitico: objetivoPolitico.trim(),
-      resumo: resumo.trim(),
-      tags: [categoria.toLowerCase()],
-    });
-
-    if (criarNota && notaInicial.trim()) {
-      adicionarNotaDossie(assunto.id, notaInicial.trim());
+      if (criarNota && notaInicial.trim()) adicionarNotaDossie(assunto.id, notaInicial.trim());
+      setOpen(false);
+      reset();
+      await navigate({ to: "/assuntos/$dossieId", params: { dossieId: assunto.id } });
+    } catch {
+      setErroGuardar("Não foi possível guardar o assunto. Os dados introduzidos foram mantidos.");
+    } finally {
+      guardarEmCurso.current = false;
+      setAGuardar(false);
     }
-
-    setOpen(false);
-    reset();
-    navigate({ to: "/assuntos/$dossieId", params: { dossieId: assunto.id } });
   }
 
   return (
     <Dialog
       open={open}
       onOpenChange={(value) => {
+        if (!value && aGuardar) return;
         setOpen(value);
-        if (!value) reset();
+        if (!value && !aGuardar) reset();
       }}
     >
       <DialogTrigger asChild>
@@ -296,11 +313,16 @@ export function NovoAssuntoWizard() {
         </div>
 
         <div className="shrink-0 border-t border-border/70 bg-card px-5 py-4 sm:px-7">
+          {erroGuardar && (
+            <p role="alert" className="mb-3 text-sm text-destructive">
+              {erroGuardar}
+            </p>
+          )}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Button
               type="button"
               variant="ghost"
-              disabled={step === 0}
+              disabled={step === 0 || aGuardar}
               onClick={() => setStep((atual) => Math.max(0, atual - 1))}
               className="w-full sm:w-auto"
             >
@@ -311,7 +333,7 @@ export function NovoAssuntoWizard() {
               <Button
                 type="button"
                 onClick={avancar}
-                disabled={step === 0 && !dadosValidos}
+                disabled={aGuardar || (step === 0 && !dadosValidos)}
                 className="w-full sm:w-auto"
               >
                 Seguinte
@@ -321,11 +343,11 @@ export function NovoAssuntoWizard() {
               <Button
                 type="button"
                 onClick={criarAssunto}
-                disabled={!dadosValidos}
+                disabled={!dadosValidos || aGuardar}
                 className="w-full sm:w-auto"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                Criar Assunto
+                {aGuardar ? "A guardar…" : "Criar Assunto"}
               </Button>
             )}
           </div>

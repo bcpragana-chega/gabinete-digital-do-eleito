@@ -280,24 +280,6 @@ function LoginPage() {
     document.head.appendChild(script);
   }, [googleClientId, googleClientIdStatus, navigate]);
 
-  async function entrarModoLocal() {
-    logAuth("Login local iniciado");
-    const authState = await loginComGoogle({
-      id: "local-dev-user",
-      nome: "Utilizador",
-      email: "utilizador@tribuno.local",
-      provider: "local-dev",
-    });
-    logAuth("Login local concluído", {
-      perfilCarregado: Boolean(authState.perfil),
-      perfilCompleto: perfilCompleto(authState.perfil),
-    });
-    navigate({
-      to: perfilCompleto(authState.perfil) ? "/" : "/completar-perfil",
-      replace: true,
-    });
-  }
-
   const googleClientIdError =
     googleClientIdStatus === "missing"
       ? "A variável VITE_GOOGLE_CLIENT_ID não foi encontrada pelo Vite. Confirme que o ficheiro .env está na raiz do projeto e reinicie o servidor de desenvolvimento."
@@ -334,12 +316,7 @@ function LoginPage() {
           </div>
         ) : (
           <div className="rounded-2xl border border-border bg-muted/25 p-4">
-            <p className="text-sm leading-6 text-muted-foreground">
-              {googleClientIdError} Em desenvolvimento, pode entrar em modo local.
-            </p>
-            <Button type="button" className="mt-4 w-full" onClick={entrarModoLocal}>
-              Entrar em modo local
-            </Button>
+            <p className="text-sm leading-6 text-muted-foreground">{googleClientIdError}</p>
           </div>
         )}
 

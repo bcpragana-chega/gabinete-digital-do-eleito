@@ -19,6 +19,10 @@ export function chavePorUtilizador(baseKey: string): string | undefined {
   return userScopedKey(baseKey, userId);
 }
 
+export function chaveParaUtilizador(baseKey: string, userId: string): string {
+  return userScopedKey(baseKey, normalizarUserId(userId))!;
+}
+
 export function lerJSONPorUtilizador<T>(baseKey: string, fallback: T): T {
   const key = chavePorUtilizador(baseKey);
   if (!key) return fallback;
@@ -31,6 +35,14 @@ export function guardarJSONPorUtilizador<T>(baseKey: string, value: T) {
   if (!key) return;
 
   writeJSON(key, value);
+}
+
+export function lerJSONParaUtilizador<T>(baseKey: string, userId: string, fallback: T): T {
+  return readJSON<T>(chaveParaUtilizador(baseKey, userId), fallback);
+}
+
+export function guardarJSONParaUtilizador<T>(baseKey: string, userId: string, value: T) {
+  writeJSON(chaveParaUtilizador(baseKey, userId), value);
 }
 
 export function chavePerfilPorUtilizador(userId: string) {

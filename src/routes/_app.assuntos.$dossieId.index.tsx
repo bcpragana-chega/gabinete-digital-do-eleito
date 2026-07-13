@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   Archive,
@@ -86,6 +86,9 @@ function DossieDetalhePage() {
   const documentosRelacionados = useDocumentosDoDossie(dossieId);
   const sessoes = useAssembleiasDoDossie(dossieId);
   const [documentosCriados, setDocumentosCriados] = useState<DocumentoCriado[]>([]);
+  const [aArquivar, setAArquivar] = useState(false);
+  const [erroArquivo, setErroArquivo] = useState("");
+  const arquivoEmCurso = useRef(false);
 
   useEffect(() => {
     const atualizar = () => setDocumentosCriados(listarDocumentosACriarDoAssunto(dossieId));
@@ -120,12 +123,22 @@ function DossieDetalhePage() {
     );
   }
 
-  function arquivar() {
-    if (!dossie || dossie.archivedAt) return;
+  async function arquivar() {
+    if (!dossie || dossie.archivedAt || arquivoEmCurso.current) return;
 
     const confirmado = window.confirm(`Arquivar o assunto "${dossie.titulo}"?`);
     if (!confirmado) return;
-    arquivarDossie(dossie.id);
+    arquivoEmCurso.current = true;
+    setAArquivar(true);
+    setErroArquivo("");
+    try {
+      await arquivarDossie(dossie.id);
+    } catch {
+      setErroArquivo("Não foi possível arquivar o assunto. Tenta novamente.");
+    } finally {
+      arquivoEmCurso.current = false;
+      setAArquivar(false);
+    }
   }
 
   const arquivado = Boolean(dossie.archivedAt);
@@ -186,11 +199,12 @@ function DossieDetalhePage() {
                         type="button"
                         variant="secondary"
                         size="sm"
-                        onClick={arquivar}
+                        disabled={aArquivar}
+                        onClick={() => void arquivar()}
                         className="w-full sm:w-auto"
                       >
                         <Archive className="mr-2 h-4 w-4" />
-                        Arquivar
+                        {aArquivar ? "A guardar…" : "Arquivar"}
                       </Button>
                     )}
                   </div>
@@ -253,6 +267,11 @@ function DossieDetalhePage() {
               </>
             }
           >
+            {erroArquivo && (
+              <p role="alert" className="mt-4 text-sm text-destructive">
+                {erroArquivo}
+              </p>
+            )}
             <WorkspaceSection id="contexto-assunto" className="scroll-mt-24">
               <SectionTitle
                 icon={Activity}

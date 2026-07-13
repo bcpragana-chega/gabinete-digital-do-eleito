@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 import type { Dossie } from "@/lib/types";
 import { editarDossie, type DossieInput } from "@/lib/dossies-store";
@@ -24,14 +24,28 @@ export function EditarDossieDialog({
   triggerLabel = "Editar",
 }: EditarDossieDialogProps) {
   const [open, setOpen] = useState(false);
+  const [aGuardar, setAGuardar] = useState(false);
+  const [erro, setErro] = useState("");
+  const guardarEmCurso = useRef(false);
 
-  function guardar(values: DossieInput) {
-    editarDossie(dossie.id, values);
-    setOpen(false);
+  async function guardar(values: DossieInput) {
+    if (guardarEmCurso.current) return;
+    guardarEmCurso.current = true;
+    setAGuardar(true);
+    setErro("");
+    try {
+      await editarDossie(dossie.id, values);
+      setOpen(false);
+    } catch {
+      setErro("Não foi possível guardar o assunto. Os dados introduzidos foram mantidos.");
+    } finally {
+      guardarEmCurso.current = false;
+      setAGuardar(false);
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(value) => !aGuardar && setOpen(value)}>
       <DialogTrigger asChild>
         <Button
           variant={compact ? "ghost" : "secondary"}
@@ -48,7 +62,13 @@ export function EditarDossieDialog({
           <DialogTitle>Editar assunto</DialogTitle>
         </DialogHeader>
 
-        <DossieForm initialValues={dossie} onSubmit={guardar} submitLabel="Guardar alterações" />
+        <DossieForm
+          initialValues={dossie}
+          onSubmit={guardar}
+          submitLabel="Guardar alterações"
+          submitting={aGuardar}
+          error={erro}
+        />
       </DialogContent>
     </Dialog>
   );

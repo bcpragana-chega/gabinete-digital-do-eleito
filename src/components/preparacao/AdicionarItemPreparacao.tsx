@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -35,7 +35,9 @@ type Props = {
   textoGuardar: string;
   campos: CampoPreparacao[];
   valoresIniciais: ValoresFormulario;
-  onGuardar: (valores: ValoresFormulario) => void;
+  onGuardar: (valores: ValoresFormulario) => Promise<void> | void;
+  onCancelar?: () => void;
+  erroGuardar?: string;
 };
 
 export function AdicionarItemPreparacao({
@@ -46,9 +48,13 @@ export function AdicionarItemPreparacao({
   campos,
   valoresIniciais,
   onGuardar,
+  onCancelar,
+  erroGuardar,
 }: Props) {
   const [aberto, setAberto] = useState(false);
   const [valores, setValores] = useState<ValoresFormulario>(valoresIniciais);
+  const [aGuardar, setAGuardar] = useState(false);
+  const guardarEmCurso = useRef(false);
 
   function atualizarCampo(nome: string, valor: string) {
     setValores((atuais) => ({
@@ -68,12 +74,20 @@ export function AdicionarItemPreparacao({
     });
   }
 
-  function guardar() {
-    if (!formularioValido()) return;
-
-    onGuardar(valores);
-    limparFormulario();
-    setAberto(false);
+  async function guardar() {
+    if (!formularioValido() || guardarEmCurso.current) return;
+    guardarEmCurso.current = true;
+    setAGuardar(true);
+    try {
+      await onGuardar(valores);
+      limparFormulario();
+      setAberto(false);
+    } catch {
+      // O consumidor apresenta a mensagem específica e os valores permanecem intactos.
+    } finally {
+      guardarEmCurso.current = false;
+      setAGuardar(false);
+    }
   }
 
   if (!aberto) {
@@ -106,6 +120,7 @@ export function AdicionarItemPreparacao({
 
             {campo.tipo === "text" && (
               <input
+                disabled={aGuardar}
                 value={valores[campo.nome] ?? ""}
                 onChange={(event) => atualizarCampo(campo.nome, event.target.value)}
                 placeholder={campo.placeholder}
@@ -115,6 +130,7 @@ export function AdicionarItemPreparacao({
 
             {campo.tipo === "textarea" && (
               <textarea
+                disabled={aGuardar}
                 value={valores[campo.nome] ?? ""}
                 onChange={(event) => atualizarCampo(campo.nome, event.target.value)}
                 placeholder={campo.placeholder}
@@ -125,6 +141,7 @@ export function AdicionarItemPreparacao({
 
             {campo.tipo === "select" && (
               <select
+                disabled={aGuardar}
                 value={valores[campo.nome] ?? ""}
                 onChange={(event) => atualizarCampo(campo.nome, event.target.value)}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
@@ -139,19 +156,26 @@ export function AdicionarItemPreparacao({
           </div>
         ))}
 
+        {erroGuardar && (
+          <p role="alert" className="text-sm text-destructive">
+            {erroGuardar}
+          </p>
+        )}
         <div className="flex justify-end gap-2 pt-2">
           <Button
             type="button"
             variant="secondary"
+            disabled={aGuardar}
             onClick={() => {
               limparFormulario();
+              onCancelar?.();
               setAberto(false);
             }}
           >
             Cancelar
           </Button>
-          <Button type="button" onClick={guardar}>
-            {textoGuardar}
+          <Button type="button" disabled={aGuardar} onClick={() => void guardar()}>
+            {aGuardar ? "A guardar…" : textoGuardar}
           </Button>
         </div>
       </div>

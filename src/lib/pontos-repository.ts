@@ -5,7 +5,12 @@ import {
   type SentidoVoto,
 } from "@/lib/pontos-store";
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
-import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "@/lib/user-storage";
+import {
+  guardarJSONParaUtilizador,
+  guardarJSONPorUtilizador,
+  lerJSONParaUtilizador,
+  lerJSONPorUtilizador,
+} from "@/lib/user-storage";
 
 const STORAGE_KEY = "tribuno:pontos";
 
@@ -146,17 +151,20 @@ async function obterSupabaseUserIdValido(userId?: string) {
   return data.user.id;
 }
 
-export function carregarPontosLocais() {
-  const parsed = lerJSONPorUtilizador<PontoOrdemTrabalhos[]>(STORAGE_KEY, []);
+export function carregarPontosLocais(userId?: string) {
+  const parsed = userId
+    ? lerJSONParaUtilizador<PontoOrdemTrabalhos[]>(STORAGE_KEY, userId, [])
+    : lerJSONPorUtilizador<PontoOrdemTrabalhos[]>(STORAGE_KEY, []);
   return Array.isArray(parsed) ? parsed : [];
 }
 
-export function guardarPontosLocais(pontos: PontoOrdemTrabalhos[]) {
-  guardarJSONPorUtilizador(STORAGE_KEY, pontos);
+export function guardarPontosLocais(pontos: PontoOrdemTrabalhos[], userId?: string) {
+  if (userId) guardarJSONParaUtilizador(STORAGE_KEY, userId, pontos);
+  else guardarJSONPorUtilizador(STORAGE_KEY, pontos);
 }
 
-export async function carregarPontosRemotos() {
-  const supabaseUserId = await obterSupabaseUserIdValido();
+export async function carregarPontosRemotos(userId?: string) {
+  const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) return undefined;
 
   const supabase = getSupabaseClient();
@@ -169,39 +177,50 @@ export async function carregarPontosRemotos() {
 
   if (error) throw error;
 
+  if ((data ?? []).some((row) => row.user_id !== supabaseUserId)) {
+    throw new Error("PONTOS_OWNER_MISMATCH");
+  }
+
   return (data ?? []).map((row) => fromRow(row as PontoRow));
 }
 
 export async function guardarPontoRemoto(userId: string, ponto: PontoOrdemTrabalhos) {
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
-  if (!supabaseUserId) return;
+  if (!supabaseUserId) throw new Error("SUPABASE_AUTH_REQUIRED");
 
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
 
-  const { error } = await withSupabaseTimeout(
-    supabase.from("pontos").upsert(toRow(supabaseUserId, ponto), {
-      onConflict: "id",
-    }),
+  const { data, error } = await withSupabaseTimeout(
+    supabase
+      .from("pontos")
+      .upsert(toRow(supabaseUserId, ponto), { onConflict: "id" })
+      .select("id,user_id")
+      .single(),
     "PONTOS_UPSERT",
   );
 
   if (error) throw error;
+  if (!data?.id || data.id !== ponto.id || data.user_id !== supabaseUserId) {
+    throw new Error("PONTO_SAVE_NOT_CONFIRMED");
+  }
+  return data;
 }
 
 export async function apagarPontoRemoto(id: string) {
   const supabaseUserId = await obterSupabaseUserIdValido();
-  if (!supabaseUserId) return;
+  if (!supabaseUserId) throw new Error("SUPABASE_AUTH_REQUIRED");
 
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
 
-  const { error } = await withSupabaseTimeout(
-    supabase.from("pontos").delete().eq("id", id),
+  const { data, error } = await withSupabaseTimeout(
+    supabase.from("pontos").delete().eq("id", id).select("id").single(),
     "PONTOS_DELETE",
   );
 
   if (error) throw error;
+  if (!data?.id) throw new Error("PONTO_DELETE_NOT_CONFIRMED");
 }
 
 export async function reordenarPontosRemotos(assembleiaId: string, pontoIds: string[]) {

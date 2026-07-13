@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 import { editarAssembleiaConfirmada } from "@/lib/assembleias-store";
 import type { Assembleia } from "@/lib/types";
@@ -19,19 +19,27 @@ type EditarAssembleiaDialogProps = {
 export function EditarAssembleiaDialog({ assembleia }: EditarAssembleiaDialogProps) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   async function guardar(values: AssembleiaFormValues) {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
     setError("");
     try {
       await editarAssembleiaConfirmada(assembleia.id, values);
       setOpen(false);
     } catch {
-      setError("Não foi possível guardar a sessão no Supabase.");
+      setError("Não foi possível guardar a sessão. Tenta novamente.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(value) => !saving && setOpen(value)}>
       <DialogTrigger asChild>
         <Button variant="secondary" className="w-full sm:w-auto">
           <Pencil className="mr-2 h-4 w-4" />
@@ -48,6 +56,7 @@ export function EditarAssembleiaDialog({ assembleia }: EditarAssembleiaDialogPro
           initialValues={assembleia}
           onSubmit={guardar}
           submitLabel="Guardar alterações"
+          submitting={saving}
         />
         {error && <p className="px-6 pb-4 text-sm text-destructive">{error}</p>}
       </DialogContent>

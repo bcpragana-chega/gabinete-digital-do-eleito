@@ -5,7 +5,18 @@ import type {
   TipoObjetoTribuno,
   TipoRelacaoTribuno,
 } from "./types";
-import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "./user-storage";
+import {
+  guardarJSONParaUtilizador,
+  guardarJSONPorUtilizador,
+  lerJSONParaUtilizador,
+  lerJSONPorUtilizador,
+} from "./user-storage";
+import { obterUtilizadorSupabaseValidado } from "./supabase";
+import {
+  associarPontoDocumentoRemoto,
+  carregarPontoDocumentosRemotos,
+  removerPontoDocumentoRemoto,
+} from "./ponto-documentos-repository";
 
 const STORAGE_KEY = "tribuno:relacoes";
 const EVENT_NAME = "tribuno:relacoes";
@@ -39,13 +50,16 @@ function relacaoValida(relacao: Partial<RelacaoTribuno>): relacao is RelacaoTrib
   );
 }
 
-function lerRelacoesLocais(): RelacaoTribuno[] {
-  const parsed = lerJSONPorUtilizador<RelacaoTribuno[]>(STORAGE_KEY, []);
+function lerRelacoesLocais(userId?: string): RelacaoTribuno[] {
+  const parsed = userId
+    ? lerJSONParaUtilizador<RelacaoTribuno[]>(STORAGE_KEY, userId, [])
+    : lerJSONPorUtilizador<RelacaoTribuno[]>(STORAGE_KEY, []);
   return Array.isArray(parsed) ? parsed.filter(relacaoValida) : [];
 }
 
-function guardarRelacoesLocais(relacoes: RelacaoTribuno[]) {
-  guardarJSONPorUtilizador(STORAGE_KEY, relacoes);
+function guardarRelacoesLocais(relacoes: RelacaoTribuno[], userId?: string) {
+  if (userId) guardarJSONParaUtilizador(STORAGE_KEY, userId, relacoes);
+  else guardarJSONPorUtilizador(STORAGE_KEY, relacoes);
   window.dispatchEvent(new Event(EVENT_NAME));
 }
 
@@ -106,6 +120,108 @@ export function removerRelacaoTribuno(id: string) {
 
 export function removerRelacaoTribunoPorObjetos(input: RelacaoTribunoInput) {
   guardarRelacoesLocais(lerRelacoesLocais().filter((relacao) => !mesmaRelacao(relacao, input)));
+}
+
+async function userIdValidado() {
+  const user = await obterUtilizadorSupabaseValidado();
+  if (!user?.id) throw new Error("AUTH_REQUIRED");
+  return user.id;
+}
+
+function relacaoPontoDocumento(pontoId: string, documentoId: string, createdAt: string) {
+  return {
+    id: `ponto-documento-${pontoId}-${documentoId}`,
+    origemTipo: "ponto",
+    origemId: pontoId,
+    destinoTipo: "documento",
+    destinoId: documentoId,
+    tipoRelacao: "usado_em",
+    createdAt,
+    updatedAt: createdAt,
+  } satisfies RelacaoTribuno;
+}
+
+export async function persistirRelacaoPontoDocumentoComDependencias<T>(input: {
+  persistirRemoto: () => Promise<T>;
+  confirmarLocal: (confirmacao: T) => void;
+}) {
+  const confirmacao = await input.persistirRemoto();
+  input.confirmarLocal(confirmacao);
+  return confirmacao;
+}
+
+export async function hidratarRelacoesPontoDocumento(pontoId: string) {
+  const ownerId = await userIdValidado();
+  const rows = await carregarPontoDocumentosRemotos(ownerId, pontoId);
+  if ((await obterUtilizadorSupabaseValidado())?.id !== ownerId) return;
+  const atuais = lerRelacoesLocais(ownerId).filter(
+    (relacao) =>
+      !(
+        relacao.origemTipo === "ponto" &&
+        relacao.origemId === pontoId &&
+        relacao.destinoTipo === "documento" &&
+        relacao.tipoRelacao === "usado_em"
+      ),
+  );
+  guardarRelacoesLocais(
+    [
+      ...rows.map((row) => relacaoPontoDocumento(pontoId, row.documento_id, row.created_at)),
+      ...atuais,
+    ],
+    ownerId,
+  );
+}
+
+export async function associarDocumentoAoPontoConfirmado(pontoId: string, documentoId: string) {
+  const ownerId = await userIdValidado();
+  let relacao: RelacaoTribuno | undefined;
+  await persistirRelacaoPontoDocumentoComDependencias({
+    persistirRemoto: async () => {
+      const row = await associarPontoDocumentoRemoto(ownerId, pontoId, documentoId);
+      if ((await obterUtilizadorSupabaseValidado())?.id !== ownerId) {
+        throw new Error("AUTH_CONTEXT_CHANGED");
+      }
+      return row;
+    },
+    confirmarLocal: (row) => {
+      const input: RelacaoTribunoInput = {
+        origemTipo: "ponto",
+        origemId: pontoId,
+        destinoTipo: "documento",
+        destinoId: documentoId,
+        tipoRelacao: "usado_em",
+      };
+      const atuais = lerRelacoesLocais(ownerId).filter((item) => !mesmaRelacao(item, input));
+      relacao = relacaoPontoDocumento(pontoId, documentoId, row.created_at);
+      guardarRelacoesLocais([relacao, ...atuais], ownerId);
+    },
+  });
+  return relacao!;
+}
+
+export async function removerDocumentoDoPontoConfirmado(pontoId: string, documentoId: string) {
+  const ownerId = await userIdValidado();
+  await persistirRelacaoPontoDocumentoComDependencias({
+    persistirRemoto: async () => {
+      await removerPontoDocumentoRemoto(ownerId, pontoId, documentoId);
+      if ((await obterUtilizadorSupabaseValidado())?.id !== ownerId) {
+        throw new Error("AUTH_CONTEXT_CHANGED");
+      }
+    },
+    confirmarLocal: () => {
+      const input: RelacaoTribunoInput = {
+        origemTipo: "ponto",
+        origemId: pontoId,
+        destinoTipo: "documento",
+        destinoId: documentoId,
+        tipoRelacao: "usado_em",
+      };
+      guardarRelacoesLocais(
+        lerRelacoesLocais(ownerId).filter((relacao) => !mesmaRelacao(relacao, input)),
+        ownerId,
+      );
+    },
+  });
 }
 
 export function useRelacoesPorObjeto(tipo: TipoObjetoTribuno, id: string): RelacaoTribuno[] {

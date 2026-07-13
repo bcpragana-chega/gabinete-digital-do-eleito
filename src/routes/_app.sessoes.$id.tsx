@@ -127,6 +127,7 @@ function AssembleiaDetailPage() {
   }>();
   const criticalSignature = `${documentos.map((documento) => `${documento.id}:${documento.estado}:${documento.updatedAt ?? ""}`).join("|")}::${pontos.map((ponto) => `${ponto.id}:${ponto.numero}:${ponto.updatedAt ?? ""}`).join("|")}`;
   const previousCriticalSignature = useRef<string | undefined>(undefined);
+  const arquivoEmCurso = useRef(false);
 
   useEffect(() => {
     void carregarPontosRemotosSeDisponivel().finally(() => {
@@ -234,16 +235,26 @@ function AssembleiaDetailPage() {
     );
   }
 
-  function arquivar() {
-    if (!assembleia) return;
+  async function arquivar() {
+    if (!assembleia || arquivoEmCurso.current) return;
 
     if (!confirmarArquivo) {
       setConfirmarArquivo(true);
       return;
     }
 
-    arquivarAssembleia(assembleia.id);
-    setConfirmarArquivo(false);
+    arquivoEmCurso.current = true;
+    setFlowSaving(true);
+    setFlowError("");
+    try {
+      await arquivarAssembleia(assembleia.id);
+      setConfirmarArquivo(false);
+    } catch {
+      setFlowError("Não foi possível arquivar a sessão. Tenta novamente.");
+    } finally {
+      arquivoEmCurso.current = false;
+      setFlowSaving(false);
+    }
   }
 
   const estaArquivada = assembleia.estado === "arquivada";
@@ -371,11 +382,16 @@ function AssembleiaDetailPage() {
                         type="button"
                         variant="secondary"
                         size="sm"
-                        onClick={arquivar}
+                        disabled={flowSaving}
+                        onClick={() => void arquivar()}
                         className="w-full sm:w-auto"
                       >
                         <Archive className="mr-2 h-4 w-4" />
-                        {confirmarArquivo ? "Confirmar arquivo" : "Arquivar"}
+                        {flowSaving
+                          ? "A guardar…"
+                          : confirmarArquivo
+                            ? "Confirmar arquivo"
+                            : "Arquivar"}
                       </Button>
                     )}
                   </div>
