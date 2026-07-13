@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LogOut, Scale } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
 import {
   isSidebarItemActive,
@@ -15,9 +15,11 @@ export function AppSidebar() {
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-border/60 bg-background/95 p-3 text-foreground md:flex">
       <div className="px-2 py-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-foreground text-background">
-            <Scale className="h-4 w-4" strokeWidth={1.75} />
-          </div>
+          <img
+            src="/logo.png"
+            alt="Tribuno"
+            className="h-9 w-9 rounded-xl object-contain"
+          />
           <div className="leading-tight">
             <div className="font-display text-base font-semibold">Tribuno</div>
             <div className="text-xs text-muted-foreground">Apoio ao mandato</div>
