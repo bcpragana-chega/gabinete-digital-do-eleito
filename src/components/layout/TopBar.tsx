@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LogOut, Menu, Scale, Settings } from "lucide-react";
+import { LogOut, Menu, Settings } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { UserAvatar } from "@/components/auth/UserAvatar";
@@ -106,7 +106,11 @@ export function TopBar({ title, description, breadcrumb }: TopBarProps) {
                 <div className="border-b border-border/60 px-5 py-5">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-foreground text-background">
-                      <Scale className="h-4 w-4" strokeWidth={1.75} />
+                      <img
+                      src="/logo.png"
+                      alt="Tribuno"
+                      className="h-8 w-8 rounded-lg object-contain"
+                    />
                     </div>
                     <div className="leading-tight">
                       <div className="font-display text-base font-semibold">Tribuno</div>
