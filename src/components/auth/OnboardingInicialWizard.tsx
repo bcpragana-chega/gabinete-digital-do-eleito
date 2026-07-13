@@ -166,13 +166,42 @@ export function OnboardingInicialWizard({ user, perfil, perfilConfigurado, onCon
   async function concluirSemConvocatoria() {
     if (!user?.id || ocupado) return;
     setOcupado(true);
-    marcarProximaAcaoConvocatoria(user.id, true);
-    await onConcluir();
-    await navigate({ to: "/", replace: true });
+    setErro("");
+    try {
+      marcarProximaAcaoConvocatoria(user.id, true);
+      await onConcluir();
+      await navigate({ to: "/", replace: true });
+    } catch {
+      setErro(
+        "Não foi possível confirmar o perfil institucional. Os dados ficaram guardados neste dispositivo; tenta novamente.",
+      );
+    } finally {
+      setOcupado(false);
+    }
   }
 
   async function confirmar(modo: "criar" | "atualizar" | "criar_novo" = "criar") {
     if (!user?.id || !documento || !analise || ocupado) return;
+    const onboardingPendente = carregarOnboardingLocal(user.id);
+    if (onboardingPendente?.sessaoId && !onboardingPendente.concluido) {
+      setOcupado(true);
+      setErro("");
+      try {
+        await onConcluir();
+        await navigate({
+          to: "/sessoes/$id",
+          params: { id: onboardingPendente.sessaoId },
+          replace: true,
+        });
+      } catch {
+        setErro(
+          "A sessão foi criada, mas falta confirmar o perfil institucional. Tenta novamente.",
+        );
+      } finally {
+        setOcupado(false);
+      }
+      return;
+    }
     if (!analise.sessao?.orgao || !analise.sessao.data || !analise.sessao.hora) {
       setErro("Confirma o órgão, a data e a hora antes de preparar a sessão.");
       return;
@@ -205,7 +234,8 @@ export function OnboardingInicialWizard({ user, perfil, perfilConfigurado, onCon
 
     try {
       guardarOnboardingLocal(user.id, {
-        concluido: true,
+        concluido: false,
+        sincronizacaoPendente: true,
         processoInterrompido: false,
         semConvocatoria: false,
         sessaoId,
@@ -224,12 +254,11 @@ export function OnboardingInicialWizard({ user, perfil, perfilConfigurado, onCon
         );
       await onConcluir();
     } catch {
-      console.warn("[Tribuno Onboarding] Sessão criada com sincronização pendente.", {
-        operacao: "ONBOARDING_CONCLUSAO_LOCAL_PENDENTE",
-      });
-    } finally {
       setOcupado(false);
+      setErro("A sessão foi criada, mas falta confirmar o perfil institucional. Tenta novamente.");
+      return;
     }
+    setOcupado(false);
     await navigate({ to: "/sessoes/$id", params: { id: sessaoId }, replace: true });
   }
 

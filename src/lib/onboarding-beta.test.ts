@@ -40,4 +40,10 @@ describe("Onboarding Beta P0", () => {
     assert.match(session, /Começar preparação/);
     assert.match(session, /setWizardAberto\(true\)/);
   });
+
+  it("não avança quando a confirmação remota do perfil falha", () => {
+    assert.match(wizard, /concluido: false/);
+    assert.match(wizard, /falta confirmar o perfil institucional/);
+    assert.match(wizard, /onboardingPendente\?\.sessaoId/);
+  });
 });

@@ -5,6 +5,7 @@ import {
   carregarPerfilLocal,
   guardarOnboardingVersionRemoto,
   guardarPerfilHibrido,
+  guardarPerfilRemoto,
 } from "@/lib/profile-repository";
 import { readJSON, removeItem, writeJSON } from "@/lib/storage-provider";
 import {
@@ -66,6 +67,7 @@ type AuthState = {
   user?: AuthUser;
   perfil?: PerfilEleito;
   perfisPorUserId?: Record<string, PerfilEleito>;
+  perfilRemotoConfirmado?: boolean;
 };
 
 export type PerfilErroCodigo =
@@ -231,6 +233,15 @@ export function resolverDestinoAcesso(input: {
   return input.onboardingRequired ? "onboarding" : "app";
 }
 
+export function resolverPerfilAutorizado(input: {
+  perfil?: PerfilEleito;
+  supabaseConfigurado: boolean;
+  perfilRemotoConfirmado?: boolean;
+}) {
+  if (input.supabaseConfigurado && input.perfilRemotoConfirmado !== true) return undefined;
+  return input.perfil;
+}
+
 export function criarCoordenadorAtualizacoes(executar: () => Promise<void>) {
   let emCurso = false;
   let pendente = false;
@@ -321,13 +332,19 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
       confirmar: async (supabaseUser) => {
         limparBloqueioLogout();
         const userAutenticado = authUserDaSessao(supabaseUser, { ...user, googleSub: user.id });
-        const perfilRemoto = normalizarPerfilEleito(
-          await carregarPerfilHibrido(userAutenticado.id),
-        );
+        let perfilRemoto: PerfilEleito | undefined;
+        try {
+          perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userAutenticado.id));
+        } catch {
+          console.warn("[Tribuno Perfil] Perfil remoto indisponível durante o login.", {
+            operacao: "PROFILE_LOGIN_LOAD_FALHOU",
+          });
+        }
         const nextState = {
           ...state,
           user: userAutenticado,
-          perfil: perfilRemoto ?? obterPerfilDoUser(state, userAutenticado),
+          perfil: perfilRemoto,
+          perfilRemotoConfirmado: Boolean(perfilRemoto),
         };
         guardarAuthState(nextState);
         console.info("[Tribuno Auth] Sessão local guardada", {
@@ -356,68 +373,109 @@ export async function guardarPerfilEleito(perfil: Omit<PerfilEleito, "updatedAt"
     throw new PerfilErro("ERRO_PERFIL_VALIDACAO", "Perfil inválido.");
   }
 
+  if (!userId) {
+    throw new PerfilErro("ERRO_PERFIL_VALIDACAO", "É necessária uma conta autenticada.");
+  }
+
   try {
-    guardarAuthState({
-      ...state,
-      perfil: perfilAtualizado,
-      perfisPorUserId: userId
-        ? {
-            ...perfisPorUserIdSeguro(state.perfisPorUserId),
-            [userId]: perfilAtualizado,
-          }
-        : state.perfisPorUserId,
-    });
+    await guardarPerfilHibrido(userId, perfilAtualizado);
   } catch (error) {
+    if (error instanceof Error && error.name === "PROFILE_LOCAL_WRITE_FAILED") {
+      throw new PerfilErro(
+        "ERRO_PERFIL_LOCAL",
+        "Não foi possível guardar o perfil localmente.",
+        error,
+      );
+    }
     throw new PerfilErro(
-      "ERRO_PERFIL_LOCAL",
-      "Não foi possível guardar o perfil localmente.",
+      "ERRO_PERFIL_SUPABASE",
+      "Não foi possível sincronizar o perfil remotamente.",
       error,
     );
   }
 
-  if (userId) {
-    try {
-      await guardarPerfilHibrido(userId, perfilAtualizado);
-    } catch (error) {
-      throw new PerfilErro(
-        "ERRO_PERFIL_SUPABASE",
-        "Não foi possível sincronizar o perfil remotamente.",
-        error,
-      );
-    }
+  try {
+    guardarAuthState({
+      ...state,
+      perfil: perfilAtualizado,
+      perfisPorUserId: {
+        ...perfisPorUserIdSeguro(state.perfisPorUserId),
+        [userId]: perfilAtualizado,
+      },
+      perfilRemotoConfirmado: isSupabaseConfigured() ? true : state.perfilRemotoConfirmado,
+    });
+  } catch (error) {
+    throw new PerfilErro(
+      "ERRO_PERFIL_LOCAL",
+      "O perfil foi sincronizado, mas não foi possível atualizar este dispositivo.",
+      error,
+    );
   }
 
   return perfilAtualizado;
 }
 
+/** @internal Garante a ordem perfil existente → versão de onboarding. */
+export async function concluirOnboardingRemotoComDependencias(input: {
+  userId: string;
+  perfil: PerfilEleito;
+  version: number;
+  guardarPerfil: (userId: string, perfil: PerfilEleito) => Promise<unknown>;
+  guardarVersion: (userId: string, version: number) => Promise<unknown>;
+}) {
+  await input.guardarPerfil(input.userId, input.perfil);
+  await input.guardarVersion(input.userId, input.version);
+}
+
 export async function concluirOnboarding(version = 1) {
   const state = lerAuthState();
   const userId = state.user?.id;
-
-  if (!userId) return { sincronizado: false };
-  guardarOnboardingLocal(userId, {
-    version,
-    concluido: true,
-    sincronizacaoPendente: isSupabaseConfigured(),
+  const perfilAtual = resolverPerfilAutorizado({
+    perfil: obterPerfilDoUser(state),
+    supabaseConfigurado: isSupabaseConfigured(),
+    perfilRemotoConfirmado: state.perfilRemotoConfirmado,
   });
 
-  let sincronizado = !isSupabaseConfigured();
-  if (isSupabaseConfigured()) {
+  if (!userId) throw new Error("AUTH_REQUIRED");
+  if (!perfilAtual || !perfilCompleto(perfilAtual)) throw new Error("PROFILE_REQUIRED");
+
+  if (!isSupabaseConfigured()) {
+    guardarOnboardingLocal(userId, { version, concluido: true, sincronizacaoPendente: false });
+  } else {
+    guardarOnboardingLocal(userId, {
+      version,
+      concluido: false,
+      sincronizacaoPendente: true,
+    });
     try {
-      await guardarOnboardingVersionRemoto(userId, version);
-      guardarOnboardingLocal(userId, { sincronizacaoPendente: false });
-      sincronizado = true;
-    } catch {
-      console.warn("[Tribuno Auth] Conclusão do onboarding guardada localmente.", {
-        operacao: "AUTH_ONBOARDING_SYNC_PENDENTE",
+      await concluirOnboardingRemotoComDependencias({
+        userId,
+        perfil: perfilAtual,
+        version,
+        guardarPerfil: guardarPerfilRemoto,
+        guardarVersion: guardarOnboardingVersionRemoto,
       });
+      guardarOnboardingLocal(userId, {
+        version,
+        concluido: true,
+        sincronizacaoPendente: false,
+      });
+    } catch (error) {
+      console.warn("[Tribuno Auth] Não foi possível concluir o onboarding remotamente.", {
+        operacao: "AUTH_ONBOARDING_SYNC_FALHOU",
+      });
+      throw new PerfilErro(
+        "ERRO_PERFIL_SUPABASE",
+        "Não foi possível confirmar o perfil institucional.",
+        error,
+      );
     }
   }
 
   if (isBrowser()) {
     window.dispatchEvent(new Event(EVENT_NAME));
   }
-  return { sincronizado };
+  return { sincronizado: true };
 }
 
 export function limparCachesTransitoriasDaConta(userId?: string) {
@@ -535,7 +593,11 @@ export function useAuth() {
   const [initialized, setInitialized] = useState(false);
   const [onboardingVersion, setOnboardingVersion] = useState<number | undefined>();
   const [onboardingResolved, setOnboardingResolved] = useState(false);
-  const perfil = obterPerfilDoUser(state);
+  const perfil = resolverPerfilAutorizado({
+    perfil: obterPerfilDoUser(state),
+    supabaseConfigurado: isSupabaseConfigured(),
+    perfilRemotoConfirmado: state.perfilRemotoConfirmado,
+  });
   const hasCompleteProfile = perfilCompleto(perfil);
 
   const onboardingRequired = hasCompleteProfile && (onboardingVersion ?? 0) < ONBOARDING_VERSION;
@@ -553,21 +615,29 @@ export function useAuth() {
         perfilCompleto: perfilCompleto(perfilAtual),
       });
 
-      if (!userId || perfilCompleto(perfilAtual)) return stateAtual;
+      if (!userId) return stateAtual;
+      if (!isSupabaseConfigured()) return stateAtual;
 
-      const perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userId));
+      let perfilRemoto: PerfilEleito | undefined;
+      try {
+        perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userId));
+      } catch {
+        console.warn("[Tribuno Perfil] Não foi possível confirmar o perfil remoto.", {
+          operacao: "PROFILE_INIT_LOAD_FALHOU",
+        });
+      }
       console.info("[Tribuno Auth] Perfil carregado durante inicialização", {
         perfilCarregado: Boolean(perfilRemoto),
         perfilCompleto: perfilCompleto(perfilRemoto),
       });
-      if (!perfilRemoto) return stateAtual;
 
       const nextState = {
         ...stateAtual,
         perfil: perfilRemoto,
+        perfilRemotoConfirmado: Boolean(perfilRemoto),
         perfisPorUserId: {
           ...stateAtual.perfisPorUserId,
-          [userId]: perfilRemoto,
+          ...(perfilRemoto ? { [userId]: perfilRemoto } : {}),
         },
       };
 
@@ -618,7 +688,11 @@ export function useAuth() {
         });
 
         const userId = nextState.user?.id;
-        const perfilAtual = obterPerfilDoUser(nextState);
+        const perfilAtual = resolverPerfilAutorizado({
+          perfil: obterPerfilDoUser(nextState),
+          supabaseConfigurado: isSupabaseConfigured(),
+          perfilRemotoConfirmado: nextState.perfilRemotoConfirmado,
+        });
 
         if (!userId || !perfilCompleto(perfilAtual)) {
           setOnboardingVersion(undefined);
@@ -627,16 +701,18 @@ export function useAuth() {
         }
 
         const local = carregarOnboardingLocal(userId);
-        if (local?.concluido && local.version >= ONBOARDING_VERSION) {
-          // A conclusão local é suficiente para autorizar já. A leitura/sincronização
-          // remota continua abaixo, sem manter a aplicação bloqueada.
+        if (!isSupabaseConfigured() && local?.concluido && local.version >= ONBOARDING_VERSION) {
           setOnboardingVersion(local.version);
           setOnboardingResolved(true);
           setInitialized(true);
         }
         try {
           const versaoRemota = await carregarOnboardingVersionRemoto(userId);
-          const versao = resolverVersaoOnboarding({ versaoRemota, local });
+          const versao = resolverVersaoOnboarding({
+            versaoRemota,
+            local,
+            remotoObrigatorio: isSupabaseConfigured(),
+          });
           if (local?.sincronizacaoPendente && local.concluido) {
             void guardarOnboardingVersionRemoto(userId, local.version)
               .then(() => guardarOnboardingLocal(userId, { sincronizacaoPendente: false }))
@@ -651,7 +727,7 @@ export function useAuth() {
             operacao: "AUTH_ONBOARDING_LOAD_FALHOU",
           });
           if (!cancelled) {
-            setOnboardingVersion(local?.concluido ? local.version : 0);
+            setOnboardingVersion(isSupabaseConfigured() ? 0 : local?.concluido ? local.version : 0);
             setOnboardingResolved(true);
           }
         }

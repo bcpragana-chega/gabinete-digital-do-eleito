@@ -60,7 +60,9 @@ export function temProximaAcaoConvocatoria(userId?: string) {
 export function resolverVersaoOnboarding(input: {
   versaoRemota?: number;
   local?: Pick<OnboardingLocal, "concluido" | "version">;
+  remotoObrigatorio?: boolean;
 }) {
+  if (input.remotoObrigatorio) return input.versaoRemota ?? 0;
   return Math.max(input.versaoRemota ?? 0, input.local?.concluido ? input.local.version : 0);
 }
 

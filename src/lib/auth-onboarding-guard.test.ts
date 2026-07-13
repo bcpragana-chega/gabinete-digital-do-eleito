@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { criarCoordenadorAtualizacoes, resolverDestinoAcesso } from "./auth-store";
+import {
+  concluirOnboardingRemotoComDependencias,
+  criarCoordenadorAtualizacoes,
+  resolverDestinoAcesso,
+  resolverPerfilAutorizado,
+  type PerfilEleito,
+} from "./auth-store";
 import { resolverVersaoOnboarding } from "./onboarding-state";
 
 const base = {
@@ -12,7 +18,7 @@ const base = {
 };
 
 describe("guard de autenticação e onboarding", () => {
-  it("autoriza perfil completo com conclusão local e remoto indisponível", () => {
+  it("autoriza conclusão local apenas quando não existe autoridade remota configurada", () => {
     const version = resolverVersaoOnboarding({ local: { concluido: true, version: 1 } });
     assert.equal(version, 1);
     assert.equal(resolverDestinoAcesso({ ...base, onboardingRequired: version < 1 }), "app");
@@ -35,13 +41,14 @@ describe("guard de autenticação e onboarding", () => {
     assert.equal(resolverDestinoAcesso({ ...base, isAuthenticated: false }), "login");
   });
 
-  it("mantém acesso durante sincronização pendente local", () => {
+  it("não autoriza sincronização pendente quando a versão remota é obrigatória", () => {
     const version = resolverVersaoOnboarding({
       versaoRemota: 0,
       local: { concluido: true, version: 1 },
+      remotoObrigatorio: true,
     });
-    assert.equal(version, 1);
-    assert.equal(resolverDestinoAcesso({ ...base, onboardingRequired: false }), "app");
+    assert.equal(version, 0);
+    assert.equal(resolverDestinoAcesso({ ...base, onboardingRequired: true }), "onboarding");
   });
 
   it("coalesce eventos rápidos e deixa prevalecer a atualização final", async () => {
@@ -66,5 +73,71 @@ describe("guard de autenticação e onboarding", () => {
 
   it("refresh após conclusão resolve diretamente para a aplicação", () => {
     assert.equal(resolverDestinoAcesso(base), "app");
+  });
+
+  it("perfil local não prova conclusão quando a linha remota não foi confirmada", () => {
+    const local = {
+      nomeInstitucional: "Maria Silva",
+      cargo: "Vereador",
+      orgao: "Câmara Municipal",
+      organizacao: "Grupo municipal",
+      territorio: "Lagoa",
+      updatedAt: "2026-07-13T10:00:00.000Z",
+    } satisfies PerfilEleito;
+    assert.equal(
+      resolverPerfilAutorizado({
+        perfil: local,
+        supabaseConfigurado: true,
+        perfilRemotoConfirmado: false,
+      }),
+      undefined,
+    );
+  });
+
+  it("persiste o perfil antes de marcar a versão do onboarding", async () => {
+    const ordem: string[] = [];
+    const perfil = {
+      nomeInstitucional: "Maria Silva",
+      cargo: "Vereador",
+      orgao: "Câmara Municipal",
+      organizacao: "Grupo municipal",
+      territorio: "Lagoa",
+      updatedAt: "2026-07-13T10:00:00.000Z",
+    } satisfies PerfilEleito;
+
+    await concluirOnboardingRemotoComDependencias({
+      userId: "user-1",
+      perfil,
+      version: 1,
+      guardarPerfil: async () => ordem.push("perfil"),
+      guardarVersion: async () => ordem.push("onboarding"),
+    });
+    assert.deepEqual(ordem, ["perfil", "onboarding"]);
+  });
+
+  it("não marca onboarding quando a persistência do perfil falha", async () => {
+    let versaoGuardada = false;
+    await assert.rejects(
+      concluirOnboardingRemotoComDependencias({
+        userId: "user-1",
+        perfil: {
+          nomeInstitucional: "Maria Silva",
+          cargo: "Vereador",
+          orgao: "Câmara Municipal",
+          organizacao: "Grupo municipal",
+          territorio: "Lagoa",
+          updatedAt: "2026-07-13T10:00:00.000Z",
+        },
+        version: 1,
+        guardarPerfil: async () => {
+          throw new Error("PROFILE_UPSERT_FAILED");
+        },
+        guardarVersion: async () => {
+          versaoGuardada = true;
+        },
+      }),
+      /PROFILE_UPSERT_FAILED/,
+    );
+    assert.equal(versaoGuardada, false);
   });
 });
