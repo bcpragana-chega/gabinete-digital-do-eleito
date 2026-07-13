@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
   Clock,
   Archive,
   Bot,
@@ -14,14 +16,22 @@ import {
   NotebookText,
   ScrollText,
   X,
+  Trash2,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { formatarData } from "@/lib/mock-data";
 import { arquivarAssembleia, useAssembleia } from "@/lib/assembleias-store";
+import {
+  confirmarDadosAssembleia,
+  confirmarRevisaoFinalAssembleia,
+  marcarAssembleiaPronta,
+  reabrirPreparacaoAssembleia,
+} from "@/lib/assembleias-store";
 import { EditarAssembleiaDialog } from "@/components/assembleias/EditarAssembleiaDialog";
 import { SessaoPreparacaoWizard } from "@/components/assembleias/SessaoPreparacaoWizard";
 import { AdicionarDocumentoSheet } from "@/components/documentos/AdicionarDocumentoSheet";
 import { AdicionarPontoDialog } from "@/components/preparacao/AdicionarPontoDialog";
+import { EditarPontoDialog } from "@/components/preparacao/EditarPontoDialog";
 import { PreparationGuidancePanel } from "@/components/preparacao/PreparationGuidancePanel";
 import { Button } from "@/components/ui/button";
 import { ActionCard, InfoCard } from "@/components/ui/cards";
@@ -38,16 +48,27 @@ import {
 import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
-import { listarDocumentosACriarDaAssembleia } from "@/lib/documentos-a-criar-store";
-import { carregarPontosRemotosSeDisponivel, obterPontosDaAssembleia } from "@/lib/pontos-store";
+import {
+  carregarDocumentosCriadosRemotosSeDisponivel,
+  listarDocumentosACriarDaAssembleia,
+  listarDocumentosACriarDoAssunto,
+  subscreverDocumentosACriar,
+} from "@/lib/documentos-a-criar-store";
+import {
+  carregarPontosRemotosSeDisponivel,
+  obterPontosDaAssembleia,
+  removerPontoConfirmado,
+  reordenarPontosConfirmado,
+} from "@/lib/pontos-store";
 import { obterEstrategiaDaAssembleia } from "@/lib/estrategia-store";
 import { useDossies } from "@/lib/dossies-store";
 import {
-  criarRelacaoTribuno,
-  removerRelacaoTribunoPorObjetos,
-  useRelacoesPorObjeto,
-} from "@/lib/relacoes-store";
-import type { Dossie, EstadoAssembleia, RelacaoTribuno } from "@/lib/types";
+  associarAssembleiaAoDossie,
+  desassociarAssembleiaDoDossie,
+  useDossiesAssociadosAAssembleia,
+} from "@/lib/dossie-assembleias-store";
+import { calcularFluxoSessao } from "@/lib/session-flow";
+import type { Dossie, EstadoAssembleia } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/sessoes/$id")({
   head: () => ({
@@ -76,15 +97,6 @@ function estadoTone(estado: EstadoAssembleia) {
   return "warning";
 }
 
-function isRelacaoSessaoAssunto(relacao: RelacaoTribuno, sessaoId: string) {
-  return (
-    relacao.origemTipo === "sessao" &&
-    relacao.origemId === sessaoId &&
-    relacao.destinoTipo === "assunto" &&
-    relacao.tipoRelacao === "discutido_em"
-  );
-}
-
 function AssembleiaDetailPage() {
   const { id } = Route.useParams();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -92,33 +104,54 @@ function AssembleiaDetailPage() {
   const documentos = useDocumentosDaAssembleia(id);
   const [versaoPontos, setVersaoPontos] = useState(0);
   const pontos = useMemo(() => obterPontosDaAssembleia(id), [id, versaoPontos]);
-  const documentosACriar = useMemo(() => listarDocumentosACriarDaAssembleia(id), [id]);
+  const [versaoRascunhos, setVersaoRascunhos] = useState(0);
+  const documentosACriarDiretos = useMemo(
+    () => listarDocumentosACriarDaAssembleia(id),
+    [id, versaoRascunhos],
+  );
   const estrategia = useMemo(() => obterEstrategiaDaAssembleia(id), [id]);
   const dossies = useDossies();
-  const relacoesDaSessao = useRelacoesPorObjeto("sessao", id);
+  const relacoesAssuntos = useDossiesAssociadosAAssembleia(id);
   const [confirmarArquivo, setConfirmarArquivo] = useState(false);
   const [wizardAberto, setWizardAberto] = useState(false);
   const [assuntoParaAssociar, setAssuntoParaAssociar] = useState("");
+  const [flowError, setFlowError] = useState("");
+  const [flowSaving, setFlowSaving] = useState(false);
+  const criticalSignature = `${documentos.map((documento) => `${documento.id}:${documento.estado}:${documento.updatedAt ?? ""}`).join("|")}::${pontos.map((ponto) => `${ponto.id}:${ponto.numero}:${ponto.updatedAt ?? ""}`).join("|")}`;
+  const previousCriticalSignature = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     void carregarPontosRemotosSeDisponivel().finally(() => {
       setVersaoPontos((valor) => valor + 1);
     });
   }, []);
-
-  const relacoesAssuntos = useMemo(
-    () => relacoesDaSessao.filter((relacao) => isRelacaoSessaoAssunto(relacao, id)),
-    [id, relacoesDaSessao],
-  );
+  useEffect(() => subscreverDocumentosACriar(() => setVersaoRascunhos((v) => v + 1)), []);
+  useEffect(() => {
+    void carregarDocumentosCriadosRemotosSeDisponivel();
+  }, []);
+  useEffect(() => {
+    if (previousCriticalSignature.current === undefined) {
+      previousCriticalSignature.current = criticalSignature;
+      return;
+    }
+    if (previousCriticalSignature.current !== criticalSignature) {
+      previousCriticalSignature.current = criticalSignature;
+      if (assembleia?.preparacaoEstado === "pronta") {
+        void reabrirPreparacaoAssembleia(id).catch(() =>
+          setFlowError("A sessão foi alterada, mas não foi possível reabrir a preparação."),
+        );
+      }
+    }
+  }, [assembleia?.preparacaoEstado, criticalSignature, id]);
 
   const assuntosDaSessao = useMemo(() => {
     return relacoesAssuntos
-      .map((relacao) => dossies.find((dossie) => dossie.id === relacao.destinoId))
+      .map((relacao) => dossies.find((dossie) => dossie.id === relacao.dossieId))
       .filter((dossie): dossie is Dossie => Boolean(dossie));
   }, [dossies, relacoesAssuntos]);
 
   const assuntosDaSessaoIds = useMemo(
-    () => new Set(relacoesAssuntos.map((relacao) => relacao.destinoId)),
+    () => new Set(relacoesAssuntos.map((relacao) => relacao.dossieId)),
     [relacoesAssuntos],
   );
 
@@ -178,30 +211,84 @@ function AssembleiaDetailPage() {
     estrategia.notasLivres,
   ].some((campo) => campo.trim().length > 0);
 
-  function associarAssunto() {
+  async function associarAssunto() {
     if (!assuntoParaAssociar) return;
-
-    criarRelacaoTribuno({
-      origemTipo: "sessao",
-      origemId: id,
-      destinoTipo: "assunto",
-      destinoId: assuntoParaAssociar,
-      tipoRelacao: "discutido_em",
-    });
-    setAssuntoParaAssociar("");
+    setFlowSaving(true);
+    setFlowError("");
+    try {
+      await associarAssembleiaAoDossie(assuntoParaAssociar, id);
+      setAssuntoParaAssociar("");
+      if (assembleia?.preparacaoEstado === "pronta") await reabrirPreparacaoAssembleia(id);
+    } catch {
+      setFlowError("Não foi possível guardar a relação com o Assunto.");
+    } finally {
+      setFlowSaving(false);
+    }
   }
 
-  function desassociarAssunto(dossie: Dossie) {
+  async function desassociarAssunto(dossie: Dossie) {
     const confirmado = window.confirm(`Remover o assunto "${dossie.titulo}" desta sessão?`);
     if (!confirmado) return;
 
-    removerRelacaoTribunoPorObjetos({
-      origemTipo: "sessao",
-      origemId: id,
-      destinoTipo: "assunto",
-      destinoId: dossie.id,
-      tipoRelacao: "discutido_em",
-    });
+    setFlowSaving(true);
+    setFlowError("");
+    try {
+      await desassociarAssembleiaDoDossie(dossie.id, id);
+      if (assembleia?.preparacaoEstado === "pronta") await reabrirPreparacaoAssembleia(id);
+    } catch {
+      setFlowError("Não foi possível remover a relação com o Assunto.");
+    } finally {
+      setFlowSaving(false);
+    }
+  }
+
+  const documentosPoliticos = Array.from(
+    new Map(
+      [
+        ...documentosACriarDiretos,
+        ...assuntosDaSessao.flatMap((assunto) => listarDocumentosACriarDoAssunto(assunto.id)),
+      ].map((documento) => [documento.id, documento]),
+    ).values(),
+  );
+  const flow = calcularFluxoSessao({
+    sessao: assembleia,
+    documentos,
+    pontos,
+    assuntosCount: assuntosDaSessao.length,
+    documentosPoliticosCount: documentosPoliticos.length,
+  });
+
+  async function executarFluxo(acao: () => Promise<unknown>, mensagem: string) {
+    setFlowSaving(true);
+    setFlowError("");
+    try {
+      await acao();
+    } catch {
+      setFlowError(mensagem);
+    } finally {
+      setFlowSaving(false);
+    }
+  }
+
+  async function reordenarPonto(index: number, delta: number) {
+    const destino = index + delta;
+    if (destino < 0 || destino >= pontos.length) return;
+    const ids = pontos.map((ponto) => ponto.id);
+    [ids[index], ids[destino]] = [ids[destino], ids[index]];
+    await executarFluxo(async () => {
+      await reordenarPontosConfirmado(id, ids);
+      if (assembleia?.preparacaoEstado === "pronta") await reabrirPreparacaoAssembleia(id);
+      setVersaoPontos((v) => v + 1);
+    }, "Não foi possível guardar a nova ordem dos pontos.");
+  }
+
+  async function removerPontoDaSessao(pontoId: string, titulo: string) {
+    if (!window.confirm(`Remover o ponto "${titulo}"?`)) return;
+    await executarFluxo(async () => {
+      await removerPontoConfirmado(pontoId);
+      if (assembleia?.preparacaoEstado === "pronta") await reabrirPreparacaoAssembleia(id);
+      setVersaoPontos((v) => v + 1);
+    }, "Não foi possível remover o ponto.");
   }
 
   return (
@@ -284,68 +371,111 @@ function AssembleiaDetailPage() {
             }
           >
             <WorkspaceSection>
-              <SectionTitle
-                icon={CalendarDays}
-                title="Dados da sessão"
-                description="Data, hora e local da reunião."
-              />
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
-                <InfoCard
-                  icon={CalendarDays}
-                  title="Data"
-                  description={formatarData(assembleia.data)}
-                />
-                <InfoCard icon={Clock} title="Hora" description={assembleia.hora} />
-                <InfoCard icon={MapPin} title="Local" description={assembleia.local} />
+              <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Passo {flow.currentStep} de {flow.steps.length}
+                  </p>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${flow.progress}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Próxima ação:{" "}
+                    <span className="font-medium text-foreground">{flow.nextAction.action}</span>
+                  </p>
+                </div>
+                <Button asChild size="sm">
+                  <a href={flow.nextAction.href}>Continuar</a>
+                </Button>
               </div>
+              {flowError && <p className="mt-3 text-sm text-destructive">{flowError}</p>}
             </WorkspaceSection>
 
-            <WorkspaceSection>
-              <SectionTitle
-                icon={FileText}
-                title="Documentos para rever"
-                description="Materiais que devem ser lidos antes da sessão."
-                actions={
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-                    <AdicionarDocumentoSheet assembleiaId={id} />
-                    <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
-                      <Link to="/sessoes/$id/preparacao/documentos" params={{ id }}>
-                        Ver todos
-                      </Link>
-                    </Button>
-                  </div>
-                }
-              />
-              <div className="mt-5 grid gap-3">
-                {documentos.length === 0 ? (
+            <div id="dados" className="scroll-mt-24">
+              <WorkspaceSection>
+                <SectionTitle
+                  icon={CalendarDays}
+                  title="Dados da sessão"
+                  description="Data, hora e local da reunião."
+                />
+                <div className="mt-5 grid gap-3 md:grid-cols-3">
                   <InfoCard
-                    icon={FileText}
-                    title="Ainda não existem documentos"
-                    description="Adicione convocatórias, atas, propostas ou relatórios para rever antes da sessão."
+                    icon={CalendarDays}
+                    title="Data"
+                    description={formatarData(assembleia.data)}
                   />
-                ) : (
-                  documentos.slice(0, 3).map((documento) => (
-                    <ActionCard
-                      key={documento.id}
+                  <InfoCard icon={Clock} title="Hora" description={assembleia.hora} />
+                  <InfoCard icon={MapPin} title="Local" description={assembleia.local} />
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    type="button"
+                    variant={assembleia.dadosConfirmadosEm ? "secondary" : "primary"}
+                    disabled={flowSaving}
+                    onClick={() =>
+                      executarFluxo(
+                        () => confirmarDadosAssembleia(id),
+                        "Não foi possível confirmar os dados no Supabase.",
+                      )
+                    }
+                  >
+                    {assembleia.dadosConfirmadosEm ? "Dados confirmados" : "Confirmar dados"}
+                  </Button>
+                </div>
+              </WorkspaceSection>
+            </div>
+
+            <div id="documentos" className="scroll-mt-24">
+              <WorkspaceSection>
+                <SectionTitle
+                  icon={FileText}
+                  title="Documentos para rever"
+                  description="Materiais que devem ser lidos antes da sessão."
+                  actions={
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+                      <AdicionarDocumentoSheet assembleiaId={id} />
+                      <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
+                        <Link to="/sessoes/$id/preparacao/documentos" params={{ id }}>
+                          Ver todos
+                        </Link>
+                      </Button>
+                    </div>
+                  }
+                />
+                <div className="mt-5 grid gap-3">
+                  {documentos.length === 0 ? (
+                    <InfoCard
                       icon={FileText}
-                      title={documento.titulo}
-                      description={documento.notas || documento.ficheiroNome || documento.tipo}
-                      meta={`${documento.tipo} · ${formatarData(documento.data)}`}
-                      action={
-                        <Button asChild variant="secondary" size="sm">
-                          <Link
-                            to="/sessoes/$id/documentos/$docId"
-                            params={{ id, docId: documento.id }}
-                          >
-                            Abrir
-                          </Link>
-                        </Button>
-                      }
+                      title="Ainda não existem documentos"
+                      description="Adicione convocatórias, atas, propostas ou relatórios para rever antes da sessão."
                     />
-                  ))
-                )}
-              </div>
-            </WorkspaceSection>
+                  ) : (
+                    documentos.slice(0, 3).map((documento) => (
+                      <ActionCard
+                        key={documento.id}
+                        icon={FileText}
+                        title={documento.titulo}
+                        description={documento.notas || documento.ficheiroNome || documento.tipo}
+                        meta={`${documento.tipo} · ${formatarData(documento.data)}`}
+                        action={
+                          <Button asChild variant="secondary" size="sm">
+                            <Link
+                              to="/sessoes/$id/documentos/$docId"
+                              params={{ id, docId: documento.id }}
+                            >
+                              Abrir
+                            </Link>
+                          </Button>
+                        }
+                      />
+                    ))
+                  )}
+                </div>
+              </WorkspaceSection>
+            </div>
 
             <WorkspaceSection>
               <SectionTitle
@@ -381,101 +511,154 @@ function AssembleiaDetailPage() {
               </div>
             </WorkspaceSection>
 
-            <WorkspaceSection>
-              <SectionTitle
-                icon={ListChecks}
-                title="Pontos da ordem de trabalhos"
-                description="Pontos a preparar antes da reunião."
-                actions={
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-                    <AdicionarPontoDialog
-                      assembleiaId={id}
-                      onAdicionar={() => setVersaoPontos((valor) => valor + 1)}
+            <div id="pontos" className="scroll-mt-24">
+              <WorkspaceSection>
+                <SectionTitle
+                  icon={ListChecks}
+                  title="Pontos da ordem de trabalhos"
+                  description="Pontos a preparar antes da reunião."
+                  actions={
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+                      <AdicionarPontoDialog
+                        assembleiaId={id}
+                        onAdicionar={() => {
+                          setVersaoPontos((valor) => valor + 1);
+                          if (assembleia.preparacaoEstado === "pronta")
+                            void reabrirPreparacaoAssembleia(id).catch(() =>
+                              setFlowError(
+                                "O ponto foi criado, mas não foi possível reabrir a preparação.",
+                              ),
+                            );
+                        }}
+                      />
+                      <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
+                        <Link to="/sessoes/$id/preparacao/pontos" params={{ id }}>
+                          Ver todos
+                        </Link>
+                      </Button>
+                    </div>
+                  }
+                />
+                <div className="mt-5 grid gap-3">
+                  {pontos.length === 0 ? (
+                    <InfoCard
+                      icon={ListChecks}
+                      title="Ainda não existem pontos"
+                      description="Adicione pontos para preparar perguntas, notas e documentos associados."
                     />
+                  ) : (
+                    pontos.map((ponto, index) => (
+                      <ActionCard
+                        key={ponto.id}
+                        icon={ListChecks}
+                        title={`${ponto.numero}. ${ponto.titulo}`}
+                        description={
+                          ponto.descricao || ponto.objetivoPolitico || "Ponto por preparar."
+                        }
+                        meta={`${ponto.estado} · ${ponto.prioridade}`}
+                        action={
+                          <div className="flex flex-wrap justify-end gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={flowSaving || index === 0}
+                              onClick={() => reordenarPonto(index, -1)}
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={flowSaving || index === pontos.length - 1}
+                              onClick={() => reordenarPonto(index, 1)}
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                            <EditarPontoDialog
+                              ponto={ponto}
+                              onUpdated={() => {
+                                setVersaoPontos((v) => v + 1);
+                                if (assembleia.preparacaoEstado === "pronta")
+                                  void reabrirPreparacaoAssembleia(id).catch(() =>
+                                    setFlowError(
+                                      "O ponto foi editado, mas não foi possível reabrir a preparação.",
+                                    ),
+                                  );
+                              }}
+                            />
+                            <Button asChild variant="secondary" size="sm">
+                              <Link
+                                to="/sessoes/$id/preparacao/pontos/$pontoId"
+                                params={{ id, pontoId: ponto.id }}
+                              >
+                                Abrir
+                              </Link>
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={flowSaving}
+                              onClick={() => removerPontoDaSessao(ponto.id, ponto.titulo)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        }
+                      />
+                    ))
+                  )}
+                </div>
+              </WorkspaceSection>
+            </div>
+
+            <div id="documentos-politicos" className="scroll-mt-24">
+              <WorkspaceSection>
+                <SectionTitle
+                  icon={ScrollText}
+                  title="Documentos a criar"
+                  description="Rascunhos que devem estar prontos para a sessão."
+                  actions={
                     <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
-                      <Link to="/sessoes/$id/preparacao/pontos" params={{ id }}>
+                      <Link to="/sessoes/$id/preparacao/documentos-a-criar" params={{ id }}>
                         Ver todos
                       </Link>
                     </Button>
-                  </div>
-                }
-              />
-              <div className="mt-5 grid gap-3">
-                {pontos.length === 0 ? (
-                  <InfoCard
-                    icon={ListChecks}
-                    title="Ainda não existem pontos"
-                    description="Adicione pontos para preparar perguntas, notas e documentos associados."
-                  />
-                ) : (
-                  pontos.slice(0, 4).map((ponto) => (
-                    <ActionCard
-                      key={ponto.id}
-                      icon={ListChecks}
-                      title={`${ponto.numero}. ${ponto.titulo}`}
-                      description={
-                        ponto.descricao || ponto.objetivoPolitico || "Ponto por preparar."
-                      }
-                      meta={`${ponto.estado} · ${ponto.prioridade}`}
-                      action={
-                        <Button asChild variant="secondary" size="sm">
-                          <Link
-                            to="/sessoes/$id/preparacao/pontos/$pontoId"
-                            params={{ id, pontoId: ponto.id }}
-                          >
-                            Abrir
-                          </Link>
-                        </Button>
-                      }
-                    />
-                  ))
-                )}
-              </div>
-            </WorkspaceSection>
-
-            <WorkspaceSection>
-              <SectionTitle
-                icon={ScrollText}
-                title="Documentos a criar"
-                description="Rascunhos que devem estar prontos para a sessão."
-                actions={
-                  <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">
-                    <Link to="/sessoes/$id/preparacao/documentos-a-criar" params={{ id }}>
-                      Ver todos
-                    </Link>
-                  </Button>
-                }
-              />
-              <div className="mt-5 grid gap-3">
-                {documentosACriar.length === 0 ? (
-                  <InfoCard
-                    icon={ScrollText}
-                    title="Ainda não existem rascunhos"
-                    description="Crie moções, recomendações, requerimentos ou declarações quando forem necessários."
-                  />
-                ) : (
-                  documentosACriar.slice(0, 3).map((documento) => (
-                    <ActionCard
-                      key={documento.id}
+                  }
+                />
+                <div className="mt-5 grid gap-3">
+                  {documentosPoliticos.length === 0 ? (
+                    <InfoCard
                       icon={ScrollText}
-                      title={documento.titulo}
-                      description={documento.tipo}
-                      meta={documento.estado}
-                      action={
-                        <Button asChild variant="secondary" size="sm">
-                          <Link
-                            to="/documentos/$documentoId"
-                            params={{ documentoId: documento.id }}
-                          >
-                            Abrir
-                          </Link>
-                        </Button>
-                      }
+                      title="Ainda não existem rascunhos"
+                      description="Crie moções, recomendações, requerimentos ou declarações quando forem necessários."
                     />
-                  ))
-                )}
-              </div>
-            </WorkspaceSection>
+                  ) : (
+                    documentosPoliticos.slice(0, 6).map((documento) => (
+                      <ActionCard
+                        key={documento.id}
+                        icon={ScrollText}
+                        title={documento.titulo}
+                        description={documento.tipo}
+                        meta={documento.estado}
+                        action={
+                          <Button asChild variant="secondary" size="sm">
+                            <Link
+                              to="/documentos/$documentoId"
+                              params={{ documentoId: documento.id }}
+                            >
+                              Abrir
+                            </Link>
+                          </Button>
+                        }
+                      />
+                    ))
+                  )}
+                </div>
+              </WorkspaceSection>
+            </div>
 
             <WorkspaceSection>
               <SectionTitle
@@ -493,79 +676,161 @@ function AssembleiaDetailPage() {
               </Timeline>
             </WorkspaceSection>
 
-            <WorkspaceSection>
-              <SectionTitle
-                icon={NotebookText}
-                title="Assuntos desta sessão"
-                description="Temas que serão discutidos ou trabalhados nesta reunião."
-              />
-              <div className="mt-5 grid gap-4">
-                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-                  <Select
-                    value={assuntoParaAssociar}
-                    onValueChange={setAssuntoParaAssociar}
-                    disabled={assuntosDisponiveis.length === 0}
-                  >
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={
-                          assuntosDisponiveis.length === 0
-                            ? "Todos os assuntos disponíveis já estão ligados"
-                            : "Selecionar assunto existente"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {assuntosDisponiveis.map((dossie) => (
-                        <SelectItem key={dossie.id} value={dossie.id}>
-                          {dossie.titulo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={associarAssunto}
-                    disabled={!assuntoParaAssociar}
-                  >
-                    Associar
-                  </Button>
-                </div>
-
-                {assuntosDaSessao.length === 0 ? (
-                  <EmptyState
-                    compact
-                    title="Nenhum assunto ligado a esta sessão."
-                    description="Associe os temas que vão ser discutidos ou trabalhados nesta reunião."
-                  />
-                ) : (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {assuntosDaSessao.map((dossie) => (
-                      <ActionCard
-                        key={dossie.id}
-                        icon={NotebookText}
-                        title={dossie.titulo}
-                        description={dossie.resumo || "Assunto ligado a esta sessão."}
-                        meta={`${dossie.estado} · ${dossie.prioridade}`}
-                        action={
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => desassociarAssunto(dossie)}
-                          >
-                            <X className="mr-2 h-4 w-4" />
-                            Remover
-                          </Button>
-                        }
-                      />
-                    ))}
+            <div id="assuntos" className="scroll-mt-24">
+              <WorkspaceSection>
+                <SectionTitle
+                  icon={NotebookText}
+                  title="Assuntos desta sessão"
+                  description="Temas que serão discutidos ou trabalhados nesta reunião."
+                />
+                <div className="mt-5 grid gap-4">
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                    <Select
+                      value={assuntoParaAssociar}
+                      onValueChange={setAssuntoParaAssociar}
+                      disabled={assuntosDisponiveis.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            assuntosDisponiveis.length === 0
+                              ? "Todos os assuntos disponíveis já estão ligados"
+                              : "Selecionar assunto existente"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {assuntosDisponiveis.map((dossie) => (
+                          <SelectItem key={dossie.id} value={dossie.id}>
+                            {dossie.titulo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={associarAssunto}
+                      disabled={!assuntoParaAssociar}
+                    >
+                      Associar
+                    </Button>
                   </div>
-                )}
-              </div>
-            </WorkspaceSection>
+
+                  {assuntosDaSessao.length === 0 ? (
+                    <EmptyState
+                      compact
+                      title="Nenhum assunto ligado a esta sessão."
+                      description="Associe os temas que vão ser discutidos ou trabalhados nesta reunião."
+                    />
+                  ) : (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {assuntosDaSessao.map((dossie) => (
+                        <ActionCard
+                          key={dossie.id}
+                          icon={NotebookText}
+                          title={dossie.titulo}
+                          description={dossie.resumo || "Assunto ligado a esta sessão."}
+                          meta={`${dossie.estado} · ${dossie.prioridade}`}
+                          action={
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => desassociarAssunto(dossie)}
+                            >
+                              <X className="mr-2 h-4 w-4" />
+                              Remover
+                            </Button>
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </WorkspaceSection>
+            </div>
+
+            <div id="verificacao-final" className="scroll-mt-24">
+              <WorkspaceSection>
+                <SectionTitle
+                  icon={CheckCircle2}
+                  title="Verificação final"
+                  description="Requisitos obrigatórios, opcionais e confirmação humana."
+                />
+                <div className="mt-5 grid gap-2">
+                  {flow.steps.map((step) => (
+                    <div
+                      key={step.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border p-3 text-sm"
+                    >
+                      <span>
+                        {step.done ? "✓" : "○"} {step.label}
+                      </span>
+                      <StatusBadge
+                        tone={
+                          step.done
+                            ? "success"
+                            : step.requirement === "required"
+                              ? "warning"
+                              : "muted"
+                        }
+                      >
+                        {step.requirement === "required" ? "Obrigatório" : "Opcional"}
+                      </StatusBadge>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  {!assembleia.revisaoFinalConfirmadaEm && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={
+                        flowSaving || flow.missingRequired.some((step) => step.id !== "revisao")
+                      }
+                      onClick={() =>
+                        executarFluxo(
+                          () => confirmarRevisaoFinalAssembleia(id),
+                          "Não foi possível confirmar a revisão final.",
+                        )
+                      }
+                    >
+                      Confirmar revisão final
+                    </Button>
+                  )}
+                  {assembleia.preparacaoEstado === "pronta" ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={flowSaving}
+                      onClick={() =>
+                        executarFluxo(
+                          () => reabrirPreparacaoAssembleia(id),
+                          "Não foi possível voltar à preparação.",
+                        )
+                      }
+                    >
+                      Voltar à preparação
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      disabled={flowSaving || !flow.canMarkReady}
+                      onClick={() =>
+                        executarFluxo(
+                          () => marcarAssembleiaPronta(id),
+                          "Não foi possível marcar a sessão como pronta.",
+                        )
+                      }
+                    >
+                      Marcar sessão como pronta
+                    </Button>
+                  )}
+                </div>
+              </WorkspaceSection>
+            </div>
 
             <WorkspaceSection>
               <SectionTitle
@@ -603,7 +868,7 @@ function AssembleiaDetailPage() {
         assembleia={assembleia}
         documentos={documentos}
         pontos={pontos}
-        documentosACriar={documentosACriar}
+        documentosACriar={documentosACriarDiretos}
         estrategia={estrategia}
         onPontosChange={() => setVersaoPontos((valor) => valor + 1)}
       />

@@ -42,11 +42,8 @@ import {
 } from "@/lib/documentos-a-criar-store";
 import { guardarEstrategiaDaAssembleia, type EstrategiaSessao } from "@/lib/estrategia-store";
 import { useDossies } from "@/lib/dossies-store";
-import {
-  marcarInboxDocumentoComoTratado,
-  obterInboxDocumento,
-  useInboxDocumentos,
-} from "@/lib/inbox-store";
+import { editarDocumento } from "@/lib/documentos-store";
+import { documentoRevisto } from "@/lib/session-flow";
 import type { PontoOrdemTrabalhos } from "@/lib/pontos-store";
 import type {
   Assembleia,
@@ -134,7 +131,6 @@ export function SessaoPreparacaoWizard({
   estrategia,
   onPontosChange,
 }: SessaoPreparacaoWizardProps) {
-  useInboxDocumentos();
   const todosAssuntos = useDossies();
   const assuntos = useMemo(
     () => todosAssuntos.filter((assunto) => !assunto.archivedAt),
@@ -166,9 +162,7 @@ export function SessaoPreparacaoWizard({
     return subscreverDocumentosACriar(atualizar);
   }, [assembleia.id, open]);
 
-  const documentosAnalisados = documentos.filter(
-    (documento) => obterInboxDocumento(documento.id).estado === "Tratado",
-  );
+  const documentosAnalisados = documentos.filter(documentoRevisto);
   const pontosPreparados = pontos.filter(pontoPreparado);
   const estrategiaPreenchida = [
     estrategiaForm.objetivoPolitico,
@@ -244,7 +238,9 @@ export function SessaoPreparacaoWizard({
               documentosAnalisadosIds={
                 new Set(documentosAnalisados.map((documento) => documento.id))
               }
-              onMarcarAnalisado={(documentoId) => marcarInboxDocumentoComoTratado(documentoId)}
+              onMarcarAnalisado={(documentoId) =>
+                editarDocumento(documentoId, { estado: "Revisto" })
+              }
             />
           )}
 

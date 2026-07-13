@@ -3,6 +3,7 @@ import {
   carregarPontosLocais,
   carregarPontosRemotos,
   guardarPontoRemoto,
+  reordenarPontosRemotos,
   guardarPontosLocais as persistirPontosLocais,
 } from "@/lib/pontos-repository";
 import { obterUserIdAtual } from "@/lib/user-storage";
@@ -22,6 +23,7 @@ export type PontoOrdemTrabalhos = {
   estado: EstadoPonto;
   prioridade: NivelPrioridade;
   objetivoPolitico: string;
+  posicaoPolitica?: string;
   mensagemPrincipal: string;
   notas: string;
   riscos: string;
@@ -137,6 +139,7 @@ export function adicionarPonto(
     estado: "Por preparar",
     prioridade: data.prioridade,
     objetivoPolitico: "",
+    posicaoPolitica: "",
     mensagemPrincipal: "",
     notas: "",
     riscos: "",
@@ -186,4 +189,46 @@ export function removerPonto(id: string) {
 
   guardarPontos(pontos.filter((ponto) => ponto.id !== id));
   apagarPontoRemotamente(id);
+}
+
+export async function atualizarPontoConfirmado(
+  pontoId: string,
+  data: Partial<Omit<PontoOrdemTrabalhos, "id" | "assembleiaId" | "numero">>,
+) {
+  const atual = lerPontos().find((ponto) => ponto.id === pontoId);
+  if (!atual) return undefined;
+  const atualizado = { ...atual, ...data, updatedAt: new Date().toISOString() };
+  const userId = obterUserIdAtual();
+  if (!userId) throw new Error("AUTH_REQUIRED");
+  await guardarPontoRemoto(userId, atualizado);
+  guardarPontos(lerPontos().map((ponto) => (ponto.id === pontoId ? atualizado : ponto)));
+  return atualizado;
+}
+
+export async function removerPontoConfirmado(id: string) {
+  await apagarPontoRemoto(id);
+  guardarPontos(lerPontos().filter((ponto) => ponto.id !== id));
+}
+
+export async function reordenarPontosConfirmado(assembleiaId: string, idsOrdenados: string[]) {
+  const todos = lerPontos();
+  const ordenados = criarPontosReordenados(todos, assembleiaId, idsOrdenados);
+  await reordenarPontosRemotos(assembleiaId, idsOrdenados);
+  const ids = new Set(idsOrdenados);
+  guardarPontos([...todos.filter((ponto) => !ids.has(ponto.id)), ...ordenados]);
+  return ordenados;
+}
+
+export function criarPontosReordenados(
+  todos: PontoOrdemTrabalhos[],
+  assembleiaId: string,
+  idsOrdenados: string[],
+) {
+  const porId = new Map(todos.map((ponto) => [ponto.id, ponto]));
+  const ordenados = idsOrdenados.map((id, index) => {
+    const ponto = porId.get(id);
+    if (!ponto || ponto.assembleiaId !== assembleiaId) throw new Error("PONTO_ORDEM_INVALIDA");
+    return { ...ponto, numero: index + 1, updatedAt: new Date().toISOString() };
+  });
+  return ordenados;
 }

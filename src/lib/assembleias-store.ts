@@ -5,6 +5,7 @@ import {
   carregarAssembleiasLocais,
   carregarAssembleiasRemotas,
   guardarAssembleiaRemota,
+  atualizarPreparacaoAssembleiaRemota,
   guardarAssembleiasLocais as persistirAssembleiasLocais,
 } from "@/lib/assembleias-repository";
 import { obterUserIdAtual } from "@/lib/user-storage";
@@ -109,6 +110,10 @@ export function editarAssembleia(id: string, input: EditarAssembleiaInput): Asse
           hora: input.hora,
           local: input.local,
           estado: input.estado,
+          preparacaoEstado: "em_preparacao" as const,
+          dadosConfirmadosEm: undefined,
+          revisaoFinalConfirmadaEm: undefined,
+          prontaEm: undefined,
           updatedAt: new Date().toISOString(),
         }
       : assembleia,
@@ -119,6 +124,80 @@ export function editarAssembleia(id: string, input: EditarAssembleiaInput): Asse
   if (atualizada) guardarAssembleiaRemotamente(atualizada);
 
   return atualizada;
+}
+
+export async function editarAssembleiaConfirmada(id: string, input: EditarAssembleiaInput) {
+  const atual = lerAssembleiasLocais().find((assembleia) => assembleia.id === id);
+  if (!atual) throw new Error("ASSEMBLEIA_NOT_FOUND");
+  const atualizada: Assembleia = {
+    ...atual,
+    ...input,
+    preparacaoEstado: "em_preparacao",
+    dadosConfirmadosEm: undefined,
+    revisaoFinalConfirmadaEm: undefined,
+    prontaEm: undefined,
+    updatedAt: new Date().toISOString(),
+  };
+  const userId = obterUserIdAtual();
+  if (!userId) throw new Error("AUTH_REQUIRED");
+  await guardarAssembleiaRemota(userId, atualizada);
+  return substituirAssembleiaLocal(atualizada);
+}
+
+function substituirAssembleiaLocal(assembleia: Assembleia) {
+  const atuais = lerAssembleiasLocais();
+  guardarAssembleiasLocais([assembleia, ...atuais.filter((item) => item.id !== assembleia.id)]);
+  return assembleia;
+}
+
+/** @internal Garante que a cache só muda depois da confirmação remota. */
+export async function persistirPreparacaoConfirmadaComDependencias(
+  persistirRemoto: () => Promise<Assembleia>,
+  persistirLocal: (assembleia: Assembleia) => Assembleia = substituirAssembleiaLocal,
+) {
+  const confirmada = await persistirRemoto();
+  return persistirLocal(confirmada);
+}
+
+export async function confirmarDadosAssembleia(id: string) {
+  const agora = new Date().toISOString();
+  return persistirPreparacaoConfirmadaComDependencias(() =>
+    atualizarPreparacaoAssembleiaRemota(id, {
+      dados_confirmados_at: agora,
+      revisao_final_confirmada_at: null,
+      preparacao_estado: "em_preparacao",
+      pronta_em: null,
+    }),
+  );
+}
+
+export async function confirmarRevisaoFinalAssembleia(id: string) {
+  return persistirPreparacaoConfirmadaComDependencias(() =>
+    atualizarPreparacaoAssembleiaRemota(id, {
+      revisao_final_confirmada_at: new Date().toISOString(),
+      preparacao_estado: "em_preparacao",
+      pronta_em: null,
+    }),
+  );
+}
+
+export async function marcarAssembleiaPronta(id: string) {
+  return persistirPreparacaoConfirmadaComDependencias(() =>
+    atualizarPreparacaoAssembleiaRemota(id, {
+      preparacao_estado: "pronta",
+      pronta_em: new Date().toISOString(),
+    }),
+  );
+}
+
+export async function reabrirPreparacaoAssembleia(id: string) {
+  return persistirPreparacaoConfirmadaComDependencias(() =>
+    atualizarPreparacaoAssembleiaRemota(id, {
+      preparacao_estado: "em_preparacao",
+      revisao_final_confirmada_at: null,
+      pronta_em: null,
+    }),
+  );
 }
 
 export function arquivarAssembleia(id: string): Assembleia | undefined {

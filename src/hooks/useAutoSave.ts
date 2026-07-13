@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 type UseAutoSaveOptions<T> = {
   initialValue: T;
   delay?: number;
-  onSave: (value: T) => void;
+  onSave: (value: T) => void | Promise<void>;
 };
 
 export function useAutoSave<T>({ initialValue, delay = 500, onSave }: UseAutoSaveOptions<T>) {
@@ -21,7 +21,7 @@ export function useAutoSave<T>({ initialValue, delay = 500, onSave }: UseAutoSav
     }
 
     const timeout = window.setTimeout(() => {
-      onSave(value);
+      void onSave(value);
     }, delay);
 
     return () => window.clearTimeout(timeout);

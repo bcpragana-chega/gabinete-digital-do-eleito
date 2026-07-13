@@ -19,6 +19,7 @@ type PontoRow = {
   estado: EstadoPonto;
   prioridade: NivelPrioridade;
   objetivo_politico: string | null;
+  posicao_politica: string | null;
   mensagem_principal: string | null;
   riscos: string | null;
   linha_intervencao: string | null;
@@ -71,6 +72,7 @@ function fromRow(row: PontoRow): PontoOrdemTrabalhos {
     estado: estadoSeguro(row.estado),
     prioridade: prioridadeSegura(row.prioridade),
     objetivoPolitico: textoSeguro(row.objetivo_politico),
+    posicaoPolitica: textoSeguro(row.posicao_politica),
     mensagemPrincipal: textoSeguro(row.mensagem_principal),
     notas: "",
     riscos: textoSeguro(row.riscos),
@@ -101,6 +103,7 @@ function toRow(userId: string, ponto: PontoOrdemTrabalhos): PontoRow {
     estado: estadoSeguro(ponto.estado),
     prioridade: prioridadeSegura(ponto.prioridade),
     objetivo_politico: textoSeguro(ponto.objetivoPolitico) || null,
+    posicao_politica: textoSeguro(ponto.posicaoPolitica) || null,
     mensagem_principal: textoSeguro(ponto.mensagemPrincipal) || null,
     riscos: textoSeguro(ponto.riscos) || null,
     linha_intervencao: textoSeguro(ponto.linhaIntervencao) || null,
@@ -198,5 +201,20 @@ export async function apagarPontoRemoto(id: string) {
     "PONTOS_DELETE",
   );
 
+  if (error) throw error;
+}
+
+export async function reordenarPontosRemotos(assembleiaId: string, pontoIds: string[]) {
+  const supabaseUserId = await obterSupabaseUserIdValido();
+  if (!supabaseUserId) throw new Error("SUPABASE_AUTH_REQUIRED");
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
+  const { error } = await withSupabaseTimeout(
+    supabase.rpc("reordenar_pontos_sessao", {
+      p_assembleia_id: assembleiaId,
+      p_ponto_ids: pontoIds,
+    }),
+    "PONTOS_REORDER",
+  );
   if (error) throw error;
 }

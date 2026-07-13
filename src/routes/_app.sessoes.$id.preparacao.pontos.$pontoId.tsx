@@ -19,6 +19,13 @@ import { Button } from "@/components/ui/button";
 import { SaveFeedback, type SaveFeedbackState } from "@/components/ui/SaveFeedback";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useAssembleia } from "@/lib/assembleias-store";
+import { reabrirPreparacaoAssembleia } from "@/lib/assembleias-store";
+import {
+  associarAssuntoAoPonto,
+  desassociarAssuntoDoPonto as removerAssuntoDoPonto,
+  useAssuntosDoPonto,
+} from "@/lib/assunto-pontos-store";
+import { useDossiesAssociadosAAssembleia } from "@/lib/dossie-assembleias-store";
 import {
   listarDocumentosACriarDoPonto,
   subscreverDocumentosACriar,
@@ -27,6 +34,7 @@ import { useDossies } from "@/lib/dossies-store";
 import { listarDocumentosLocais } from "@/lib/documentos-store";
 import {
   atualizarPonto,
+  atualizarPontoConfirmado,
   carregarPontosRemotosSeDisponivel,
   obterPontoPorId,
   type PontoOrdemTrabalhos,
@@ -84,6 +92,8 @@ function PreparacaoPontoDetalhePage() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const assembleia = useAssembleia(id);
   const dossies = useDossies();
+  const assuntosDaSessaoRelacoes = useDossiesAssociadosAAssembleia(id);
+  const assuntosDoPontoRelacoes = useAssuntosDoPonto(pontoId);
   const relacoesDoPonto = useRelacoesPorObjeto("ponto", pontoId);
   const [versaoPonto, setVersaoPonto] = useState(0);
   const [saveState, setSaveState] = useState<SaveFeedbackState>("saved");
@@ -102,6 +112,7 @@ function PreparacaoPontoDetalhePage() {
     () => ({
       descricao: ponto?.descricao ?? "",
       objetivoPolitico: ponto?.objetivoPolitico ?? "",
+      posicaoPolitica: ponto?.posicaoPolitica ?? "",
       riscos: ponto?.riscos ?? "",
       linhaIntervencao: ponto?.linhaIntervencao ?? "",
       notasInternas: ponto?.notasInternas ?? "",
@@ -110,14 +121,16 @@ function PreparacaoPontoDetalhePage() {
   );
 
   const guardarCampos = useCallback(
-    (campos: CamposPreparacaoPonto) => {
+    async (campos: CamposPreparacaoPonto) => {
       if (!ponto) return;
       try {
         setSaveState("saving");
-        atualizarPonto(ponto.id, campos);
+        await atualizarPontoConfirmado(ponto.id, campos);
+        if (assembleia?.preparacaoEstado === "pronta") await reabrirPreparacaoAssembleia(id);
         setSaveState("saved");
       } catch {
         setSaveState("error");
+        return;
       }
 
       const estrategiaAntes = [
@@ -165,7 +178,7 @@ function PreparacaoPontoDetalhePage() {
         });
       }
     },
-    [ponto],
+    [assembleia?.preparacaoEstado, id, ponto],
   );
 
   const [campos, setCampos] = useAutoSave<CamposPreparacaoPonto>({
@@ -179,25 +192,26 @@ function PreparacaoPontoDetalhePage() {
   const [assuntoParaAssociar, setAssuntoParaAssociar] = useState("");
   const [documentoParaAssociar, setDocumentoParaAssociar] = useState("");
 
-  const relacoesAssuntos = useMemo(
-    () => relacoesDoPonto.filter((relacao) => isRelacaoPontoAssunto(relacao, pontoId)),
-    [pontoId, relacoesDoPonto],
-  );
-
   const assuntosLigados = useMemo(() => {
-    return relacoesAssuntos
-      .map((relacao) => dossies.find((dossie) => dossie.id === relacao.destinoId))
+    return assuntosDoPontoRelacoes
+      .map((relacao) => dossies.find((dossie) => dossie.id === relacao.assuntoId))
       .filter((dossie): dossie is Dossie => Boolean(dossie));
-  }, [dossies, relacoesAssuntos]);
+  }, [dossies, assuntosDoPontoRelacoes]);
 
   const assuntosLigadosIds = useMemo(
-    () => new Set(relacoesAssuntos.map((relacao) => relacao.destinoId)),
-    [relacoesAssuntos],
+    () => new Set(assuntosDoPontoRelacoes.map((relacao) => relacao.assuntoId)),
+    [assuntosDoPontoRelacoes],
   );
 
   const assuntosDisponiveis = useMemo(
-    () => dossies.filter((dossie) => !dossie.archivedAt && !assuntosLigadosIds.has(dossie.id)),
-    [assuntosLigadosIds, dossies],
+    () =>
+      dossies.filter(
+        (dossie) =>
+          assuntosDaSessaoRelacoes.some((relacao) => relacao.dossieId === dossie.id) &&
+          !dossie.archivedAt &&
+          !assuntosLigadosIds.has(dossie.id),
+      ),
+    [assuntosDaSessaoRelacoes, assuntosLigadosIds, dossies],
   );
 
   const relacoesDocumentos = useMemo(
@@ -252,30 +266,21 @@ function PreparacaoPontoDetalhePage() {
     }));
   }
 
-  function associarAssuntoAoPonto() {
+  async function associarAssuntoAoPontoAtual() {
     if (!assuntoParaAssociar) return;
-
-    criarRelacaoTribuno({
-      origemTipo: "ponto",
-      origemId: pontoId,
-      destinoTipo: "assunto",
-      destinoId: assuntoParaAssociar,
-      tipoRelacao: "relacionado_com",
-    });
-    setAssuntoParaAssociar("");
+    try {
+      await associarAssuntoAoPonto(assuntoParaAssociar, pontoId);
+      setAssuntoParaAssociar("");
+    } catch {
+      setSaveState("error");
+    }
   }
 
   function desassociarAssuntoDoPonto(dossie: Dossie) {
     const confirmado = window.confirm(`Remover o assunto "${dossie.titulo}" deste ponto?`);
     if (!confirmado) return;
 
-    removerRelacaoTribunoPorObjetos({
-      origemTipo: "ponto",
-      origemId: pontoId,
-      destinoTipo: "assunto",
-      destinoId: dossie.id,
-      tipoRelacao: "relacionado_com",
-    });
+    void removerAssuntoDoPonto(dossie.id, pontoId).catch(() => setSaveState("error"));
   }
 
   function associarDocumentoAoPonto() {
@@ -514,7 +519,7 @@ function PreparacaoPontoDetalhePage() {
               assuntosDisponiveis={assuntosDisponiveis}
               assuntoParaAssociar={assuntoParaAssociar}
               onAssuntoChange={setAssuntoParaAssociar}
-              onAssociarAssunto={associarAssuntoAoPonto}
+              onAssociarAssunto={associarAssuntoAoPontoAtual}
               onDesassociarAssunto={desassociarAssuntoDoPonto}
               documentosLigados={documentosLigados}
               documentosDisponiveis={documentosDisponiveis}
@@ -526,7 +531,30 @@ function PreparacaoPontoDetalhePage() {
               onDesassociarDocumento={desassociarDocumentoDoPonto}
             />
 
-            <PontoPreparacaoForm campos={campos} onChange={atualizarCampo} />
+            <PontoPreparacaoForm
+              campos={campos}
+              onChange={atualizarCampo}
+              estado={ponto.estado}
+              sentidoVoto={ponto.sentidoVoto}
+              onEstadoChange={(estado) =>
+                void atualizarPontoConfirmado(ponto.id, { estado })
+                  .then(() => {
+                    setVersaoPonto((v) => v + 1);
+                    if (assembleia.preparacaoEstado === "pronta")
+                      return reabrirPreparacaoAssembleia(id);
+                  })
+                  .catch(() => setSaveState("error"))
+              }
+              onSentidoVotoChange={(sentidoVoto) =>
+                void atualizarPontoConfirmado(ponto.id, { sentidoVoto })
+                  .then(() => {
+                    setVersaoPonto((v) => v + 1);
+                    if (assembleia.preparacaoEstado === "pronta")
+                      return reabrirPreparacaoAssembleia(id);
+                  })
+                  .catch(() => setSaveState("error"))
+              }
+            />
 
             <TimelineHistorico pontoId={ponto.id} />
           </WorkspaceLayout>

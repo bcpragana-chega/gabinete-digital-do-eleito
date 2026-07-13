@@ -1,4 +1,5 @@
 export type EstadoAssembleia = "preparacao" | "analise" | "concluida" | "arquivada";
+export type EstadoPreparacaoSessao = "em_preparacao" | "pronta";
 
 export type TipoDocumento =
   | "Convocatória"
@@ -45,6 +46,10 @@ export interface Assembleia {
   hora: string;
   local: string;
   estado: EstadoAssembleia;
+  preparacaoEstado?: EstadoPreparacaoSessao;
+  dadosConfirmadosEm?: string;
+  revisaoFinalConfirmadaEm?: string;
+  prontaEm?: string;
   notas?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -182,6 +187,13 @@ export interface DossieAssembleiaRelacionada {
   id: string;
   dossieId: string;
   assembleiaId: string;
+  createdAt: string;
+}
+
+export interface AssuntoPontoRelacionado {
+  id: string;
+  assuntoId: string;
+  pontoId: string;
   createdAt: string;
 }
 

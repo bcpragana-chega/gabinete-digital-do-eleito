@@ -13,6 +13,10 @@ type AssembleiaRow = {
   data: string;
   local: string | null;
   estado: EstadoAssembleia;
+  preparacao_estado: "em_preparacao" | "pronta";
+  dados_confirmados_at: string | null;
+  revisao_final_confirmada_at: string | null;
+  pronta_em: string | null;
   notas: string | null;
   archived_at: string | null;
   created_at: string;
@@ -57,6 +61,10 @@ function fromRow(row: AssembleiaRow): Assembleia {
     hora,
     local: textoSeguro(row.local),
     estado: estadoSeguro(row.estado),
+    preparacaoEstado: row.preparacao_estado === "pronta" ? "pronta" : "em_preparacao",
+    dadosConfirmadosEm: row.dados_confirmados_at ?? undefined,
+    revisaoFinalConfirmadaEm: row.revisao_final_confirmada_at ?? undefined,
+    prontaEm: row.pronta_em ?? undefined,
     notas: textoSeguro(row.notas) || undefined,
     archivedAt: row.archived_at ?? undefined,
     createdAt: row.created_at,
@@ -76,6 +84,10 @@ function toRow(userId: string, assembleia: Assembleia): AssembleiaRow {
     data: dataRemota(assembleia),
     local: textoSeguro(assembleia.local) || null,
     estado: estadoSeguro(assembleia.estado),
+    preparacao_estado: assembleia.preparacaoEstado === "pronta" ? "pronta" : "em_preparacao",
+    dados_confirmados_at: assembleia.dadosConfirmadosEm ?? null,
+    revisao_final_confirmada_at: assembleia.revisaoFinalConfirmadaEm ?? null,
+    pronta_em: assembleia.prontaEm ?? null,
     notas: textoSeguro(assembleia.notas) || null,
     archived_at: assembleia.archivedAt ?? null,
     created_at: assembleia.createdAt ?? agora,
@@ -169,4 +181,32 @@ export async function apagarAssembleiaRemota(id: string) {
   );
 
   if (error) throw error;
+}
+
+export async function atualizarPreparacaoAssembleiaRemota(
+  id: string,
+  alteracoes: {
+    dados_confirmados_at?: string | null;
+    revisao_final_confirmada_at?: string | null;
+    preparacao_estado?: "em_preparacao" | "pronta";
+    pronta_em?: string | null;
+  },
+) {
+  const supabaseUserId = await obterSupabaseUserIdValido();
+  if (!supabaseUserId) throw new Error("SUPABASE_AUTH_REQUIRED");
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
+
+  const { data, error } = await withSupabaseTimeout(
+    supabase
+      .from("assembleias")
+      .update({ ...alteracoes, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("*")
+      .single(),
+    "ASSEMBLEIAS_PREPARACAO_UPDATE",
+  );
+  if (error) throw error;
+  if (!data) throw new Error("ASSEMBLEIA_UPDATE_NOT_CONFIRMED");
+  return fromRow(data as AssembleiaRow);
 }

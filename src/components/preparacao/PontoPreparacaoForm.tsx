@@ -2,10 +2,19 @@ import { ClipboardList, NotebookText } from "lucide-react";
 import { StrategyField } from "@/components/estrategia/StrategyField";
 import { SectionTitle } from "@/components/ui/common";
 import { WorkspaceSection } from "@/components/ui/workspace";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { EstadoPonto, SentidoVoto } from "@/lib/pontos-store";
 
 export type PontoPreparacaoCampos = {
   descricao: string;
   objetivoPolitico: string;
+  posicaoPolitica: string;
   riscos: string;
   linhaIntervencao: string;
   notasInternas: string;
@@ -14,9 +23,17 @@ export type PontoPreparacaoCampos = {
 export function PontoPreparacaoForm({
   campos,
   onChange,
+  estado,
+  sentidoVoto,
+  onEstadoChange,
+  onSentidoVotoChange,
 }: {
   campos: PontoPreparacaoCampos;
   onChange: (campo: keyof PontoPreparacaoCampos, valor: string) => void;
+  estado: EstadoPonto;
+  sentidoVoto: SentidoVoto;
+  onEstadoChange: (estado: EstadoPonto) => void;
+  onSentidoVotoChange: (voto: SentidoVoto) => void;
 }) {
   return (
     <>
@@ -28,6 +45,51 @@ export function PontoPreparacaoForm({
         />
 
         <div className="mt-5 space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Estado de preparação</label>
+              <Select
+                value={estado}
+                onValueChange={(value) => onEstadoChange(value as EstadoPonto)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {["Por preparar", "Em preparação", "Preparado", "Concluído"].map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Sentido de voto</label>
+              <Select
+                value={sentidoVoto}
+                onValueChange={(value) => onSentidoVotoChange(value as SentidoVoto)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {["Por decidir", "A favor", "Contra", "Abstenção", "Livre"].map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <StrategyField
+            label="Posição política"
+            value={campos.posicaoPolitica}
+            placeholder="Posição a defender neste ponto."
+            onChange={(valor) => onChange("posicaoPolitica", valor)}
+          />
           <StrategyField
             label="Resumo do ponto"
             value={campos.descricao}

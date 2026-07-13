@@ -15,6 +15,9 @@ import {
   type PontoOrdemTrabalhos,
 } from "@/lib/pontos-store";
 import { obterPreparacaoDaAssembleia } from "@/lib/preparacao-store";
+import { useAssembleia } from "@/lib/assembleias-store";
+import { useDossiesAssociadosAAssembleia } from "@/lib/dossie-assembleias-store";
+import { calcularFluxoSessao } from "@/lib/session-flow";
 
 type GuidanceStep = {
   id: string;
@@ -47,6 +50,8 @@ export function PreparationGuidancePanel({
   className?: string;
 }) {
   const documentos = useDocumentosDaAssembleia(assembleiaId);
+  const assembleia = useAssembleia(assembleiaId);
+  const assuntos = useDossiesAssociadosAAssembleia(assembleiaId);
   const [pontosVersion, setPontosVersion] = useState(0);
   const [rascunhosVersion, setRascunhosVersion] = useState(0);
   const [localVersion, setLocalVersion] = useState(0);
@@ -87,18 +92,63 @@ export function PreparationGuidancePanel({
     };
   }, []);
 
-  const state = useMemo(
-    () =>
-      criarEstadoPreparacao({
+  const state = useMemo(() => {
+    if (!assembleia)
+      return criarEstadoPreparacao({
         assembleiaId,
         documentos,
         pontos,
         rascunhos,
         estrategia,
         preparacao,
-      }),
-    [assembleiaId, documentos, pontos, rascunhos, estrategia, preparacao],
-  );
+      });
+    const flow = calcularFluxoSessao({
+      sessao: assembleia,
+      documentos,
+      pontos,
+      assuntosCount: assuntos.length,
+      documentosPoliticosCount: rascunhos.length,
+    });
+    return {
+      steps: flow.steps.map((step) => ({
+        ...step,
+        description: step.missing ?? step.label,
+        cta: step.action,
+      })),
+      completedCount: flow.steps.filter((step) => step.done).length,
+      score: flow.progress,
+      readinessLabel:
+        assembleia.preparacaoEstado === "pronta"
+          ? "Pronta"
+          : flow.progress === 100
+            ? "Pronta para confirmar"
+            : "Em preparação",
+      progressColor:
+        flow.progress === 100 ? "hsl(var(--status-concluida))" : "hsl(var(--status-alerta))",
+      missingItems: [...flow.missingRequired, ...flow.missingOptional].map((step) => ({
+        id: step.id,
+        message: step.missing ?? step.label,
+        href: `/sessoes/${assembleiaId}${step.href}`,
+        cta: step.action,
+      })),
+      isComplete: assembleia.preparacaoEstado === "pronta",
+      nextAction: {
+        title: flow.nextAction.label,
+        description: flow.nextAction.missing ?? "Reveja a preparação da sessão.",
+        button: flow.nextAction.action,
+        href: `/sessoes/${assembleiaId}${flow.nextAction.href}`,
+      },
+    };
+  }, [
+    assembleia,
+    assembleiaId,
+    assuntos.length,
+    documentos,
+    pontos,
+    rascunhos,
+    estrategia,
+    preparacao,
+  ]);
 
   return (
     <section className={className}>

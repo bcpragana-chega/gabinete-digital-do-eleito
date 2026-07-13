@@ -238,11 +238,15 @@ export async function associarAssembleiaAoDossie(
   dossieId: string,
   assembleiaId: string,
 ): Promise<DossieAssembleiaRelacionada | undefined> {
-  const existente = listarAssembleiasDoDossie(dossieId).find(
-    (relacao) => relacao.assembleiaId === assembleiaId,
+  const existente =
+    relacoesRemotas.find(
+      (relacao) => relacao.dossieId === dossieId && relacao.assembleiaId === assembleiaId,
+    ) ??
+    listarAssembleiasDoDossie(dossieId).find((relacao) => relacao.assembleiaId === assembleiaId);
+  const jaConfirmadaRemotamente = relacoesRemotas.some(
+    (relacao) => relacao.dossieId === dossieId && relacao.assembleiaId === assembleiaId,
   );
-
-  if (existente) return existente;
+  if (existente && jaConfirmadaRemotamente) return existente;
 
   const relacaoGenerica = criarRelacaoTribuno({
     origemTipo: "sessao",
@@ -361,6 +365,34 @@ export function useAssembleiasDoDossie(dossieId: string): DossieAssembleiaRelaci
       window.removeEventListener("storage", atualizar);
     };
   }, [dossieId]);
+
+  return relacoes;
+}
+
+export function useDossiesAssociadosAAssembleia(
+  assembleiaId: string,
+): DossieAssembleiaRelacionada[] {
+  const [relacoes, setRelacoes] = useState<DossieAssembleiaRelacionada[]>([]);
+
+  useEffect(() => {
+    let ativo = true;
+    const atualizar = () => {
+      if (ativo) setRelacoes(listarDossiesAssociadosAAssembleia(assembleiaId));
+    };
+    atualizar();
+    void sincronizarRelacoesRemotas()
+      .then(atualizar)
+      .catch(() => undefined);
+    window.addEventListener(EVENT_NAME, atualizar);
+    window.addEventListener(RELACOES_EVENT_NAME, atualizar);
+    window.addEventListener("storage", atualizar);
+    return () => {
+      ativo = false;
+      window.removeEventListener(EVENT_NAME, atualizar);
+      window.removeEventListener(RELACOES_EVENT_NAME, atualizar);
+      window.removeEventListener("storage", atualizar);
+    };
+  }, [assembleiaId]);
 
   return relacoes;
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pencil } from "lucide-react";
-import { editarAssembleia } from "@/lib/assembleias-store";
+import { editarAssembleiaConfirmada } from "@/lib/assembleias-store";
 import type { Assembleia } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,10 +18,16 @@ type EditarAssembleiaDialogProps = {
 
 export function EditarAssembleiaDialog({ assembleia }: EditarAssembleiaDialogProps) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
 
-  function guardar(values: AssembleiaFormValues) {
-    editarAssembleia(assembleia.id, values);
-    setOpen(false);
+  async function guardar(values: AssembleiaFormValues) {
+    setError("");
+    try {
+      await editarAssembleiaConfirmada(assembleia.id, values);
+      setOpen(false);
+    } catch {
+      setError("Não foi possível guardar a sessão no Supabase.");
+    }
   }
 
   return (
@@ -43,6 +49,7 @@ export function EditarAssembleiaDialog({ assembleia }: EditarAssembleiaDialogPro
           onSubmit={guardar}
           submitLabel="Guardar alterações"
         />
+        {error && <p className="px-6 pb-4 text-sm text-destructive">{error}</p>}
       </DialogContent>
     </Dialog>
   );
