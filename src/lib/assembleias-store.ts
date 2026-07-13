@@ -43,7 +43,7 @@ async function guardarAssembleiaRemotamente(userId: string, assembleia: Assemble
   await guardarAssembleiaRemota(userId, assembleia);
 }
 
-async function carregarAssembleiasRemotasSeDisponivel() {
+export async function carregarAssembleiasRemotasSeDisponivel() {
   try {
     const hidratacaoId = ++hidratacaoAtual;
     const userId = await obterUserIdValidado();

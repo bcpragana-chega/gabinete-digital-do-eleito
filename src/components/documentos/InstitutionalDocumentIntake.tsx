@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, FileSearch, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,8 @@ import {
   analisarDocumentoCarregado,
   carregarDocumentoParaAnalise,
   confirmarAnaliseDocumento,
+  executarConfirmacaoAnaliseComDependencias,
+  validarDadosConfirmacaoAnalise,
 } from "@/lib/institutional-document-flow";
 import {
   gerarTituloSessaoInstitucional,
@@ -56,6 +58,7 @@ export function InstitutionalDocumentIntake({
   const [error, setError] = useState("");
   const [analysisNotice, setAnalysisNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const confirmacaoEmCurso = useRef(false);
 
   function reset() {
     setStep("file");
@@ -140,43 +143,50 @@ export function InstitutionalDocumentIntake({
   }
 
   async function confirm(mode: "criar" | "atualizar" | "criar_novo" = "criar") {
-    if (!documento || !analise) return;
-    if (!analise.sessao?.orgao || !analise.sessao.data || !analise.sessao.hora) {
-      setError("Confirme o órgão, a data e a hora antes de preparar a sessão.");
+    if (!documento || !analise || confirmacaoEmCurso.current) return;
+    const erroValidacao = validarDadosConfirmacaoAnalise(analise);
+    if (erroValidacao) {
+      setError(erroValidacao);
       return;
     }
+    confirmacaoEmCurso.current = true;
     setSaving(true);
     setError("");
     try {
-      const result = await confirmarAnaliseDocumento({
-        documentoId: documento.id,
-        analise: { ...analise, tituloSessao },
-        modo: mode === "criar_novo" ? "criar_novo" : mode,
-        sessaoExistenteId: mode === "atualizar" ? duplicateId : undefined,
+      await executarConfirmacaoAnaliseComDependencias({
+        confirmar: () =>
+          confirmarAnaliseDocumento({
+            documentoId: documento.id,
+            analise: { ...analise, tituloSessao },
+            modo: mode === "criar_novo" ? "criar_novo" : mode,
+            sessaoExistenteId: mode === "atualizar" ? duplicateId : undefined,
+          }),
+        onDuplicado: (sessaoId) => {
+          setDuplicateId(sessaoId);
+          setStep("duplicate");
+        },
+        onConfirmado: async (result) => {
+          const arrivalKey = chaveTransitoriaPorUtilizador(
+            "tribuno:sessao-preparada",
+            result.sessaoId,
+            user?.id,
+          );
+          if (arrivalKey) {
+            sessionStorage.setItem(
+              arrivalKey,
+              JSON.stringify({ userId: user?.id, pontos: analise.pontosOrdemTrabalhos.length }),
+            );
+          }
+          if (user?.id) marcarProximaAcaoConvocatoria(user.id, false);
+          setOpen(false);
+          reset();
+          await navigate({ to: "/sessoes/$id", params: { id: result.sessaoId } });
+        },
       });
-      if (result.status === "duplicado") {
-        setDuplicateId(result.sessaoId);
-        setStep("duplicate");
-        return;
-      }
-      const arrivalKey = chaveTransitoriaPorUtilizador(
-        "tribuno:sessao-preparada",
-        result.sessaoId,
-        user?.id,
-      );
-      if (arrivalKey) {
-        sessionStorage.setItem(
-          arrivalKey,
-          JSON.stringify({ userId: user?.id, pontos: analise.pontosOrdemTrabalhos.length }),
-        );
-      }
-      if (user?.id) marcarProximaAcaoConvocatoria(user.id, false);
-      setOpen(false);
-      reset();
-      await navigate({ to: "/sessoes/$id", params: { id: result.sessaoId } });
     } catch {
       setError("A criação da sessão falhou sem deixar alterações parciais.");
     } finally {
+      confirmacaoEmCurso.current = false;
       setSaving(false);
     }
   }
