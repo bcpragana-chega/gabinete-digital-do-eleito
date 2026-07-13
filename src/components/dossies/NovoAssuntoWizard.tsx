@@ -10,6 +10,7 @@ import {
   Target,
 } from "lucide-react";
 import { adicionarNotaDossie } from "@/lib/dossie-notas-store";
+import { associarAssembleiaAoDossie } from "@/lib/dossie-assembleias-store";
 import { adicionarDossie } from "@/lib/dossies-store";
 import { Button } from "@/components/ui/button";
 import { InfoCard } from "@/components/ui/cards";
@@ -81,7 +82,7 @@ function StepTitle({ title, question }: { title: string; question: string }) {
   );
 }
 
-export function NovoAssuntoWizard() {
+export function NovoAssuntoWizard({ assembleiaId }: { assembleiaId?: string } = {}) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
@@ -136,6 +137,7 @@ export function NovoAssuntoWizard() {
         { id: tentativaId.current },
       );
 
+      if (assembleiaId) await associarAssembleiaAoDossie(assunto.id, assembleiaId);
       if (criarNota && notaInicial.trim()) adicionarNotaDossie(assunto.id, notaInicial.trim());
       setOpen(false);
       reset();

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   Building2,
   FileText,
@@ -50,7 +51,7 @@ import {
   removerRelacaoTribunoPorObjetos,
   useRelacoesPorObjeto,
 } from "@/lib/relacoes-store";
-import { listarAssembleias } from "@/lib/assembleias-store";
+import { useAssembleias } from "@/lib/assembleias-store";
 import { useDocumentos } from "@/lib/documentos-store";
 import type {
   Assembleia,
@@ -169,20 +170,7 @@ function useDocumentosExistentes() {
 }
 
 function useAssembleiasExistentes() {
-  const [assembleias, setAssembleias] = useState<Assembleia[]>([]);
-
-  useEffect(() => {
-    const atualizar = () => {
-      setAssembleias(assembleiasUnicas(listarAssembleias()));
-    };
-
-    atualizar();
-    window.addEventListener("storage", atualizar);
-
-    return () => window.removeEventListener("storage", atualizar);
-  }, []);
-
-  return assembleias;
+  return assembleiasUnicas(useAssembleias());
 }
 
 function isRelacaoAssuntoDocumento(relacao: RelacaoTribuno, dossieId: string) {
@@ -595,15 +583,22 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
                 description={assembleia.local}
                 meta={`${assembleia.estado} · ${formatarData(assembleia.data)}${assembleia.hora ? ` · ${assembleia.hora}` : ""}`}
                 actions={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => desassociarAssembleia(assembleia)}
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    Desligar
-                  </Button>
+                  <>
+                    <Button asChild type="button" variant="secondary" size="sm">
+                      <Link to="/sessoes/$id" params={{ id: assembleia.id }}>
+                        Abrir
+                      </Link>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => desassociarAssembleia(assembleia)}
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Desligar
+                    </Button>
+                  </>
                 }
               />
             ))}

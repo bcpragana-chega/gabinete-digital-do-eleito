@@ -15,6 +15,15 @@ describe("composição das rotas de Assunto", () => {
     resolve(process.cwd(), "src/components/dossies/DossieDocumentosCriadosSection.tsx"),
     "utf8",
   );
+  const sessao = fonte("_app.sessoes.$id.tsx");
+  const novoAssunto = readFileSync(
+    resolve(process.cwd(), "src/components/dossies/NovoAssuntoWizard.tsx"),
+    "utf8",
+  );
+  const relacionados = readFileSync(
+    resolve(process.cwd(), "src/components/dossies/DossieRelacionadosSection.tsx"),
+    "utf8",
+  );
   const legado = fonte("_app.assuntos.$dossieId.documentos.$documentoId.tsx");
   const legadoDossie = fonte("_app.dossies.$dossieId.documentos.$documentoId.tsx");
   const legadoSessao = fonte("_app.sessoes.$id.preparacao.documentos-a-criar.$rascunhoId.tsx");
@@ -63,5 +72,16 @@ describe("composição das rotas de Assunto", () => {
     assert.match(editor, /Tentar novamente/);
     assert.match(editor, /O documento não foi encontrado\./);
     assert.doesNotMatch(editor, /if \(!documento\) \{\s+return null;/);
+  });
+
+  it("permite navegar Sessão → Assunto → Sessão e criar um Assunto já associado", () => {
+    assert.match(sessao, /<NovoAssuntoWizard assembleiaId=\{id\} \/>/);
+    assert.match(sessao, /to="\/assuntos\/\$dossieId"/);
+    assert.match(relacionados, /to="\/sessoes\/\$id" params=\{\{ id: assembleia\.id \}\}/);
+    assert.match(relacionados, /assembleiasUnicas\(useAssembleias\(\)\)/);
+    assert.match(
+      novoAssunto,
+      /if \(assembleiaId\) await associarAssembleiaAoDossie\(assunto\.id, assembleiaId\)/,
+    );
   });
 });

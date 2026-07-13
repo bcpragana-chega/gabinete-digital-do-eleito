@@ -29,6 +29,7 @@ import {
 } from "@/lib/assembleias-store";
 import { EditarAssembleiaDialog } from "@/components/assembleias/EditarAssembleiaDialog";
 import { SessaoPreparacaoWizard } from "@/components/assembleias/SessaoPreparacaoWizard";
+import { NovoAssuntoWizard } from "@/components/dossies/NovoAssuntoWizard";
 import { AdicionarDocumentoSheet } from "@/components/documentos/AdicionarDocumentoSheet";
 import { AdicionarPontoDialog } from "@/components/preparacao/AdicionarPontoDialog";
 import { EditarPontoDialog } from "@/components/preparacao/EditarPontoDialog";
@@ -778,6 +779,7 @@ function AssembleiaDetailPage() {
                   icon={NotebookText}
                   title="Assuntos desta sessão"
                   description="Temas que serão discutidos ou trabalhados nesta reunião."
+                  actions={<NovoAssuntoWizard assembleiaId={id} />}
                 />
                 <div className="mt-5 grid gap-4">
                   <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
@@ -830,15 +832,22 @@ function AssembleiaDetailPage() {
                           description={dossie.resumo || "Assunto ligado a esta sessão."}
                           meta={`${dossie.estado} · ${dossie.prioridade}`}
                           action={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => desassociarAssunto(dossie)}
-                            >
-                              <X className="mr-2 h-4 w-4" />
-                              Remover
-                            </Button>
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <Button asChild type="button" variant="secondary" size="sm">
+                                <Link to="/assuntos/$dossieId" params={{ dossieId: dossie.id }}>
+                                  Abrir
+                                </Link>
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => desassociarAssunto(dossie)}
+                              >
+                                <X className="mr-2 h-4 w-4" />
+                                Remover
+                              </Button>
+                            </div>
                           }
                         />
                       ))}
