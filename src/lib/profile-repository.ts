@@ -12,12 +12,12 @@ type ProfileRow = {
   municipio: string | null;
   freguesia: string | null;
   assinatura_institucional: string | null;
-  logo_url: string | null;
   onboarding_version?: number | null;
   updated_at: string | null;
 };
 
 type ProfileOnboardingRow = {
+  user_id: string;
   onboarding_version: number | null;
 };
 
@@ -72,12 +72,22 @@ function fromRow(row: ProfileRow): PerfilEleito {
     municipio: textoSeguro(row.municipio) || undefined,
     freguesia: textoSeguro(row.freguesia) || undefined,
     assinaturaInstitucional: assinaturaInstitucional || undefined,
-    logoUrl: textoSeguro(row.logo_url) || undefined,
     updatedAt: textoSeguro(row.updated_at) || new Date().toISOString(),
   };
 }
 
 function toRow(userId: string, perfil: PerfilEleito): ProfileRow {
+  if (
+    !userId ||
+    !textoSeguro(perfil.nomeInstitucional) ||
+    !cargosPermitidos.includes(perfil.cargo) ||
+    !orgaosPermitidos.includes(perfil.orgao) ||
+    !textoSeguro(perfil.organizacao) ||
+    !textoSeguro(perfil.territorio)
+  ) {
+    throw new Error("PROFILE_REQUIRED_FIELDS_MISSING");
+  }
+
   return {
     user_id: userId,
     nome_institucional: textoSeguro(perfil.nomeInstitucional),
@@ -88,9 +98,26 @@ function toRow(userId: string, perfil: PerfilEleito): ProfileRow {
     municipio: textoSeguro(perfil.municipio) || null,
     freguesia: textoSeguro(perfil.freguesia) || null,
     assinatura_institucional: textoSeguro(perfil.assinaturaInstitucional) || null,
-    logo_url: textoSeguro(perfil.logoUrl) || null,
     updated_at: textoSeguro(perfil.updatedAt) || new Date().toISOString(),
   };
+}
+
+type GuardarPerfilConfirmadoDependencias = {
+  upsert: (row: ProfileRow) => Promise<ProfileRow | undefined>;
+};
+
+/** @internal Expõe o contrato confirmado do upsert para testes. */
+export async function guardarPerfilConfirmadoComDependencias(
+  userId: string,
+  perfil: PerfilEleito,
+  dependencias: GuardarPerfilConfirmadoDependencias,
+) {
+  const row = toRow(userId, perfil);
+  const persistida = await dependencias.upsert(row);
+  if (!persistida || persistida.user_id !== userId) {
+    throw new Error("PROFILE_UPSERT_SEM_CONFIRMACAO");
+  }
+  return fromRow(persistida);
 }
 
 async function obterSupabaseUserIdValido(userId?: string) {
@@ -214,23 +241,29 @@ export async function guardarPerfilRemoto(userId: string, perfil: PerfilEleito) 
 
   const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) {
-    console.info("[Tribuno Perfil] Gravação remota ignorada: sem sessão válida.");
-    return;
+    throw new Error("PROFILE_REMOTE_SESSION_UNAVAILABLE");
   }
 
   const supabase = getSupabaseClient();
-  if (!supabase) return;
+  if (!supabase) throw new Error("PROFILE_REMOTE_UNAVAILABLE");
 
-  const { error } = await withSupabaseTimeout(
-    supabase.from("profiles").upsert(toRow(supabaseUserId, perfil), {
-      onConflict: "user_id",
-    }),
-    "PROFILE_UPSERT",
-  );
-
-  if (error) throw error;
+  const persistido = await guardarPerfilConfirmadoComDependencias(supabaseUserId, perfil, {
+    upsert: async (row) => {
+      const { data, error } = await withSupabaseTimeout(
+        supabase
+          .from("profiles")
+          .upsert(row, { onConflict: "user_id" })
+          .select("*")
+          .single<ProfileRow>(),
+        "PROFILE_UPSERT",
+      );
+      if (error) throw error;
+      return data ?? undefined;
+    },
+  });
 
   console.info("[Tribuno Perfil] Guardar perfil remoto concluído");
+  return persistido;
 }
 
 const LOGO_MAX_BYTES = 2_000_000;
@@ -323,54 +356,90 @@ export async function guardarOnboardingVersionRemoto(userId: string, version: nu
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("ONBOARDING_REMOTE_UNAVAILABLE");
 
-  const { error } = await withSupabaseTimeout(
-    supabase
-      .from("profiles")
-      .update({ onboarding_version: version, updated_at: new Date().toISOString() })
-      .eq("user_id", supabaseUserId),
-    "PROFILE_UPDATE_ONBOARDING",
-    8000,
+  const persistido = await guardarOnboardingVersionConfirmadaComDependencias(
+    supabaseUserId,
+    version,
+    async (ownerId, onboardingVersion) => {
+      const { data, error } = await withSupabaseTimeout(
+        supabase
+          .from("profiles")
+          .update({
+            onboarding_version: onboardingVersion,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", ownerId)
+          .select("user_id,onboarding_version")
+          .maybeSingle<ProfileOnboardingRow>(),
+        "PROFILE_UPDATE_ONBOARDING",
+        8000,
+      );
+      if (error) throw error;
+      return data ?? undefined;
+    },
   );
-
-  if (error) throw error;
 
   console.info("[Tribuno Perfil] Guardar onboarding remoto concluído", {
     onboardingVersion: version,
   });
+  return persistido;
+}
+
+/** @internal Impede que update sem linha afetada seja tratado como sucesso. */
+export async function guardarOnboardingVersionConfirmadaComDependencias(
+  userId: string,
+  version: number,
+  atualizar: (userId: string, version: number) => Promise<ProfileOnboardingRow | undefined>,
+) {
+  const persistido = await atualizar(userId, version);
+  if (!persistido || persistido.user_id !== userId) {
+    throw new Error("ONBOARDING_PROFILE_NOT_FOUND");
+  }
+  return persistido;
 }
 
 export async function carregarPerfilHibrido(userId?: string) {
   if (!userId) return undefined;
 
   if (isSupabaseConfigured()) {
-    try {
-      const remoto = await carregarPerfilRemoto(userId);
-      if (remoto) {
-        guardarPerfilLocal(userId, remoto);
-        return remoto;
-      }
-    } catch {
-      console.warn("[Tribuno Perfil] Carregamento remoto falhou.", {
-        operacao: "PROFILE_LOAD_FALHOU",
-      });
+    const remoto = await carregarPerfilRemoto(userId);
+    if (remoto) {
+      guardarPerfilLocal(userId, remoto);
     }
+    return remoto;
   }
 
   return carregarPerfilLocal(userId);
 }
 
 export async function guardarPerfilHibrido(userId: string, perfil: PerfilEleito) {
-  guardarPerfilLocal(userId, perfil);
+  return guardarPerfilHibridoComDependencias(userId, perfil, {
+    guardarLocal: guardarPerfilLocal,
+    remotoConfigurado: isSupabaseConfigured,
+    guardarRemoto: guardarPerfilRemoto,
+  });
+}
 
-  if (!isSupabaseConfigured()) return perfil;
-
+/** @internal Mantém o rascunho local, mas propaga qualquer falha remota. */
+export async function guardarPerfilHibridoComDependencias(
+  userId: string,
+  perfil: PerfilEleito,
+  dependencias: {
+    guardarLocal: (userId: string, perfil: PerfilEleito) => void;
+    remotoConfigurado: () => boolean;
+    guardarRemoto: (userId: string, perfil: PerfilEleito) => Promise<unknown>;
+  },
+) {
   try {
-    await guardarPerfilRemoto(userId, perfil);
-  } catch {
-    console.warn("[Tribuno Perfil] Sincronização remota falhou.", {
-      operacao: "PROFILE_SYNC_FALHOU",
-    });
+    dependencias.guardarLocal(userId, perfil);
+  } catch (cause) {
+    const error = new Error("PROFILE_LOCAL_WRITE_FAILED", { cause });
+    error.name = "PROFILE_LOCAL_WRITE_FAILED";
+    throw error;
+  }
+  if (!dependencias.remotoConfigurado()) {
+    throw new Error("PROFILE_REMOTE_NOT_CONFIGURED");
   }
 
+  await dependencias.guardarRemoto(userId, perfil);
   return perfil;
 }
