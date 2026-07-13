@@ -11,6 +11,10 @@ describe("composição das rotas de Assunto", () => {
   const layout = fonte("_app.assuntos.$dossieId.tsx");
   const index = fonte("_app.assuntos.$dossieId.index.tsx");
   const editor = fonte("_app.documentos.$documentoId.tsx");
+  const documentosAssunto = readFileSync(
+    resolve(process.cwd(), "src/components/dossies/DossieDocumentosCriadosSection.tsx"),
+    "utf8",
+  );
   const legado = fonte("_app.assuntos.$dossieId.documentos.$documentoId.tsx");
   const legadoDossie = fonte("_app.dossies.$dossieId.documentos.$documentoId.tsx");
   const legadoSessao = fonte("_app.sessoes.$id.preparacao.documentos-a-criar.$rascunhoId.tsx");
@@ -32,5 +36,22 @@ describe("composição das rotas de Assunto", () => {
     assert.match(legado, /to="\/documentos\/\$documentoId"/);
     assert.match(legadoDossie, /to="\/documentos\/\$documentoId"/);
     assert.match(legadoSessao, /to="\/documentos\/\$documentoId"/);
+  });
+
+  it("criação confirmada abre o editor canónico e bloqueia cliques repetidos", () => {
+    assert.match(documentosAssunto, /const criacaoEmCurso = useRef\(false\)/);
+    assert.match(documentosAssunto, /if \(!user\?\.id \|\| criacaoEmCurso\.current\) return/);
+    assert.match(documentosAssunto, /criacaoEmCurso\.current = true/);
+    assert.match(
+      documentosAssunto,
+      /to: "\/documentos\/\$documentoId",\s+params: \{ documentoId: response\.documento\.id \}/,
+    );
+  });
+
+  it("editor apresenta loading e estados recuperáveis em vez de página vazia", () => {
+    assert.match(editor, /A carregar documento\.\.\./);
+    assert.match(editor, /Tentar novamente/);
+    assert.match(editor, /O documento não foi encontrado\./);
+    assert.doesNotMatch(editor, /if \(!documento\) \{\s+return null;/);
   });
 });

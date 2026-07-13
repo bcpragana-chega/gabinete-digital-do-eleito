@@ -1,6 +1,6 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { AlertCircle, Download, FilePlus2, FileText, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActionCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
@@ -110,6 +110,7 @@ function mensagemErroGeracao(code?: string, message?: string) {
 }
 
 export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string }) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const dossie = useDossie(dossieId);
   const sessoesRelacionadas = useAssembleiasDoDossie(dossieId);
@@ -125,6 +126,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
   const [erroInstitucional, setErroInstitucional] = useState<string | undefined>();
   const [documentoCriadoId, setDocumentoCriadoId] = useState<string>();
   const [sucesso, setSucesso] = useState<string>();
+  const criacaoEmCurso = useRef(false);
 
   function escolherIntencao(proxima: IntencaoDocumento) {
     const proximoTipo = tipoPorIntencao(proxima) as TipoDocumentoCriado;
@@ -187,8 +189,9 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
   async function gerarDocumento() {
     const tituloLimpo = titulo.trim();
     if (!tituloLimpo) return;
-    if (!user?.id || gerando) return;
+    if (!user?.id || criacaoEmCurso.current) return;
 
+    criacaoEmCurso.current = true;
     setGerando(true);
     setErroGeracao(undefined);
 
@@ -252,9 +255,14 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
       setTituloEditado(false);
       setConteudo("");
       setDocumentos(listarDocumentosACriarDoAssunto(dossieId));
+      void navigate({
+        to: "/documentos/$documentoId",
+        params: { documentoId: response.documento.id },
+      });
     } catch {
       setErroGeracao(mensagemErroGeracao("AI_GENERATION_ERROR"));
     } finally {
+      criacaoEmCurso.current = false;
       setGerando(false);
     }
   }

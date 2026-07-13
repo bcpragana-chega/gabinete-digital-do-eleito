@@ -8,6 +8,7 @@ import {
   FileDown,
   FileText,
   Link2,
+  Loader2,
   Pencil,
   Save,
   X,
@@ -458,7 +459,22 @@ function DocumentoDoAssuntoPage() {
   }
 
   if (!documento) {
-    return null;
+    return (
+      <>
+        <TopBar breadcrumb="Documento" />
+        <main className="min-h-screen bg-transparent">
+          <div
+            className="mx-auto flex min-h-[50vh] max-w-7xl items-center justify-center px-4 py-6 sm:px-6 lg:px-8"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />A carregar documento...
+            </div>
+          </div>
+        </main>
+      </>
+    );
   }
 
   const hrefRegresso = documento.assuntoId
