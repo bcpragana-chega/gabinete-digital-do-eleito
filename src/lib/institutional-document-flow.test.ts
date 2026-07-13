@@ -55,6 +55,11 @@ describe("confirmação institucional", () => {
     assert.match(component, /analisarDocumentoCarregado\(documento\.id\)/);
   });
 
+  it("não apresenta o resumo longo da IA no formulário de revisão", () => {
+    const reviewForm = component.slice(component.indexOf("function ReviewForm"));
+    assert.doesNotMatch(reviewForm, /resumoCompreensao/);
+  });
+
   it("a chegada usa a próxima ação do motor determinístico", () => {
     assert.match(sessionRoute, /flow\.nextAction\.action/);
     assert.match(sessionRoute, /calcularFluxoSessao/);

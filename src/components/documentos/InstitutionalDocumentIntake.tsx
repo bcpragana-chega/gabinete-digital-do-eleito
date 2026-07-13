@@ -25,6 +25,10 @@ import {
   carregarDocumentoParaAnalise,
   confirmarAnaliseDocumento,
 } from "@/lib/institutional-document-flow";
+import {
+  gerarTituloSessaoInstitucional,
+  resolverTituloSessaoInstitucional,
+} from "@/lib/institutional-session-title";
 import type { AnaliseDocumentoInstitucional, Documento } from "@/lib/types";
 
 type Step = "file" | "analysing" | "review" | "duplicate";
@@ -41,6 +45,7 @@ export function InstitutionalDocumentIntake({
   const [documento, setDocumento] = useState<Documento>();
   const [analise, setAnalise] = useState<AnaliseDocumentoInstitucional>();
   const [tituloSessao, setTituloSessao] = useState("");
+  const [tituloPersonalizado, setTituloPersonalizado] = useState(false);
   const [duplicateId, setDuplicateId] = useState("");
   const [error, setError] = useState("");
   const [analysisNotice, setAnalysisNotice] = useState("");
@@ -52,6 +57,7 @@ export function InstitutionalDocumentIntake({
     setDocumento(undefined);
     setAnalise(undefined);
     setTituloSessao("");
+    setTituloPersonalizado(false);
     setDuplicateId("");
     setError("");
     setAnalysisNotice("");
@@ -67,8 +73,10 @@ export function InstitutionalDocumentIntake({
     if (documentoInicial) {
       setDocumento(documentoInicial);
       setAnalise(documentoInicial.analiseInstitucional ?? analiseVazia());
-      const data = documentoInicial.analiseInstitucional?.sessao?.data;
-      setTituloSessao(data ? `Sessão de ${data}` : "");
+      setTituloSessao(
+        gerarTituloSessaoInstitucional(documentoInicial.analiseInstitucional?.sessao),
+      );
+      setTituloPersonalizado(false);
       setStep("review");
     }
   }
@@ -89,8 +97,8 @@ export function InstitutionalDocumentIntake({
         setAnalysisNotice(
           "Consegui compreender parte do documento, mas preciso que confirmes alguns detalhes.",
         );
-      const data = result.analise.sessao?.data;
-      setTituloSessao(data ? `Sessão de ${data}` : "");
+      setTituloSessao(gerarTituloSessaoInstitucional(result.analise.sessao));
+      setTituloPersonalizado(false);
       setStep("review");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível analisar o documento.");
@@ -107,6 +115,13 @@ export function InstitutionalDocumentIntake({
     try {
       const result = await analisarDocumentoCarregado(documento.id);
       setAnalise(result.analise);
+      setTituloSessao((tituloAtual) =>
+        resolverTituloSessaoInstitucional({
+          tituloAtual,
+          personalizado: tituloPersonalizado,
+          sessao: result.analise.sessao,
+        }),
+      );
       if (result.estado === "necessita_confirmacao")
         setAnalysisNotice(
           "Consegui compreender parte do documento, mas preciso que confirmes alguns detalhes.",
@@ -218,7 +233,17 @@ export function InstitutionalDocumentIntake({
                 analise={analise}
                 onChange={setAnalise}
                 titulo={tituloSessao}
-                onTituloChange={setTituloSessao}
+                tituloPersonalizado={tituloPersonalizado}
+                onTituloAutomaticoChange={setTituloSessao}
+                onTituloChange={(value) => {
+                  if (value.trim()) {
+                    setTituloSessao(value);
+                    setTituloPersonalizado(true);
+                    return;
+                  }
+                  setTituloPersonalizado(false);
+                  setTituloSessao(gerarTituloSessaoInstitucional(analise.sessao));
+                }}
               />
             </div>
           )}
@@ -285,16 +310,30 @@ function ReviewForm({
   analise,
   onChange,
   titulo,
+  tituloPersonalizado,
+  onTituloAutomaticoChange,
   onTituloChange,
 }: {
   analise: AnaliseDocumentoInstitucional;
   onChange: (value: AnaliseDocumentoInstitucional) => void;
   titulo: string;
+  tituloPersonalizado: boolean;
+  onTituloAutomaticoChange: (value: string) => void;
   onTituloChange: (value: string) => void;
 }) {
   const sessao = analise.sessao ?? { tipo: "desconhecida" as const };
-  const updateSession = (field: string, value: string) =>
-    onChange({ ...analise, sessao: { ...sessao, [field]: value || undefined } });
+  const updateSession = (field: string, value: string) => {
+    const next = { ...analise, sessao: { ...sessao, [field]: value || undefined } };
+    onChange(next);
+    if (["tipo", "entidade", "orgao", "data"].includes(field))
+      onTituloAutomaticoChange(
+        resolverTituloSessaoInstitucional({
+          tituloAtual: titulo,
+          personalizado: tituloPersonalizado,
+          sessao: next.sessao,
+        }),
+      );
+  };
   const pontos = analise.pontosOrdemTrabalhos;
   const move = (index: number, delta: number) => {
     const next = [...pontos];
@@ -305,12 +344,6 @@ function ReviewForm({
   };
   return (
     <div className="space-y-5">
-      <div className="rounded-xl bg-muted/50 p-4">
-        <p className="text-sm">
-          {analise.resumoCompreensao ||
-            "Não consegui ler texto suficiente neste documento. Confirma os dados manualmente."}
-        </p>
-      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Título da sessão" value={titulo} onChange={onTituloChange} />
         <Field
