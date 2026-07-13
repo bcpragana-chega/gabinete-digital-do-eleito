@@ -3,20 +3,19 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
   analiseTemTextoSuficiente,
+  criarDiagnosticoRespostaSeguro,
+  criarInputFilePdfVisual,
+  executarAnaliseComFallback,
   INSTITUTIONAL_DOCUMENT_ANALYSIS_VERSION,
+  INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT,
+  INSTITUTIONAL_ANALYSIS_USER_PROMPT,
+  InstitutionalAnalysisError,
   normalizarAnaliseDocumentoInstitucional,
+  validarModeloAnaliseVisual,
 } from "@/lib/ai/institutional-document-analysis";
 import type { AnaliseDocumentoInstitucional, EstadoAnaliseDocumento } from "@/lib/types";
 
 const inputSchema = z.object({ accessToken: z.string().min(1), documentoId: z.string().min(1) });
-
-const systemPrompt = `Estás a analisar um documento institucional português.
-Identifica apenas informação presente no documento. Não completes dados por conhecimento geral e não deduzas silenciosamente.
-Distingue convocatória, ordem de trabalhos, ata, proposta, regulamento e documento financeiro.
-Extrai órgão, entidade, tipo de sessão, data, hora e local. Extrai a ordem de trabalhos mantendo títulos, numeração e ordem original.
-Não transformes parágrafos informativos em pontos. Marca todas as incertezas. Usa português europeu.
-Devolve apenas JSON válido com: tipoDocumento, confiancaGlobal, sessao, pontosOrdemTrabalhos, informacaoRelevante, camposIncertos e resumoCompreensao.
-Usa confiança entre 0 e 1. Campos ausentes devem ser omitidos, nunca inventados.`;
 
 function env(name: string) {
   return process.env[name]?.trim();
@@ -41,7 +40,38 @@ function parseJson(text: string) {
     .replace(/^```json\s*/i, "")
     .replace(/```$/i, "")
     .trim();
-  return JSON.parse(clean) as unknown;
+  try {
+    return JSON.parse(clean) as unknown;
+  } catch {
+    throw new InstitutionalAnalysisError(
+      "OPENAI_INVALID_JSON",
+      "A resposta da análise não contém JSON válido.",
+    );
+  }
+}
+
+function mensagemErroAnalise(error: unknown) {
+  if (!(error instanceof InstitutionalAnalysisError))
+    return {
+      code: "ANALYSIS_FAILED",
+      message: "Não foi possível compreender este documento. Pode tentar novamente.",
+    };
+  if (error.code === "MODEL_NOT_VISION_CAPABLE")
+    return { code: error.code, message: error.message };
+  if (error.code === "STORAGE_SIGNED_URL_FAILED")
+    return {
+      code: error.code,
+      message: "Não foi possível abrir o PDF para análise. Pode tentar novamente.",
+    };
+  if (error.code === "ANALYSIS_PERSIST_FAILED")
+    return {
+      code: error.code,
+      message: "A análise terminou, mas não foi possível guardá-la. Pode tentar novamente.",
+    };
+  return {
+    code: error.code,
+    message: "Não foi possível compreender este documento. Pode tentar novamente.",
+  };
 }
 
 export type ResultadoAnaliseInstitucional =
@@ -54,12 +84,19 @@ export const analisarDocumentoInstitucional = createServerFn({ method: "POST" })
     const supabaseUrl = env("SUPABASE_URL") ?? env("VITE_SUPABASE_URL");
     const serviceRole = env("SUPABASE_SERVICE_ROLE_KEY");
     const apiKey = env("OPENAI_API_KEY");
-    if (!supabaseUrl || !serviceRole || !apiKey)
+    const configuredModel = env("OPENAI_ANALYSIS_MODEL") ?? env("OPENAI_MODEL");
+    if (!supabaseUrl || !serviceRole || !apiKey || !configuredModel)
       return {
         ok: false,
         code: "CONFIG",
         message: "A análise institucional ainda não está configurada.",
       };
+    let model: string;
+    try {
+      model = validarModeloAnaliseVisual(configuredModel);
+    } catch (error) {
+      return { ok: false, ...mensagemErroAnalise(error) };
+    }
     const supabase = createClient(supabaseUrl, serviceRole, { auth: { persistSession: false } });
     const { data: authData, error: authError } = await supabase.auth.getUser(data.accessToken);
     if (authError || !authData.user)
@@ -80,45 +117,100 @@ export const analisarDocumentoInstitucional = createServerFn({ method: "POST" })
         message: "Este documento não contém um PDF para analisar.",
       };
 
-    await supabase
+    const { error: analysingStateError } = await supabase
       .from("documentos")
       .update({ estado_analise: "a_analisar" })
       .eq("id", data.documentoId)
       .eq("user_id", authData.user.id);
+    if (analysingStateError)
+      return {
+        ok: false,
+        code: "ANALYSIS_PERSIST_FAILED",
+        message: "Não foi possível iniciar e guardar a análise. Pode tentar novamente.",
+      };
     try {
       const { data: signed, error: signedError } = await supabase.storage
         .from(documento.storage_bucket || "documentos")
         .createSignedUrl(documento.storage_path, 600);
-      if (signedError || !signed.signedUrl) throw new Error("SIGNED_URL_FAILED");
-      const response = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: env("OPENAI_ANALYSIS_MODEL") ?? env("OPENAI_MODEL") ?? "gpt-5-mini",
-          instructions: systemPrompt,
-          input: [
-            {
-              role: "user",
-              content: [
-                { type: "input_file", file_url: signed.signedUrl },
+      if (signedError || !signed.signedUrl)
+        throw new InstitutionalAnalysisError(
+          "STORAGE_SIGNED_URL_FAILED",
+          "Não foi possível criar um acesso temporário ao PDF.",
+        );
+      const { value: analise } = await executarAnaliseComFallback({
+        analisarPdf: async () => {
+          const response = await fetch("https://api.openai.com/v1/responses", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model,
+              instructions: INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT,
+              input: [
                 {
-                  type: "input_text",
-                  text: "Analisa este PDF e devolve exclusivamente a estrutura JSON pedida.",
+                  role: "user",
+                  content: [
+                    criarInputFilePdfVisual(signed.signedUrl),
+                    { type: "input_text", text: INSTITUTIONAL_ANALYSIS_USER_PROMPT },
+                  ],
                 },
               ],
-            },
-          ],
-          max_output_tokens: 6000,
-        }),
-        signal: AbortSignal.timeout(90_000),
+              max_output_tokens: 6000,
+            }),
+            signal: AbortSignal.timeout(90_000),
+          });
+          const payload: unknown = await response.json().catch(() => undefined);
+          if (!response.ok) {
+            const error = new InstitutionalAnalysisError(
+              "OPENAI_HTTP_ERROR",
+              "A API de análise devolveu um erro.",
+              criarDiagnosticoRespostaSeguro({
+                code: "OPENAI_HTTP_ERROR",
+                documentId: data.documentoId,
+                model,
+                httpStatus: response.status,
+                requestId: response.headers.get("x-request-id"),
+                payload,
+              }),
+            );
+            throw error;
+          }
+          const text = extrairTextoResposta(payload);
+          if (!text)
+            throw new InstitutionalAnalysisError(
+              "OPENAI_EMPTY_RESPONSE",
+              "A API de análise não devolveu conteúdo.",
+              criarDiagnosticoRespostaSeguro({
+                code: "OPENAI_EMPTY_RESPONSE",
+                documentId: data.documentoId,
+                model,
+                httpStatus: response.status,
+                requestId: response.headers.get("x-request-id"),
+                payload,
+              }),
+            );
+          try {
+            return normalizarAnaliseDocumentoInstitucional(parseJson(text));
+          } catch (error) {
+            if (error instanceof InstitutionalAnalysisError) throw error;
+            throw new InstitutionalAnalysisError(
+              "OPENAI_SCHEMA_INVALID",
+              "A resposta da análise não respeita a estrutura esperada.",
+              criarDiagnosticoRespostaSeguro({
+                code: "OPENAI_SCHEMA_INVALID",
+                documentId: data.documentoId,
+                model,
+                httpStatus: response.status,
+                requestId: response.headers.get("x-request-id"),
+                payload,
+              }),
+            );
+          }
+        },
       });
-      if (!response.ok) throw new Error("OPENAI_FAILED");
-      const analise = normalizarAnaliseDocumentoInstitucional(
-        parseJson(extrairTextoResposta(await response.json())),
-      );
-      const estado: EstadoAnaliseDocumento = analiseTemTextoSuficiente(analise)
-        ? "analisado"
-        : "necessita_confirmacao";
+      const estado: EstadoAnaliseDocumento =
+        analiseTemTextoSuficiente(analise) && analise.camposIncertos.length === 0
+          ? "analisado"
+          : "necessita_confirmacao";
       const agora = new Date().toISOString();
       const { error: updateError } = await supabase
         .from("documentos")
@@ -130,18 +222,29 @@ export const analisarDocumentoInstitucional = createServerFn({ method: "POST" })
         })
         .eq("id", data.documentoId)
         .eq("user_id", authData.user.id);
-      if (updateError) throw updateError;
+      if (updateError)
+        throw new InstitutionalAnalysisError(
+          "ANALYSIS_PERSIST_FAILED",
+          "Não foi possível guardar a análise.",
+        );
       return { ok: true, analise, estado };
-    } catch {
+    } catch (error) {
+      const safeError = mensagemErroAnalise(error);
+      const context =
+        error instanceof InstitutionalAnalysisError
+          ? (error.context ??
+            criarDiagnosticoRespostaSeguro({
+              code: error.code,
+              documentId: data.documentoId,
+              model,
+            }))
+          : { documentId: data.documentoId.slice(0, 8), model };
+      console.error("institutional_document_analysis_failed", { ...safeError, ...context });
       await supabase
         .from("documentos")
         .update({ estado_analise: "erro" })
         .eq("id", data.documentoId)
         .eq("user_id", authData.user.id);
-      return {
-        ok: false,
-        code: "ANALYSIS_FAILED",
-        message: "Não foi possível compreender este documento. Pode tentar novamente.",
-      };
+      return { ok: false, ...safeError };
     }
   });

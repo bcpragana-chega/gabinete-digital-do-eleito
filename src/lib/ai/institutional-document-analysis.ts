@@ -1,6 +1,134 @@
 import { z } from "zod";
 import type { AnaliseDocumentoInstitucional } from "@/lib/types";
 
+export const VISUAL_ANALYSIS_MODELS = new Set([
+  "gpt-4o",
+  "gpt-4o-mini",
+  "gpt-4.1",
+  "gpt-4.1-mini",
+  "gpt-4.1-nano",
+  "gpt-5",
+  "gpt-5-mini",
+  "gpt-5-nano",
+  "gpt-5.1",
+  "gpt-5.2",
+  "gpt-5.4",
+  "gpt-5.4-mini",
+  "gpt-5.4-nano",
+  "gpt-5.5",
+  "gpt-5.6",
+  "gpt-5.6-sol",
+  "gpt-5.6-terra",
+  "gpt-5.6-luna",
+]);
+
+export type InstitutionalAnalysisErrorCode =
+  | "OPENAI_HTTP_ERROR"
+  | "OPENAI_EMPTY_RESPONSE"
+  | "OPENAI_INVALID_JSON"
+  | "OPENAI_SCHEMA_INVALID"
+  | "MODEL_NOT_VISION_CAPABLE"
+  | "STORAGE_SIGNED_URL_FAILED"
+  | "ANALYSIS_PERSIST_FAILED";
+
+export class InstitutionalAnalysisError extends Error {
+  constructor(
+    readonly code: InstitutionalAnalysisErrorCode,
+    message: string,
+    readonly context?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "InstitutionalAnalysisError";
+  }
+}
+
+export function validarModeloAnaliseVisual(modelo: string) {
+  const normalizado = modelo.trim().toLowerCase();
+  if (!VISUAL_ANALYSIS_MODELS.has(normalizado)) {
+    throw new InstitutionalAnalysisError(
+      "MODEL_NOT_VISION_CAPABLE",
+      "A análise visual de documentos ainda não está configurada.",
+      { model: normalizado || "missing" },
+    );
+  }
+  return normalizado;
+}
+
+export function criarInputFilePdfVisual(fileUrl: string) {
+  return { type: "input_file" as const, file_url: fileUrl, detail: "high" as const };
+}
+
+export function criarDiagnosticoRespostaSeguro(input: {
+  code: InstitutionalAnalysisErrorCode;
+  documentId: string;
+  model?: string;
+  httpStatus?: number;
+  requestId?: string | null;
+  payload?: unknown;
+}) {
+  const payload =
+    input.payload && typeof input.payload === "object"
+      ? (input.payload as {
+          id?: unknown;
+          status?: unknown;
+          incomplete_details?: { reason?: unknown };
+          output?: Array<{ type?: unknown; content?: Array<{ type?: unknown }> }>;
+          output_text?: unknown;
+        })
+      : undefined;
+  return {
+    code: input.code,
+    documentId: input.documentId.slice(0, 8),
+    model: input.model,
+    httpStatus: input.httpStatus,
+    requestId: input.requestId ?? undefined,
+    responseId: typeof payload?.id === "string" ? payload.id : undefined,
+    responseStatus: typeof payload?.status === "string" ? payload.status : undefined,
+    incompleteReason:
+      typeof payload?.incomplete_details?.reason === "string"
+        ? payload.incomplete_details.reason
+        : undefined,
+    outputTypes: (payload?.output ?? []).map((item) => ({
+      type: typeof item.type === "string" ? item.type : "unknown",
+      contentTypes: (item.content ?? []).map((content) =>
+        typeof content.type === "string" ? content.type : "unknown",
+      ),
+    })),
+    hasOutputText: typeof payload?.output_text === "string" && payload.output_text.length > 0,
+    outputTextLength:
+      typeof payload?.output_text === "string" ? payload.output_text.length : undefined,
+  };
+}
+
+export const INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT = `Estás a analisar um documento institucional português.
+O documento pode ser uma digitalização sem camada de texto. Quando não existir texto extraível, analisa visualmente as imagens de todas as páginas.
+Lê cabeçalhos, corpo, rodapé, datas, horas, locais, listas numeradas e letra pequena com atenção.
+Preserva exatamente a ordem e a hierarquia dos pontos. Distingue períodos institucionais, subpontos e pontos do período da ordem do dia.
+Não ignores conteúdo apenas porque não existe camada de texto.
+Identifica apenas informação presente no documento. Não completes dados por conhecimento geral e não deduzas silenciosamente.
+Distingue convocatória, ordem de trabalhos, ata, proposta, regulamento e documento financeiro.
+Extrai órgão, entidade, tipo de sessão, data, hora e local.
+Não transformes parágrafos informativos em pontos. Não inventes campos ilegíveis; marca qualquer campo visualmente ambíguo como incerto.
+Usa português europeu e devolve apenas JSON válido com: tipoDocumento, confiancaGlobal, sessao, pontosOrdemTrabalhos, informacaoRelevante, camposIncertos e resumoCompreensao.
+Usa confiança entre 0 e 1. Campos ausentes devem ser omitidos, nunca inventados.`;
+
+export const INSTITUTIONAL_ANALYSIS_USER_PROMPT =
+  "Este PDF pode ser uma digitalização sem camada de texto. Analisa também visualmente todas as páginas com detalhe elevado. Não concluas que está vazio apenas por não existir texto extraível. Devolve exclusivamente a estrutura JSON pedida.";
+
+export const MAX_VISUAL_FALLBACK_PAGES = 5;
+
+export async function executarAnaliseComFallback<T>(input: {
+  analisarPdf: () => Promise<T>;
+  analisarImagens?: () => Promise<T>;
+}) {
+  try {
+    return { value: await input.analisarPdf(), tentativa: "pdf" as const };
+  } catch (primaryError) {
+    if (!input.analisarImagens) throw primaryError;
+    return { value: await input.analisarImagens(), tentativa: "imagens" as const };
+  }
+}
+
 const textoOpcional = z
   .string()
   .trim()

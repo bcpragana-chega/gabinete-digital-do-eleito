@@ -43,6 +43,7 @@ export function InstitutionalDocumentIntake({
   const [tituloSessao, setTituloSessao] = useState("");
   const [duplicateId, setDuplicateId] = useState("");
   const [error, setError] = useState("");
+  const [analysisNotice, setAnalysisNotice] = useState("");
   const [saving, setSaving] = useState(false);
 
   function reset() {
@@ -53,6 +54,7 @@ export function InstitutionalDocumentIntake({
     setTituloSessao("");
     setDuplicateId("");
     setError("");
+    setAnalysisNotice("");
     setSaving(false);
   }
 
@@ -76,12 +78,17 @@ export function InstitutionalDocumentIntake({
     let uploadedDocument: Documento | undefined;
     setStep("analysing");
     setError("");
+    setAnalysisNotice("");
     try {
       const uploaded = await carregarDocumentoParaAnalise(file);
       uploadedDocument = uploaded;
       setDocumento(uploaded);
       const result = await analisarDocumentoCarregado(uploaded.id);
       setAnalise(result.analise);
+      if (result.estado === "necessita_confirmacao")
+        setAnalysisNotice(
+          "Consegui compreender parte do documento, mas preciso que confirmes alguns detalhes.",
+        );
       const data = result.analise.sessao?.data;
       setTituloSessao(data ? `Sessão de ${data}` : "");
       setStep("review");
@@ -96,9 +103,14 @@ export function InstitutionalDocumentIntake({
     if (!documento) return uploadAndAnalyse();
     setStep("analysing");
     setError("");
+    setAnalysisNotice("");
     try {
       const result = await analisarDocumentoCarregado(documento.id);
       setAnalise(result.analise);
+      if (result.estado === "necessita_confirmacao")
+        setAnalysisNotice(
+          "Consegui compreender parte do documento, mas preciso que confirmes alguns detalhes.",
+        );
       setStep("review");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "A análise falhou.");
@@ -191,17 +203,24 @@ export function InstitutionalDocumentIntake({
               <FileSearch className="mx-auto h-10 w-10 animate-pulse text-primary" />
               <h3 className="mt-4 text-lg font-semibold">A compreender o documento…</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                A identificar o contexto institucional e a preparar a próxima ação.
+                A ler o conteúdo e a estrutura institucional, incluindo páginas digitalizadas.
               </p>
             </div>
           )}
           {step === "review" && analise && (
-            <ReviewForm
-              analise={analise}
-              onChange={setAnalise}
-              titulo={tituloSessao}
-              onTituloChange={setTituloSessao}
-            />
+            <div className="space-y-4">
+              {analysisNotice && (
+                <p className="rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+                  {analysisNotice}
+                </p>
+              )}
+              <ReviewForm
+                analise={analise}
+                onChange={setAnalise}
+                titulo={tituloSessao}
+                onTituloChange={setTituloSessao}
+              />
+            </div>
           )}
           {step === "duplicate" && (
             <div className="space-y-4 rounded-2xl border p-5">
