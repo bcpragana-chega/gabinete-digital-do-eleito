@@ -76,6 +76,16 @@ export type PerfilErroCodigo =
   | "ERRO_PERFIL_LOCAL"
   | "ERRO_PERFIL_DESCONHECIDO";
 
+export type ContextoGravacaoPerfil = "onboarding" | "definicoes";
+
+export function deveAvancarAposGuardarPerfil(contexto: ContextoGravacaoPerfil) {
+  return contexto === "onboarding";
+}
+
+export function versaoOnboardingAposGuardarPerfil(contexto: ContextoGravacaoPerfil) {
+  return contexto === "onboarding" ? 0 : undefined;
+}
+
 export class PerfilErro extends Error {
   codigo: PerfilErroCodigo;
   causa?: unknown;
@@ -361,7 +371,10 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
   }
 }
 
-export async function guardarPerfilEleito(perfil: Omit<PerfilEleito, "updatedAt">) {
+export async function guardarPerfilEleito(
+  perfil: Omit<PerfilEleito, "updatedAt">,
+  contexto: ContextoGravacaoPerfil = "definicoes",
+) {
   const state = lerAuthState();
   const userId = state.user?.id;
   const perfilAtualizado = normalizarPerfilEleito({
@@ -379,6 +392,10 @@ export async function guardarPerfilEleito(perfil: Omit<PerfilEleito, "updatedAt"
 
   try {
     await guardarPerfilHibrido(userId, perfilAtualizado);
+    const onboardingVersion = versaoOnboardingAposGuardarPerfil(contexto);
+    if (onboardingVersion !== undefined) {
+      await guardarOnboardingVersionRemoto(userId, onboardingVersion);
+    }
   } catch (error) {
     if (error instanceof Error && error.name === "PROFILE_LOCAL_WRITE_FAILED") {
       throw new PerfilErro(

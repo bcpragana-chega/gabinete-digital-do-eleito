@@ -19,6 +19,7 @@ import {
   nomeVisivel,
   normalizarPerfilEleito,
   orgaosEleito,
+  deveAvancarAposGuardarPerfil,
   PerfilErro,
   type AuthUser,
   type CargoEleito,
@@ -225,13 +226,16 @@ export function PerfilEleitoForm({
     });
 
     try {
-      const atualizado = await guardarPerfilEleito(payload);
+      const contexto = modoOnboarding ? "onboarding" : "definicoes";
+      const atualizado = await guardarPerfilEleito(payload, contexto);
       console.info("[Tribuno Perfil] Perfil guardado", {
         operacao: "PROFILE_SUBMIT_CONCLUIDO",
       });
       setSaveState("saved");
       onSaved?.(atualizado);
-      afterSave?.(atualizado);
+      if (deveAvancarAposGuardarPerfil(contexto)) {
+        afterSave?.(atualizado);
+      }
     } catch (error) {
       const codigo = codigoDoErro(error);
 

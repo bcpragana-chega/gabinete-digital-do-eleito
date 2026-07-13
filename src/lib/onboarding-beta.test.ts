@@ -11,6 +11,7 @@ const profile = readFileSync(
   "utf8",
 );
 const session = readFileSync(new URL("../routes/_app.sessoes.$id.tsx", import.meta.url), "utf8");
+const settings = readFileSync(new URL("../routes/_app.definicoes.tsx", import.meta.url), "utf8");
 
 describe("Onboarding Beta P0", () => {
   it("remove os passos manuais antigos", () => {
@@ -45,5 +46,11 @@ describe("Onboarding Beta P0", () => {
     assert.match(wizard, /concluido: false/);
     assert.match(wizard, /falta confirmar o perfil institucional/);
     assert.match(wizard, /onboardingPendente\?\.sessaoId/);
+  });
+
+  it("separa gravação de onboarding da edição em Definições", () => {
+    assert.match(profile, /modoOnboarding \? "onboarding" : "definicoes"/);
+    assert.match(profile, /deveAvancarAposGuardarPerfil\(contexto\)/);
+    assert.doesNotMatch(settings, /afterSave|onSaved|navigate/);
   });
 });

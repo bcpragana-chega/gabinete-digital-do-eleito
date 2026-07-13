@@ -3,8 +3,10 @@ import { describe, it } from "node:test";
 import {
   concluirOnboardingRemotoComDependencias,
   criarCoordenadorAtualizacoes,
+  deveAvancarAposGuardarPerfil,
   resolverDestinoAcesso,
   resolverPerfilAutorizado,
+  versaoOnboardingAposGuardarPerfil,
   type PerfilEleito,
 } from "./auth-store";
 import { resolverVersaoOnboarding } from "./onboarding-state";
@@ -18,6 +20,16 @@ const base = {
 };
 
 describe("guard de autenticação e onboarding", () => {
+  it("onboarding avança depois de guardar o perfil", () => {
+    assert.equal(deveAvancarAposGuardarPerfil("onboarding"), true);
+    assert.equal(versaoOnboardingAposGuardarPerfil("onboarding"), 0);
+  });
+
+  it("Definições permanece na página depois de guardar o perfil", () => {
+    assert.equal(deveAvancarAposGuardarPerfil("definicoes"), false);
+    assert.equal(versaoOnboardingAposGuardarPerfil("definicoes"), undefined);
+  });
+
   it("autoriza conclusão local apenas quando não existe autoridade remota configurada", () => {
     const version = resolverVersaoOnboarding({ local: { concluido: true, version: 1 } });
     assert.equal(version, 1);
