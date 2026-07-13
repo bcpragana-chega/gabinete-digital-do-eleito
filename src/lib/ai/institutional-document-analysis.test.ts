@@ -5,6 +5,8 @@ import {
   criarDiagnosticoRespostaSeguro,
   criarInputFilePdfVisual,
   executarAnaliseComFallback,
+  extrairTextoRespostaOpenAI,
+  INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT,
   INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT,
   INSTITUTIONAL_ANALYSIS_USER_PROMPT,
   InstitutionalAnalysisError,
@@ -186,5 +188,90 @@ describe("análise institucional de documentos", () => {
     const serialized = JSON.stringify(diagnostic);
     assert.match(serialized, /12345678/);
     assert.doesNotMatch(serialized, /secret\.test|sk-secret|conteúdo institucional privado/);
+  });
+
+  it("extrai e normaliza JSON de um message realista sem concatenar reasoning", () => {
+    const json = JSON.stringify({
+      ...base,
+      sessao: {
+        orgao: "Assembleia de Freguesia de Porches",
+        entidade: null,
+        tipo: "ordinaria",
+        data: "2026-04-28",
+        hora: "21:30",
+        local: "Sede da Junta",
+      },
+    });
+    const payload = {
+      status: "completed",
+      output: [
+        { type: "reasoning", content: [{ type: "reasoning_text", text: "não deve entrar" }] },
+        {
+          type: "message",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", annotations: [], text: json }],
+        },
+      ],
+    };
+    const extracted = extrairTextoRespostaOpenAI(payload);
+    assert.equal(extracted.kind, "text");
+    if (extracted.kind !== "text") return;
+    assert.doesNotMatch(extracted.text, /não deve entrar/);
+    const result = normalizarAnaliseDocumentoInstitucional(JSON.parse(extracted.text));
+    assert.equal(result.sessao?.orgao, "Assembleia de Freguesia de Porches");
+    assert.equal(result.sessao?.entidade, undefined);
+  });
+
+  it("deteta refusal sem o tratar como texto", () => {
+    const extracted = extrairTextoRespostaOpenAI({
+      output: [
+        {
+          type: "message",
+          content: [{ type: "refusal", refusal: "Não posso ajudar com este pedido." }],
+        },
+      ],
+    });
+    assert.deepEqual(extracted, { kind: "refusal" });
+  });
+
+  it("classifica message sem texto nem refusal como resposta vazia", () => {
+    const extracted = extrairTextoRespostaOpenAI({
+      output: [{ type: "message", content: [{ type: "output_text", annotations: [] }] }],
+    });
+    assert.deepEqual(extracted, { kind: "empty" });
+  });
+
+  it("diagnostica conteúdo de message sem expor o texto", () => {
+    const diagnostic = criarDiagnosticoRespostaSeguro({
+      code: "OPENAI_EMPTY_RESPONSE",
+      documentId: "2b525b94-private",
+      payload: {
+        output: [
+          { type: "reasoning", content: [] },
+          {
+            type: "message",
+            content: [
+              { type: "output_text", text: "texto confidencial" },
+              { type: "refusal", refusal: "recusa confidencial" },
+            ],
+          },
+        ],
+      },
+    });
+    assert.deepEqual(diagnostic.outputTypes[1], {
+      type: "message",
+      content: [
+        { type: "output_text", hasText: true, textLength: 18, hasRefusal: false },
+        { type: "refusal", hasText: false, textLength: 0, hasRefusal: true },
+      ],
+    });
+    assert.doesNotMatch(JSON.stringify(diagnostic), /confidencial/);
+  });
+
+  it("define Structured Outputs estrito para a análise institucional", () => {
+    assert.equal(INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT.type, "json_schema");
+    assert.equal(INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT.strict, true);
+    assert.equal(INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT.schema.additionalProperties, false);
   });
 });

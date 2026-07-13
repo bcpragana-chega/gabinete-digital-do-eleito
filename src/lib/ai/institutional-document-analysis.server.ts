@@ -6,7 +6,9 @@ import {
   criarDiagnosticoRespostaSeguro,
   criarInputFilePdfVisual,
   executarAnaliseComFallback,
+  extrairTextoRespostaOpenAI,
   INSTITUTIONAL_DOCUMENT_ANALYSIS_VERSION,
+  INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT,
   INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT,
   INSTITUTIONAL_ANALYSIS_USER_PROMPT,
   InstitutionalAnalysisError,
@@ -19,20 +21,6 @@ const inputSchema = z.object({ accessToken: z.string().min(1), documentoId: z.st
 
 function env(name: string) {
   return process.env[name]?.trim();
-}
-
-function extrairTextoResposta(payload: unknown) {
-  if (!payload || typeof payload !== "object") return "";
-  const raw = payload as {
-    output_text?: unknown;
-    output?: Array<{ content?: Array<{ text?: unknown }> }>;
-  };
-  if (typeof raw.output_text === "string") return raw.output_text.trim();
-  return (raw.output ?? [])
-    .flatMap((item) => item.content ?? [])
-    .map((item) => (typeof item.text === "string" ? item.text : ""))
-    .join("")
-    .trim();
 }
 
 function parseJson(text: string) {
@@ -154,6 +142,7 @@ export const analisarDocumentoInstitucional = createServerFn({ method: "POST" })
                   ],
                 },
               ],
+              text: { format: INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT },
               max_output_tokens: 6000,
             }),
             signal: AbortSignal.timeout(90_000),
@@ -174,8 +163,21 @@ export const analisarDocumentoInstitucional = createServerFn({ method: "POST" })
             );
             throw error;
           }
-          const text = extrairTextoResposta(payload);
-          if (!text)
+          const extracted = extrairTextoRespostaOpenAI(payload);
+          if (extracted.kind === "refusal")
+            throw new InstitutionalAnalysisError(
+              "OPENAI_REFUSAL",
+              "O modelo recusou analisar este documento.",
+              criarDiagnosticoRespostaSeguro({
+                code: "OPENAI_REFUSAL",
+                documentId: data.documentoId,
+                model,
+                httpStatus: response.status,
+                requestId: response.headers.get("x-request-id"),
+                payload,
+              }),
+            );
+          if (extracted.kind === "empty")
             throw new InstitutionalAnalysisError(
               "OPENAI_EMPTY_RESPONSE",
               "A API de análise não devolveu conteúdo.",
@@ -189,7 +191,7 @@ export const analisarDocumentoInstitucional = createServerFn({ method: "POST" })
               }),
             );
           try {
-            return normalizarAnaliseDocumentoInstitucional(parseJson(text));
+            return normalizarAnaliseDocumentoInstitucional(parseJson(extracted.text));
           } catch (error) {
             if (error instanceof InstitutionalAnalysisError) throw error;
             throw new InstitutionalAnalysisError(
