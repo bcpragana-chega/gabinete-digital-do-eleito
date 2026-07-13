@@ -49,6 +49,16 @@ describe("exportação DOCX real", () => {
       },
       nomeEleito: "João Gonçalves",
       grupoPolitico: "Grupo político",
+      perfil: {
+        nomeInstitucional: "João Gonçalves",
+        cargo: "Membro da Assembleia de Freguesia",
+        orgao: "Assembleia de Freguesia",
+        organizacao: "Chega!",
+        territorio: "Porches",
+        municipio: "Lagoa",
+        freguesia: "Porches",
+        updatedAt: "2026-07-13T10:00:00.000Z",
+      },
     });
 
     assert.equal(blob.type, MIME_DOCX);
@@ -69,9 +79,12 @@ describe("exportação DOCX real", () => {
     assert.ok(zip.file("word/document.xml"));
     const xml = await zip.file("word/document.xml")?.async("string");
     assert.match(xml ?? "", /Proteção da habitação e mobilidade/);
-    assert.match(xml ?? "", /ASSEMBLEIA DE FREGUESIA/);
+    assert.match(xml ?? "", /ASSEMBLEIA DE FREGUESIA DE PORCHES/);
+    assert.doesNotMatch(xml ?? "", /Chega!/);
+    assert.doesNotMatch(xml ?? "", /Grupo político/);
     assert.match(xml ?? "", /Porches precisa de informação pública clara/);
     assert.match(xml ?? "", /João Gonçalves/);
+    assert.match(xml ?? "", /Membro da Assembleia de Freguesia/);
     assert.match(xml ?? "", /participação dos cidadãos/);
     assert.match(xml ?? "", /Reforçar a fiscalização/);
     assert.match(xml ?? "", /a\) Garantir acessibilidade/);
@@ -104,18 +117,15 @@ describe("exportação DOCX real", () => {
   });
 
   it("fornece ao compositor PDF o órgão institucional, não a identidade partidária", () => {
-    const cabecalho = obterCabecalhoInstitucionalExportacao(
-      {
-        assembleia: {
-          nome: "Sessão ordinária",
-          tipo: "ordinaria",
-          orgao: "Assembleia de Freguesia de Porches",
-          data: "2026-07-13",
-          local: "Porches",
-        },
+    const cabecalho = obterCabecalhoInstitucionalExportacao({
+      assembleia: {
+        nome: "Sessão ordinária",
+        tipo: "ordinaria",
+        orgao: "Assembleia de Freguesia de Porches",
+        data: "2026-07-13",
+        local: "Porches",
       },
-      "Chega!",
-    );
+    });
     assert.equal(cabecalho.orgao, "Assembleia de Freguesia de Porches");
     assert.notEqual(cabecalho.orgao, "Chega!");
   });

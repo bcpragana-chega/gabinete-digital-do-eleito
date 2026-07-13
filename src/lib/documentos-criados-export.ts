@@ -9,16 +9,15 @@ import {
   TextRun,
 } from "docx";
 import { construirBaseJuridicaInstitucional } from "@/lib/ai/legal-basis";
-import {
-  resolveStoredInstitutionalContext,
-  type ResolvedInstitutionalContext,
-} from "@/lib/ai/institutional-context";
+import { resolveStoredInstitutionalContext } from "@/lib/ai/institutional-context";
 import type { PerfilInstitucionalContexto } from "@/lib/ai/types";
 import {
   isTipoDocumentoInstitucional,
   nomeFicheiroDocumento,
+  obterContextoInstitucionalGuardado,
   obterDadosInstitucionais,
   obterSecoesDocumentoInstitucional,
+  resolverOrgaoInstitucional,
   validarDocumentoInstitucional,
   type ContextoDocumentoInstitucional,
   type SecaoDocumentoInstitucional,
@@ -76,36 +75,11 @@ function textoSeguro(valor?: string) {
   return valor?.trim() || undefined;
 }
 
-function normalizarMarcaInstitucional(valor?: string) {
-  return textoSeguro(valor)?.replace(/[!]+$/g, "").replace(/\s+/g, " ").trim();
-}
-
 export function obterCabecalhoInstitucionalExportacao(
   contexto: ContextoDocumentoInstitucional | undefined,
-  nomeOrgaoFallback: string,
 ): { orgao: string; organizacao?: string } {
   const { perfil } = obterAuthState();
-  const perfilContexto = contexto?.perfil ?? perfil;
-  const orgao =
-    normalizarMarcaInstitucional(
-      contexto?.institutionalContext?.institution.deliberativeBody.officialName,
-    ) ||
-    normalizarMarcaInstitucional(contexto?.assembleia?.orgao) ||
-    normalizarMarcaInstitucional(perfilContexto?.orgao) ||
-    normalizarMarcaInstitucional(nomeOrgaoFallback) ||
-    "Órgão competente";
-  return { orgao };
-}
-
-function contextoInstitucionalDoDocumento(
-  documento: DocumentoCriado,
-): ResolvedInstitutionalContext | undefined {
-  const metadata = documento.iaMetadata;
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return undefined;
-  const record = metadata as Record<string, unknown>;
-  const candidato = record.institutionalContext ?? record.contextoInstitucional;
-  if (!candidato || typeof candidato !== "object" || Array.isArray(candidato)) return undefined;
-  return candidato as ResolvedInstitutionalContext;
+  return { orgao: resolverOrgaoInstitucional(contexto, perfil).nome ?? "" };
 }
 
 function perfilParaContexto(): PerfilInstitucionalContexto | undefined {
@@ -163,7 +137,7 @@ function contextoComSnapshot(
   contexto?: ContextoDocumentoInstitucional,
 ): ContextoDocumentoInstitucional | undefined {
   const institutionalContext =
-    contexto?.institutionalContext ?? contextoInstitucionalDoDocumento(documento);
+    contexto?.institutionalContext ?? obterContextoInstitucionalGuardado(documento);
   if (!institutionalContext) return contexto;
   return { ...contexto, institutionalContext };
 }
@@ -339,7 +313,7 @@ export async function criarBlobDocumentoWord(
   contexto?: ContextoDocumentoInstitucional,
 ) {
   const dados = obterDadosInstitucionais(contexto);
-  const cabecalho = obterCabecalhoInstitucionalExportacao(contexto, dados.nomeOrgao);
+  const cabecalho = obterCabecalhoInstitucionalExportacao(contexto);
   const assinatura = obterAssinaturaUnica(contexto);
   const titulo = documento.titulo.trim() || "Documento sem título";
   const corpo = criarLinhasDocumento(documento)
@@ -397,7 +371,7 @@ export async function criarBlobDocumentoWord(
           }),
           ...corpo,
           new Paragraph({ spacing: { before: 600 }, text: `${dados.local}, ${dados.data}` }),
-          new Paragraph({ spacing: { before: 480 }, children: [new TextRun("Proponente:")] }),
+          new Paragraph({ spacing: { before: 480 }, children: [new TextRun("O Proponente,")] }),
           ...assinatura.map(
             (linha, index) =>
               new Paragraph({
@@ -462,7 +436,7 @@ async function desenharPaginasDocumento(
 ) {
   const dados = obterDadosInstitucionais(contexto);
   const titulo = documento.titulo.trim() || "Documento sem título";
-  const cabecalho = obterCabecalhoInstitucionalExportacao(contexto, dados.nomeOrgao);
+  const cabecalho = obterCabecalhoInstitucionalExportacao(contexto);
   const assinatura = obterAssinaturaUnica(contexto);
   const paginas: PaginaPdf[] = [];
   const criarPagina = () => {
@@ -501,7 +475,7 @@ async function desenharPaginasDocumento(
     lineHeight: 48,
   });
   pagina.y += 46;
-  pagina = desenharParagrafo(pagina, paginas, "Proponente:", {
+  pagina = desenharParagrafo(pagina, paginas, "O Proponente,", {
     font: "30px 'Times New Roman', Times, serif",
     lineHeight: 44,
   });

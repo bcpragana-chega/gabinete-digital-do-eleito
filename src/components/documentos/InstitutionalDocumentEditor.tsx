@@ -51,9 +51,15 @@ export function InstitutionalDocumentEditor({
               }}
             />
           )}
-          <div className="font-sans text-[13px] font-bold uppercase tracking-[0.12em] text-slate-700">
-            {dados.nomeOrgao}
-          </div>
+          {dados.nomeOrgao ? (
+            <div className="font-sans text-[13px] font-bold uppercase tracking-[0.12em] text-slate-700">
+              {dados.nomeOrgao}
+            </div>
+          ) : (
+            <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 font-sans text-sm text-amber-900">
+              Falta configurar o órgão institucional.
+            </div>
+          )}
           <div className="mt-4 font-sans text-lg font-extrabold uppercase tracking-[0.18em] text-slate-950">
             {tipo}
           </div>
@@ -85,9 +91,10 @@ export function InstitutionalDocumentEditor({
           <p className="mb-9 text-left">
             {dados.local}, {dados.data}
           </p>
-          <p className="mb-7 text-left">Proponente:</p>
+          <p className="mb-7 text-left">O Proponente,</p>
           <div className="mb-3 w-72 border-t border-slate-950 pt-3" />
           <p className="m-0 text-left">{dados.nomeEleito}</p>
+          {dados.cargo && <p className="m-0 text-left">{dados.cargo}</p>}
           {dados.grupoPolitico && <p className="m-0 text-left">{dados.grupoPolitico}</p>}
         </footer>
       </article>

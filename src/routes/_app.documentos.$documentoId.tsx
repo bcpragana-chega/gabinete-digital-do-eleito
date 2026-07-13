@@ -50,6 +50,7 @@ import {
 } from "@/lib/documentos-criados-export";
 import {
   isTipoDocumentoInstitucional,
+  obterContextoInstitucionalGuardado,
   obterDadosInstitucionais,
   obterSecoesDocumentoInstitucional,
   validarDocumentoInstitucional,
@@ -214,8 +215,9 @@ function DocumentoDoAssuntoPage() {
       ponto: pontoSelecionado
         ? `Ponto ${pontoSelecionado.numero} · ${pontoSelecionado.titulo}`
         : undefined,
+      institutionalContext: documento ? obterContextoInstitucionalGuardado(documento) : undefined,
     }),
-    [assembleiaSelecionada, dossie?.titulo, pontoSelecionado],
+    [assembleiaSelecionada, documento, dossie?.titulo, pontoSelecionado],
   );
   const dirty = Boolean(
     documento &&

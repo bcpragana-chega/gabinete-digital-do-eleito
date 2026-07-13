@@ -5,10 +5,13 @@ import { construirBaseJuridicaInstitucional } from "@/lib/ai/legal-basis";
 import { resolveInstitutionalContext } from "@/lib/ai/institutional-context";
 import {
   criarHtmlDocumentoInstitucional,
+  normalizarGrupoPolitico,
+  resolverOrgaoInstitucional,
   validarDocumentoInstitucional,
   type ContextoDocumentoInstitucional,
 } from "@/lib/documentos-institucionais";
 import type { ContextoGeracaoDocumento } from "@/lib/ai/types";
+import type { PerfilEleito } from "@/lib/auth-store";
 
 const contexto: ContextoDocumentoInstitucional = {
   assembleia: {
@@ -41,9 +44,63 @@ a) Comunicar o calendário de intervenção.
 b) Publicar a conclusão dos trabalhos.`,
 };
 
+function perfil(overrides: Partial<PerfilEleito> = {}): PerfilEleito {
+  return {
+    nomeInstitucional: "Benjamin Cruz Pragana",
+    cargo: "Membro da Assembleia de Freguesia",
+    orgao: "Assembleia de Freguesia",
+    organizacao: "Chega!",
+    territorio: "Porches",
+    municipio: "Lagoa",
+    freguesia: "Porches",
+    updatedAt: "2026-07-13T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
 describe("validação e composição institucional", () => {
+  it("resolve o órgão do perfil sem usar organização partidária", () => {
+    assert.deepEqual(resolverOrgaoInstitucional({ perfil: perfil() }), {
+      nome: "Assembleia de Freguesia de Porches",
+      origem: "perfil",
+    });
+  });
+
+  it("organização partidária sem órgão válido não se transforma em órgão", () => {
+    const resultado = resolverOrgaoInstitucional({
+      perfil: perfil({ orgao: "Outro", cargo: "Outro", organizacao: "Chega!" }),
+    });
+    assert.equal(resultado.nome, undefined);
+  });
+
+  it("partido nunca é usado como órgão", () => {
+    const contextoComPartido = {
+      perfil: perfil({ orgao: "Outro", cargo: "Outro", organizacao: "" }),
+      partido: "CHEGA",
+    };
+    const resultado = resolverOrgaoInstitucional(contextoComPartido);
+    assert.equal(resultado.nome, undefined);
+  });
+
+  it("prioriza o órgão explicitamente associado à Sessão", () => {
+    const resultado = resolverOrgaoInstitucional({
+      perfil: perfil({ orgao: "Assembleia Municipal", territorio: "Lagoa" }),
+      assembleia: contexto.assembleia,
+    });
+    assert.equal(resultado.nome, "Assembleia de Freguesia de Porches");
+    assert.equal(resultado.origem, "sessao");
+  });
+
+  it("normaliza placeholders de grupo político e conserva um valor real", () => {
+    assert.equal(normalizarGrupoPolitico(""), undefined);
+    assert.equal(normalizarGrupoPolitico("   "), undefined);
+    assert.equal(normalizarGrupoPolitico("Grupo político"), undefined);
+    assert.equal(normalizarGrupoPolitico("grupo politico"), undefined);
+    assert.equal(normalizarGrupoPolitico("CHEGA"), "CHEGA");
+  });
+
   it("apresenta o órgão e não o substitui pelo partido", () => {
-    const html = criarHtmlDocumentoInstitucional(recomendacao, contexto);
+    const html = criarHtmlDocumentoInstitucional(recomendacao, { perfil: perfil() });
     assert.match(html, /Assembleia de Freguesia de Porches/i);
     assert.doesNotMatch(html, />\s*Chega!\s*</i);
   });
@@ -68,6 +125,31 @@ describe("validação e composição institucional", () => {
     assert.doesNotMatch(html, /<p class="grupo-politico">/);
     assert.equal((html.match(/Porches,\s*13 de julho de 2026/g) ?? []).length, 1);
     assert.equal((html.match(/Benjamin Cruz Pragana/g) ?? []).length, 1);
+  });
+
+  it("apresenta apenas o valor real do grupo político", () => {
+    const html = criarHtmlDocumentoInstitucional(recomendacao, {
+      ...contexto,
+      grupoPolitico: "CHEGA",
+    });
+    assert.match(html, /<p class="grupo-politico">CHEGA<\/p>/);
+    assert.doesNotMatch(html, /Grupo político/);
+  });
+
+  it("falha a validação quando não existe órgão obrigatório resolvido", () => {
+    const resultado = validarDocumentoInstitucional(recomendacao, {
+      perfil: perfil({ orgao: "Outro", cargo: "Outro", organizacao: "Chega!" }),
+    });
+    assert.equal(resultado.pronto, false);
+    assert.ok(resultado.erros.some((erro) => erro.includes("órgão institucional")));
+  });
+
+  it("não altera o conteúdo substantivo durante a composição", () => {
+    const original = recomendacao.conteudo;
+    const html = criarHtmlDocumentoInstitucional(recomendacao, contexto);
+    assert.equal(recomendacao.conteudo, original);
+    assert.match(html, /Na Rua da Igreja existem três candeeiros apagados\./);
+    assert.match(html, /A situação reduz a iluminação do percurso pedonal\./);
   });
 
   it("deteta rodapé institucional produzido pela IA", () => {

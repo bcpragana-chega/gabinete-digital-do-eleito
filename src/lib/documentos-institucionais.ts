@@ -29,6 +29,11 @@ type DadosInstitucionais = {
   data: string;
 };
 
+export type OrgaoInstitucionalResolvido = {
+  nome?: string;
+  origem?: "sessao" | "contexto" | "perfil" | "cargo";
+};
+
 export type ResultadoValidacaoDocumentoInstitucional = {
   pronto: boolean;
   erros: string[];
@@ -80,6 +85,92 @@ export function isTipoDocumentoInstitucional(
 
 function textoSeguro(valor?: string) {
   return valor?.trim() || undefined;
+}
+
+function normalizarIdentidade(valor?: string) {
+  return textoSeguro(valor)?.replace(/\s+/g, " ").replace(/[!]+$/g, "").trim();
+}
+
+function valorPoliticoOuPlaceholder(valor?: string) {
+  const normalizado = normalizarIdentidade(valor)
+    ?.normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-PT");
+  if (!normalizado) return true;
+  return (
+    normalizado === "chega" ||
+    normalizado === "partido socialista" ||
+    normalizado === "psd" ||
+    normalizado === "grupo politico" ||
+    normalizado === "partido" ||
+    normalizado === "organizacao"
+  );
+}
+
+function orgaoComTerritorio(orgao: string, perfil?: PerfilEleito) {
+  const territorio = textoSeguro(perfil?.freguesia) || textoSeguro(perfil?.territorio);
+  const generico =
+    /^(?:Assembleia de Freguesia|Assembleia Municipal|Junta de Freguesia|Câmara Municipal)$/i.test(
+      orgao,
+    );
+  if (!territorio || !generico) return orgao;
+  return `${orgao} de ${territorio}`;
+}
+
+export function resolverOrgaoInstitucional(
+  contexto?: ContextoDocumentoInstitucional,
+  perfilFallback?: PerfilEleito,
+): OrgaoInstitucionalResolvido {
+  const perfil = contexto?.perfil ?? perfilFallback;
+  const sessao = normalizarIdentidade(contexto?.assembleia?.orgao);
+  if (sessao && sessao !== "Outro" && !valorPoliticoOuPlaceholder(sessao)) {
+    return { nome: orgaoComTerritorio(sessao, perfil), origem: "sessao" };
+  }
+
+  const resolvido = normalizarIdentidade(
+    contexto?.institutionalContext?.institution.deliberativeBody.officialName,
+  );
+  if (resolvido && !valorPoliticoOuPlaceholder(resolvido)) {
+    return { nome: resolvido, origem: "contexto" };
+  }
+
+  const orgaoPerfil = normalizarIdentidade(perfil?.orgao);
+  if (orgaoPerfil && orgaoPerfil !== "Outro" && !valorPoliticoOuPlaceholder(orgaoPerfil)) {
+    return { nome: orgaoComTerritorio(orgaoPerfil, perfil), origem: "perfil" };
+  }
+
+  const cargo = normalizarIdentidade(perfil?.cargo);
+  const orgaoNoCargo = cargo?.match(
+    /(Assembleia\s+(?:Municipal|de\s+Freguesia)(?:\s+de\s+[\p{L} .'-]+)?)/iu,
+  )?.[1];
+  if (orgaoNoCargo && !valorPoliticoOuPlaceholder(orgaoNoCargo)) {
+    return { nome: orgaoComTerritorio(orgaoNoCargo, perfil), origem: "cargo" };
+  }
+
+  return {};
+}
+
+export function normalizarGrupoPolitico(valor?: string) {
+  const normalizado = normalizarIdentidade(valor);
+  const comparavel = normalizado
+    ?.normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-PT");
+  if (!comparavel || ["grupo politico", "partido", "organizacao"].includes(comparavel)) {
+    return undefined;
+  }
+  return normalizado;
+}
+
+export function obterContextoInstitucionalGuardado(
+  documento: Pick<DocumentoCriado, "iaMetadata">,
+): ResolvedInstitutionalContext | undefined {
+  const metadata = documento.iaMetadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return undefined;
+  const record = metadata as Record<string, unknown>;
+  const candidato = record.institutionalContext ?? record.contextoInstitucional;
+  if (!candidato || typeof candidato !== "object" || Array.isArray(candidato)) return undefined;
+  return candidato as ResolvedInstitutionalContext;
 }
 
 export function escaparHtml(valor: string) {
@@ -139,20 +230,6 @@ function dataFormatada(data?: string) {
   }).format(dataBase);
 }
 
-function obterNomeOrgao(
-  perfil?: PerfilEleito,
-  assembleia?: ContextoDocumentoInstitucional["assembleia"],
-) {
-  const orgao = textoSeguro(assembleia?.orgao) || textoSeguro(perfil?.orgao);
-  const territorio = textoSeguro(perfil?.territorio);
-
-  if (orgao && territorio && orgao !== "Outro") return `${orgao} de ${territorio}`;
-  if (orgao && orgao !== "Outro") return orgao;
-  if (textoSeguro(assembleia?.nome)) return assembleia?.nome.trim() ?? "";
-
-  return "Órgão competente";
-}
-
 function obterEntidadeDeliberativa(
   nomeOrgao: string,
   perfil?: PerfilEleito,
@@ -203,9 +280,7 @@ export function obterDadosInstitucionais(
   const auth = obterAuthState();
   const perfil = contexto?.perfil ?? auth.perfil;
   const user = auth.user;
-  const nomeOrgao =
-    textoSeguro(contexto?.institutionalContext?.institution.deliberativeBody.officialName) ||
-    obterNomeOrgao(perfil, contexto?.assembleia);
+  const nomeOrgao = resolverOrgaoInstitucional(contexto, auth.perfil).nome ?? "";
 
   return {
     nomeOrgao,
@@ -219,7 +294,7 @@ export function obterDadosInstitucionais(
       textoSeguro(contexto?.institutionalContext?.electedOfficial.institutionalTitle) ||
       textoSeguro(perfil?.cargo) ||
       "",
-    grupoPolitico: textoSeguro(contexto?.grupoPolitico) || "",
+    grupoPolitico: normalizarGrupoPolitico(contexto?.grupoPolitico) || "",
     logoUrl: textoSeguro(perfil?.logoUrl),
     local:
       textoSeguro(contexto?.assembleia?.local) ||
@@ -247,7 +322,7 @@ export function validarDocumentoInstitucional(
   const dados = obterDadosInstitucionais(contexto);
   const conteudo = documento.conteudo.trim();
 
-  if (!dados.nomeOrgao || dados.nomeOrgao === "Órgão competente") {
+  if (!dados.nomeOrgao) {
     erros.push("O órgão institucional não está resolvido.");
   }
   if (!documento.tipo.trim()) erros.push("O tipo documental está em falta.");
@@ -687,9 +762,10 @@ export function criarHtmlDocumentoInstitucional(
       </main>
       <footer>
         <p class="data">${escaparHtml(dados.local)}, ${escaparHtml(dados.data)}</p>
-        <p class="proponente">Proponente:</p>
+        <p class="proponente">O Proponente,</p>
         <p class="assinatura"><span class="linha-assinatura"></span></p>
         <p class="nome-eleito">${escaparHtml(dados.nomeEleito)}</p>
+        ${dados.cargo ? `<p class="cargo">${escaparHtml(dados.cargo)}</p>` : ""}
         ${dados.grupoPolitico ? `<p class="grupo-politico">${escaparHtml(dados.grupoPolitico)}</p>` : ""}
       </footer>
     </article>
