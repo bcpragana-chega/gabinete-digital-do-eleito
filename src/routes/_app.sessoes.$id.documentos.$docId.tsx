@@ -1,11 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  CalendarDays,
-  ChevronLeft,
-  FileText,
-  X,
-} from "lucide-react";
+import { CalendarDays, ChevronLeft, FileText, X } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { DocumentoEstadoBadge } from "@/components/documentos/DocumentoEstadoBadge";
 import { DocumentoPreview } from "@/components/documentos/DocumentoPreview";
@@ -385,4 +380,3 @@ function DocumentosLigadosSection({
     </section>
   );
 }
-

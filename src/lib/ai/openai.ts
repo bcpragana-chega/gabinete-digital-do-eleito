@@ -216,7 +216,9 @@ export class OpenAiProvider implements AiProvider {
     const timeout = globalThis.setTimeout(() => controller.abort(), input.timeoutMs ?? 60_000);
 
     try {
-      const maxOutputTokens = this.resolverMaxOutputTokens(input.maxOutputTokens ?? this.maxOutputTokens);
+      const maxOutputTokens = this.resolverMaxOutputTokens(
+        input.maxOutputTokens ?? this.maxOutputTokens,
+      );
       const payload: OpenAiResponsesPayload = {
         model: this.model,
         instructions: construirInstructionsParaDocumento(input.systemPrompt),
@@ -304,16 +306,15 @@ export class OpenAiProvider implements AiProvider {
           ? (body as { usage?: Record<string, unknown> }).usage
           : undefined;
 
-      const usoTokens: UsoTokensAi | undefined = usage && typeof usage === "object"
-        ? {
-            inputTokens:
-              typeof usage.input_tokens === "number" ? usage.input_tokens : undefined,
-            outputTokens:
-              typeof usage.output_tokens === "number" ? usage.output_tokens : undefined,
-            totalTokens:
-              typeof usage.total_tokens === "number" ? usage.total_tokens : undefined,
-          }
-        : undefined;
+      const usoTokens: UsoTokensAi | undefined =
+        usage && typeof usage === "object"
+          ? {
+              inputTokens: typeof usage.input_tokens === "number" ? usage.input_tokens : undefined,
+              outputTokens:
+                typeof usage.output_tokens === "number" ? usage.output_tokens : undefined,
+              totalTokens: typeof usage.total_tokens === "number" ? usage.total_tokens : undefined,
+            }
+          : undefined;
 
       if (usage && typeof usage === "object") {
         console.info("[Tribuno AI] Uso OpenAI", {

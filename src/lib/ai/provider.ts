@@ -22,8 +22,5 @@ export function criarAiProvider(): AiProvider {
     return new OpenAiProvider();
   }
 
-  throw erroComCodigo(
-    "AI_PROVIDER_NOT_SUPPORTED",
-    `Provider de IA não suportado: ${provider}.`,
-  );
+  throw erroComCodigo("AI_PROVIDER_NOT_SUPPORTED", `Provider de IA não suportado: ${provider}.`);
 }

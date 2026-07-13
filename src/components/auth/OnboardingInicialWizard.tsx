@@ -142,7 +142,9 @@ export function OnboardingInicialWizard({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-3xl font-semibold text-foreground">Configuração inicial</h1>
+        <h1 className="font-display text-3xl font-semibold text-foreground">
+          Configuração inicial
+        </h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           Em poucos passos, deixamos o Tribuno pronto para começar.
         </p>
@@ -306,7 +308,10 @@ export function OnboardingInicialWizard({
 
           <ul className="mt-4 space-y-3">
             {resumo.map((item) => (
-              <li key={item.id} className="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-3">
+              <li
+                key={item.id}
+                className="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-3"
+              >
                 <CheckCircle2
                   className={[
                     "mt-0.5 h-4 w-4 shrink-0",

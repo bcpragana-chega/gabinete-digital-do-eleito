@@ -16,6 +16,13 @@ export type TipoDocumento =
   | "Outro";
 
 export type EstadoDocumento = "Por rever" | "Revisto" | "Importante" | "Arquivado";
+export type EstadoAnaliseDocumento =
+  | "nao_analisado"
+  | "a_analisar"
+  | "analisado"
+  | "necessita_confirmacao"
+  | "confirmado"
+  | "erro";
 
 export type TipoDocumentoCriado =
   | "Moção"
@@ -83,9 +90,49 @@ export interface Documento {
   pontoOrigemId?: string;
   recebidoEm?: string;
   analisadoEm?: string;
+  estadoAnalise?: EstadoAnaliseDocumento;
+  analiseInstitucional?: AnaliseDocumentoInstitucional;
+  analiseInstitucionalEm?: string;
+  analiseInstitucionalVersao?: number;
   archivedAt?: string;
   createdAt: string;
   updatedAt?: string;
+}
+
+export type TipoDocumentoInstitucional =
+  | "convocatoria"
+  | "ordem_trabalhos"
+  | "ata"
+  | "documento_financeiro"
+  | "proposta"
+  | "regulamento"
+  | "outro"
+  | "desconhecido";
+
+export interface AnaliseDocumentoInstitucional {
+  tipoDocumento: TipoDocumentoInstitucional;
+  confiancaGlobal: number;
+  sessao?: {
+    orgao?: string;
+    entidade?: string;
+    tipo?: "ordinaria" | "extraordinaria" | "desconhecida";
+    data?: string;
+    hora?: string;
+    local?: string;
+  };
+  pontosOrdemTrabalhos: Array<{
+    numero?: number;
+    titulo: string;
+    descricao?: string;
+    confianca: number;
+  }>;
+  informacaoRelevante: Array<{
+    titulo: string;
+    descricao: string;
+    referenciaDocumento?: string;
+  }>;
+  camposIncertos: Array<{ campo: string; motivo: string }>;
+  resumoCompreensao: string;
 }
 
 export interface DocumentoCriado {

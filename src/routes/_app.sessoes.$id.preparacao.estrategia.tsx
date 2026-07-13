@@ -85,7 +85,11 @@ function PreparacaoEstrategiaPage() {
           <EmptyState
             title="Sessão não encontrada"
             description="A estratégia é guardada por Sessão. Esta Sessão não está disponível neste dispositivo."
-            action={<Button asChild><Link to="/sessoes">Ir para Sessões</Link></Button>}
+            action={
+              <Button asChild>
+                <Link to="/sessoes">Ir para Sessões</Link>
+              </Button>
+            }
           />
         </main>
       </>

@@ -34,6 +34,10 @@ type DocumentoRow = {
   data_documento: string | null;
   recebido_em: string | null;
   analisado_em: string | null;
+  estado_analise: Documento["estadoAnalise"];
+  analise_institucional: Documento["analiseInstitucional"] | null;
+  analise_institucional_em: string | null;
+  analise_institucional_versao: number | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -119,6 +123,10 @@ function fromRow(row: DocumentoRow): Documento {
     pontoOrigemId: row.ponto_origem_id ?? undefined,
     recebidoEm: row.recebido_em ?? undefined,
     analisadoEm: row.analisado_em ?? undefined,
+    estadoAnalise: row.estado_analise ?? "nao_analisado",
+    analiseInstitucional: row.analise_institucional ?? undefined,
+    analiseInstitucionalEm: row.analise_institucional_em ?? undefined,
+    analiseInstitucionalVersao: row.analise_institucional_versao ?? undefined,
     archivedAt: row.archived_at ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -165,6 +173,10 @@ function toRow(userId: string, documento: Documento): DocumentoRow {
     data_documento: textoSeguro(documento.data) || null,
     recebido_em: documento.recebidoEm ?? null,
     analisado_em: documento.analisadoEm ?? null,
+    estado_analise: documento.estadoAnalise ?? "nao_analisado",
+    analise_institucional: documento.analiseInstitucional ?? null,
+    analise_institucional_em: documento.analiseInstitucionalEm ?? null,
+    analise_institucional_versao: documento.analiseInstitucionalVersao ?? null,
     archived_at: documento.archivedAt ?? null,
     created_at: createdAt,
     updated_at: updatedAt,

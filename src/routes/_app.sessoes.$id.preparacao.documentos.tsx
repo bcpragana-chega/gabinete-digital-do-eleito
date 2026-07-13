@@ -45,7 +45,11 @@ function PreparacaoDocumentosPage() {
           <EmptyState
             title="Sessão não encontrada"
             description="Esta área guarda os documentos de preparação da Sessão. A Sessão não está disponível neste dispositivo."
-            action={<Button asChild><Link to="/sessoes">Ir para Sessões</Link></Button>}
+            action={
+              <Button asChild>
+                <Link to="/sessoes">Ir para Sessões</Link>
+              </Button>
+            }
           />
         </main>
       </>

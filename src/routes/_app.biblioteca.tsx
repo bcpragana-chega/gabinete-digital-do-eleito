@@ -10,6 +10,7 @@ import {
   NotebookText,
 } from "lucide-react";
 import { AdicionarBibliotecaWizard } from "@/components/biblioteca/AdicionarBibliotecaWizard";
+import { InstitutionalDocumentIntake } from "@/components/documentos/InstitutionalDocumentIntake";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/ui/cards";
@@ -156,7 +157,12 @@ function BibliotecaPage() {
                 title="Biblioteca"
                 description="Documentos, leis, atas e referências do mandato."
                 className="bg-card p-4 sm:p-7"
-                actions={<AdicionarBibliotecaWizard />}
+                actions={
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                    <InstitutionalDocumentIntake />
+                    <AdicionarBibliotecaWizard />
+                  </div>
+                }
               />
             }
           >
@@ -245,19 +251,20 @@ function BibliotecaPage() {
                             </div>
                           </div>
 
-                          <Button
-                            asChild
-                            variant="secondary"
-                            size="sm"
-                            className="w-full lg:w-auto"
-                          >
-                            <Link
-                              to="/biblioteca/documentos/$docId"
-                              params={{ docId: documento.id }}
-                            >
-                              Abrir
-                            </Link>
-                          </Button>
+                          <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                            {documento.ficheiroTipo === "application/pdf" &&
+                              documento.estadoAnalise !== "confirmado" && (
+                                <InstitutionalDocumentIntake documentoInicial={documento} />
+                              )}
+                            <Button asChild variant="secondary" size="sm">
+                              <Link
+                                to="/biblioteca/documentos/$docId"
+                                params={{ docId: documento.id }}
+                              >
+                                Abrir
+                              </Link>
+                            </Button>
+                          </div>
                         </div>
                       </article>
                     );

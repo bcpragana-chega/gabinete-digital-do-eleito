@@ -143,6 +143,10 @@ export interface NovoDocumentoInput {
   ficheiroTipo?: string;
   ficheiroTamanho?: number;
   notas?: string;
+  estadoAnalise?: Documento["estadoAnalise"];
+  analiseInstitucional?: Documento["analiseInstitucional"];
+  analiseInstitucionalEm?: string;
+  analiseInstitucionalVersao?: number;
 }
 
 function criarDocumento(input: NovoDocumentoInput, id: string = crypto.randomUUID()): Documento {
