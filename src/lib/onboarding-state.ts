@@ -44,6 +44,13 @@ export function temProximaAcaoConvocatoria(userId?: string) {
   return Boolean(carregarOnboardingLocal(userId)?.semConvocatoria);
 }
 
+export function resolverVersaoOnboarding(input: {
+  versaoRemota?: number;
+  local?: Pick<OnboardingLocal, "concluido" | "version">;
+}) {
+  return Math.max(input.versaoRemota ?? 0, input.local?.concluido ? input.local.version : 0);
+}
+
 export function limparOnboardingLocal(userId?: string) {
   const storageKey = key(userId);
   if (storageKey) removeItem(storageKey);

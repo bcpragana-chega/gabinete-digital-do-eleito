@@ -11,6 +11,7 @@ import {
   carregarOnboardingLocal,
   guardarOnboardingLocal,
   ONBOARDING_VERSION,
+  resolverVersaoOnboarding,
 } from "@/lib/onboarding-state";
 import {
   iniciarSessaoSupabaseComGoogleCredential,
@@ -189,11 +190,48 @@ function obterPerfilDoUser(state: AuthState, user = state.user) {
   return normalizarPerfilEleito(lerPerfilDoStorage(user.id) ?? state.perfisPorUserId?.[user.id]);
 }
 
-function guardarAuthState(state: AuthState) {
+function guardarAuthState(state: AuthState, options?: { emitirEvento?: boolean }) {
   if (!isBrowser()) return;
 
   writeJSON(STORAGE_KEY, state);
-  window.dispatchEvent(new Event(EVENT_NAME));
+  if (options?.emitirEvento !== false) window.dispatchEvent(new Event(EVENT_NAME));
+}
+
+export type DestinoAcesso = "loading" | "login" | "onboarding" | "app";
+
+export function resolverDestinoAcesso(input: {
+  initialized: boolean;
+  isAuthenticated: boolean;
+  hasCompleteProfile: boolean;
+  onboardingResolved: boolean;
+  onboardingRequired: boolean;
+}): DestinoAcesso {
+  if (!input.initialized) return "loading";
+  if (!input.isAuthenticated) return "login";
+  if (!input.hasCompleteProfile) return "onboarding";
+  if (!input.onboardingResolved) return "loading";
+  return input.onboardingRequired ? "onboarding" : "app";
+}
+
+export function criarCoordenadorAtualizacoes(executar: () => Promise<void>) {
+  let emCurso = false;
+  let pendente = false;
+
+  return async function solicitarAtualizacao() {
+    if (emCurso) {
+      pendente = true;
+      return;
+    }
+    emCurso = true;
+    try {
+      do {
+        pendente = false;
+        await executar();
+      } while (pendente);
+    } finally {
+      emCurso = false;
+    }
+  };
 }
 
 export function obterAuthState() {
@@ -397,7 +435,7 @@ export function useAuth() {
 
   useEffect(() => {
     let cancelled = false;
-    let updateId = 0;
+    let primeiraExecucao = true;
 
     async function carregarPerfilAntesDeInicializar(stateAtual: AuthState) {
       const userId = stateAtual.user?.id;
@@ -426,20 +464,25 @@ export function useAuth() {
         },
       };
 
-      guardarAuthState(nextState);
+      // A hidratação já atualiza este hook diretamente; emitir tribuno:auth aqui
+      // reiniciaria a mesma hidratação recursivamente.
+      guardarAuthState(nextState, { emitirEvento: false });
       return nextState;
     }
 
-    async function atualizar() {
-      const currentUpdateId = ++updateId;
+    async function executarAtualizacao() {
+      const inicial = primeiraExecucao;
+      primeiraExecucao = false;
       try {
         const stateAtual = lerAuthState();
-        setInitialized(false);
-        setOnboardingResolved(false);
+        if (inicial) {
+          setInitialized(false);
+          setOnboardingResolved(false);
+        }
         setState(stateAtual);
 
         const nextState = await carregarPerfilAntesDeInicializar(stateAtual);
-        if (cancelled || currentUpdateId !== updateId) return;
+        if (cancelled) return;
 
         const latestState = lerAuthState();
         setState({
@@ -461,6 +504,13 @@ export function useAuth() {
         }
 
         const local = carregarOnboardingLocal(userId);
+        if (local?.concluido && local.version >= ONBOARDING_VERSION) {
+          // A conclusão local é suficiente para autorizar já. A leitura/sincronização
+          // remota continua abaixo, sem manter a aplicação bloqueada.
+          setOnboardingVersion(local.version);
+          setOnboardingResolved(true);
+          setInitialized(true);
+        }
         if (!isSupabaseConfigured()) {
           setOnboardingVersion(local?.concluido ? local.version : 0);
           setOnboardingResolved(true);
@@ -469,13 +519,13 @@ export function useAuth() {
 
         try {
           const versaoRemota = await carregarOnboardingVersionRemoto(userId);
-          const versao = Math.max(versaoRemota ?? 0, local?.concluido ? local.version : 0);
+          const versao = resolverVersaoOnboarding({ versaoRemota, local });
           if (local?.sincronizacaoPendente && local.concluido) {
             void guardarOnboardingVersionRemoto(userId, local.version)
               .then(() => guardarOnboardingLocal(userId, { sincronizacaoPendente: false }))
               .catch(() => undefined);
           }
-          if (!cancelled && currentUpdateId === updateId) {
+          if (!cancelled) {
             setOnboardingVersion(versao);
             setOnboardingResolved(true);
           }
@@ -483,7 +533,7 @@ export function useAuth() {
           console.warn("[Tribuno Auth] Não foi possível carregar estado de onboarding.", {
             operacao: "AUTH_ONBOARDING_LOAD_FALHOU",
           });
-          if (!cancelled && currentUpdateId === updateId) {
+          if (!cancelled) {
             setOnboardingVersion(local?.concluido ? local.version : 0);
             setOnboardingResolved(true);
           }
@@ -492,17 +542,22 @@ export function useAuth() {
         console.error("[Tribuno Auth] Erro ao inicializar autenticação/perfil", {
           operacao: "AUTH_INIT_FALHOU",
         });
-        if (!cancelled && currentUpdateId === updateId) {
+        if (!cancelled) {
           setState(lerAuthState());
-          setOnboardingVersion(undefined);
+          const fallbackUserId = lerAuthState().user?.id;
+          const fallbackLocal = carregarOnboardingLocal(fallbackUserId);
+          setOnboardingVersion(fallbackLocal?.concluido ? fallbackLocal.version : 0);
           setOnboardingResolved(true);
         }
       } finally {
-        if (!cancelled && currentUpdateId === updateId) {
+        if (!cancelled) {
+          setOnboardingResolved(true);
           setInitialized(true);
         }
       }
     }
+
+    const atualizar = criarCoordenadorAtualizacoes(executarAtualizacao);
 
     void atualizar();
     window.addEventListener(EVENT_NAME, atualizar);

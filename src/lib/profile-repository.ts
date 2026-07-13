@@ -190,6 +190,7 @@ export async function carregarOnboardingVersionRemoto(userId?: string) {
       .eq("user_id", supabaseUserId)
       .maybeSingle<ProfileOnboardingRow>(),
     "PROFILE_SELECT_ONBOARDING",
+    8000,
   );
 
   if (error) throw error;
@@ -328,6 +329,7 @@ export async function guardarOnboardingVersionRemoto(userId: string, version: nu
       .update({ onboarding_version: version, updated_at: new Date().toISOString() })
       .eq("user_id", supabaseUserId),
     "PROFILE_UPDATE_ONBOARDING",
+    8000,
   );
 
   if (error) throw error;
