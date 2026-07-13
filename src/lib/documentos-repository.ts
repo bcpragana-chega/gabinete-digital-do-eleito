@@ -1,7 +1,12 @@
 import { removerDocumentoPDF, DOCUMENTOS_STORAGE_BUCKET } from "@/lib/documentos-storage";
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
 import type { Documento, EstadoDocumento, TipoDocumento } from "@/lib/types";
-import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "@/lib/user-storage";
+import {
+  guardarJSONParaUtilizador,
+  guardarJSONPorUtilizador,
+  lerJSONParaUtilizador,
+  lerJSONPorUtilizador,
+} from "@/lib/user-storage";
 
 const STORAGE_KEY = "tribuno:documentos";
 
@@ -213,17 +218,20 @@ async function obterSupabaseUserIdValido(userId?: string) {
   return data.user.id;
 }
 
-export function carregarDocumentosLocais() {
-  const parsed = lerJSONPorUtilizador<Documento[]>(STORAGE_KEY, []);
+export function carregarDocumentosLocais(userId?: string) {
+  const parsed = userId
+    ? lerJSONParaUtilizador<Documento[]>(STORAGE_KEY, userId, [])
+    : lerJSONPorUtilizador<Documento[]>(STORAGE_KEY, []);
   return Array.isArray(parsed) ? parsed : [];
 }
 
-export function guardarDocumentosLocais(documentos: Documento[]) {
-  guardarJSONPorUtilizador(STORAGE_KEY, documentos);
+export function guardarDocumentosLocais(documentos: Documento[], userId?: string) {
+  if (userId) guardarJSONParaUtilizador(STORAGE_KEY, userId, documentos);
+  else guardarJSONPorUtilizador(STORAGE_KEY, documentos);
 }
 
-export async function carregarDocumentosRemotos() {
-  const supabaseUserId = await obterSupabaseUserIdValido();
+export async function carregarDocumentosRemotos(userId?: string) {
+  const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) return undefined;
 
   const supabase = getSupabaseClient();
@@ -235,6 +243,10 @@ export async function carregarDocumentosRemotos() {
   );
 
   if (error) throw error;
+
+  if ((data ?? []).some((row) => row.user_id !== supabaseUserId)) {
+    throw new Error("DOCUMENTOS_OWNER_MISMATCH");
+  }
 
   return (data ?? []).map((row) => fromRow(row as DocumentoRow));
 }
@@ -282,6 +294,11 @@ export async function guardarDocumentoRemoto(userId: string, documento: Document
     });
     throw response.error;
   }
+
+  const confirmada = (response.data ?? []).find(
+    (item) => item.id === documento.id && item.user_id === supabaseUserId,
+  );
+  if (!confirmada) throw new Error("DOCUMENTO_SAVE_NOT_CONFIRMED");
 
   return true;
 }

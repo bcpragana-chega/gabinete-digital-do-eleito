@@ -254,10 +254,12 @@ describe("recuperação dos P1", () => {
   });
 
   it("sucesso parcial preserva e repete apenas os pontos pendentes", async () => {
-    type Sessao = { id: string };
-    const tentativa: TentativaCriacaoSessao<Sessao> = {
+    const tentativa: TentativaCriacaoSessao = {
+      tentativaId: "tentativa-estavel",
       sessaoId: "sessao-estavel",
+      sessaoConfirmada: false,
       pontosConfirmados: new Set(),
+      documentosConfirmados: new Set(),
     };
     let criacoesSessao = 0;
     const chamadas: string[] = [];
@@ -266,6 +268,7 @@ describe("recuperação dos P1", () => {
       executarTentativaCriacaoSessao({
         tentativa,
         pontos: ["ponto-1", "ponto-2", "ponto-3"].map((id) => ({ id, value: id })),
+        documentos: [],
         criarSessao: async (id) => {
           criacoesSessao += 1;
           return { id };
@@ -274,12 +277,13 @@ describe("recuperação dos P1", () => {
           chamadas.push(ponto);
           if (ponto === "ponto-2" && falharPonto2) throw new Error("PONTO_2_FALHOU");
         },
+        criarDocumento: async () => undefined,
       });
 
     const parcial = await executar();
     assert.equal(parcial.concluida, false);
     assert.deepEqual([...tentativa.pontosConfirmados], ["ponto-1"]);
-    assert.equal(tentativa.sessao?.id, "sessao-estavel");
+    assert.equal(tentativa.sessaoConfirmada, true);
 
     falharPonto2 = false;
     const final = await executar();

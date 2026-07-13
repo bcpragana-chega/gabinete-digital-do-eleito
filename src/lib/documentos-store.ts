@@ -13,16 +13,21 @@ import {
 import { removerDocumentoPDF, uploadDocumentoPDF } from "./documentos-storage";
 import type { Documento, EstadoDocumento, TipoDocumento } from "./types";
 import { obterUserIdAtual } from "./user-storage";
+import {
+  criarCoordenadorHidratacaoPorOwner,
+  executarHidratacaoIsolada,
+} from "./confirmed-mutation";
+import { obterUtilizadorSupabaseValidado } from "./supabase";
 
 const EVENT = "tribuno:documents";
-let remoteLoadPromise: Promise<void> | undefined;
+const coordenarHidratacao = criarCoordenadorHidratacaoPorOwner();
 
-function read(): Documento[] {
-  return carregarDocumentosLocais();
+function read(userId?: string): Documento[] {
+  return carregarDocumentosLocais(userId);
 }
 
-function write(docs: Documento[]) {
-  guardarDocumentosLocais(docs);
+function write(docs: Documento[], userId?: string) {
+  guardarDocumentosLocais(docs, userId);
   window.dispatchEvent(new Event(EVENT));
 }
 
@@ -72,28 +77,48 @@ export class DocumentoOperacaoErro extends Error {
   }
 }
 
-export function carregarDocumentosRemotosSeDisponivel() {
-  if (remoteLoadPromise) return remoteLoadPromise;
-
-  remoteLoadPromise = carregarDocumentosRemotos()
-    .then((remotos) => {
-      if (!remotos) return;
-
-      const locais = read();
+export async function hidratarDocumentosComDependencias(input: {
+  userId: string;
+  carregarRemoto: (userId: string) => Promise<Documento[] | undefined>;
+  obterUserIdAtivo: () => Promise<string | undefined>;
+  carregarLocal?: (userId: string) => Documento[];
+  guardarLocal?: (documentos: Documento[], userId: string) => void;
+  isAtual?: () => boolean;
+}) {
+  return executarHidratacaoIsolada({
+    userId: input.userId,
+    carregarRemoto: input.carregarRemoto,
+    obterUserIdAtivo: input.obterUserIdAtivo,
+    isAtual: input.isAtual,
+    confirmarLocal: (ownerId, remotos) => {
+      if (remotos === undefined) return;
+      const locais = (input.carregarLocal ?? read)(ownerId);
       if (remotos.length === 0 && locais.length > 0) return;
+      (input.guardarLocal ?? write)(mergeDocumentos(locais, remotos), ownerId);
+    },
+  });
+}
 
-      write(mergeDocumentos(locais, remotos));
-    })
-    .catch(() => {
-      console.warn("[Tribuno Documentos] Carregamento remoto falhou.", {
-        operacao: "DOCUMENTOS_LOAD_FALHOU",
-      });
-    })
-    .finally(() => {
-      remoteLoadPromise = undefined;
+export async function carregarDocumentosRemotosSeDisponivel() {
+  try {
+    const owner = await obterUtilizadorSupabaseValidado();
+    if (!owner?.id) return;
+    await coordenarHidratacao({
+      userId: owner.id,
+      hidratar: async (_geracao, isAtual) => {
+        await hidratarDocumentosComDependencias({
+          userId: owner.id,
+          carregarRemoto: carregarDocumentosRemotos,
+          obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+          isAtual,
+        });
+      },
     });
-
-  return remoteLoadPromise;
+  } catch {
+    console.warn("[Tribuno Documentos] Carregamento remoto falhou.", {
+      operacao: "DOCUMENTOS_LOAD_FALHOU",
+    });
+  }
 }
 
 function hrefDocumento(documento: Documento) {
@@ -171,6 +196,25 @@ function persistirDocumento(doc: Documento) {
 export function adicionarDocumento(input: NovoDocumentoInput): Documento {
   const doc = criarDocumento(input);
   persistirDocumento(doc);
+  return doc;
+}
+
+export async function adicionarDocumentoConfirmado(
+  input: NovoDocumentoInput,
+  options: { id: string },
+) {
+  const owner = await obterUtilizadorSupabaseValidado();
+  if (!owner?.id) throw new Error("AUTH_REQUIRED");
+  const doc = criarDocumento(input, options.id);
+  const guardado = await guardarDocumentoRemoto(owner.id, doc);
+  if (!guardado) throw new Error("DOCUMENTO_SAVE_NOT_CONFIRMED");
+  if ((await obterUtilizadorSupabaseValidado())?.id !== owner.id) {
+    throw new Error("AUTH_CONTEXT_CHANGED");
+  }
+  const atuais = read(owner.id);
+  const jaExistiaLocalmente = atuais.some((item) => item.id === doc.id);
+  write([doc, ...atuais.filter((item) => item.id !== doc.id)], owner.id);
+  if (!jaExistiaLocalmente) registarDocumentoCriadoNaTimeline(doc);
   return doc;
 }
 

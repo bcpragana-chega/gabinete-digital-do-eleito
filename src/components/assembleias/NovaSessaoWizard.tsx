@@ -13,13 +13,18 @@ import {
   Trash2,
 } from "lucide-react";
 import { adicionarAssembleia } from "@/lib/assembleias-store";
-import { adicionarDocumento } from "@/lib/documentos-store";
+import { adicionarDocumentoConfirmado } from "@/lib/documentos-store";
 import { guardarEstrategiaDaAssembleia } from "@/lib/estrategia-store";
 import { adicionarPonto, type NivelPrioridade } from "@/lib/pontos-store";
 import {
+  carregarTentativaCriacaoSessao,
   executarTentativaCriacaoSessao,
+  guardarTentativaCriacaoSessao,
+  removerTentativaCriacaoSessao,
   type TentativaCriacaoSessao,
 } from "@/lib/session-creation-attempt";
+import { obterUtilizadorSupabaseValidado } from "@/lib/supabase";
+import { obterUserIdAtual } from "@/lib/user-storage";
 import { Button } from "@/components/ui/button";
 import { EntityCard, InfoCard } from "@/components/ui/cards";
 import {
@@ -60,6 +65,19 @@ type PontoTemporario = {
   prioridade: NivelPrioridade;
 };
 
+type DraftCriacaoSessao = {
+  titulo: string;
+  tipoSessao: (typeof tiposSessao)[number];
+  data: string;
+  hora: string;
+  local: string;
+  documentos: DocumentoTemporario[];
+  pontos: PontoTemporario[];
+  objetivoPolitico: string;
+  linhaGeral: string;
+  riscos: string;
+};
+
 const passos = ["Dados", "Documentos", "Pontos", "Estratégia", "Revisão"];
 
 const tiposSessao = ["Ordinária", "Extraordinária", "Reunião de câmara", "Outra"] as const;
@@ -72,10 +90,6 @@ const tiposDocumento: TipoDocumento[] = [
   "Contrato",
   "Outro",
 ];
-
-function gerarId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 function hoje() {
   return new Date().toISOString().slice(0, 10);
@@ -153,9 +167,7 @@ export function NovaSessaoWizard() {
   const [aGuardar, setAGuardar] = useState(false);
   const [erroGuardar, setErroGuardar] = useState("");
   const guardarEmCurso = useRef(false);
-  const tentativaRef = useRef<
-    TentativaCriacaoSessao<Awaited<ReturnType<typeof adicionarAssembleia>>> | undefined
-  >(undefined);
+  const tentativaRef = useRef<TentativaCriacaoSessao | undefined>(undefined);
 
   const dadosValidos = Boolean(titulo.trim() && data && hora && local.trim());
   const nomeSessao = `Sessão ${tipoSessao.toLowerCase()} — ${titulo.trim()}`;
@@ -179,6 +191,46 @@ export function NovaSessaoWizard() {
     tentativaRef.current = undefined;
   }
 
+  function obterDraft(): DraftCriacaoSessao {
+    return {
+      titulo,
+      tipoSessao,
+      data,
+      hora,
+      local,
+      documentos,
+      pontos,
+      objetivoPolitico,
+      linhaGeral,
+      riscos,
+    };
+  }
+
+  function restaurarTentativaPendente() {
+    const ownerId = obterUserIdAtual();
+    if (!ownerId) return;
+    const persistida = carregarTentativaCriacaoSessao<DraftCriacaoSessao>(ownerId);
+    if (!persistida) return;
+    const draft = persistida.draft;
+    tentativaRef.current = persistida.tentativa;
+    setTitulo(draft.titulo);
+    setTipoSessao(draft.tipoSessao);
+    setData(draft.data);
+    setHora(draft.hora);
+    setLocal(draft.local);
+    setDocumentos(draft.documentos);
+    setPontos(draft.pontos);
+    setObjetivoPolitico(draft.objetivoPolitico);
+    setLinhaGeral(draft.linhaGeral);
+    setRiscos(draft.riscos);
+    setStep(passos.length - 1);
+    setErroGuardar(
+      persistida.tentativa.sessaoConfirmada
+        ? "A sessão foi criada, mas ainda existem dados por confirmar. Podes retomar agora."
+        : "Existe uma tentativa de criação por concluir. Podes retomar agora.",
+    );
+  }
+
   function abrirFormularioDocumento() {
     setDocumento(novoDocumentoTemporario());
     setDocumentoEmEdicao(true);
@@ -194,7 +246,7 @@ export function NovaSessaoWizard() {
 
     setDocumentos((atuais) => [
       ...atuais,
-      { ...documento, id: gerarId(), titulo: documento.titulo.trim() },
+      { ...documento, id: crypto.randomUUID(), titulo: documento.titulo.trim() },
     ]);
     fecharFormularioDocumento();
     return true;
@@ -219,17 +271,25 @@ export function NovaSessaoWizard() {
     setAGuardar(true);
     setErroGuardar("");
     try {
+      const owner = await obterUtilizadorSupabaseValidado();
+      if (!owner?.id) throw new Error("AUTH_REQUIRED");
+      const draft = obterDraft();
       const tentativa =
         tentativaRef.current ??
         ({
+          tentativaId: crypto.randomUUID(),
           sessaoId: `asm-${crypto.randomUUID()}`,
+          sessaoConfirmada: false,
           pontosConfirmados: new Set<string>(),
-        } satisfies TentativaCriacaoSessao<Awaited<ReturnType<typeof adicionarAssembleia>>>);
+          documentosConfirmados: new Set<string>(),
+        } satisfies TentativaCriacaoSessao);
       tentativaRef.current = tentativa;
+      guardarTentativaCriacaoSessao(owner.id, tentativa, draft);
 
       const resultado = await executarTentativaCriacaoSessao({
         tentativa,
         pontos: pontos.map((item) => ({ id: item.id, value: item })),
+        documentos: documentos.map((item) => ({ id: item.id, value: item })),
         criarSessao: (sessaoId) =>
           adicionarAssembleia(
             {
@@ -241,9 +301,9 @@ export function NovaSessaoWizard() {
             },
             { id: sessaoId },
           ),
-        criarPonto: (sessao, item, pontoId) =>
+        criarPonto: (sessaoId, item, pontoId) =>
           adicionarPonto(
-            sessao.id,
+            sessaoId,
             {
               titulo: item.titulo,
               descricao: item.descricao.trim(),
@@ -251,32 +311,35 @@ export function NovaSessaoWizard() {
             },
             { id: pontoId },
           ),
+        criarDocumento: (sessaoId, item, documentoId) =>
+          adicionarDocumentoConfirmado(
+            {
+              assembleiaId: sessaoId,
+              titulo: item.titulo,
+              tipo: item.tipo,
+              data: item.data || data,
+              estado: item.estado,
+              notas: item.notas.trim() || undefined,
+              ficheiroNome: item.ficheiroNome,
+              ficheiroTipo: item.ficheiroTipo,
+            },
+            { id: documentoId },
+          ),
+        onProgress: (atualizada) => guardarTentativaCriacaoSessao(owner.id, atualizada, draft),
       });
-      if (!resultado.concluida || !resultado.tentativa.sessao) {
+      if (!resultado.concluida) {
+        guardarTentativaCriacaoSessao(owner.id, resultado.tentativa, draft);
         setErroGuardar(
-          resultado.tentativa.sessao
+          resultado.tentativa.sessaoConfirmada
             ? "A sessão foi criada, mas não foi possível guardar toda a preparação. Os dados pendentes foram mantidos; tenta novamente."
             : "Não foi possível confirmar a sessão. Os dados foram mantidos; tenta novamente.",
         );
         return;
       }
-      const sessao = resultado.tentativa.sessao;
-
-      documentos.forEach((item) => {
-        adicionarDocumento({
-          assembleiaId: sessao.id,
-          titulo: item.titulo,
-          tipo: item.tipo,
-          data: item.data || data,
-          estado: item.estado,
-          notas: item.notas.trim() || undefined,
-          ficheiroNome: item.ficheiroNome,
-          ficheiroTipo: item.ficheiroTipo,
-        });
-      });
+      const sessaoId = resultado.tentativa.sessaoId;
 
       if (objetivoPolitico.trim() || linhaGeral.trim() || riscos.trim()) {
-        guardarEstrategiaDaAssembleia(sessao.id, {
+        guardarEstrategiaDaAssembleia(sessaoId, {
           objetivoPolitico: objetivoPolitico.trim(),
           mensagemPrincipal: linhaGeral.trim(),
           naoFazer: riscos.trim(),
@@ -285,12 +348,13 @@ export function NovaSessaoWizard() {
         });
       }
 
+      removerTentativaCriacaoSessao(owner.id);
       setOpen(false);
       reset();
-      await navigate({ to: "/sessoes/$id", params: { id: sessao.id } });
+      await navigate({ to: "/sessoes/$id", params: { id: sessaoId } });
     } catch {
       setErroGuardar(
-        tentativaRef.current?.sessao
+        tentativaRef.current?.sessaoConfirmada
           ? "A sessão foi criada, mas não foi possível guardar toda a preparação. Os dados pendentes foram mantidos; tenta novamente."
           : "Não foi possível confirmar a sessão. Os dados foram mantidos; tenta novamente.",
       );
@@ -315,6 +379,7 @@ export function NovaSessaoWizard() {
         if (!value && aGuardar) return;
         setOpen(value);
         if (!value && !aGuardar) reset();
+        if (value) restaurarTentativaPendente();
       }}
     >
       <DialogTrigger asChild>

@@ -40,3 +40,25 @@ export async function executarHidratacaoIsolada<T>(input: {
   input.confirmarLocal(input.userId, value);
   return value;
 }
+
+export function criarCoordenadorHidratacaoPorOwner() {
+  let geracaoAtual = 0;
+  const emCurso = new Map<string, { geracao: number; promise: Promise<void> }>();
+
+  return function executar(input: {
+    userId: string;
+    hidratar: (geracao: number, isAtual: () => boolean) => Promise<void>;
+  }) {
+    const existente = emCurso.get(input.userId);
+    if (existente?.geracao === geracaoAtual) return existente.promise;
+
+    const geracao = ++geracaoAtual;
+    const promise = input
+      .hidratar(geracao, () => geracao === geracaoAtual)
+      .finally(() => {
+        if (emCurso.get(input.userId)?.geracao === geracao) emCurso.delete(input.userId);
+      });
+    emCurso.set(input.userId, { geracao, promise });
+    return promise;
+  };
+}

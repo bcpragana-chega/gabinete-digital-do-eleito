@@ -13,17 +13,22 @@ import {
   guardarDocumentosCriadosLocais,
 } from "@/lib/documentos-criados-repository";
 import { obterUserIdAtual } from "@/lib/user-storage";
+import {
+  criarCoordenadorHidratacaoPorOwner,
+  executarHidratacaoIsolada,
+} from "@/lib/confirmed-mutation";
+import { obterUtilizadorSupabaseValidado } from "@/lib/supabase";
 
 const EVENT = "tribuno:documentos-a-criar";
-let remoteLoadPromise: Promise<void> | undefined;
+const coordenarHidratacao = criarCoordenadorHidratacaoPorOwner();
 
 function lerDocumentos(): DocumentoCriado[] {
   void carregarDocumentosCriadosRemotosSeDisponivel();
   return carregarDocumentosCriadosLocais();
 }
 
-function guardarDocumentos(documentos: DocumentoCriado[]) {
-  guardarDocumentosCriadosLocais(documentos);
+function guardarDocumentos(documentos: DocumentoCriado[], userId?: string) {
+  guardarDocumentosCriadosLocais(documentos, userId);
   window.dispatchEvent(new Event(EVENT));
 }
 
@@ -49,28 +54,48 @@ function guardarDocumentoRemotamente(documento: DocumentoCriado) {
   });
 }
 
-export function carregarDocumentosCriadosRemotosSeDisponivel() {
-  if (remoteLoadPromise) return remoteLoadPromise;
-
-  remoteLoadPromise = carregarDocumentosCriadosRemotos()
-    .then((remotos) => {
-      if (!remotos) return;
-
-      const locais = carregarDocumentosCriadosLocais();
+export async function hidratarDocumentosCriadosComDependencias(input: {
+  userId: string;
+  carregarRemoto: (userId: string) => Promise<DocumentoCriado[] | undefined>;
+  obterUserIdAtivo: () => Promise<string | undefined>;
+  carregarLocal?: (userId: string) => DocumentoCriado[];
+  guardarLocal?: (documentos: DocumentoCriado[], userId: string) => void;
+  isAtual?: () => boolean;
+}) {
+  return executarHidratacaoIsolada({
+    userId: input.userId,
+    carregarRemoto: input.carregarRemoto,
+    obterUserIdAtivo: input.obterUserIdAtivo,
+    isAtual: input.isAtual,
+    confirmarLocal: (ownerId, remotos) => {
+      if (remotos === undefined) return;
+      const locais = (input.carregarLocal ?? carregarDocumentosCriadosLocais)(ownerId);
       if (remotos.length === 0 && locais.length > 0) return;
+      (input.guardarLocal ?? guardarDocumentos)(mergeDocumentos(locais, remotos), ownerId);
+    },
+  });
+}
 
-      guardarDocumentos(mergeDocumentos(locais, remotos));
-    })
-    .catch(() => {
-      console.warn("[Tribuno Documentos] Carregamento de documentos criados falhou.", {
-        operacao: "DOCUMENTOS_CRIADOS_LOAD_FALHOU",
-      });
-    })
-    .finally(() => {
-      remoteLoadPromise = undefined;
+export async function carregarDocumentosCriadosRemotosSeDisponivel() {
+  try {
+    const owner = await obterUtilizadorSupabaseValidado();
+    if (!owner?.id) return;
+    await coordenarHidratacao({
+      userId: owner.id,
+      hidratar: async (_geracao, isAtual) => {
+        await hidratarDocumentosCriadosComDependencias({
+          userId: owner.id,
+          carregarRemoto: carregarDocumentosCriadosRemotos,
+          obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+          isAtual,
+        });
+      },
     });
-
-  return remoteLoadPromise;
+  } catch {
+    console.warn("[Tribuno Documentos] Carregamento de documentos criados falhou.", {
+      operacao: "DOCUMENTOS_CRIADOS_LOAD_FALHOU",
+    });
+  }
 }
 
 function gerarId() {

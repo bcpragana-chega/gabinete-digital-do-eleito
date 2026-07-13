@@ -1,6 +1,11 @@
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
 import type { DocumentoCriado, EstadoDocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
-import { guardarJSONPorUtilizador, lerJSONPorUtilizador } from "@/lib/user-storage";
+import {
+  guardarJSONParaUtilizador,
+  guardarJSONPorUtilizador,
+  lerJSONParaUtilizador,
+  lerJSONPorUtilizador,
+} from "@/lib/user-storage";
 
 const STORAGE_KEY = "tribuno:documentos-a-criar";
 
@@ -202,17 +207,20 @@ async function obterSupabaseUserIdValido(userId?: string) {
   return data.user.id;
 }
 
-export function carregarDocumentosCriadosLocais() {
-  const parsed = lerJSONPorUtilizador<DocumentoCriado[]>(STORAGE_KEY, []);
+export function carregarDocumentosCriadosLocais(userId?: string) {
+  const parsed = userId
+    ? lerJSONParaUtilizador<DocumentoCriado[]>(STORAGE_KEY, userId, [])
+    : lerJSONPorUtilizador<DocumentoCriado[]>(STORAGE_KEY, []);
   return Array.isArray(parsed) ? parsed : [];
 }
 
-export function guardarDocumentosCriadosLocais(documentos: DocumentoCriado[]) {
-  guardarJSONPorUtilizador(STORAGE_KEY, documentos);
+export function guardarDocumentosCriadosLocais(documentos: DocumentoCriado[], userId?: string) {
+  if (userId) guardarJSONParaUtilizador(STORAGE_KEY, userId, documentos);
+  else guardarJSONPorUtilizador(STORAGE_KEY, documentos);
 }
 
-export async function carregarDocumentosCriadosRemotos() {
-  const supabaseUserId = await obterSupabaseUserIdValido();
+export async function carregarDocumentosCriadosRemotos(userId?: string) {
+  const supabaseUserId = await obterSupabaseUserIdValido(userId);
   if (!supabaseUserId) return undefined;
 
   const supabase = getSupabaseClient();

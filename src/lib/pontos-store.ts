@@ -71,30 +71,47 @@ export async function carregarPontosRemotosSeDisponivel() {
   try {
     const hidratacaoId = ++hidratacaoAtual;
     const userId = await obterUserIdValidado();
-    await executarHidratacaoIsolada({
+    await hidratarPontosComDependencias({
       userId,
       carregarRemoto: carregarPontosRemotos,
       obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
       isAtual: () => hidratacaoId === hidratacaoAtual,
-      confirmarLocal: (ownerId, resposta) => {
-        const remotos = resposta ?? [];
-        const locaisPorId = new Map(lerPontos(ownerId).map((ponto) => [ponto.id, ponto]));
-        const hidratados = remotos.map((remoto) => ({
-          ...remoto,
-          documentos: locaisPorId.get(remoto.id)?.documentos ?? remoto.documentos,
-          perguntas: locaisPorId.get(remoto.id)?.perguntas ?? remoto.perguntas,
-          acoes: locaisPorId.get(remoto.id)?.acoes ?? remoto.acoes,
-          documentosACriar: locaisPorId.get(remoto.id)?.documentosACriar ?? remoto.documentosACriar,
-          notas: locaisPorId.get(remoto.id)?.notas ?? remoto.notas,
-        }));
-        guardarPontos(hidratados, ownerId);
-      },
     });
   } catch {
     console.warn("[Tribuno] Carregamento remoto de pontos falhou.", {
       operacao: "PONTOS_LOAD_FALHOU",
     });
   }
+}
+
+export async function hidratarPontosComDependencias(input: {
+  userId: string;
+  carregarRemoto: (userId: string) => Promise<PontoOrdemTrabalhos[] | undefined>;
+  obterUserIdAtivo: () => Promise<string | undefined>;
+  lerLocal?: (userId: string) => PontoOrdemTrabalhos[];
+  guardarLocal?: (pontos: PontoOrdemTrabalhos[], userId: string) => void;
+  isAtual?: () => boolean;
+}) {
+  return executarHidratacaoIsolada({
+    userId: input.userId,
+    carregarRemoto: input.carregarRemoto,
+    obterUserIdAtivo: input.obterUserIdAtivo,
+    isAtual: input.isAtual,
+    confirmarLocal: (ownerId, remotos) => {
+      if (remotos === undefined) return;
+      const locais = (input.lerLocal ?? lerPontos)(ownerId);
+      const locaisPorId = new Map(locais.map((ponto) => [ponto.id, ponto]));
+      const hidratados = remotos.map((remoto) => ({
+        ...remoto,
+        documentos: locaisPorId.get(remoto.id)?.documentos ?? remoto.documentos,
+        perguntas: locaisPorId.get(remoto.id)?.perguntas ?? remoto.perguntas,
+        acoes: locaisPorId.get(remoto.id)?.acoes ?? remoto.acoes,
+        documentosACriar: locaisPorId.get(remoto.id)?.documentosACriar ?? remoto.documentosACriar,
+        notas: locaisPorId.get(remoto.id)?.notas ?? remoto.notas,
+      }));
+      (input.guardarLocal ?? guardarPontos)(hidratados, ownerId);
+    },
+  });
 }
 
 export function obterPontosDaAssembleia(assembleiaId: string): PontoOrdemTrabalhos[] {

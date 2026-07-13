@@ -15,6 +15,7 @@ import { obterUtilizadorSupabaseValidado } from "./supabase";
 import {
   associarPontoDocumentoRemoto,
   carregarPontoDocumentosRemotos,
+  type PontoDocumentoRow,
   removerPontoDocumentoRemoto,
 } from "./ponto-documentos-repository";
 
@@ -150,26 +151,78 @@ export async function persistirRelacaoPontoDocumentoComDependencias<T>(input: {
   return confirmacao;
 }
 
-export async function hidratarRelacoesPontoDocumento(pontoId: string) {
-  const ownerId = await userIdValidado();
-  const rows = await carregarPontoDocumentosRemotos(ownerId, pontoId);
-  if ((await obterUtilizadorSupabaseValidado())?.id !== ownerId) return;
-  const atuais = lerRelacoesLocais(ownerId).filter(
+function relacoesHistoricasDoPonto(relacoes: RelacaoTribuno[], pontoId: string) {
+  return relacoes.filter(
+    (relacao) =>
+      relacao.origemTipo === "ponto" &&
+      relacao.origemId === pontoId &&
+      relacao.destinoTipo === "documento" &&
+      relacao.tipoRelacao === "usado_em",
+  );
+}
+
+export async function reconciliarRelacoesPontoDocumentoComDependencias(input: {
+  pontoId: string;
+  locais: RelacaoTribuno[];
+  carregarRemotas: () => Promise<PontoDocumentoRow[]>;
+  migrarRemota: (documentoId: string) => Promise<PontoDocumentoRow>;
+}) {
+  const remotas = await input.carregarRemotas();
+  const porDocumento = new Map(remotas.map((row) => [row.documento_id, row]));
+  for (const local of relacoesHistoricasDoPonto(input.locais, input.pontoId)) {
+    if (porDocumento.has(local.destinoId)) continue;
+    const migrada = await input.migrarRemota(local.destinoId);
+    porDocumento.set(migrada.documento_id, migrada);
+  }
+  return Array.from(porDocumento.values());
+}
+
+export async function hidratarRelacoesPontoDocumentoComDependencias(input: {
+  ownerId: string;
+  pontoId: string;
+  lerLocais: (userId: string) => RelacaoTribuno[];
+  guardarLocais: (relacoes: RelacaoTribuno[], userId: string) => void;
+  carregarRemotas: () => Promise<PontoDocumentoRow[]>;
+  migrarRemota: (documentoId: string) => Promise<PontoDocumentoRow>;
+  obterUserIdAtivo: () => Promise<string | undefined>;
+}) {
+  const locais = input.lerLocais(input.ownerId);
+  const rows = await reconciliarRelacoesPontoDocumentoComDependencias({
+    pontoId: input.pontoId,
+    locais,
+    carregarRemotas: input.carregarRemotas,
+    migrarRemota: input.migrarRemota,
+  });
+  if ((await input.obterUserIdAtivo()) !== input.ownerId) return;
+  const atuais = locais.filter(
     (relacao) =>
       !(
         relacao.origemTipo === "ponto" &&
-        relacao.origemId === pontoId &&
+        relacao.origemId === input.pontoId &&
         relacao.destinoTipo === "documento" &&
         relacao.tipoRelacao === "usado_em"
       ),
   );
-  guardarRelacoesLocais(
+  input.guardarLocais(
     [
-      ...rows.map((row) => relacaoPontoDocumento(pontoId, row.documento_id, row.created_at)),
+      ...rows.map((row) => relacaoPontoDocumento(input.pontoId, row.documento_id, row.created_at)),
       ...atuais,
     ],
-    ownerId,
+    input.ownerId,
   );
+}
+
+export async function hidratarRelacoesPontoDocumento(pontoId: string) {
+  const ownerId = await userIdValidado();
+  return hidratarRelacoesPontoDocumentoComDependencias({
+    ownerId,
+    pontoId,
+    lerLocais: lerRelacoesLocais,
+    guardarLocais: guardarRelacoesLocais,
+    carregarRemotas: () => carregarPontoDocumentosRemotos(ownerId, pontoId),
+    migrarRemota: (documentoId) => associarPontoDocumentoRemoto(ownerId, pontoId, documentoId),
+    obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+  });
 }
 
 export async function associarDocumentoAoPontoConfirmado(pontoId: string, documentoId: string) {
