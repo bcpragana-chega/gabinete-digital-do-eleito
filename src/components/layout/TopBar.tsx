@@ -156,11 +156,10 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
                     <span className="inline-block align-baseline text-[0.9em]">👋</span>
                   </>
                 ) : (
-                  <span
-                    role="status"
-                    aria-label="A carregar saudação"
-                    className="inline-block h-7 w-52 max-w-full rounded-lg bg-muted align-middle sm:w-64"
-                  />
+                  <span aria-hidden="true" className="invisible">
+                    Boa noite, Benjamin{" "}
+                    <span className="inline-block align-baseline text-[0.9em]">👋</span>
+                  </span>
                 )}
               </div>
               <div className="mt-0.5 truncate text-[13px] leading-5 text-muted-foreground sm:text-sm">

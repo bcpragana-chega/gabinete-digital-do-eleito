@@ -106,7 +106,7 @@ export function InstitutionalDocumentIntake({
       setAnalise(result.analise);
       if (result.estado === "necessita_confirmacao")
         setAnalysisNotice(
-          "Consegui compreender parte do documento, mas preciso que confirmes alguns detalhes.",
+          "A análise identificou apenas parte do documento. Confirme os detalhes em falta.",
         );
       setTituloSessao(gerarTituloSessaoInstitucional(result.analise.sessao));
       setTituloPersonalizado(false);
@@ -135,7 +135,7 @@ export function InstitutionalDocumentIntake({
       );
       if (result.estado === "necessita_confirmacao")
         setAnalysisNotice(
-          "Consegui compreender parte do documento, mas preciso que confirmes alguns detalhes.",
+          "A análise identificou apenas parte do documento. Confirme os detalhes em falta.",
         );
       setStep("review");
     } catch (cause) {
@@ -201,7 +201,7 @@ export function InstitutionalDocumentIntake({
           size={documentoInicial ? "sm" : "default"}
         >
           <FileSearch className="h-4 w-4" />
-          {triggerLabel ?? (documentoInicial ? "Compreender" : "Compreender PDF")}
+          {triggerLabel ?? (documentoInicial ? "Analisar documento" : "Analisar PDF")}
         </Button>
       </DialogTrigger>
       <DialogContent className="flex max-h-[92dvh] max-w-3xl flex-col overflow-hidden">
@@ -209,14 +209,16 @@ export function InstitutionalDocumentIntake({
           <DialogTitle>
             {step === "review" || step === "duplicate"
               ? analise?.tipoDocumento === "convocatoria"
-                ? "Compreendi a convocatória"
-                : "Compreendi o documento"
-              : "Adicionar documento institucional"}
+                ? "Dados da convocatória para rever"
+                : "Dados do documento para rever"
+              : "Analisar documento institucional"}
           </DialogTitle>
           <DialogDescription>
             {step === "analysing"
-              ? "A identificar o contexto institucional e a preparar a próxima ação."
-              : "O eleito confirma sempre a informação antes de ser criada uma sessão."}
+              ? "A analisar o contexto institucional e a preparar a próxima ação."
+              : step === "review" || step === "duplicate"
+                ? "Pode corrigir os dados antes de confirmar. A sessão só será criada depois da confirmação."
+                : "Carregue o PDF para análise. Poderá rever os dados antes de confirmar."}
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto py-2">
@@ -230,19 +232,19 @@ export function InstitutionalDocumentIntake({
                   onChange={(e) => setFile(e.target.files?.[0])}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Comece pelo ficheiro. Não precisa de preencher título, tipo, data ou sessão.
+                  Comece pelo ficheiro. Pode rever e corrigir os dados antes de confirmar.
                 </p>
               </div>
               {error && <ErrorText text={error} />}
               <Button className="w-full" disabled={!file} onClick={uploadAndAnalyse}>
-                Adicionar e compreender
+                Adicionar e analisar
               </Button>
             </div>
           )}
           {step === "analysing" && (
             <div className="py-16 text-center">
               <FileSearch className="mx-auto h-10 w-10 animate-pulse text-primary" />
-              <h3 className="mt-4 text-lg font-semibold">A compreender o documento…</h3>
+              <h3 className="mt-4 text-lg font-semibold">A analisar o documento…</h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 A ler o conteúdo e a estrutura institucional, incluindo páginas digitalizadas.
               </p>
@@ -250,6 +252,10 @@ export function InstitutionalDocumentIntake({
           )}
           {step === "review" && analise && (
             <div className="space-y-4">
+              <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm leading-6 text-muted-foreground">
+                Reveja e corrija o que for necessário. A sessão só será criada ao selecionar
+                “Confirmar e preparar sessão”.
+              </p>
               {analysisNotice && (
                 <p className="rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
                   {analysisNotice}
@@ -418,7 +424,7 @@ export function ReviewForm({
       </div>
       {analise.camposIncertos.length > 0 && (
         <div className="rounded-xl border border-status-alerta/30 p-4">
-          <p className="text-sm font-medium">Preciso de confirmar estes detalhes</p>
+          <p className="text-sm font-medium">Confirme estes detalhes</p>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
             {analise.camposIncertos.map((item) => (
               <li key={`${item.campo}:${item.motivo}`}>

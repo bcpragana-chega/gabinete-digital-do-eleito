@@ -25,6 +25,7 @@ describe("cabeçalhos canónicos e navegação", () => {
   const hoje = fonte("src/components/dashboard/DashboardPage.tsx");
   const definicoes = fonte("src/routes/_app.definicoes.tsx");
   const workspacePage = fonte("src/components/ui/workspace/WorkspacePage.tsx");
+  const intake = fonte("src/components/documentos/InstitutionalDocumentIntake.tsx");
 
   it("TopBar aceita ações e coloca-as numa segunda linha em mobile", () => {
     assert.match(topBar, /actions\?: ReactNode/);
@@ -58,6 +59,24 @@ describe("cabeçalhos canónicos e navegação", () => {
       assert.match(pagina, /<WorkspacePage>/);
       assert.doesNotMatch(pagina, /bg-\[#fbfcfe\]|bg-transparent|max-w-7xl|max-w-\[1504px\]/);
     }
+  });
+
+  it("destaca a próxima ação e usa linguagem orientada à ação", () => {
+    const dashboard = entre(hoje, "<WorkspacePage>", "</WorkspacePage>");
+    assert.ok(dashboard.indexOf("<MissionCard") < dashboard.indexOf("<TasksCard"));
+    assert.match(dashboard, /lg:grid-cols-2/);
+    assert.match(hoje, /Rever documento/);
+    assert.doesNotMatch(hoje, /Incoerência detetada/);
+
+    assert.match(biblioteca, /triggerLabel="Analisar e organizar PDF"/);
+    assert.match(biblioteca, /Ainda não está ligado a um assunto ou sessão/);
+    assert.match(biblioteca, /estado === "por analisar" \? "Rever documento"/);
+    assert.doesNotMatch(biblioteca, /Compreender PDF|Sem ligação institucional/);
+
+    assert.match(intake, /Analisar documento/);
+    assert.match(intake, /Adicionar e analisar/);
+    assert.match(intake, /A sessão só será criada ao selecionar/);
+    assert.doesNotMatch(intake, />Compreender<|Adicionar e compreender|A compreender o documento/);
   });
 
   it("sidebar desktop contém apenas a navegação principal", () => {

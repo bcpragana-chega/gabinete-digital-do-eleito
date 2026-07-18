@@ -167,23 +167,13 @@ export function DashboardPage() {
     <>
       <TopBar />
       <WorkspacePage>
-        {(onboardingSemConvocatoria || !proxima) && (
-          <Card className="rounded-[14px] border-primary/20 bg-primary/5 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-              Próxima ação prioritária
-            </p>
-            <h2 className="mt-2 text-xl font-semibold">Preparar a próxima sessão</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Carregue a convocatória para o Tribuno organizar os dados automaticamente ou crie a
-              sessão manualmente.
-            </p>
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <InstitutionalDocumentIntake triggerLabel="Carregar convocatória" />
-              <NovaSessaoWizard triggerLabel="Criar manualmente" />
-            </div>
-          </Card>
-        )}
-        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.38fr)_minmax(360px,0.98fr)_minmax(330px,0.86fr)]">
+        <section
+          className={cn(
+            "grid gap-4",
+            (onboardingSemConvocatoria || !proxima) &&
+              "xl:grid-cols-[minmax(0,1.75fr)_minmax(300px,0.65fr)]",
+          )}
+        >
           <MissionCard
             mission={mission}
             documentosPorRever={documentosGlobaisPorRever.length}
@@ -191,6 +181,29 @@ export function DashboardPage() {
             estrategiaPreparada={estrategiaPreparada}
             intervencoesPreparadas={intervencoesPreparadas}
           />
+
+          {(onboardingSemConvocatoria || !proxima) && (
+            <Card className="rounded-[14px] border-primary/20 bg-primary/5 p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                Começar por aqui
+              </p>
+              <h2 className="mt-2 text-xl font-semibold">Preparar a próxima sessão</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Carregue a convocatória para o Tribuno organizar os dados automaticamente ou crie a
+                sessão manualmente.
+              </p>
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                Pode rever e corrigir os dados. A sessão só será criada depois da sua confirmação.
+              </p>
+              <div className="mt-4 flex flex-col gap-2">
+                <InstitutionalDocumentIntake triggerLabel="Carregar convocatória" />
+                <NovaSessaoWizard triggerLabel="Criar manualmente" />
+              </div>
+            </Card>
+          )}
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-2">
           <TasksCard tasks={tasks} />
           <AlertsCard alerts={alerts} />
         </section>
@@ -622,7 +635,7 @@ function RecentDocumentsCard({ documentos }: { documentos: Documento[] }) {
               </div>
               {documento.estado === "Por rever" && (
                 <span className="rounded-full bg-[#fff4e8] px-2.5 py-1 text-[11px] font-medium text-[#e76800]">
-                  Pendente
+                  Rever documento
                 </span>
               )}
             </Link>
@@ -988,7 +1001,7 @@ function criarTarefas({
   pontosPorPreparar.slice(0, 2).forEach((ponto) => {
     tasks.push({
       id: ponto.id,
-      title: `Preparar intervenção - Ponto ${ponto.numero}`,
+      title: `Preparar ponto ${ponto.numero}`,
       subtitle: ponto.titulo,
       badge: "Pendente",
       tone: "blue",
@@ -1001,7 +1014,7 @@ function criarTarefas({
   if (rascunhosAbertos.length > 0) {
     tasks.push({
       id: "rascunhos",
-      title: "Verificar recomendações",
+      title: rascunhosAbertos.length === 1 ? "Continuar documento" : "Continuar documentos",
       subtitle: `${rascunhosAbertos.length} ${rascunhosAbertos.length === 1 ? "rascunho em aberto" : "rascunhos em aberto"}`,
       badge: "Informação",
       tone: "slate",
@@ -1055,9 +1068,9 @@ function criarAlertas({
   if (rascunhosAbertos.length > 0 && proxima) {
     alerts.push({
       id: "rascunhos",
-      title: "Incoerência detetada",
-      subtitle: `${rascunhosAbertos.length} rascunho precisa de revisão`,
-      tone: "red",
+      title: rascunhosAbertos.length === 1 ? "Documento por concluir" : "Documentos por concluir",
+      subtitle: `${rascunhosAbertos.length} ${rascunhosAbertos.length === 1 ? "rascunho pode ser continuado" : "rascunhos podem ser continuados"}`,
+      tone: "orange",
       icon: AlertCircle,
       to: "/sessoes/$id/preparacao/documentos-a-criar",
       params: { id: proxima.id },

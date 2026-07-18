@@ -190,6 +190,9 @@ export function NovaSessaoWizard({
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               Carregue o PDF para o Tribuno identificar os dados e a ordem de trabalhos.
             </p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              Pode corrigir os dados extraídos antes de confirmar a sessão.
+            </p>
             <div className="mt-3">
               <InstitutionalDocumentIntake triggerLabel="Carregar convocatória" />
             </div>
@@ -217,6 +220,9 @@ export function NovaSessaoWizard({
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Registe apenas os dados essenciais. Pode preparar o resto no workspace da sessão.
+              </p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                A sessão só será criada quando selecionar “Criar sessão”.
               </p>
             </div>
 

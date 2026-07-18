@@ -23,6 +23,8 @@ describe("criação e preparação de sessões", () => {
     assert.match(wizard, /nova-sessao-hora/);
     assert.match(wizard, /nova-sessao-local/);
     assert.match(wizard, /Título adicional \(opcional\)/);
+    assert.match(wizard, /Pode corrigir os dados extraídos antes de confirmar a sessão/);
+    assert.match(wizard, /A sessão só será criada quando selecionar “Criar sessão”/);
     assert.doesNotMatch(wizard, /const passos|<Progress|Passo [1-5]|Estratégia|Revisão/);
     assert.doesNotMatch(wizard, /adicionarPonto|adicionarDocumentoConfirmado/);
   });
@@ -49,6 +51,7 @@ describe("criação e preparação de sessões", () => {
     assert.match(intake, /setStep\("duplicate"\)/);
     assert.match(intake, /Atualizar sessão existente/);
     assert.match(intake, /Confirmar e preparar sessão/);
+    assert.match(intake, /A sessão só será criada ao selecionar/);
   });
 
   it("uma sessão vazia mostra a próxima ação no workspace", () => {

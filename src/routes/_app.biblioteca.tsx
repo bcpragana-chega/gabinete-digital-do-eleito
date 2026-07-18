@@ -191,7 +191,7 @@ function BibliotecaPage() {
             <AdicionarBibliotecaWizard />
             <div className="[&>button]:w-full sm:[&>button]:w-auto">
               <InstitutionalDocumentIntake
-                triggerLabel="Compreender PDF"
+                triggerLabel="Analisar e organizar PDF"
                 triggerVariant="secondary"
               />
             </div>
@@ -270,6 +270,8 @@ function BibliotecaPage() {
               <div className="mt-6 grid gap-3">
                 {documentosVisiveis.map(({ documento, estado, categoria, assunto, sessao }) => {
                   const CategoriaIcon = visuaisCategoria[categoria].icon;
+                  const acaoAbrir =
+                    estado === "por analisar" ? "Rever documento" : "Abrir documento";
 
                   return (
                     <article
@@ -289,12 +291,13 @@ function BibliotecaPage() {
                             <CategoriaIcon className="h-5 w-5" strokeWidth={1.75} />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-medium text-muted-foreground">
-                              {visuaisCategoria[categoria].label}
-                            </p>
-                            <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-6 text-foreground sm:text-[17px]">
+                            <h2 className="line-clamp-2 text-base font-semibold leading-6 text-foreground sm:text-[17px]">
                               {documento.titulo}
                             </h2>
+
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <StatusBadge tone={estadoTone(estado)}>{estado}</StatusBadge>
+                            </div>
 
                             <div className="mt-3 flex flex-wrap gap-2 text-xs">
                               {assunto && (
@@ -311,19 +314,17 @@ function BibliotecaPage() {
                               )}
                               {!assunto && !sessao && (
                                 <span className="py-1 text-muted-foreground">
-                                  Sem ligação institucional
+                                  Ainda não está ligado a um assunto ou sessão
                                 </span>
                               )}
                             </div>
 
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              <StatusBadge tone="muted" dot={false}>
-                                {documento.tipo}
-                              </StatusBadge>
-                              <StatusBadge tone={estadoTone(estado)}>{estado}</StatusBadge>
-                              <StatusBadge tone="muted" dot={false}>
-                                {formatarData(documento.data)}
-                              </StatusBadge>
+                            <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                              <span>{visuaisCategoria[categoria].label}</span>
+                              <span aria-hidden="true">·</span>
+                              <span>{documento.tipo}</span>
+                              <span aria-hidden="true">·</span>
+                              <span>{formatarData(documento.data)}</span>
                             </div>
                           </div>
                         </div>
@@ -336,7 +337,7 @@ function BibliotecaPage() {
                               </div>
                             )}
                           <span className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground">
-                            Abrir documento
+                            {acaoAbrir}
                             <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                           </span>
                         </div>
