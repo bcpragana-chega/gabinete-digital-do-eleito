@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EntityCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
-import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
+import { WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import { formatarData } from "@/lib/mock-data";
 
@@ -34,17 +34,7 @@ function AgendaPage() {
       <TopBar breadcrumb="Agenda" />
       <main className="min-h-screen bg-transparent">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-          <WorkspaceLayout
-            header={
-              <WorkspaceHeader
-                icon={CalendarDays}
-                eyebrow="Agenda"
-                title="Agenda"
-                description="Próximas datas que precisam da sua atenção."
-                className="bg-card p-4 sm:p-7"
-              />
-            }
-          >
+          <WorkspaceLayout>
             <WorkspaceSection>
               <SectionTitle
                 icon={CalendarDays}

@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, Home, Landmark, NotebookText, Settings } from "lucide-react";
+import { BookOpen, CalendarDays, Home, Landmark, NotebookText } from "lucide-react";
 
 export const sidebarItems = [
   { to: "/" as const, label: "Hoje", icon: Home, exact: true },
@@ -14,11 +14,7 @@ export const sidebarItems = [
   { to: "/agenda" as const, label: "Agenda", icon: CalendarDays, exact: false },
 ];
 
-export const sidebarFooterItems = [
-  { to: "/definicoes" as const, label: "Definições", icon: Settings, exact: false },
-];
-
-export type SidebarItem = (typeof sidebarItems | typeof sidebarFooterItems)[number];
+export type SidebarItem = (typeof sidebarItems)[number];
 
 function normalizarPath(path: string) {
   if (path === "/") return path;

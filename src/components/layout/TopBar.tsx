@@ -4,11 +4,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { UserAvatar } from "@/components/auth/UserAvatar";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
-import {
-  isSidebarItemActive,
-  sidebarFooterItems,
-  sidebarItems,
-} from "@/components/layout/sidebar-config";
+import { isSidebarItemActive, sidebarItems } from "@/components/layout/sidebar-config";
 import { UniversalSearch } from "@/components/search/UniversalSearch";
 import { primeiroNome, saudacaoPorHora, useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
@@ -26,6 +22,7 @@ type TopBarProps = {
   title?: string;
   description?: string;
   breadcrumb?: ReactNode;
+  actions?: ReactNode;
 };
 
 const descricoesPorTitulo: Record<string, string> = {
@@ -68,7 +65,7 @@ function tituloPorPathname(pathname: string) {
   return undefined;
 }
 
-export function TopBar({ title, description, breadcrumb }: TopBarProps) {
+export function TopBar({ title, description, breadcrumb, actions }: TopBarProps) {
   const [menuAberto, setMenuAberto] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, perfil, displayName, initialized } = useAuth();
@@ -81,8 +78,8 @@ export function TopBar({ title, description, breadcrumb }: TopBarProps) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/45 bg-background/90 backdrop-blur-xl">
-      <div className="flex h-16 items-center justify-between gap-3 px-4 md:h-20 md:px-6">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-h-16 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:min-h-20 md:flex-nowrap md:gap-4 md:px-6 md:py-0">
+        <div className="order-1 flex min-w-0 flex-1 items-center gap-3">
           <Sheet open={menuAberto} onOpenChange={setMenuAberto}>
             <SheetTrigger asChild>
               <button
@@ -146,42 +143,6 @@ export function TopBar({ title, description, breadcrumb }: TopBarProps) {
                     );
                   })}
                 </nav>
-
-                <div className="border-t border-border/60 px-3 py-3">
-                  {sidebarFooterItems.map((item) => {
-                    const Icon = item.icon;
-                    const active = isSidebarItemActive(pathname, item);
-
-                    return (
-                      <Link
-                        key={item.to}
-                        to={item.to}
-                        onClick={() => setMenuAberto(false)}
-                        className={cn(
-                          "flex min-h-11 items-center gap-3 rounded-2xl px-3.5 py-3 text-[15px] transition-all",
-                          active
-                            ? "bg-muted text-foreground font-medium"
-                            : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
-                        )}
-                      >
-                        <Icon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
-                        <span>{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                  <LogoutConfirmDialog
-                    onFinished={() => setMenuAberto(false)}
-                    trigger={
-                      <button
-                        type="button"
-                        className="flex min-h-11 w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-[15px] text-muted-foreground transition-all hover:bg-muted/70 hover:text-foreground"
-                      >
-                        <LogOut className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
-                        <span>Terminar sessão</span>
-                      </button>
-                    }
-                  />
-                </div>
               </div>
             </SheetContent>
           </Sheet>
@@ -223,7 +184,11 @@ export function TopBar({ title, description, breadcrumb }: TopBarProps) {
           )}
         </div>
 
-        <div className="flex min-w-0 shrink-0 items-center gap-1.5 md:gap-2">
+        {actions && (
+          <div className="order-3 w-full md:order-2 md:w-auto md:shrink-0">{actions}</div>
+        )}
+
+        <div className="order-2 ml-auto flex min-w-0 shrink-0 items-center gap-1.5 md:order-3 md:ml-0 md:gap-2">
           <UniversalSearch />
 
           <DropdownMenu>

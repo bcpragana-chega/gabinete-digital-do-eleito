@@ -80,21 +80,9 @@ function AssembleiasPage() {
 
   return (
     <>
-      <TopBar breadcrumb="Sessões" />
+      <TopBar breadcrumb="Sessões" actions={<NovaAssembleiaDialog />} />
       <main className={ds.surface.page}>
         <div className={ds.layout.page}>
-          <div className="mb-8 flex flex-col gap-5 sm:mb-10 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-2xl">
-              <h1 className={ds.typography.display}>Sessões</h1>
-              <p className={`mt-2 ${ds.typography.body}`}>
-                Reuniões concretas para preparar documentos, pontos e estratégia.
-              </p>
-            </div>
-            <div className="w-full sm:w-auto">
-              <NovaAssembleiaDialog />
-            </div>
-          </div>
-
           <section>
             <div className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
               <div className="flex w-max min-w-full items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-wrap">

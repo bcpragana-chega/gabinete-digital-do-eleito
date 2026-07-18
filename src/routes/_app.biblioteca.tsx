@@ -1,14 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  Archive,
-  BookOpen,
-  CheckCircle2,
-  FileText,
-  Inbox,
-  Landmark,
-  NotebookText,
-} from "lucide-react";
+import { Archive, CheckCircle2, FileText, Inbox, Landmark, NotebookText } from "lucide-react";
 import { AdicionarBibliotecaWizard } from "@/components/biblioteca/AdicionarBibliotecaWizard";
 import { InstitutionalDocumentIntake } from "@/components/documentos/InstitutionalDocumentIntake";
 import { TopBar } from "@/components/layout/TopBar";
@@ -16,12 +8,7 @@ import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/ui/cards";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
-import {
-  WorkspaceHeader,
-  WorkspaceLayout,
-  WorkspaceMetrics,
-  WorkspaceSection,
-} from "@/components/ui/workspace";
+import { WorkspaceLayout, WorkspaceMetrics, WorkspaceSection } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import { listarDossiesAssociadosAoDocumento } from "@/lib/dossie-documentos-store";
 import { useDossies } from "@/lib/dossies-store";
@@ -146,26 +133,18 @@ function BibliotecaPage() {
 
   return (
     <>
-      <TopBar breadcrumb="Biblioteca" />
+      <TopBar
+        breadcrumb="Biblioteca"
+        actions={
+          <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+            <InstitutionalDocumentIntake />
+            <AdicionarBibliotecaWizard />
+          </div>
+        }
+      />
       <main className="min-h-screen bg-transparent">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-          <WorkspaceLayout
-            header={
-              <WorkspaceHeader
-                icon={BookOpen}
-                eyebrow="Biblioteca"
-                title="Biblioteca"
-                description="Documentos, leis, atas e referências do mandato."
-                className="bg-card p-4 sm:p-7"
-                actions={
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                    <InstitutionalDocumentIntake />
-                    <AdicionarBibliotecaWizard />
-                  </div>
-                }
-              />
-            }
-          >
+          <WorkspaceLayout>
             <WorkspaceMetrics>
               <MetricCard icon={FileText} label="Documentos" value={documentos.length} />
               <MetricCard icon={Inbox} label="Por analisar" value={porTratar} />
