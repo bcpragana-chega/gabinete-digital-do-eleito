@@ -207,6 +207,12 @@ function obterPerfilDoUser(state: AuthState, user = state.user) {
   return normalizarPerfilEleito(lerPerfilDoStorage(user.id) ?? state.perfisPorUserId?.[user.id]);
 }
 
+export function nomeLocalDisponivel(user?: AuthUser, perfil?: PerfilEleito) {
+  const nomeInstitucional = textoSeguro(perfil?.nomeInstitucional);
+  const nomeDaConta = textoSeguro(user?.nome);
+  return nomeInstitucional || nomeDaConta || undefined;
+}
+
 function guardarAuthState(state: AuthState, options?: { emitirEvento?: boolean }) {
   if (!isBrowser()) return;
 
@@ -310,6 +316,22 @@ export function resolverEstadoComSessaoValidada(
     ...state,
     user,
     perfil: obterPerfilDoUser(state, user),
+  };
+}
+
+export function resolverEstadoComPerfilRemoto(
+  state: AuthState,
+  perfilRemoto?: PerfilEleito,
+): AuthState {
+  const userId = state.user?.id;
+  return {
+    ...state,
+    perfil: perfilRemoto,
+    perfilRemotoConfirmado: Boolean(perfilRemoto),
+    perfisPorUserId: {
+      ...state.perfisPorUserId,
+      ...(userId && perfilRemoto ? { [userId]: perfilRemoto } : {}),
+    },
   };
 }
 
@@ -606,7 +628,7 @@ export function saudacaoPorHora(data = new Date()) {
 }
 
 export function useAuth() {
-  const [state, setState] = useState<AuthState>({});
+  const [state, setState] = useState<AuthState>(() => lerAuthState());
   const [initialized, setInitialized] = useState(false);
   const [onboardingVersion, setOnboardingVersion] = useState<number | undefined>();
   const [onboardingResolved, setOnboardingResolved] = useState(false);
@@ -615,6 +637,7 @@ export function useAuth() {
     supabaseConfigurado: isSupabaseConfigured(),
     perfilRemotoConfirmado: state.perfilRemotoConfirmado,
   });
+  const localDisplayName = nomeLocalDisponivel(state.user, obterPerfilDoUser(state));
   const hasCompleteProfile = perfilCompleto(perfil);
 
   const onboardingRequired = hasCompleteProfile && (onboardingVersion ?? 0) < ONBOARDING_VERSION;
@@ -648,15 +671,7 @@ export function useAuth() {
         perfilCompleto: perfilCompleto(perfilRemoto),
       });
 
-      const nextState = {
-        ...stateAtual,
-        perfil: perfilRemoto,
-        perfilRemotoConfirmado: Boolean(perfilRemoto),
-        perfisPorUserId: {
-          ...stateAtual.perfisPorUserId,
-          ...(perfilRemoto ? { [userId]: perfilRemoto } : {}),
-        },
-      };
+      const nextState = resolverEstadoComPerfilRemoto(stateAtual, perfilRemoto);
 
       // A hidratação já atualiza este hook diretamente; emitir tribuno:auth aqui
       // reiniciaria a mesma hidratação recursivamente.
@@ -794,6 +809,7 @@ export function useAuth() {
     isAuthenticated: Boolean(state.user),
     hasCompleteProfile,
     displayName: nomeVisivel(state.user, perfil),
+    localDisplayName,
     onboardingVersion,
     onboardingRequired,
     onboardingResolved,

@@ -68,8 +68,13 @@ function tituloPorPathname(pathname: string) {
 export function TopBar({ title, description, breadcrumb, actions }: TopBarProps) {
   const [menuAberto, setMenuAberto] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user, perfil, displayName, initialized } = useAuth();
-  const greetingName = nomeTopBar(displayName, user?.nome, perfil?.nomeInstitucional);
+  const { user, perfil, displayName, localDisplayName, initialized } = useAuth();
+  const greetingName = nomeTopBar(
+    initialized ? displayName : localDisplayName,
+    initialized ? user?.nome : undefined,
+    initialized ? perfil?.nomeInstitucional : undefined,
+  );
+  const mostrarSaudacao = initialized || Boolean(localDisplayName);
   const dashboard = pathname === "/";
   const tituloContextual =
     title ?? (typeof breadcrumb === "string" ? breadcrumb : tituloPorPathname(pathname));
@@ -150,7 +155,7 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
           {dashboard ? (
             <div className="min-w-0 leading-tight">
               <div className="truncate font-display text-xl font-bold leading-6 text-foreground sm:text-2xl lg:text-[1.65rem] lg:leading-8">
-                {initialized ? (
+                {mostrarSaudacao ? (
                   <>
                     {saudacaoPorHora()}, {greetingName}{" "}
                     <span className="inline-block align-baseline text-[0.9em]">👋</span>
