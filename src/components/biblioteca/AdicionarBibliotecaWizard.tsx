@@ -13,6 +13,7 @@ import { associarDocumentoAoDossie } from "@/lib/dossie-documentos-store";
 import { useDossies } from "@/lib/dossies-store";
 import { adicionarDocumentoComUpload } from "@/lib/documentos-store";
 import { DocumentoStorageErro } from "@/lib/documentos-storage";
+import { preencherTituloPeloFicheiro } from "@/lib/biblioteca-ux";
 import {
   arquivarInboxDocumento,
   associarInboxDocumentoAAssembleia,
@@ -276,6 +277,7 @@ export function AdicionarBibliotecaWizard() {
                       setFicheiro(file);
                       setFicheiroNome(file?.name);
                       setFicheiroTipo(file?.type);
+                      setTitulo((atual) => preencherTituloPeloFicheiro(atual, file?.name));
                     }}
                   />
                   <p className="text-xs text-muted-foreground">

@@ -1,15 +1,36 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Archive, CheckCircle2, FileText, Inbox, Landmark, NotebookText } from "lucide-react";
+import {
+  BarChart3,
+  ChevronRight,
+  ClipboardList,
+  FileText,
+  Handshake,
+  Landmark,
+  Newspaper,
+  NotebookText,
+  Scale,
+  Search,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { AdicionarBibliotecaWizard } from "@/components/biblioteca/AdicionarBibliotecaWizard";
 import { InstitutionalDocumentIntake } from "@/components/documentos/InstitutionalDocumentIntake";
 import { TopBar } from "@/components/layout/TopBar";
-import { Button } from "@/components/ui/button";
-import { MetricCard } from "@/components/ui/cards";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
-import { WorkspaceLayout, WorkspaceMetrics, WorkspaceSection } from "@/components/ui/workspace";
+import { Input } from "@/components/ui/input";
+import { WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
+import {
+  categoriaDocumentoBiblioteca,
+  filtrarItensBiblioteca,
+  ordenarItensBiblioteca,
+  separadorDaCategoria,
+  type CategoriaBiblioteca,
+  type EstadoBiblioteca,
+  type SeparadorBiblioteca,
+} from "@/lib/biblioteca-ux";
 import { listarDossiesAssociadosAoDocumento } from "@/lib/dossie-documentos-store";
 import { useDossies } from "@/lib/dossies-store";
 import { useDocumentos } from "@/lib/documentos-store";
@@ -40,13 +61,25 @@ const separadores = [
   { id: "outros", label: "Outros" },
 ] as const;
 
-type SeparadorId = (typeof separadores)[number]["id"];
-type EstadoBiblioteca = "por analisar" | "analisado" | "arquivado";
+type SeparadorId = (typeof separadores)[number]["id"] & SeparadorBiblioteca;
+
+const visuaisCategoria: Record<
+  CategoriaBiblioteca,
+  { icon: LucideIcon; label: CategoriaBiblioteca }
+> = {
+  "Lei ou regulamento": { icon: Scale, label: "Lei ou regulamento" },
+  "Programa eleitoral": { icon: Landmark, label: "Programa eleitoral" },
+  Ata: { icon: ClipboardList, label: "Ata" },
+  Relatório: { icon: BarChart3, label: "Relatório" },
+  Contrato: { icon: Handshake, label: "Contrato" },
+  Notícia: { icon: Newspaper, label: "Notícia" },
+  Outro: { icon: FileText, label: "Outro" },
+};
 
 function documentosUnicos(documentos: Documento[]) {
   const porId = new Map<string, Documento>();
   documentos.forEach((documento) => porId.set(documento.id, documento));
-  return Array.from(porId.values()).sort((a, b) => b.data.localeCompare(a.data));
+  return Array.from(porId.values());
 }
 
 function formatarData(data?: string) {
@@ -73,43 +106,29 @@ function estadoTone(estado: EstadoBiblioteca) {
   return "warning";
 }
 
-function categoriaDocumento(documento: Documento): SeparadorId {
-  const categoria = documento.notas?.match(/\[Biblioteca: ([^\]]+)\]/)?.[1];
-
-  if (categoria === "Lei ou regulamento") return "leis";
-  if (categoria === "Programa eleitoral") return "programas";
-  if (categoria === "Ata") return "atas";
-  if (categoria === "Relatório") return "relatorios";
-  if (categoria === "Contrato" || categoria === "Notícia" || categoria === "Outro") return "outros";
-
-  if (documento.tipo === "Ata") return "atas";
-  if (documento.tipo === "Relatório") return "relatorios";
-  if (documento.tipo === "Regulamento") return "leis";
-  if (documento.tipo === "Outro") return "outros";
-  return "outros";
-}
-
 function BibliotecaPage() {
   const [separadorAtivo, setSeparadorAtivo] = useState<SeparadorId>("todos");
-  const inboxItems = useInboxDocumentos();
+  const [pesquisa, setPesquisa] = useState("");
+  useInboxDocumentos();
   const assembleias = useAssembleias();
   const dossies = useDossies();
 
   const documentos = documentosUnicos(useDocumentos());
+  const itensBiblioteca = ordenarItensBiblioteca(
+    documentos.map((documento) => ({
+      documento,
+      estado: estadoDocumento(documento),
+      categoria: categoriaDocumentoBiblioteca(documento),
+      assunto: nomeAssunto(documento),
+      sessao: nomeSessao(documento),
+    })),
+  );
 
-  const documentosComEstado = documentos.map((documento) => ({
-    documento,
-    estado: estadoDocumento(documento),
-  }));
+  const porTratar = itensBiblioteca.filter((item) => item.estado === "por analisar").length;
 
-  const porTratar = documentosComEstado.filter((item) => item.estado === "por analisar").length;
-  const analisados = documentosComEstado.filter((item) => item.estado === "analisado").length;
-  const arquivados = documentosComEstado.filter((item) => item.estado === "arquivado").length;
-
-  const documentosVisiveis = documentosComEstado.filter(({ documento, estado }) => {
-    if (separadorAtivo === "todos") return true;
-    if (separadorAtivo === "por-tratar") return estado === "por analisar";
-    return categoriaDocumento(documento) === separadorAtivo;
+  const documentosVisiveis = filtrarItensBiblioteca(itensBiblioteca, {
+    pesquisa,
+    separador: separadorAtivo,
   });
 
   function nomeSessao(documento: Documento) {
@@ -128,8 +147,40 @@ function BibliotecaPage() {
   function contagemSeparador(separador: SeparadorId) {
     if (separador === "todos") return documentos.length;
     if (separador === "por-tratar") return porTratar;
-    return documentos.filter((documento) => categoriaDocumento(documento) === separador).length;
+    return itensBiblioteca.filter((item) => separadorDaCategoria(item.categoria) === separador)
+      .length;
   }
+
+  function mensagemEstadoVazio() {
+    if (documentos.length === 0) {
+      return {
+        title: "A Biblioteca ainda está vazia",
+        description: "Adicione o primeiro documento para começar o arquivo do mandato.",
+      };
+    }
+
+    if (pesquisa.trim()) {
+      return {
+        title: "Nenhum documento encontrado",
+        description: "Experimente outro termo ou selecione um filtro diferente.",
+      };
+    }
+
+    if (separadorAtivo === "por-tratar") {
+      return {
+        title: "Não há documentos por analisar",
+        description: "Os documentos pendentes de análise aparecerão aqui.",
+      };
+    }
+
+    return {
+      title: "Sem documentos nesta categoria",
+      description: "Escolha outro filtro para consultar o arquivo.",
+    };
+  }
+
+  const estadoVazio = mensagemEstadoVazio();
+  const pesquisaAtiva = pesquisa.trim().length > 0;
 
   return (
     <>
@@ -137,29 +188,63 @@ function BibliotecaPage() {
         breadcrumb="Biblioteca"
         actions={
           <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
-            <InstitutionalDocumentIntake />
             <AdicionarBibliotecaWizard />
+            <div className="[&>button]:w-full sm:[&>button]:w-auto">
+              <InstitutionalDocumentIntake
+                triggerLabel="Compreender PDF"
+                triggerVariant="secondary"
+              />
+            </div>
           </div>
         }
       />
       <main className="min-h-screen bg-transparent">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
           <WorkspaceLayout>
-            <WorkspaceMetrics>
-              <MetricCard icon={FileText} label="Documentos" value={documentos.length} />
-              <MetricCard icon={Inbox} label="Por analisar" value={porTratar} />
-              <MetricCard icon={CheckCircle2} label="Analisados" value={analisados} />
-              <MetricCard icon={Archive} label="Arquivados" value={arquivados} />
-            </WorkspaceMetrics>
-
             <WorkspaceSection>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative w-full sm:max-w-xl">
+                  <label htmlFor="pesquisa-biblioteca" className="sr-only">
+                    Pesquisar na Biblioteca
+                  </label>
+                  <Search
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <Input
+                    id="pesquisa-biblioteca"
+                    type="search"
+                    value={pesquisa}
+                    onChange={(event) => setPesquisa(event.target.value)}
+                    placeholder="Pesquisar por título, tipo, Assunto ou Sessão"
+                    className="bg-background pl-9 pr-10"
+                  />
+                  {pesquisaAtiva && (
+                    <button
+                      type="button"
+                      onClick={() => setPesquisa("")}
+                      aria-label="Limpar pesquisa"
+                      className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="shrink-0 text-sm text-muted-foreground" aria-live="polite">
+                  {pesquisaAtiva
+                    ? `${documentosVisiveis.length} de ${documentos.length}`
+                    : `${documentos.length} ${documentos.length === 1 ? "documento" : "documentos"}`}
+                </p>
+              </div>
+
               <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-                <div className="flex w-max min-w-full items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-wrap">
+                <div className="mt-4 flex w-max min-w-full items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-wrap">
                   {separadores.map((separador) => (
                     <button
                       key={separador.id}
                       type="button"
                       onClick={() => setSeparadorAtivo(separador.id)}
+                      aria-pressed={separadorAtivo === separador.id}
                       className={cn(
                         "inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors",
                         separadorAtivo === separador.id
@@ -179,31 +264,60 @@ function BibliotecaPage() {
               {documentosVisiveis.length === 0 ? (
                 <EmptyState
                   className="mt-6"
-                  title="Ainda não existem documentos nesta vista"
-                  description="A Biblioteca centraliza documentos para análise e referência política. Adicione um documento para começar."
-                  action={<AdicionarBibliotecaWizard />}
+                  title={estadoVazio.title}
+                  description={estadoVazio.description}
                 />
               ) : (
                 <div className="mt-6 grid gap-3">
-                  {documentosVisiveis.map(({ documento, estado }) => {
-                    const assunto = nomeAssunto(documento);
-                    const sessao = nomeSessao(documento);
+                  {documentosVisiveis.map(({ documento, estado, categoria, assunto, sessao }) => {
+                    const CategoriaIcon = visuaisCategoria[categoria].icon;
 
                     return (
                       <article
                         key={documento.id}
-                        className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-card transition-colors hover:border-foreground/15"
+                        className="group relative min-w-0 rounded-2xl border border-border bg-card p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
                       >
-                        <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                          <div className="flex min-w-0 items-start gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-muted/60 text-muted-foreground">
-                              <FileText className="h-4 w-4" strokeWidth={1.75} />
+                        <Link
+                          to="/biblioteca/documentos/$docId"
+                          params={{ docId: documento.id }}
+                          aria-label={`Abrir documento: ${documento.titulo}`}
+                          className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2"
+                        />
+
+                        <div className="pointer-events-none relative flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground">
+                              <CategoriaIcon className="h-5 w-5" strokeWidth={1.75} />
                             </div>
                             <div className="min-w-0">
-                              <h2 className="line-clamp-2 text-sm font-semibold leading-6 text-foreground">
+                              <p className="text-xs font-medium text-muted-foreground">
+                                {visuaisCategoria[categoria].label}
+                              </p>
+                              <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-6 text-foreground sm:text-[17px]">
                                 {documento.titulo}
                               </h2>
-                              <div className="mt-2 flex flex-wrap gap-2">
+
+                              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                {assunto && (
+                                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted/60 px-2.5 py-1.5 font-medium text-foreground/80">
+                                    <NotebookText className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="line-clamp-1">{assunto}</span>
+                                  </span>
+                                )}
+                                {sessao && (
+                                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted/60 px-2.5 py-1.5 font-medium text-foreground/80">
+                                    <Landmark className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="line-clamp-1">{sessao}</span>
+                                  </span>
+                                )}
+                                {!assunto && !sessao && (
+                                  <span className="py-1 text-muted-foreground">
+                                    Sem ligação institucional
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="mt-3 flex flex-wrap gap-2">
                                 <StatusBadge tone="muted" dot={false}>
                                   {documento.tipo}
                                 </StatusBadge>
@@ -212,37 +326,20 @@ function BibliotecaPage() {
                                   {formatarData(documento.data)}
                                 </StatusBadge>
                               </div>
-                              <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                                {assunto && (
-                                  <span className="inline-flex items-center gap-1">
-                                    <NotebookText className="h-3.5 w-3.5" />
-                                    {assunto}
-                                  </span>
-                                )}
-                                {sessao && (
-                                  <span className="inline-flex items-center gap-1">
-                                    <Landmark className="h-3.5 w-3.5" />
-                                    {sessao}
-                                  </span>
-                                )}
-                                {!assunto && !sessao && <span>Sem ligação</span>}
-                              </div>
                             </div>
                           </div>
 
-                          <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                          <div className="relative z-10 flex w-full items-center justify-between gap-2 lg:w-auto lg:justify-end">
                             {documento.ficheiroTipo === "application/pdf" &&
                               documento.estadoAnalise !== "confirmado" && (
-                                <InstitutionalDocumentIntake documentoInicial={documento} />
+                                <div className="pointer-events-auto">
+                                  <InstitutionalDocumentIntake documentoInicial={documento} />
+                                </div>
                               )}
-                            <Button asChild variant="secondary" size="sm">
-                              <Link
-                                to="/biblioteca/documentos/$docId"
-                                params={{ docId: documento.id }}
-                              >
-                                Abrir
-                              </Link>
-                            </Button>
+                            <span className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground">
+                              Abrir documento
+                              <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                            </span>
                           </div>
                         </div>
                       </article>

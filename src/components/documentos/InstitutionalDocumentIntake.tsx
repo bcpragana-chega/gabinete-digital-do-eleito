@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, FileSearch, Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonProps } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -41,9 +41,11 @@ type Step = "file" | "analysing" | "review" | "duplicate";
 export function InstitutionalDocumentIntake({
   documentoInicial,
   triggerLabel,
+  triggerVariant,
 }: {
   documentoInicial?: Documento;
   triggerLabel?: string;
+  triggerVariant?: ButtonProps["variant"];
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -195,7 +197,7 @@ export function InstitutionalDocumentIntake({
     <Dialog open={open} onOpenChange={changeOpen}>
       <DialogTrigger asChild>
         <Button
-          variant={documentoInicial ? "secondary" : "primary"}
+          variant={triggerVariant ?? (documentoInicial ? "secondary" : "primary")}
           size={documentoInicial ? "sm" : "default"}
         >
           <FileSearch className="h-4 w-4" />
