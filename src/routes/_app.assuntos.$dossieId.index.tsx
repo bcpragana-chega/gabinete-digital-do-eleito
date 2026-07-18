@@ -272,6 +272,11 @@ function DossieDetalhePage() {
                 {erroArquivo}
               </p>
             )}
+
+            <div id="documentos-assunto" className="scroll-mt-24">
+              <DossieDocumentosCriadosSection dossieId={dossie.id} />
+            </div>
+
             <WorkspaceSection id="contexto-assunto" className="scroll-mt-24">
               <SectionTitle
                 icon={Activity}
@@ -310,8 +315,8 @@ function DossieDetalhePage() {
             <WorkspaceSection>
               <SectionTitle
                 icon={Clock3}
-                title="Próxima ação"
-                description="O próximo seguimento deste tema."
+                title="Seguimento do assunto"
+                description="Outras formas de manter este tema atualizado."
               />
               <div className="mt-5">
                 <ActionCard
@@ -330,19 +335,15 @@ function DossieDetalhePage() {
               </div>
             </WorkspaceSection>
 
-            <div id="atividade-assunto" className="scroll-mt-24">
-              <DossieTimelineSection dossieId={dossie.id} />
-            </div>
-
-            <div id="documentos-assunto" className="scroll-mt-24">
-              <DossieDocumentosCriadosSection dossieId={dossie.id} />
-            </div>
-
             <div id="relacoes-assunto" className="scroll-mt-24">
               <DossieRelacionadosSection dossieId={dossie.id} />
             </div>
 
             <DossieNotasSection dossieId={dossie.id} />
+
+            <div id="atividade-assunto" className="scroll-mt-24">
+              <DossieTimelineSection dossieId={dossie.id} />
+            </div>
 
             <WorkspaceSection>
               <SectionTitle

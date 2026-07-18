@@ -42,10 +42,10 @@ export function calcularEstadoUxAssunto(input: {
 
   if (!temObjetivo) recomendacoes.push("Definir o resultado político pretendido.");
   if (!temContexto) recomendacoes.push("Registar factos, notas ou documentos relevantes.");
-  if (!temSessao) recomendacoes.push("Associar o assunto a uma sessão adequada.");
   if (temContexto && input.documentosCriados.length === 0) {
     recomendacoes.push("Preparar um documento para transformar o contexto em ação.");
   }
+  if (!temSessao) recomendacoes.push("Associar o assunto a uma sessão quando for oportuno.");
 
   const estadoResumido = [
     temObjetivo ? "objetivo definido" : "objetivo por definir",
@@ -82,25 +82,14 @@ export function calcularEstadoUxAssunto(input: {
     };
   }
 
-  if (!temSessao) {
-    return {
-      titulo: "Associar a uma sessão",
-      descricao: "O assunto já tem objetivo e contexto, mas ainda não está ligado a uma sessão.",
-      acaoPrincipal: { tipo: "navegar", label: "Escolher sessão", href: "#relacoes-assunto" },
-      acoesSecundarias: [
-        { tipo: "navegar", label: "Preparar documento", href: "#documentos-assunto" },
-      ],
-      estadoResumido,
-      recomendacoes: recomendacoes.slice(0, 3),
-    };
-  }
-
   if (input.documentosCriados.length === 0) {
     return {
       titulo: "Preparar um documento",
       descricao: "O assunto já tem base suficiente para criar uma proposta, pedido ou intervenção.",
       acaoPrincipal: { tipo: "navegar", label: "Criar documento", href: "#documentos-assunto" },
-      acoesSecundarias: [],
+      acoesSecundarias: temSessao
+        ? []
+        : [{ tipo: "navegar", label: "Associar sessão mais tarde", href: "#relacoes-assunto" }],
       estadoResumido,
       recomendacoes: recomendacoes.slice(0, 3),
     };
@@ -115,6 +104,22 @@ export function calcularEstadoUxAssunto(input: {
         label: "Abrir e rever",
         href: hrefDocumentoCriado(emRevisao.id),
       },
+      acoesSecundarias: [
+        { tipo: "navegar", label: "Ver documentos", href: "#documentos-assunto" },
+        ...(!temSessao
+          ? [{ tipo: "navegar" as const, label: "Associar sessão", href: "#relacoes-assunto" }]
+          : []),
+      ],
+      estadoResumido,
+      recomendacoes: recomendacoes.slice(0, 3),
+    };
+  }
+
+  if (!temSessao) {
+    return {
+      titulo: "Associar o documento quando for oportuno",
+      descricao: "O documento está preparado e pode ser associado a uma sessão mais tarde.",
+      acaoPrincipal: { tipo: "navegar", label: "Escolher sessão", href: "#relacoes-assunto" },
       acoesSecundarias: [{ tipo: "navegar", label: "Ver documentos", href: "#documentos-assunto" }],
       estadoResumido,
       recomendacoes: recomendacoes.slice(0, 3),

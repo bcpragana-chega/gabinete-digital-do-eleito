@@ -84,4 +84,50 @@ describe("composição das rotas de Assunto", () => {
       /if \(assembleiaId\) await associarAssembleiaAoDossie\(assunto\.id, assembleiaId\)/,
     );
   });
+
+  it("Novo Assunto é um formulário único com apenas tema, contexto e objetivo", () => {
+    assert.match(novoAssunto, /<form[\s\S]*onSubmit=/);
+    assert.match(novoAssunto, />Qual é o tema\?<\/Label>/);
+    assert.match(novoAssunto, />O que está em causa\?<\/Label>/);
+    assert.match(novoAssunto, />O que pretende alcançar\?<\/Label>/);
+    assert.match(novoAssunto, /id="novo-assunto-tema"[\s\S]*required/);
+    assert.equal((novoAssunto.match(/\brequired\b/g) ?? []).length, 1);
+    assert.doesNotMatch(novoAssunto, /Progress|Passo [123]|Seguinte|Voltar|<Select|Nota inicial/);
+  });
+
+  it("Novo Assunto preserva defaults, conteúdo, tentativa estável, erros e navegação", () => {
+    assert.match(novoAssunto, /const dadosValidos = titulo\.trim\(\)\.length > 0/);
+    assert.match(novoAssunto, /if \(!dadosValidos \|\| guardarEmCurso\.current\) return/);
+    assert.match(novoAssunto, /tentativaId\.current \?\?= `dossie-\$\{crypto\.randomUUID\(\)\}`/);
+    assert.match(novoAssunto, /prioridade: "Média"/);
+    assert.match(novoAssunto, /tags: \["outro"\]/);
+    assert.match(novoAssunto, /resumo: resumo\.trim\(\)/);
+    assert.match(novoAssunto, /objetivoPolitico: objetivoPolitico\.trim\(\)/);
+    assert.match(novoAssunto, /Os dados introduzidos foram mantidos/);
+    assert.match(
+      novoAssunto,
+      /navigate\(\{ to: "\/assuntos\/\$dossieId", params: \{ dossieId: assunto\.id \} \}\)/,
+    );
+  });
+
+  it("um Assunto sem documentos mostra primeiro a ação documental sem exigir sessão", () => {
+    assert.match(documentosAssunto, /documentos\.length === 0 \? "Próxima ação"/);
+    assert.match(documentosAssunto, />\s*O que pretende fazer\?\s*<\/legend>/);
+    assert.match(
+      documentosAssunto,
+      /O documento pode ser preparado agora e associado a uma sessão mais tarde/,
+    );
+    assert.match(
+      documentosAssunto,
+      /sessoesRelacionadas\.length === 1 \? sessoesRelacionadas\[0\]\.assembleiaId : undefined/,
+    );
+    assert.match(documentosAssunto, /"Moção"[\s\S]*"Recomendação"[\s\S]*"Requerimento"/);
+    assert.match(documentosAssunto, /"Intervenção"[\s\S]*"Outro documento"/);
+
+    const proximaAcao = index.indexOf('id="documentos-assunto"');
+    const contexto = index.indexOf('id="contexto-assunto"');
+    const relacoes = index.indexOf('id="relacoes-assunto"');
+    assert.ok(proximaAcao >= 0 && proximaAcao < contexto);
+    assert.ok(contexto < relacoes);
+  });
 });

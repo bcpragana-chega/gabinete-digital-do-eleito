@@ -30,11 +30,11 @@ describe("próxima ação do assunto", () => {
     );
   });
 
-  it("recomenda sessão antes do documento", () => {
-    assert.equal(
-      calcularEstadoUxAssunto({ ...base, sessoesIds: [] }).titulo,
-      "Associar a uma sessão",
-    );
+  it("recomenda documento sem depender de sessão", () => {
+    const estado = calcularEstadoUxAssunto({ ...base, sessoesIds: [] });
+    assert.equal(estado.titulo, "Preparar um documento");
+    assert.equal(estado.acaoPrincipal.label, "Criar documento");
+    assert.equal(estado.acoesSecundarias[0]?.label, "Associar sessão mais tarde");
   });
 
   it("recomenda documento quando contexto e sessão existem", () => {

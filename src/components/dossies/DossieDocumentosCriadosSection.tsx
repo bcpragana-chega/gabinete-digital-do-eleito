@@ -268,17 +268,25 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
   }
 
   return (
-    <WorkspaceSection>
+    <WorkspaceSection
+      className={
+        documentos.length === 0 ? "border-primary/35 bg-primary/[0.03] shadow-md" : undefined
+      }
+    >
       <SectionTitle
         icon={FilePlus2}
-        title="Documentos do assunto"
-        description="Moções, recomendações, requerimentos e outros documentos que nascem deste tema."
+        title={documentos.length === 0 ? "Próxima ação" : "Documentos do assunto"}
+        description={
+          documentos.length === 0
+            ? "Prepare o primeiro documento a partir deste tema."
+            : "Moções, recomendações, requerimentos e outros documentos que nascem deste tema."
+        }
       />
 
       <div className="mt-5 grid gap-4 rounded-2xl border border-border bg-background/60 p-4">
         <fieldset>
           <legend className="mb-2 text-sm font-semibold text-foreground">
-            O que pretende fazer com este assunto?
+            O que pretende fazer?
           </legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {intencoes.map((opcao) => (
@@ -295,6 +303,20 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
             ))}
           </div>
         </fieldset>
+
+        {sessoesRelacionadas.length === 0 && (
+          <p className="text-xs leading-5 text-muted-foreground">
+            O documento pode ser preparado agora e associado a uma sessão mais tarde. A associação à
+            sessão é opcional e continua disponível em{" "}
+            <a
+              className="font-medium text-foreground underline underline-offset-4"
+              href="#relacoes-assunto"
+            >
+              Ligações do assunto
+            </a>
+            .
+          </p>
+        )}
 
         {intencao && (
           <>
