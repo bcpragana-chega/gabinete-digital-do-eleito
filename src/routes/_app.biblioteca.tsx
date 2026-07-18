@@ -20,7 +20,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
-import { WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
+import { WorkspaceLayout, WorkspacePage, WorkspaceSection } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import {
   categoriaDocumentoBiblioteca,
@@ -198,159 +198,157 @@ function BibliotecaPage() {
           </div>
         }
       />
-      <main className="min-h-screen bg-transparent">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-          <WorkspaceLayout>
-            <WorkspaceSection>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative w-full sm:max-w-xl">
-                  <label htmlFor="pesquisa-biblioteca" className="sr-only">
-                    Pesquisar na Biblioteca
-                  </label>
-                  <Search
-                    aria-hidden="true"
-                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <Input
-                    id="pesquisa-biblioteca"
-                    type="search"
-                    value={pesquisa}
-                    onChange={(event) => setPesquisa(event.target.value)}
-                    placeholder="Pesquisar por título, tipo, Assunto ou Sessão"
-                    className="bg-background pl-9 pr-10"
-                  />
-                  {pesquisaAtiva && (
-                    <button
-                      type="button"
-                      onClick={() => setPesquisa("")}
-                      aria-label="Limpar pesquisa"
-                      className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-                <p className="shrink-0 text-sm text-muted-foreground" aria-live="polite">
-                  {pesquisaAtiva
-                    ? `${documentosVisiveis.length} de ${documentos.length}`
-                    : `${documentos.length} ${documentos.length === 1 ? "documento" : "documentos"}`}
-                </p>
-              </div>
-
-              <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-                <div className="mt-4 flex w-max min-w-full items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-wrap">
-                  {separadores.map((separador) => (
-                    <button
-                      key={separador.id}
-                      type="button"
-                      onClick={() => setSeparadorAtivo(separador.id)}
-                      aria-pressed={separadorAtivo === separador.id}
-                      className={cn(
-                        "inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors",
-                        separadorAtivo === separador.id
-                          ? "bg-muted text-foreground"
-                          : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
-                      )}
-                    >
-                      {separador.label}
-                      <span className="rounded-full bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-border/50">
-                        {contagemSeparador(separador.id)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {documentosVisiveis.length === 0 ? (
-                <EmptyState
-                  className="mt-6"
-                  title={estadoVazio.title}
-                  description={estadoVazio.description}
+      <WorkspacePage>
+        <WorkspaceLayout>
+          <WorkspaceSection>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative w-full sm:max-w-xl">
+                <label htmlFor="pesquisa-biblioteca" className="sr-only">
+                  Pesquisar na Biblioteca
+                </label>
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                 />
-              ) : (
-                <div className="mt-6 grid gap-3">
-                  {documentosVisiveis.map(({ documento, estado, categoria, assunto, sessao }) => {
-                    const CategoriaIcon = visuaisCategoria[categoria].icon;
+                <Input
+                  id="pesquisa-biblioteca"
+                  type="search"
+                  value={pesquisa}
+                  onChange={(event) => setPesquisa(event.target.value)}
+                  placeholder="Pesquisar por título, tipo, Assunto ou Sessão"
+                  className="bg-background pl-9 pr-10"
+                />
+                {pesquisaAtiva && (
+                  <button
+                    type="button"
+                    onClick={() => setPesquisa("")}
+                    aria-label="Limpar pesquisa"
+                    className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <p className="shrink-0 text-sm text-muted-foreground" aria-live="polite">
+                {pesquisaAtiva
+                  ? `${documentosVisiveis.length} de ${documentos.length}`
+                  : `${documentos.length} ${documentos.length === 1 ? "documento" : "documentos"}`}
+              </p>
+            </div>
 
-                    return (
-                      <article
-                        key={documento.id}
-                        className="group relative min-w-0 rounded-2xl border border-border bg-card p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
-                      >
-                        <Link
-                          to="/biblioteca/documentos/$docId"
-                          params={{ docId: documento.id }}
-                          aria-label={`Abrir documento: ${documento.titulo}`}
-                          className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2"
-                        />
+            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+              <div className="mt-4 flex w-max min-w-full items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-wrap">
+                {separadores.map((separador) => (
+                  <button
+                    key={separador.id}
+                    type="button"
+                    onClick={() => setSeparadorAtivo(separador.id)}
+                    aria-pressed={separadorAtivo === separador.id}
+                    className={cn(
+                      "inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors",
+                      separadorAtivo === separador.id
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                    )}
+                  >
+                    {separador.label}
+                    <span className="rounded-full bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-border/50">
+                      {contagemSeparador(separador.id)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                        <div className="pointer-events-none relative flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground">
-                              <CategoriaIcon className="h-5 w-5" strokeWidth={1.75} />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium text-muted-foreground">
-                                {visuaisCategoria[categoria].label}
-                              </p>
-                              <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-6 text-foreground sm:text-[17px]">
-                                {documento.titulo}
-                              </h2>
+            {documentosVisiveis.length === 0 ? (
+              <EmptyState
+                className="mt-6"
+                title={estadoVazio.title}
+                description={estadoVazio.description}
+              />
+            ) : (
+              <div className="mt-6 grid gap-3">
+                {documentosVisiveis.map(({ documento, estado, categoria, assunto, sessao }) => {
+                  const CategoriaIcon = visuaisCategoria[categoria].icon;
 
-                              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                                {assunto && (
-                                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted/60 px-2.5 py-1.5 font-medium text-foreground/80">
-                                    <NotebookText className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <span className="line-clamp-1">{assunto}</span>
-                                  </span>
-                                )}
-                                {sessao && (
-                                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted/60 px-2.5 py-1.5 font-medium text-foreground/80">
-                                    <Landmark className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <span className="line-clamp-1">{sessao}</span>
-                                  </span>
-                                )}
-                                {!assunto && !sessao && (
-                                  <span className="py-1 text-muted-foreground">
-                                    Sem ligação institucional
-                                  </span>
-                                )}
-                              </div>
+                  return (
+                    <article
+                      key={documento.id}
+                      className="group relative min-w-0 rounded-2xl border border-border bg-card p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
+                    >
+                      <Link
+                        to="/biblioteca/documentos/$docId"
+                        params={{ docId: documento.id }}
+                        aria-label={`Abrir documento: ${documento.titulo}`}
+                        className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2"
+                      />
 
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                <StatusBadge tone="muted" dot={false}>
-                                  {documento.tipo}
-                                </StatusBadge>
-                                <StatusBadge tone={estadoTone(estado)}>{estado}</StatusBadge>
-                                <StatusBadge tone="muted" dot={false}>
-                                  {formatarData(documento.data)}
-                                </StatusBadge>
-                              </div>
-                            </div>
+                      <div className="pointer-events-none relative flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground">
+                            <CategoriaIcon className="h-5 w-5" strokeWidth={1.75} />
                           </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-muted-foreground">
+                              {visuaisCategoria[categoria].label}
+                            </p>
+                            <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-6 text-foreground sm:text-[17px]">
+                              {documento.titulo}
+                            </h2>
 
-                          <div className="relative z-10 flex w-full items-center justify-between gap-2 lg:w-auto lg:justify-end">
-                            {documento.ficheiroTipo === "application/pdf" &&
-                              documento.estadoAnalise !== "confirmado" && (
-                                <div className="pointer-events-auto">
-                                  <InstitutionalDocumentIntake documentoInicial={documento} />
-                                </div>
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                              {assunto && (
+                                <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted/60 px-2.5 py-1.5 font-medium text-foreground/80">
+                                  <NotebookText className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span className="line-clamp-1">{assunto}</span>
+                                </span>
                               )}
-                            <span className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground">
-                              Abrir documento
-                              <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                            </span>
+                              {sessao && (
+                                <span className="inline-flex items-center gap-1.5 rounded-lg bg-muted/60 px-2.5 py-1.5 font-medium text-foreground/80">
+                                  <Landmark className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span className="line-clamp-1">{sessao}</span>
+                                </span>
+                              )}
+                              {!assunto && !sessao && (
+                                <span className="py-1 text-muted-foreground">
+                                  Sem ligação institucional
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <StatusBadge tone="muted" dot={false}>
+                                {documento.tipo}
+                              </StatusBadge>
+                              <StatusBadge tone={estadoTone(estado)}>{estado}</StatusBadge>
+                              <StatusBadge tone="muted" dot={false}>
+                                {formatarData(documento.data)}
+                              </StatusBadge>
+                            </div>
                           </div>
                         </div>
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
-            </WorkspaceSection>
-          </WorkspaceLayout>
-        </div>
-      </main>
+
+                        <div className="relative z-10 flex w-full items-center justify-between gap-2 lg:w-auto lg:justify-end">
+                          {documento.ficheiroTipo === "application/pdf" &&
+                            documento.estadoAnalise !== "confirmado" && (
+                              <div className="pointer-events-auto">
+                                <InstitutionalDocumentIntake documentoInicial={documento} />
+                              </div>
+                            )}
+                          <span className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground">
+                            Abrir documento
+                            <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                          </span>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </WorkspaceSection>
+        </WorkspaceLayout>
+      </WorkspacePage>
     </>
   );
 }

@@ -24,6 +24,7 @@ describe("cabeçalhos canónicos e navegação", () => {
   const agenda = fonte("src/routes/_app.agenda.tsx");
   const hoje = fonte("src/components/dashboard/DashboardPage.tsx");
   const definicoes = fonte("src/routes/_app.definicoes.tsx");
+  const workspacePage = fonte("src/components/ui/workspace/WorkspacePage.tsx");
 
   it("TopBar aceita ações e coloca-as numa segunda linha em mobile", () => {
     assert.match(topBar, /actions\?: ReactNode/);
@@ -46,6 +47,17 @@ describe("cabeçalhos canónicos e navegação", () => {
 
     assert.match(agenda, /<TopBar breadcrumb="Agenda" \/>/);
     assert.doesNotMatch(agenda, /WorkspaceHeader/);
+  });
+
+  it("páginas principais partilham o mesmo contentor exterior", () => {
+    assert.match(workspacePage, /min-h-screen bg-background/);
+    assert.match(workspacePage, /mx-auto flex w-full max-w-\[1504px\]/);
+    assert.match(workspacePage, /px-4 py-6 sm:px-6 lg:px-8 lg:py-10/);
+
+    for (const pagina of [hoje, assuntos, sessoes, biblioteca, agenda]) {
+      assert.match(pagina, /<WorkspacePage>/);
+      assert.doesNotMatch(pagina, /bg-\[#fbfcfe\]|bg-transparent|max-w-7xl|max-w-\[1504px\]/);
+    }
   });
 
   it("sidebar desktop contém apenas a navegação principal", () => {

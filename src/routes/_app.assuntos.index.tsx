@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
 import { Card } from "@/components/ui/card";
 import { ds } from "@/components/ui/design-system";
+import { WorkspacePage } from "@/components/ui/workspace";
 import { useDossies } from "@/lib/dossies-store";
 import type { Dossie, EstadoDossie, PrioridadeDossie } from "@/lib/types";
 
@@ -94,53 +95,51 @@ function DossiesPage() {
         description="Temas, problemas e compromissos acompanhados durante o mandato."
         actions={<NovoDossieDialog />}
       />
-      <main className={ds.surface.page}>
-        <div className={ds.layout.page}>
-          <section>
-            <div className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-              <div className="flex w-max min-w-full items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-wrap">
-                {filtros.map((filtro) => (
-                  <button
-                    key={filtro.id}
-                    type="button"
-                    onClick={() => setFiltroAtivo(filtro.id)}
-                    className={`inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
-                      filtroAtivo === filtro.id
-                        ? "bg-muted text-foreground"
-                        : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-                    }`}
-                  >
-                    {filtro.label}
-                    <span className="rounded-full bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-border/50">
-                      {filtro.id === "todos" && dossiesNaoArquivados.length}
-                      {filtro.id === "ativo" && ativos}
-                      {filtro.id === "em acompanhamento" && emAcompanhamento}
-                      {filtro.id === "concluido" && concluidos}
-                      {filtro.id === "arquivados" && dossiesArquivados.length}
-                    </span>
-                  </button>
+      <WorkspacePage>
+        <section>
+          <div className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <div className="flex w-max min-w-full items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-wrap">
+              {filtros.map((filtro) => (
+                <button
+                  key={filtro.id}
+                  type="button"
+                  onClick={() => setFiltroAtivo(filtro.id)}
+                  className={`inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
+                    filtroAtivo === filtro.id
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                  }`}
+                >
+                  {filtro.label}
+                  <span className="rounded-full bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-border/50">
+                    {filtro.id === "todos" && dossiesNaoArquivados.length}
+                    {filtro.id === "ativo" && ativos}
+                    {filtro.id === "em acompanhamento" && emAcompanhamento}
+                    {filtro.id === "concluido" && concluidos}
+                    {filtro.id === "arquivados" && dossiesArquivados.length}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            {dossiesVisiveis.length === 0 ? (
+              <EmptyState
+                title="Ainda não existem Assuntos nesta vista"
+                description="Os Assuntos ajudam a acompanhar temas políticos ao longo do mandato. Crie um Assunto para começar o acompanhamento."
+                action={<NovoDossieDialog />}
+              />
+            ) : (
+              <div className={ds.layout.gridCards}>
+                {dossiesVisiveis.map((dossie) => (
+                  <DossieCard key={dossie.id} dossie={dossie} />
                 ))}
               </div>
-            </div>
-
-            <div>
-              {dossiesVisiveis.length === 0 ? (
-                <EmptyState
-                  title="Ainda não existem Assuntos nesta vista"
-                  description="Os Assuntos ajudam a acompanhar temas políticos ao longo do mandato. Crie um Assunto para começar o acompanhamento."
-                  action={<NovoDossieDialog />}
-                />
-              ) : (
-                <div className={ds.layout.gridCards}>
-                  {dossiesVisiveis.map((dossie) => (
-                    <DossieCard key={dossie.id} dossie={dossie} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
-      </main>
+            )}
+          </div>
+        </section>
+      </WorkspacePage>
     </>
   );
 }

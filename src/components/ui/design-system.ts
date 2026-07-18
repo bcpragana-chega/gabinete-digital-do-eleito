@@ -9,7 +9,6 @@ export const ds = {
     caption: "text-xs font-medium text-muted-foreground",
   },
   surface: {
-    page: "min-h-screen bg-background",
     panel: "overflow-hidden rounded-2xl border border-border bg-card shadow-card",
     card: "rounded-2xl border border-border bg-card shadow-card transition-colors hover:border-border/80",
     subtle: "rounded-2xl border border-border/80 bg-muted/25",
@@ -21,7 +20,6 @@ export const ds = {
     tile: "flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground",
   },
   layout: {
-    page: "mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10",
     stack: "space-y-6",
     gridCards: "grid gap-4 md:grid-cols-2 xl:grid-cols-3",
   },

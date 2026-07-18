@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
 import { Card } from "@/components/ui/card";
 import { ds } from "@/components/ui/design-system";
+import { WorkspacePage } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import { listarDocumentosLocais } from "@/lib/documentos-store";
 import { formatarData } from "@/lib/mock-data";
@@ -81,50 +82,48 @@ function AssembleiasPage() {
   return (
     <>
       <TopBar breadcrumb="Sessões" actions={<NovaAssembleiaDialog />} />
-      <main className={ds.surface.page}>
-        <div className={ds.layout.page}>
-          <section>
-            <div className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-              <div className="flex w-max min-w-full items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-wrap">
-                {filtros.map((filtro) => (
-                  <button
-                    key={filtro.id}
-                    type="button"
-                    onClick={() => setFiltroAtivo(filtro.id)}
-                    className={`inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
-                      filtroAtivo === filtro.id
-                        ? "bg-muted text-foreground"
-                        : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-                    }`}
-                  >
-                    {filtro.label}
-                    <span className="rounded-full bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-border/50">
-                      {filtro.id === "todas" && assembleiasNaoArquivadas.length}
-                      {filtro.id === "preparacao" && emPreparacao}
-                      {filtro.id === "analise" && emAnalise}
-                      {filtro.id === "concluida" && concluidas}
-                    </span>
-                  </button>
-                ))}
-              </div>
+      <WorkspacePage>
+        <section>
+          <div className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <div className="flex w-max min-w-full items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-wrap">
+              {filtros.map((filtro) => (
+                <button
+                  key={filtro.id}
+                  type="button"
+                  onClick={() => setFiltroAtivo(filtro.id)}
+                  className={`inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
+                    filtroAtivo === filtro.id
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                  }`}
+                >
+                  {filtro.label}
+                  <span className="rounded-full bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-border/50">
+                    {filtro.id === "todas" && assembleiasNaoArquivadas.length}
+                    {filtro.id === "preparacao" && emPreparacao}
+                    {filtro.id === "analise" && emAnalise}
+                    {filtro.id === "concluida" && concluidas}
+                  </span>
+                </button>
+              ))}
             </div>
+          </div>
 
-            {assembleiasVisiveis.length === 0 ? (
-              <EmptyState
-                title="Ainda não existem Sessões nesta vista"
-                description="As Sessões organizam documentos, pontos e estratégia do mandato. Crie uma Sessão para começar a preparação."
-                action={<NovaAssembleiaDialog />}
-              />
-            ) : (
-              <div className={ds.layout.gridCards}>
-                {assembleiasVisiveis.map((assembleia) => (
-                  <AssembleiaWorkspaceCard key={assembleia.id} assembleia={assembleia} />
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      </main>
+          {assembleiasVisiveis.length === 0 ? (
+            <EmptyState
+              title="Ainda não existem Sessões nesta vista"
+              description="As Sessões organizam documentos, pontos e estratégia do mandato. Crie uma Sessão para começar a preparação."
+              action={<NovaAssembleiaDialog />}
+            />
+          ) : (
+            <div className={ds.layout.gridCards}>
+              {assembleiasVisiveis.map((assembleia) => (
+                <AssembleiaWorkspaceCard key={assembleia.id} assembleia={assembleia} />
+              ))}
+            </div>
+          )}
+        </section>
+      </WorkspacePage>
     </>
   );
 }

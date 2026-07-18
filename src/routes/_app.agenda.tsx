@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { EntityCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
-import { WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
+import { WorkspaceLayout, WorkspacePage, WorkspaceSection } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import { formatarData } from "@/lib/mock-data";
 
@@ -32,62 +32,60 @@ function AgendaPage() {
   return (
     <>
       <TopBar breadcrumb="Agenda" />
-      <main className="min-h-screen bg-transparent">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-          <WorkspaceLayout>
-            <WorkspaceSection>
-              <SectionTitle
-                icon={CalendarDays}
-                title="Próximas sessões"
-                description="Datas importantes já registadas."
+      <WorkspacePage>
+        <WorkspaceLayout>
+          <WorkspaceSection>
+            <SectionTitle
+              icon={CalendarDays}
+              title="Próximas sessões"
+              description="Datas importantes já registadas."
+            />
+            {proximas.length === 0 ? (
+              <EmptyState
+                className="mt-5"
+                title="Ainda não existem sessões na Agenda"
+                description="A Agenda ajuda a antecipar preparação e prazos. Crie ou atualize uma Sessão para ver as próximas datas aqui."
+                action={
+                  <Button asChild>
+                    <Link to="/sessoes">Ir para Sessões</Link>
+                  </Button>
+                }
               />
-              {proximas.length === 0 ? (
-                <EmptyState
-                  className="mt-5"
-                  title="Ainda não existem sessões na Agenda"
-                  description="A Agenda ajuda a antecipar preparação e prazos. Crie ou atualize uma Sessão para ver as próximas datas aqui."
-                  action={
-                    <Button asChild>
-                      <Link to="/sessoes">Ir para Sessões</Link>
-                    </Button>
-                  }
-                />
-              ) : (
-                <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                  {proximas.map((assembleia) => (
-                    <EntityCard
-                      key={assembleia.id}
-                      icon={Landmark}
-                      eyebrow={formatarData(assembleia.data)}
-                      title={assembleia.nome}
-                      description={assembleia.local}
-                      meta={
-                        <div className="flex flex-wrap gap-2">
-                          <StatusBadge tone="muted" dot={false}>
-                            <Clock className="h-3 w-3" />
-                            {assembleia.hora}
-                          </StatusBadge>
-                          <StatusBadge tone="muted" dot={false}>
-                            <MapPin className="h-3 w-3" />
-                            {assembleia.local}
-                          </StatusBadge>
-                        </div>
-                      }
-                      actions={
-                        <Button asChild variant="secondary" size="sm">
-                          <Link to="/sessoes/$id" params={{ id: assembleia.id }}>
-                            Abrir
-                          </Link>
-                        </Button>
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-            </WorkspaceSection>
-          </WorkspaceLayout>
-        </div>
-      </main>
+            ) : (
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                {proximas.map((assembleia) => (
+                  <EntityCard
+                    key={assembleia.id}
+                    icon={Landmark}
+                    eyebrow={formatarData(assembleia.data)}
+                    title={assembleia.nome}
+                    description={assembleia.local}
+                    meta={
+                      <div className="flex flex-wrap gap-2">
+                        <StatusBadge tone="muted" dot={false}>
+                          <Clock className="h-3 w-3" />
+                          {assembleia.hora}
+                        </StatusBadge>
+                        <StatusBadge tone="muted" dot={false}>
+                          <MapPin className="h-3 w-3" />
+                          {assembleia.local}
+                        </StatusBadge>
+                      </div>
+                    }
+                    actions={
+                      <Button asChild variant="secondary" size="sm">
+                        <Link to="/sessoes/$id" params={{ id: assembleia.id }}>
+                          Abrir
+                        </Link>
+                      </Button>
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </WorkspaceSection>
+        </WorkspaceLayout>
+      </WorkspacePage>
     </>
   );
 }

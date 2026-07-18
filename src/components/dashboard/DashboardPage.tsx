@@ -25,6 +25,7 @@ import type { ReactNode } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { WorkspacePage } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import {
   listarDocumentosACriarDaAssembleia,
@@ -165,45 +166,43 @@ export function DashboardPage() {
   return (
     <>
       <TopBar />
-      <main className="min-h-screen bg-[#fbfcfe]">
-        <div className="mx-auto flex max-w-[1504px] flex-col gap-5 px-4 pb-6 pt-4 sm:px-6 lg:px-8">
-          {(onboardingSemConvocatoria || !proxima) && (
-            <Card className="rounded-[14px] border-primary/20 bg-primary/5 p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                Próxima ação prioritária
-              </p>
-              <h2 className="mt-2 text-xl font-semibold">Preparar a próxima sessão</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Carregue a convocatória para o Tribuno organizar os dados automaticamente ou crie a
-                sessão manualmente.
-              </p>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                <InstitutionalDocumentIntake triggerLabel="Carregar convocatória" />
-                <NovaSessaoWizard triggerLabel="Criar manualmente" />
-              </div>
-            </Card>
-          )}
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.38fr)_minmax(360px,0.98fr)_minmax(330px,0.86fr)]">
-            <MissionCard
-              mission={mission}
-              documentosPorRever={documentosGlobaisPorRever.length}
-              pontosPorPreparar={pontosPorPreparar.length}
-              estrategiaPreparada={estrategiaPreparada}
-              intervencoesPreparadas={intervencoesPreparadas}
-            />
-            <TasksCard tasks={tasks} />
-            <AlertsCard alerts={alerts} />
-          </section>
+      <WorkspacePage>
+        {(onboardingSemConvocatoria || !proxima) && (
+          <Card className="rounded-[14px] border-primary/20 bg-primary/5 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+              Próxima ação prioritária
+            </p>
+            <h2 className="mt-2 text-xl font-semibold">Preparar a próxima sessão</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Carregue a convocatória para o Tribuno organizar os dados automaticamente ou crie a
+              sessão manualmente.
+            </p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <InstitutionalDocumentIntake triggerLabel="Carregar convocatória" />
+              <NovaSessaoWizard triggerLabel="Criar manualmente" />
+            </div>
+          </Card>
+        )}
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.38fr)_minmax(360px,0.98fr)_minmax(330px,0.86fr)]">
+          <MissionCard
+            mission={mission}
+            documentosPorRever={documentosGlobaisPorRever.length}
+            pontosPorPreparar={pontosPorPreparar.length}
+            estrategiaPreparada={estrategiaPreparada}
+            intervencoesPreparadas={intervencoesPreparadas}
+          />
+          <TasksCard tasks={tasks} />
+          <AlertsCard alerts={alerts} />
+        </section>
 
-          <MetricsCard metrics={metrics} />
+        <MetricsCard metrics={metrics} />
 
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.91fr)_320px]">
-            <ActivityCard activity={activity} />
-            <RecentDocumentsCard documentos={documentos.slice(0, 4)} />
-            <QuickAccessCard proxima={proxima} />
-          </section>
-        </div>
-      </main>
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.91fr)_320px]">
+          <ActivityCard activity={activity} />
+          <RecentDocumentsCard documentos={documentos.slice(0, 4)} />
+          <QuickAccessCard proxima={proxima} />
+        </section>
+      </WorkspacePage>
     </>
   );
 }
