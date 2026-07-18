@@ -113,7 +113,7 @@ export function TopBar({ title, description, breadcrumb }: TopBarProps) {
                     <div className="leading-tight">
                       <div className="font-display text-base font-semibold">Tribuno</div>
                       <div className="text-[11px] uppercase text-muted-foreground">
-                        Apoio ao mandato
+                        Gabinete Digital do Eleito
                       </div>
                     </div>
                   </div>

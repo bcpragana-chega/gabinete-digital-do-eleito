@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   gerarTituloSessaoInstitucional,
+  gerarTituloSessaoManual,
   resolverTituloSessaoInstitucional,
 } from "./institutional-session-title";
 
@@ -67,6 +68,29 @@ describe("título determinístico da sessão institucional", () => {
         sessao: { tipo: "extraordinaria", entidade: "Município de Lagoa" },
       }),
       "Reunião sobre o orçamento",
+    );
+  });
+});
+
+describe("título da criação manual", () => {
+  it("gera um título institucional sem intervenção do utilizador", () => {
+    assert.equal(
+      gerarTituloSessaoManual({
+        tipoSessao: "Ordinária",
+        data: "2026-09-30",
+      }),
+      "Sessão ordinária — 30 de setembro de 2026",
+    );
+  });
+
+  it("integra naturalmente o título adicional", () => {
+    assert.equal(
+      gerarTituloSessaoManual({
+        tipoSessao: "Extraordinária",
+        data: "2026-09-30",
+        tituloAdicional: "  Orçamento suplementar  ",
+      }),
+      "Sessão extraordinária — Orçamento suplementar",
     );
   });
 });

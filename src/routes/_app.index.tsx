@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_app/")({
       { property: "og:title", content: "Hoje — Tribuno" },
       {
         property: "og:description",
-        content: "Apoio ao mandato para eleitos locais em Portugal.",
+        content: "Gabinete Digital do Eleitos em Portugal.",
       },
     ],
   }),

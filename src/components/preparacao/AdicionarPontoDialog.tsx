@@ -8,6 +8,7 @@ import { useRef, useState } from "react";
 type Props = {
   assembleiaId: string;
   onAdicionar: () => void;
+  triggerLabel?: string;
 };
 
 const campos: CampoPreparacao[] = [
@@ -40,11 +41,12 @@ const campos: CampoPreparacao[] = [
   },
 ];
 
-export function AdicionarPontoDialog({ assembleiaId, onAdicionar }: Props) {
+export function AdicionarPontoDialog({ assembleiaId, onAdicionar, triggerLabel }: Props) {
   const [erro, setErro] = useState("");
   const tentativaId = useRef<string | undefined>(undefined);
   return (
     <AdicionarItemPreparacao
+      tituloBotao={triggerLabel}
       tituloFormulario="Novo ponto"
       descricaoFormulario="Adicione um ponto da ordem de trabalhos para preparar esta sessão."
       textoGuardar="Guardar ponto"

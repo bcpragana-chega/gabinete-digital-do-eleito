@@ -31,6 +31,7 @@ import { EditarAssembleiaDialog } from "@/components/assembleias/EditarAssemblei
 import { SessaoPreparacaoWizard } from "@/components/assembleias/SessaoPreparacaoWizard";
 import { NovoAssuntoWizard } from "@/components/dossies/NovoAssuntoWizard";
 import { AdicionarDocumentoSheet } from "@/components/documentos/AdicionarDocumentoSheet";
+import { InstitutionalDocumentIntake } from "@/components/documentos/InstitutionalDocumentIntake";
 import { AdicionarPontoDialog } from "@/components/preparacao/AdicionarPontoDialog";
 import { EditarPontoDialog } from "@/components/preparacao/EditarPontoDialog";
 import { PreparationGuidancePanel } from "@/components/preparacao/PreparationGuidancePanel";
@@ -313,6 +314,8 @@ function AssembleiaDetailPage() {
     assuntosCount: assuntosDaSessao.length,
     documentosPoliticosCount: documentosPoliticos.length,
   });
+  const sessaoVazia =
+    documentos.length === 0 && pontos.length === 0 && assuntosDaSessao.length === 0;
 
   async function executarFluxo(acao: () => Promise<unknown>, mensagem: string) {
     setFlowSaving(true);
@@ -464,6 +467,30 @@ function AssembleiaDetailPage() {
                       <a href={flow.nextAction.href}>{flow.nextAction.action}</a>
                     </Button>
                   )}
+                </div>
+              </WorkspaceSection>
+            )}
+            {sessaoVazia && (
+              <WorkspaceSection className="border-primary/35 bg-primary/[0.03] shadow-md">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                  Próxima ação
+                </p>
+                <h2 className="mt-2 font-display text-xl font-semibold text-foreground">
+                  Continue a preparar a sessão
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  A sessão já existe. Acrescente agora a informação que tiver disponível.
+                </p>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                  <InstitutionalDocumentIntake triggerLabel="Carregar convocatória" />
+                  <AdicionarPontoDialog
+                    assembleiaId={id}
+                    triggerLabel="Adicionar primeiro ponto"
+                    onAdicionar={() => setVersaoPontos((valor) => valor + 1)}
+                  />
+                  <Button asChild variant="secondary">
+                    <a href="#assuntos">Associar assunto</a>
+                  </Button>
                 </div>
               </WorkspaceSection>
             )}

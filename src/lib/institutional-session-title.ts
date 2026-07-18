@@ -39,6 +39,25 @@ function dataLegivel(data?: string) {
   return `${dia} ${MESES[mes - 1]} ${ano}`;
 }
 
+export function gerarTituloSessaoManual(input: {
+  tipoSessao: "Ordinária" | "Extraordinária" | "Reunião de câmara" | "Outra";
+  data: string;
+  tituloAdicional?: string;
+}) {
+  const base =
+    input.tipoSessao === "Ordinária"
+      ? "Sessão ordinária"
+      : input.tipoSessao === "Extraordinária"
+        ? "Sessão extraordinária"
+        : input.tipoSessao === "Reunião de câmara"
+          ? "Reunião de câmara"
+          : "Sessão";
+  const adicional = input.tituloAdicional?.trim();
+  if (adicional) return `${base} — ${adicional}`;
+  const data = dataLegivel(input.data)?.replace(/^(\d+) (\S+) (\d+)$/, "$1 de $2 de $3");
+  return data ? `${base} — ${data}` : base;
+}
+
 export function gerarTituloSessaoInstitucional(sessao?: SessaoInstitucional) {
   const tipo =
     sessao?.tipo === "ordinaria"

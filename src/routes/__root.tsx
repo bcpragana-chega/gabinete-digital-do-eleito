@@ -77,7 +77,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Tribuno — Apoio ao mandato para eleitos locais" },
+      { title: "Tribuno — Gabinete Digital do Eleito" },
       {
         name: "description",
         content:
@@ -86,8 +86,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "author", content: "Tribuno" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { property: "og:title", content: "Tribuno — Apoio ao mandato para eleitos locais" },
-      { name: "twitter:title", content: "Tribuno — Apoio ao mandato para eleitos locais" },
+      { property: "og:title", content: "Tribuno — Gabinete Digital do Eleito" },
+      { name: "twitter:title", content: "Tribuno — Gabinete Digital do Eleito" },
       {
         name: "description",
         content:

@@ -43,6 +43,7 @@ import { obterEstrategiaDaAssembleia } from "@/lib/estrategia-store";
 import { cn } from "@/lib/utils";
 import type { Assembleia, Documento, DocumentoCriado, Dossie } from "@/lib/types";
 import { InstitutionalDocumentIntake } from "@/components/documentos/InstitutionalDocumentIntake";
+import { NovaSessaoWizard } from "@/components/assembleias/NovaSessaoWizard";
 import { useAuth } from "@/lib/auth-store";
 import { temProximaAcaoConvocatoria } from "@/lib/onboarding-state";
 
@@ -166,20 +167,19 @@ export function DashboardPage() {
       <TopBar />
       <main className="min-h-screen bg-[#fbfcfe]">
         <div className="mx-auto flex max-w-[1504px] flex-col gap-5 px-4 pb-6 pt-4 sm:px-6 lg:px-8">
-          {onboardingSemConvocatoria && (
+          {(onboardingSemConvocatoria || !proxima) && (
             <Card className="rounded-[14px] border-primary/20 bg-primary/5 p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                 Próxima ação prioritária
               </p>
-              <h2 className="mt-2 text-xl font-semibold">
-                Adicionar a convocatória da próxima sessão
-              </h2>
+              <h2 className="mt-2 text-xl font-semibold">Preparar a próxima sessão</h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                Quando tiveres a convocatória, o Tribuno identifica a sessão e organiza a ordem de
-                trabalhos.
+                Carregue a convocatória para o Tribuno organizar os dados automaticamente ou crie a
+                sessão manualmente.
               </p>
-              <div className="mt-4">
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <InstitutionalDocumentIntake triggerLabel="Carregar convocatória" />
+                <NovaSessaoWizard triggerLabel="Criar manualmente" />
               </div>
             </Card>
           )}
@@ -637,7 +637,7 @@ function RecentDocumentsCard({ documentos }: { documentos: Documento[] }) {
 function QuickAccessCard({ proxima }: { proxima?: Assembleia }) {
   const actions = [
     { label: "Novo documento", to: "/biblioteca", icon: Plus },
-    { label: "Nova sessão", to: "/sessoes", icon: Plus },
+    { label: "Preparar próxima sessão", to: "/sessoes", icon: Plus },
     { label: "Nova recomendação", to: "/assuntos", icon: Plus },
     {
       label: "Novo requerimento",

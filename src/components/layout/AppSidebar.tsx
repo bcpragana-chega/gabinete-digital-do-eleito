@@ -22,7 +22,7 @@ export function AppSidebar() {
           />
           <div className="leading-tight">
             <div className="font-display text-base font-semibold">Tribuno</div>
-            <div className="text-xs text-muted-foreground">Apoio ao mandato</div>
+            <div className="text-xs text-muted-foreground">Gabinete Digital do Eleito</div>
           </div>
         </div>
       </div>

@@ -161,8 +161,8 @@ export function UniversalSearch() {
       },
       {
         id: "criar-assembleia",
-        title: "Criar sessão",
-        description: "Abrir Sessões para registar uma nova sessão.",
+        title: "Preparar próxima sessão",
+        description: "Abrir Sessões para carregar a convocatória ou criar manualmente.",
         icon: Plus,
         href: "/sessoes",
         terms: ["criar assembleia", "nova assembleia", "assembleia"],
