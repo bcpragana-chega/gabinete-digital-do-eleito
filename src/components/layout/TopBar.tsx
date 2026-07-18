@@ -71,7 +71,7 @@ function tituloPorPathname(pathname: string) {
 export function TopBar({ title, description, breadcrumb }: TopBarProps) {
   const [menuAberto, setMenuAberto] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user, perfil, displayName } = useAuth();
+  const { user, perfil, displayName, initialized } = useAuth();
   const greetingName = nomeTopBar(displayName, user?.nome, perfil?.nomeInstitucional);
   const dashboard = pathname === "/";
   const tituloContextual =
@@ -189,8 +189,18 @@ export function TopBar({ title, description, breadcrumb }: TopBarProps) {
           {dashboard ? (
             <div className="min-w-0 leading-tight">
               <div className="truncate font-display text-xl font-bold leading-6 text-foreground sm:text-2xl lg:text-[1.65rem] lg:leading-8">
-                {saudacaoPorHora()}, {greetingName}{" "}
-                <span className="inline-block align-baseline text-[0.9em]">👋</span>
+                {initialized ? (
+                  <>
+                    {saudacaoPorHora()}, {greetingName}{" "}
+                    <span className="inline-block align-baseline text-[0.9em]">👋</span>
+                  </>
+                ) : (
+                  <span
+                    role="status"
+                    aria-label="A carregar saudação"
+                    className="inline-block h-7 w-52 max-w-full rounded-lg bg-muted align-middle sm:w-64"
+                  />
+                )}
               </div>
               <div className="mt-0.5 truncate text-[13px] leading-5 text-muted-foreground sm:text-sm">
                 Vamos preparar a próxima sessão.
