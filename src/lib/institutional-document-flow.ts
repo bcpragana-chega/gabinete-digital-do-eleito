@@ -2,11 +2,104 @@ import { analisarDocumentoInstitucional } from "@/lib/ai/institutional-document-
 import {
   adicionarDocumentoComUpload,
   carregarDocumentosRemotosSeDisponivel,
+  editarDocumentoConfirmado,
 } from "@/lib/documentos-store";
 import { carregarAssembleiasRemotasSeDisponivel } from "@/lib/assembleias-store";
 import { carregarPontosRemotosSeDisponivel } from "@/lib/pontos-store";
 import { getSupabaseClient, withSupabaseTimeout } from "@/lib/supabase";
-import type { AnaliseDocumentoInstitucional } from "@/lib/types";
+import type {
+  AnaliseDocumentoInstitucional,
+  Documento,
+  TipoDocumento,
+  TipoDocumentoInstitucional,
+} from "@/lib/types";
+
+export const LIMIAR_CONFIANCA_DESTINO_DOCUMENTAL = 0.75;
+
+export type DestinoAnaliseInstitucional =
+  | "preparar_sessao"
+  | "guardar_biblioteca"
+  | "necessita_confirmacao";
+
+const TIPOS_SESSAO = new Set<TipoDocumentoInstitucional>(["convocatoria", "ordem_trabalhos"]);
+
+function campoNormalizado(campo: string) {
+  return campo
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+export function temCamposEssenciaisIncertos(analise: AnaliseDocumentoInstitucional) {
+  const sessao = TIPOS_SESSAO.has(analise.tipoDocumento);
+  return analise.camposIncertos.some(({ campo }) => {
+    const normalizado = campoNormalizado(campo);
+    if (["documento", "tipo", "titulo"].some((item) => normalizado.includes(item))) return true;
+    return sessao && ["sessao", "orgao", "data", "hora"].some((item) => normalizado.includes(item));
+  });
+}
+
+export function mapearTipoDocumentoInstitucional(tipo: TipoDocumentoInstitucional): TipoDocumento {
+  const mapa: Record<TipoDocumentoInstitucional, TipoDocumento> = {
+    convocatoria: "Convocatória",
+    ordem_trabalhos: "Outro",
+    ata: "Ata",
+    documento_financeiro: "Outro",
+    proposta: "Proposta",
+    regulamento: "Regulamento",
+    outro: "Outro",
+    desconhecido: "Outro",
+  };
+  return mapa[tipo];
+}
+
+export function decidirDestinoAnalise(
+  analise: AnaliseDocumentoInstitucional,
+): DestinoAnaliseInstitucional {
+  if (
+    analise.tipoDocumento === "desconhecido" ||
+    analise.confiancaGlobal < LIMIAR_CONFIANCA_DESTINO_DOCUMENTAL ||
+    temCamposEssenciaisIncertos(analise)
+  ) {
+    return "necessita_confirmacao";
+  }
+  if (TIPOS_SESSAO.has(analise.tipoDocumento)) {
+    return validarDadosConfirmacaoAnalise(analise) ? "necessita_confirmacao" : "preparar_sessao";
+  }
+  return "guardar_biblioteca";
+}
+
+export async function confirmarDocumentoNaBibliotecaComDependencias(input: {
+  documento: Documento;
+  analise: AnaliseDocumentoInstitucional;
+  titulo: string;
+  tipo: TipoDocumento;
+  guardar: typeof editarDocumentoConfirmado;
+}) {
+  const titulo = input.titulo.trim();
+  if (!titulo) throw new Error("DOCUMENTO_TITLE_REQUIRED");
+  const necessitaConfirmacao = decidirDestinoAnalise(input.analise) === "necessita_confirmacao";
+  return input.guardar(input.documento.id, {
+    titulo,
+    tipo: input.tipo,
+    resumo: input.analise.resumoCompreensao.trim() || input.documento.resumo,
+    estado: necessitaConfirmacao ? "Por rever" : "Revisto",
+    estadoAnalise: necessitaConfirmacao ? "necessita_confirmacao" : "confirmado",
+    analiseInstitucional: input.analise,
+  });
+}
+
+export function confirmarDocumentoNaBiblioteca(input: {
+  documento: Documento;
+  analise: AnaliseDocumentoInstitucional;
+  titulo: string;
+  tipo: TipoDocumento;
+}) {
+  return confirmarDocumentoNaBibliotecaComDependencias({
+    ...input,
+    guardar: editarDocumentoConfirmado,
+  });
+}
 
 async function accessToken() {
   const supabase = getSupabaseClient();

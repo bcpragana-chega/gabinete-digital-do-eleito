@@ -52,7 +52,7 @@ describe("criação e preparação de sessões", () => {
     assert.match(intake, /setStep\("duplicate"\)/);
     assert.match(intake, /Atualizar sessão existente/);
     assert.match(intake, /Confirmar e preparar sessão/);
-    assert.match(intake, /A sessão só será criada ao selecionar/);
+    assert.match(intake, /A sessão só será criada depois da sua confirmação/);
   });
 
   it("uma sessão vazia mostra a próxima ação no workspace", () => {

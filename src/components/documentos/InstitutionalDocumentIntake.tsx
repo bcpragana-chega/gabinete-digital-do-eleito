@@ -24,14 +24,17 @@ import {
   analisarDocumentoCarregado,
   carregarDocumentoParaAnalise,
   confirmarAnaliseDocumento,
+  confirmarDocumentoNaBiblioteca,
+  decidirDestinoAnalise,
   executarConfirmacaoAnaliseComDependencias,
+  mapearTipoDocumentoInstitucional,
   validarDadosConfirmacaoAnalise,
 } from "@/lib/institutional-document-flow";
 import {
   gerarTituloSessaoInstitucional,
   resolverTituloSessaoInstitucional,
 } from "@/lib/institutional-session-title";
-import type { AnaliseDocumentoInstitucional, Documento } from "@/lib/types";
+import type { AnaliseDocumentoInstitucional, Documento, TipoDocumento } from "@/lib/types";
 import { useAuth } from "@/lib/auth-store";
 import { marcarProximaAcaoConvocatoria } from "@/lib/onboarding-state";
 import { chaveTransitoriaPorUtilizador } from "@/lib/session-transient-state";
@@ -54,6 +57,8 @@ export function InstitutionalDocumentIntake({
   const [file, setFile] = useState<File>();
   const [documento, setDocumento] = useState<Documento>();
   const [analise, setAnalise] = useState<AnaliseDocumentoInstitucional>();
+  const [tituloDocumento, setTituloDocumento] = useState("");
+  const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento>("Outro");
   const [tituloSessao, setTituloSessao] = useState("");
   const [tituloPersonalizado, setTituloPersonalizado] = useState(false);
   const [duplicateId, setDuplicateId] = useState("");
@@ -67,6 +72,8 @@ export function InstitutionalDocumentIntake({
     setFile(undefined);
     setDocumento(undefined);
     setAnalise(undefined);
+    setTituloDocumento("");
+    setTipoDocumento("Outro");
     setTituloSessao("");
     setTituloPersonalizado(false);
     setDuplicateId("");
@@ -83,7 +90,14 @@ export function InstitutionalDocumentIntake({
     }
     if (documentoInicial) {
       setDocumento(documentoInicial);
-      setAnalise(documentoInicial.analiseInstitucional ?? analiseVazia());
+      const analiseInicial = documentoInicial.analiseInstitucional ?? analiseVazia();
+      setAnalise(analiseInicial);
+      setTituloDocumento(documentoInicial.titulo);
+      setTipoDocumento(
+        documentoInicial.analiseInstitucional
+          ? mapearTipoDocumentoInstitucional(analiseInicial.tipoDocumento)
+          : documentoInicial.tipo,
+      );
       setTituloSessao(
         gerarTituloSessaoInstitucional(documentoInicial.analiseInstitucional?.sessao),
       );
@@ -104,7 +118,9 @@ export function InstitutionalDocumentIntake({
       setDocumento(uploaded);
       const result = await analisarDocumentoCarregado(uploaded.id);
       setAnalise(result.analise);
-      if (result.estado === "necessita_confirmacao")
+      setTituloDocumento(uploaded.titulo);
+      setTipoDocumento(mapearTipoDocumentoInstitucional(result.analise.tipoDocumento));
+      if (decidirDestinoAnalise(result.analise) === "necessita_confirmacao")
         setAnalysisNotice(
           "A análise identificou apenas parte do documento. Confirme os detalhes em falta.",
         );
@@ -126,6 +142,7 @@ export function InstitutionalDocumentIntake({
     try {
       const result = await analisarDocumentoCarregado(documento.id);
       setAnalise(result.analise);
+      setTipoDocumento(mapearTipoDocumentoInstitucional(result.analise.tipoDocumento));
       setTituloSessao((tituloAtual) =>
         resolverTituloSessaoInstitucional({
           tituloAtual,
@@ -133,7 +150,7 @@ export function InstitutionalDocumentIntake({
           sessao: result.analise.sessao,
         }),
       );
-      if (result.estado === "necessita_confirmacao")
+      if (decidirDestinoAnalise(result.analise) === "necessita_confirmacao")
         setAnalysisNotice(
           "A análise identificou apenas parte do documento. Confirme os detalhes em falta.",
         );
@@ -193,6 +210,41 @@ export function InstitutionalDocumentIntake({
     }
   }
 
+  async function confirmDocument() {
+    if (!documento || !analise || confirmacaoEmCurso.current) return;
+    if (!tituloDocumento.trim()) {
+      setError("Confirme o título do documento antes de guardar.");
+      return;
+    }
+    confirmacaoEmCurso.current = true;
+    setSaving(true);
+    setError("");
+    try {
+      await confirmarDocumentoNaBiblioteca({
+        documento,
+        analise,
+        titulo: tituloDocumento,
+        tipo: tipoDocumento,
+      });
+      const documentoId = documento.id;
+      setOpen(false);
+      reset();
+      await navigate({
+        to: "/documentos/$documentoId",
+        params: { documentoId },
+        search: { origem: "biblioteca" },
+      });
+    } catch {
+      setError("Não foi possível guardar a organização do documento. Tente novamente.");
+    } finally {
+      confirmacaoEmCurso.current = false;
+      setSaving(false);
+    }
+  }
+
+  const destino = analise ? decidirDestinoAnalise(analise) : undefined;
+  const preparaSessao = destino === "preparar_sessao";
+
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
       <DialogTrigger asChild>
@@ -217,7 +269,9 @@ export function InstitutionalDocumentIntake({
             {step === "analysing"
               ? "A analisar o contexto institucional e a preparar a próxima ação."
               : step === "review" || step === "duplicate"
-                ? "Pode corrigir os dados antes de confirmar. A sessão só será criada depois da confirmação."
+                ? preparaSessao
+                  ? "Pode corrigir os dados antes de confirmar. A sessão só será criada depois da confirmação."
+                  : "Confirme os dados essenciais antes de guardar o documento na Biblioteca."
                 : "Carregue o PDF para análise. Poderá rever os dados antes de confirmar."}
           </DialogDescription>
         </DialogHeader>
@@ -253,30 +307,41 @@ export function InstitutionalDocumentIntake({
           {step === "review" && analise && (
             <div className="space-y-4">
               <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm leading-6 text-muted-foreground">
-                Reveja e corrija o que for necessário. A sessão só será criada ao selecionar
-                “Confirmar e preparar sessão”.
+                {preparaSessao
+                  ? "Reveja e corrija o que for necessário. A sessão só será criada depois da sua confirmação."
+                  : "O PDF já está carregado. Confirme a organização do mesmo Documento na Biblioteca."}
               </p>
               {analysisNotice && (
                 <p className="rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
                   {analysisNotice}
                 </p>
               )}
-              <ReviewForm
-                analise={analise}
-                onChange={setAnalise}
-                titulo={tituloSessao}
-                tituloPersonalizado={tituloPersonalizado}
-                onTituloAutomaticoChange={setTituloSessao}
-                onTituloChange={(value) => {
-                  if (value.trim()) {
-                    setTituloSessao(value);
-                    setTituloPersonalizado(true);
-                    return;
-                  }
-                  setTituloPersonalizado(false);
-                  setTituloSessao(gerarTituloSessaoInstitucional(analise.sessao));
-                }}
-              />
+              {preparaSessao ? (
+                <ReviewForm
+                  analise={analise}
+                  onChange={setAnalise}
+                  titulo={tituloSessao}
+                  tituloPersonalizado={tituloPersonalizado}
+                  onTituloAutomaticoChange={setTituloSessao}
+                  onTituloChange={(value) => {
+                    if (value.trim()) {
+                      setTituloSessao(value);
+                      setTituloPersonalizado(true);
+                      return;
+                    }
+                    setTituloPersonalizado(false);
+                    setTituloSessao(gerarTituloSessaoInstitucional(analise.sessao));
+                  }}
+                />
+              ) : (
+                <DocumentReviewForm
+                  analise={analise}
+                  titulo={tituloDocumento}
+                  tipo={tipoDocumento}
+                  onTituloChange={setTituloDocumento}
+                  onTipoChange={setTipoDocumento}
+                />
+              )}
             </div>
           )}
           {step === "duplicate" && (
@@ -310,8 +375,15 @@ export function InstitutionalDocumentIntake({
               <Button variant="secondary" disabled={saving} onClick={retry}>
                 Tentar análise novamente
               </Button>
-              <Button disabled={saving} onClick={() => confirm()}>
-                {saving ? "A confirmar…" : "Confirmar e preparar sessão"}
+              <Button
+                disabled={saving || (!preparaSessao && !tituloDocumento.trim())}
+                onClick={() => (preparaSessao ? confirm() : confirmDocument())}
+              >
+                {saving
+                  ? "A confirmar…"
+                  : preparaSessao
+                    ? "Confirmar e preparar sessão"
+                    : "Confirmar e guardar documento"}
               </Button>
             </div>
           </div>
@@ -336,6 +408,94 @@ function analiseVazia(): AnaliseDocumentoInstitucional {
     ],
     resumoCompreensao: "",
   };
+}
+
+const tiposDocumento: TipoDocumento[] = [
+  "Convocatória",
+  "Ata",
+  "Orçamento",
+  "Execução da Receita",
+  "Execução da Despesa",
+  "PPI",
+  "Relatório",
+  "Regulamento",
+  "Contrato",
+  "Proposta",
+  "Declaração de voto",
+  "Outro",
+];
+
+function DocumentReviewForm({
+  analise,
+  titulo,
+  tipo,
+  onTituloChange,
+  onTipoChange,
+}: {
+  analise: AnaliseDocumentoInstitucional;
+  titulo: string;
+  tipo: TipoDocumento;
+  onTituloChange: (value: string) => void;
+  onTipoChange: (value: TipoDocumento) => void;
+}) {
+  return (
+    <div className="space-y-5" data-review-destination="biblioteca">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Título do documento" value={titulo} onChange={onTituloChange} />
+        <div className="space-y-2">
+          <Label>Tipo documental</Label>
+          <Select value={tipo} onValueChange={(value) => onTipoChange(value as TipoDocumento)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {tiposDocumento.map((item) => (
+                <SelectItem key={item} value={item}>
+                  {item}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      {analise.resumoCompreensao && (
+        <div className="rounded-xl border p-4">
+          <p className="text-sm font-medium">Resumo</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            {analise.resumoCompreensao}
+          </p>
+        </div>
+      )}
+      {analise.informacaoRelevante.length > 0 && (
+        <div className="rounded-xl border p-4">
+          <p className="text-sm font-medium">Informação relevante</p>
+          <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
+            {analise.informacaoRelevante.map((item) => (
+              <li key={`${item.titulo}:${item.descricao}`}>
+                <span className="font-medium text-foreground">{item.titulo}:</span> {item.descricao}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {analise.camposIncertos.length > 0 && (
+        <div className="rounded-xl border border-status-alerta/30 p-4">
+          <p className="text-sm font-medium">Dados que precisam de confirmação</p>
+          <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+            {analise.camposIncertos.map((item) => (
+              <li key={`${item.campo}:${item.motivo}`}>
+                • {item.campo}: {item.motivo}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Destino</p>
+        <p className="mt-1 font-medium">Este documento ficará organizado na Biblioteca.</p>
+      </div>
+    </div>
+  );
 }
 
 export function ReviewForm({

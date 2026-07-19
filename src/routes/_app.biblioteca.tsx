@@ -185,7 +185,7 @@ function BibliotecaPage() {
 
   useProductHelpPageState({
     emptyState: documentosVisiveis.length === 0,
-    primaryAction: "Adicionar documento",
+    primaryAction: "Adicionar e analisar PDF",
     currentStatus: documentos.length === 0 ? "Por iniciar" : "Com documentos",
     nextStep:
       documentos.length === 0
@@ -206,13 +206,13 @@ function BibliotecaPage() {
         breadcrumb="Biblioteca"
         actions={
           <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
-            <AdicionarBibliotecaWizard />
             <div className="[&>button]:w-full sm:[&>button]:w-auto">
               <InstitutionalDocumentIntake
-                triggerLabel="Analisar e organizar PDF"
-                triggerVariant="secondary"
+                triggerLabel="Adicionar e analisar PDF"
+                triggerVariant="primary"
               />
             </div>
+            <AdicionarBibliotecaWizard />
           </div>
         }
       />

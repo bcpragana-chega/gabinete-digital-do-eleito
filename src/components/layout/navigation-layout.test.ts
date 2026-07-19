@@ -65,14 +65,14 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.match(todayDecision, /Rever documento/);
     assert.doesNotMatch(hoje, /Incoerência detetada/);
 
-    assert.match(biblioteca, /triggerLabel="Analisar e organizar PDF"/);
+    assert.match(biblioteca, /triggerLabel="Adicionar e analisar PDF"/);
     assert.match(biblioteca, /Ainda não está ligado a um assunto ou sessão/);
     assert.match(biblioteca, /estado === "por analisar" \? "Rever documento"/);
     assert.doesNotMatch(biblioteca, /Compreender PDF|Sem ligação institucional/);
 
     assert.match(intake, /Analisar documento/);
     assert.match(intake, /Adicionar e analisar/);
-    assert.match(intake, /A sessão só será criada ao selecionar/);
+    assert.match(intake, /A sessão só será criada depois da sua confirmação/);
     assert.doesNotMatch(intake, />Compreender<|Adicionar e compreender|A compreender o documento/);
   });
 

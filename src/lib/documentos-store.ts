@@ -375,6 +375,34 @@ export function editarDocumento(
   return atualizado;
 }
 
+export async function editarDocumentoConfirmado(
+  id: string,
+  input: Partial<Omit<Documento, "id" | "createdAt">>,
+): Promise<Documento> {
+  const owner = await obterUtilizadorSupabaseValidado();
+  if (!owner?.id) throw new Error("AUTH_REQUIRED");
+  const atual = read(owner.id).find((documento) => documento.id === id);
+  if (!atual) throw new Error("DOCUMENTO_NOT_FOUND");
+
+  const atualizado: Documento = {
+    ...atual,
+    ...input,
+    updatedAt: new Date().toISOString(),
+  };
+  const guardado = await guardarDocumentoRemoto(owner.id, atualizado);
+  if (!guardado) throw new Error("DOCUMENTO_SAVE_NOT_CONFIRMED");
+  if ((await obterUtilizadorSupabaseValidado())?.id !== owner.id) {
+    throw new Error("AUTH_CONTEXT_CHANGED");
+  }
+
+  write(
+    read(owner.id).map((documento) => (documento.id === id ? atualizado : documento)),
+    owner.id,
+  );
+  registarDocumentoEditadoNaTimeline(atualizado);
+  return atualizado;
+}
+
 export function listarDocumentosLocais(assembleiaId?: string): Documento[] {
   const all = read();
   return assembleiaId ? all.filter((d) => d.assembleiaId === assembleiaId) : all;
