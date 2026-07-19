@@ -2,7 +2,7 @@ import type { PerfilEleito } from "@/lib/auth-store";
 import { readJSON, userScopedKey, writeJSON } from "@/lib/storage-provider";
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
 
-type ProfileRow = {
+export type ProfileRow = {
   user_id: string;
   nome_institucional: string | null;
   cargo: PerfilEleito["cargo"] | null;
@@ -12,6 +12,7 @@ type ProfileRow = {
   municipio: string | null;
   freguesia: string | null;
   assinatura_institucional: string | null;
+  logo_url: string | null;
   onboarding_version?: number | null;
   updated_at: string | null;
 };
@@ -60,8 +61,9 @@ function orgaoSeguro(valor: unknown): PerfilEleito["orgao"] {
     : "Outro";
 }
 
-function fromRow(row: ProfileRow): PerfilEleito {
+export function profileFromRow(row: ProfileRow): PerfilEleito {
   const assinaturaInstitucional = textoSeguro(row.assinatura_institucional);
+  const logoUrl = textoSeguro(row.logo_url);
 
   return {
     nomeInstitucional: textoSeguro(row.nome_institucional),
@@ -72,11 +74,12 @@ function fromRow(row: ProfileRow): PerfilEleito {
     municipio: textoSeguro(row.municipio) || undefined,
     freguesia: textoSeguro(row.freguesia) || undefined,
     assinaturaInstitucional: assinaturaInstitucional || undefined,
+    logoUrl: logoUrl || undefined,
     updatedAt: textoSeguro(row.updated_at) || new Date().toISOString(),
   };
 }
 
-function toRow(userId: string, perfil: PerfilEleito): ProfileRow {
+export function profileToRow(userId: string, perfil: PerfilEleito): ProfileRow {
   if (
     !userId ||
     !textoSeguro(perfil.nomeInstitucional) ||
@@ -98,6 +101,7 @@ function toRow(userId: string, perfil: PerfilEleito): ProfileRow {
     municipio: textoSeguro(perfil.municipio) || null,
     freguesia: textoSeguro(perfil.freguesia) || null,
     assinatura_institucional: textoSeguro(perfil.assinaturaInstitucional) || null,
+    logo_url: textoSeguro(perfil.logoUrl) || null,
     updated_at: textoSeguro(perfil.updatedAt) || new Date().toISOString(),
   };
 }
@@ -112,12 +116,12 @@ export async function guardarPerfilConfirmadoComDependencias(
   perfil: PerfilEleito,
   dependencias: GuardarPerfilConfirmadoDependencias,
 ) {
-  const row = toRow(userId, perfil);
+  const row = profileToRow(userId, perfil);
   const persistida = await dependencias.upsert(row);
   if (!persistida || persistida.user_id !== userId) {
     throw new Error("PROFILE_UPSERT_SEM_CONFIRMACAO");
   }
-  return fromRow(persistida);
+  return profileFromRow(persistida);
 }
 
 async function obterSupabaseUserIdValido(userId?: string) {
@@ -193,7 +197,7 @@ export async function carregarPerfilRemoto(userId?: string) {
     perfilEncontrado: Boolean(data),
   });
 
-  return data ? fromRow(data) : undefined;
+  return data ? profileFromRow(data) : undefined;
 }
 
 export async function carregarOnboardingVersionRemoto(userId?: string) {
@@ -312,6 +316,15 @@ function ficheiroParaDataUrl(file: File) {
   });
 }
 
+/** @internal Impede que um upload remoto confirmado recue para uma data URL. */
+export function resolverUrlPublicaLogo(valor: unknown) {
+  const publicUrl = textoSeguro(valor);
+  if (!publicUrl || publicUrl.startsWith("data:")) {
+    throw new Error("LOGO_PUBLIC_URL_UNAVAILABLE");
+  }
+  return publicUrl;
+}
+
 export async function guardarLogoPerfil(userId: string | undefined, file: File) {
   const { mimeType, extensao } = validarLogo(file);
   const fallbackLocal = await ficheiroParaDataUrl(file);
@@ -339,7 +352,7 @@ export async function guardarLogoPerfil(userId: string | undefined, file: File) 
   }
 
   const { data } = supabase.storage.from("logos").getPublicUrl(path);
-  return data.publicUrl || fallbackLocal;
+  return resolverUrlPublicaLogo(data.publicUrl);
 }
 
 export async function guardarOnboardingVersionRemoto(userId: string, version: number) {
@@ -400,15 +413,36 @@ export async function guardarOnboardingVersionConfirmadaComDependencias(
 export async function carregarPerfilHibrido(userId?: string) {
   if (!userId) return undefined;
 
-  if (isSupabaseConfigured()) {
-    const remoto = await carregarPerfilRemoto(userId);
-    if (remoto) {
-      guardarPerfilLocal(userId, remoto);
-    }
-    return remoto;
-  }
+  return carregarPerfilHibridoComDependencias(userId, {
+    remotoConfigurado: isSupabaseConfigured,
+    carregarRemoto: carregarPerfilRemoto,
+    carregarLocal: carregarPerfilLocal,
+    guardarLocal: guardarPerfilLocal,
+  });
+}
 
-  return carregarPerfilLocal(userId);
+/** @internal Preserva o logótipo local durante a transição de linhas remotas antigas. */
+export async function carregarPerfilHibridoComDependencias(
+  userId: string,
+  dependencias: {
+    remotoConfigurado: () => boolean;
+    carregarRemoto: (userId: string) => Promise<PerfilEleito | undefined>;
+    carregarLocal: (userId: string) => PerfilEleito | undefined;
+    guardarLocal: (userId: string, perfil: PerfilEleito) => void;
+  },
+) {
+  const local = dependencias.carregarLocal(userId);
+  if (!dependencias.remotoConfigurado()) return local;
+
+  const remoto = await dependencias.carregarRemoto(userId);
+  if (!remoto) return undefined;
+
+  const hidratado =
+    !textoSeguro(remoto.logoUrl) && textoSeguro(local?.logoUrl)
+      ? { ...remoto, logoUrl: textoSeguro(local?.logoUrl) }
+      : remoto;
+  dependencias.guardarLocal(userId, hidratado);
+  return hidratado;
 }
 
 export async function guardarPerfilHibrido(userId: string, perfil: PerfilEleito) {
