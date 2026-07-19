@@ -628,7 +628,7 @@ function DocumentoDoAssuntoPage() {
                   </>
                 }
                 actions={
-                  <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
+                  <div className="flex w-full flex-col flex-wrap items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
                     {copiado ? (
                       <span className="text-xs text-muted-foreground">Texto copiado</span>
                     ) : (
