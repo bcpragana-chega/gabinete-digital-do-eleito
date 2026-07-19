@@ -32,9 +32,9 @@ describe("fluxo central da sessão", () => {
     assert.ok(state.missingOptional.every((step) => step.requirement === "optional"));
   });
 
-  it("só permite prontidão depois da confirmação humana", () => {
+  it("não deixa recomendações bloquear a confirmação humana", () => {
     const state = calcularFluxoSessao({
-      sessao: { ...sessao, dadosConfirmadosEm: "agora", revisaoFinalConfirmadaEm: "agora" },
+      sessao: { ...sessao, dadosConfirmadosEm: "agora" },
       documentos: [{ estado: "Revisto" }],
       pontos: [ponto],
       assuntosCount: 0,
@@ -42,6 +42,20 @@ describe("fluxo central da sessão", () => {
     });
     assert.equal(state.canMarkReady, true);
     assert.equal(state.progress, 100);
+    assert.equal(state.nextAction.id, "revisao");
+    assert.ok(state.missingOptional.some((step) => step.id === "revisao"));
+  });
+
+  it("prioriza uma pendência essencial antes da revisão e das recomendações", () => {
+    const state = calcularFluxoSessao({
+      sessao,
+      documentos: [{ estado: "Por rever" }],
+      pontos: [],
+      assuntosCount: 0,
+      documentosPoliticosCount: 0,
+    });
+    assert.equal(state.nextAction.id, "dados");
+    assert.equal(state.nextAction.requirement, "required");
   });
 
   it("usa Documento.estado como critério único de revisão", () => {

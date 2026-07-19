@@ -100,7 +100,7 @@ export function calcularFluxoSessao(input: {
     {
       id: "revisao",
       label: "Confirmar revisão final",
-      requirement: "required",
+      requirement: "optional",
       done: Boolean(sessao.revisaoFinalConfirmadaEm),
       href: `#verificacao-final`,
       action: "Confirmar revisão final",
@@ -110,7 +110,13 @@ export function calcularFluxoSessao(input: {
   const required = steps.filter((step) => step.requirement === "required");
   const missingRequired = required.filter((step) => !step.done);
   const missingOptional = steps.filter((step) => step.requirement === "optional" && !step.done);
-  const nextAction = missingRequired[0] ?? missingOptional[0] ?? steps[steps.length - 1];
+  const revisaoFinal = steps.find((step) => step.id === "revisao");
+  const outrasPendenciasOpcionais = missingOptional.filter((step) => step.id !== "revisao");
+  const nextAction =
+    missingRequired[0] ??
+    (revisaoFinal?.done ? undefined : revisaoFinal) ??
+    outrasPendenciasOpcionais[0] ??
+    steps[steps.length - 1];
   const completedRequired = required.length - missingRequired.length;
 
   return {

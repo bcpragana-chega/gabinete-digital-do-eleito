@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { criarEstadoPreparacao } from "@/components/preparacao/PreparationGuidancePanel";
+import {
+  criarEstadoDoFluxoPreparacao,
+  criarEstadoPreparacao,
+} from "@/components/preparacao/PreparationGuidancePanel";
+import { calcularFluxoSessao } from "@/lib/session-flow";
+import type { Assembleia } from "@/lib/types";
+
+const panelSource = readFileSync(
+  new URL("./PreparationGuidancePanel.tsx", import.meta.url),
+  "utf8",
+);
 
 const estrategiaVazia = {
   objetivoPolitico: "",
@@ -10,7 +21,84 @@ const estrategiaVazia = {
   notasLivres: "",
 };
 
+const sessao: Assembleia = {
+  id: "sessao-1",
+  nome: "Sessão",
+  data: "2026-07-19",
+  hora: "18:00",
+  local: "Sala",
+  estado: "preparacao",
+};
+
+const pontoPreparado = {
+  estado: "Preparado" as const,
+  posicaoPolitica: "Apoiar",
+  linhaIntervencao: "Intervir",
+  sentidoVoto: "A favor" as const,
+};
+
+function criarEstado(
+  sessaoAtual: Assembleia,
+  options: { documentosRevistos?: boolean; comPontos?: boolean } = {},
+) {
+  const flow = calcularFluxoSessao({
+    sessao: sessaoAtual,
+    documentos: [{ estado: options.documentosRevistos === false ? "Por rever" : "Revisto" }],
+    pontos: options.comPontos === false ? [] : [pontoPreparado],
+    assuntosCount: 0,
+    documentosPoliticosCount: 0,
+  });
+  return criarEstadoDoFluxoPreparacao({
+    assembleiaId: sessaoAtual.id,
+    preparacaoEstado: sessaoAtual.preparacaoEstado,
+    flow,
+  });
+}
+
 describe("estado de preparação da sessão", () => {
+  it("remove score, percentagem e barra de progresso da interface", () => {
+    assert.doesNotMatch(
+      panelSource,
+      /state\.score|state\.progressColor|width: `\$\{state\.score\}%`/,
+    );
+    assert.doesNotMatch(panelSource, /passos concluídos/);
+  });
+
+  it("usa estados institucionais e reserva a prontidão para a confirmação manual", () => {
+    const incompleta = criarEstado(sessao, { documentosRevistos: false });
+    const paraRevisao = criarEstado({ ...sessao, dadosConfirmadosEm: "agora" });
+    const pronta = criarEstado({
+      ...sessao,
+      dadosConfirmadosEm: "agora",
+      preparacaoEstado: "pronta",
+    });
+
+    assert.equal(incompleta.readinessLabel, "Preparação incompleta");
+    assert.equal(paraRevisao.readinessLabel, "Pronta para revisão");
+    assert.equal(paraRevisao.canConfirm, true);
+    assert.equal(pronta.readinessLabel, "Pronta para a sessão");
+    assert.equal(pronta.isComplete, true);
+  });
+
+  it("não deixa pendências recomendadas bloquear a revisão", () => {
+    const estado = criarEstado({ ...sessao, dadosConfirmadosEm: "agora" });
+    assert.equal(estado.missingEssential.length, 0);
+    assert.ok(estado.missingItems.some((item) => item.classification === "recommended"));
+    assert.equal(estado.readinessLabel, "Pronta para revisão");
+  });
+
+  it("classifica a checklist e ordena pendências essenciais primeiro", () => {
+    const estado = criarEstado(sessao, { documentosRevistos: false, comPontos: false });
+    assert.ok(estado.steps.some((step) => step.classification === "essential"));
+    assert.ok(estado.steps.some((step) => step.classification === "recommended"));
+    assert.equal(estado.nextAction.title, "Confirmar dados");
+    assert.equal(estado.missingItems[0]?.classification, "essential");
+  });
+
+  it("limita as pendências principais visíveis a três", () => {
+    assert.match(panelSource, /state\.missingItems\.slice\(0, 3\)\.map/);
+  });
+
   it("não inventa preparação quando não existem dados", () => {
     const estado = criarEstadoPreparacao({
       assembleiaId: "sessao-1",

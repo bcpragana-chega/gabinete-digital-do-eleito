@@ -27,6 +27,7 @@ type GuidanceStep = {
   description: string;
   href?: string;
   cta?: string;
+  classification: "essential" | "recommended";
 };
 
 type MissingItem = {
@@ -34,6 +35,7 @@ type MissingItem = {
   message: string;
   href: string;
   cta: string;
+  classification: "essential" | "recommended";
 };
 
 type NextAction = {
@@ -110,36 +112,11 @@ export function PreparationGuidancePanel({
       assuntosCount: assuntos.length,
       documentosPoliticosCount: rascunhos.length,
     });
-    return {
-      steps: flow.steps.map((step) => ({
-        ...step,
-        description: step.missing ?? step.label,
-        cta: step.action,
-      })),
-      completedCount: flow.steps.filter((step) => step.done).length,
-      score: flow.progress,
-      readinessLabel:
-        assembleia.preparacaoEstado === "pronta"
-          ? "Pronta"
-          : flow.progress === 100
-            ? "Pronta para confirmar"
-            : "Em preparação",
-      progressColor:
-        flow.progress === 100 ? "hsl(var(--status-concluida))" : "hsl(var(--status-alerta))",
-      missingItems: [...flow.missingRequired, ...flow.missingOptional].map((step) => ({
-        id: step.id,
-        message: step.missing ?? step.label,
-        href: `/sessoes/${assembleiaId}${step.href}`,
-        cta: step.action,
-      })),
-      isComplete: assembleia.preparacaoEstado === "pronta",
-      nextAction: {
-        title: flow.nextAction.label,
-        description: flow.nextAction.missing ?? "Reveja a preparação da sessão.",
-        button: flow.nextAction.action,
-        href: `/sessoes/${assembleiaId}${flow.nextAction.href}`,
-      },
-    };
+    return criarEstadoDoFluxoPreparacao({
+      assembleiaId,
+      preparacaoEstado: assembleia.preparacaoEstado,
+      flow,
+    });
   }, [
     assembleia,
     assembleiaId,
@@ -160,10 +137,11 @@ export function PreparationGuidancePanel({
       ? undefined
       : state.missingItems.slice(0, 3).map((item) => item.message),
     summaryFacts: [
-      `${state.completedCount} de ${state.steps.length} passos concluídos`,
       `${pontos.length} pontos da sessão`,
       `${documentos.length} documentos associados`,
-      `${state.missingItems.length} passos incompletos`,
+      state.missingEssential.length === 0
+        ? "Preparação essencial concluída"
+        : `${state.missingEssential.length} pendências essenciais`,
     ],
   });
 
@@ -183,19 +161,19 @@ export function PreparationGuidancePanel({
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               Estado
             </p>
-            <p className="text-base font-semibold leading-none text-foreground">{state.score}%</p>
-            <p className="text-xs font-medium leading-none text-foreground">
+            <p className="text-sm font-semibold leading-snug text-foreground">
               {state.readinessLabel}
             </p>
-            <p className="text-[11px] leading-none text-muted-foreground">
-              {state.completedCount} de {state.steps.length} passos concluídos
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {state.statusDescription}
             </p>
-            <div className="h-1 rounded-full bg-muted/80">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${state.score}%`, backgroundColor: state.progressColor }}
-              />
-            </div>
+            {state.canConfirm && (
+              <Button asChild size="sm" variant="secondary" className="h-7 px-2.5 text-[11px]">
+                <Link to="/sessoes/$id" params={{ id: assembleiaId }} hash="verificacao-final">
+                  Confirmar preparação
+                </Link>
+              </Button>
+            )}
           </div>
 
           <div className="space-y-1 border-b border-border/60 pb-1.5">
@@ -226,32 +204,41 @@ export function PreparationGuidancePanel({
 
             {state.isComplete ? (
               <p className="text-[11px] leading-relaxed text-foreground">
-                Preparação concluída. Faça apenas uma revisão final de confiança antes da sessão.
+                A sessão está preparada. Pode continuar a editar os seus elementos até ao início.
               </p>
             ) : state.missingItems.length > 0 ? (
-              <ul className="space-y-0.5">
-                {state.missingItems.slice(0, 3).map((item) => (
-                  <li
-                    key={item.id}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"
-                  >
-                    <p className="min-w-0 text-[11px] leading-relaxed text-foreground">
-                      • {item.message}
-                    </p>
-                    <Button
-                      asChild
-                      variant="secondary"
-                      size="sm"
-                      className="h-6 shrink-0 px-2 text-[10px] whitespace-nowrap"
-                    >
-                      <Link to={item.href}>{item.cta}</Link>
-                    </Button>
-                  </li>
-                ))}
-              </ul>
+              <>
+                {state.missingEssential.length === 0 && (
+                  <p className="text-[11px] leading-relaxed text-foreground">
+                    A preparação essencial está concluída.
+                  </p>
+                )}
+                <ul className="space-y-1">
+                  {state.missingItems.slice(0, 3).map((item) => (
+                    <li key={item.id} className="space-y-1 rounded-md bg-muted/35 p-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="min-w-0 text-[11px] leading-relaxed text-foreground">
+                          {item.message}
+                        </p>
+                        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {item.classification === "essential" ? "Essencial" : "Recomendado"}
+                        </span>
+                      </div>
+                      <Button
+                        asChild
+                        variant="secondary"
+                        size="sm"
+                        className="h-6 px-2 text-[10px] whitespace-nowrap"
+                      >
+                        <Link to={item.href}>{item.cta}</Link>
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </>
             ) : (
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Não existem pendências críticas neste momento.
+              <p className="text-[11px] leading-relaxed text-foreground">
+                A preparação essencial está concluída e não existem melhorias pendentes.
               </p>
             )}
           </div>
@@ -283,9 +270,26 @@ export function PreparationGuidancePanel({
                     >
                       {step.done ? "✓" : "○"}
                     </span>
-                    <span>{step.label}</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {step.done ? "Concluído" : "Em falta"}
+                    <span className="space-y-1">
+                      <span className="block">{step.label}</span>
+                      <span className="block text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {step.classification === "essential" ? "Essencial" : "Recomendado"}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground">
+                        {step.done ? "Concluído" : "Em falta"}
+                      </span>
+                      {step.href && step.cta && (
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-1.5 text-[10px]"
+                        >
+                          <Link to={step.href}>{step.done ? "Rever" : step.cta}</Link>
+                        </Button>
+                      )}
                     </span>
                   </li>
                 ))}
@@ -296,6 +300,74 @@ export function PreparationGuidancePanel({
       </Card>
     </section>
   );
+}
+
+export function criarEstadoDoFluxoPreparacao({
+  assembleiaId,
+  preparacaoEstado,
+  flow,
+}: {
+  assembleiaId: string;
+  preparacaoEstado?: "em_preparacao" | "pronta";
+  flow: ReturnType<typeof calcularFluxoSessao>;
+}) {
+  const steps: GuidanceStep[] = flow.steps.map((step) => ({
+    ...step,
+    description: step.missing ?? step.label,
+    cta: step.action,
+    href: `/sessoes/${assembleiaId}${step.href}`,
+    classification: step.requirement === "required" ? "essential" : "recommended",
+  }));
+  const missingEssential = flow.missingRequired.map((step) => ({
+    id: step.id,
+    message: step.missing ?? step.label,
+    href: `/sessoes/${assembleiaId}${step.href}`,
+    cta: step.action,
+    classification: "essential" as const,
+  }));
+  const missingRecommended = flow.missingOptional.map((step) => ({
+    id: step.id,
+    message: step.missing ?? step.label,
+    href: `/sessoes/${assembleiaId}${step.href}`,
+    cta: step.action,
+    classification: "recommended" as const,
+  }));
+  const isComplete = preparacaoEstado === "pronta";
+  const readinessLabel = isComplete
+    ? "Pronta para a sessão"
+    : missingEssential.length > 0
+      ? "Preparação incompleta"
+      : "Pronta para revisão";
+  const statusDescription = isComplete
+    ? "A preparação foi confirmada pelo eleito. Os elementos da sessão continuam editáveis."
+    : missingEssential.length > 0
+      ? "Resolva as pendências essenciais antes de confirmar a preparação."
+      : "A preparação essencial está concluída. O eleito pode rever e confirmar a sessão.";
+
+  const nextAction: NextAction = isComplete
+    ? {
+        title: "Preparação confirmada",
+        description: "A sessão está pronta; pode continuar a rever ou editar os seus elementos.",
+        button: "Continuar a editar",
+        href: `/sessoes/${assembleiaId}`,
+      }
+    : {
+        title: flow.nextAction.label,
+        description: flow.nextAction.missing ?? "Reveja a preparação da sessão.",
+        button: flow.nextAction.action,
+        href: `/sessoes/${assembleiaId}${flow.nextAction.href}`,
+      };
+
+  return {
+    steps,
+    missingItems: [...missingEssential, ...missingRecommended],
+    missingEssential,
+    isComplete,
+    canConfirm: !isComplete && missingEssential.length === 0,
+    readinessLabel,
+    statusDescription,
+    nextAction,
+  };
 }
 
 export function criarEstadoPreparacao({
@@ -350,6 +422,7 @@ export function criarEstadoPreparacao({
       label: "Sessão criada",
       description: "A sessão está disponível para preparação.",
       done: true,
+      classification: "essential",
     },
     {
       id: "strategy-completed",
@@ -358,6 +431,7 @@ export function criarEstadoPreparacao({
       done: strategyCompleted,
       href: `/sessoes/${assembleiaId}/preparacao/estrategia`,
       cta: "Preparar estratégia",
+      classification: "recommended",
     },
     {
       id: "documents-reviewed",
@@ -366,6 +440,7 @@ export function criarEstadoPreparacao({
       done: documentsReviewed,
       href: `/sessoes/${assembleiaId}/preparacao/documentos`,
       cta: documentsUploaded ? "Analisar documentos" : "Carregar documentos",
+      classification: "essential",
     },
     {
       id: "draft-documents",
@@ -374,6 +449,7 @@ export function criarEstadoPreparacao({
       done: draftsCreated,
       href: `/sessoes/${assembleiaId}/preparacao/documentos-a-criar`,
       cta: "Criar rascunhos",
+      classification: "recommended",
     },
     {
       id: "questions-prepared",
@@ -382,36 +458,16 @@ export function criarEstadoPreparacao({
       done: questionsPrepared,
       href: `/sessoes/${assembleiaId}/preparacao/pontos`,
       cta: "Preparar intervenção",
+      classification: "recommended",
     },
     {
       id: "final-review",
       label: "Revisão final",
       description: "Confirme que tudo está pronto para a sessão.",
       done: finalReview,
+      classification: "recommended",
     },
   ];
-
-  const completedCount = steps.filter((step) => step.done).length;
-  const score = Math.round((completedCount / steps.length) * 100);
-
-  const readinessLabel =
-    score === 100
-      ? "Pronto"
-      : score >= 80
-        ? "Quase concluído"
-        : score >= 40
-          ? "Em preparação"
-          : "Necessita de atenção";
-  const readinessTone =
-    score === 100 ? "success" : score >= 80 ? "info" : score >= 40 ? "warning" : "danger";
-  const progressColor =
-    score === 100
-      ? "hsl(var(--status-concluida))"
-      : score >= 80
-        ? "hsl(var(--status-analise))"
-        : score >= 40
-          ? "hsl(var(--status-alerta))"
-          : "hsl(var(--destructive))";
 
   const missingItems: MissingItem[] = [];
   if (!documentsUploaded) {
@@ -420,6 +476,7 @@ export function criarEstadoPreparacao({
       message: "Nenhum documento foi carregado.",
       href: `/sessoes/${assembleiaId}/preparacao/documentos`,
       cta: "Carregar documentos",
+      classification: "essential",
     });
   }
   if (!documentsReviewed) {
@@ -429,6 +486,7 @@ export function criarEstadoPreparacao({
         message: "Os documentos carregados ainda não foram analisados.",
         href: `/sessoes/${assembleiaId}/preparacao/documentos`,
         cta: "Analisar documentos",
+        classification: "essential",
       });
     }
   }
@@ -438,6 +496,7 @@ export function criarEstadoPreparacao({
       message: "A estratégia ainda não foi concluída.",
       href: `/sessoes/${assembleiaId}/preparacao/estrategia`,
       cta: "Preparar estratégia",
+      classification: "recommended",
     });
   }
   if (!questionsPrepared) {
@@ -447,6 +506,7 @@ export function criarEstadoPreparacao({
         message: "Ainda falta preparar a intervenção.",
         href: `/sessoes/${assembleiaId}/preparacao/pontos`,
         cta: "Preparar intervenção",
+        classification: "recommended",
       });
     }
   }
@@ -456,6 +516,7 @@ export function criarEstadoPreparacao({
       message: "Ainda não existem rascunhos.",
       href: `/sessoes/${assembleiaId}/preparacao/documentos-a-criar`,
       cta: "Criar rascunhos",
+      classification: "recommended",
     });
   }
   if (!pointsAdded) {
@@ -464,13 +525,21 @@ export function criarEstadoPreparacao({
       message: "Os pontos da sessão ainda não estão estruturados.",
       href: `/sessoes/${assembleiaId}/preparacao/pontos`,
       cta: "Abrir pontos",
+      classification: "essential",
     });
   }
 
-  const isComplete = score === 100;
-  const scoreDescription = isComplete
-    ? "Todos os requisitos essenciais estão completos."
-    : `${completedCount} de ${steps.length} passos concluídos.`;
+  const missingEssential = missingItems.filter((item) => item.classification === "essential");
+  missingItems.sort((a, b) =>
+    a.classification === b.classification ? 0 : a.classification === "essential" ? -1 : 1,
+  );
+  const isComplete = false;
+  const readinessLabel =
+    missingEssential.length > 0 ? "Preparação incompleta" : "Pronta para revisão";
+  const statusDescription =
+    missingEssential.length > 0
+      ? "Resolva as pendências essenciais antes de confirmar a preparação."
+      : "A preparação essencial está concluída. O eleito pode rever e confirmar a sessão.";
 
   const nextAction = escolherProximaAcao({
     assembleiaId,
@@ -484,14 +553,12 @@ export function criarEstadoPreparacao({
 
   return {
     steps,
-    completedCount,
-    score,
     readinessLabel,
-    readinessTone,
-    progressColor,
     missingItems,
+    missingEssential,
     isComplete,
-    scoreDescription,
+    canConfirm: missingEssential.length === 0,
+    statusDescription,
     nextAction,
   };
 }
