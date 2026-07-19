@@ -151,7 +151,7 @@ export function PreparationGuidancePanel({
         <div className="space-y-0.5">
           <div className="flex items-start justify-between gap-2">
             <h2 className="font-display text-xs font-semibold tracking-tight text-foreground/90">
-              Assistente de preparação
+              Preparação da sessão
             </h2>
           </div>
         </div>

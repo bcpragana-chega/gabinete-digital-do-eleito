@@ -3,7 +3,7 @@
 > Este ficheiro é a fonte oficial de verdade sobre o estado do Tribuno.
 > Deve ser consultado no início de cada novo chat, missão Codex ou ciclo de desenvolvimento.
 
-Última atualização: 19 de julho de 2026
+Última atualização: 20 de julho de 2026
 
 ---
 
@@ -817,9 +817,10 @@ Validar qualidade documental com testes objetivos antes de concluir que o valor 
 
 ---
 
-## ⏳ Problema n.º 13 — O assistente de ajuda pode estar a compensar complexidade
+## ✅ Problema n.º 13 — O assistente de ajuda pode estar a compensar complexidade
 
-Estado: PENDENTE
+Estado: FECHADO
+Avaliação: 9,5/10
 
 ### Diagnóstico
 
@@ -839,6 +840,38 @@ Se cada página precisa de um assistente para explicar o próximo passo, a próp
 ### Princípio
 
 O assistente deve ser uma vantagem adicional, nunca uma bengala da interface.
+
+### Implementação concluída
+
+- As páginas principais são compreensíveis sem abrir a Ajuda e mantêm visíveis as respetivas ações,
+  estados e orientações estruturais.
+- No detalhe do Assunto, o bloco determinístico passou de “Assistente” para “Estado e próxima ação”,
+  com “Situação atual” e uma descrição direta do resumo apresentado.
+- Na preparação de Sessão, “Assistente de preparação” passou a “Preparação da sessão”, deixando
+  claro que o painel pertence à interface central de preparação.
+- A Ajuda global mantém o título “Assistente Tribuno”, mas a descrição, mensagem inicial e três
+  sugestões posicionam-na como apoio opcional para esclarecer dúvidas e encontrar funcionalidades.
+- Nenhuma lógica funcional foi alterada: estado e recomendações do Assunto, cálculo do fluxo de
+  Sessão, prontidão, checklist, ações, persistência, autenticação, contexto da página, retry e limite
+  de mensagens foram preservados.
+
+### Testes e validação
+
+Foram adicionados contratos de interface para a nova nomenclatura do detalhe do Assunto e da
+preparação de Sessão, para o posicionamento opcional da Ajuda e para a existência de exatamente três
+sugestões iniciais. Os contratos existentes continuam a cobrir envio, autenticação, retry, contexto
+seguro da página e histórico limitado às oito mensagens mais recentes.
+
+- `npm test`: 510 testes aprovados, 0 falhas; o sandbox emitiu um aviso não bloqueante ao impedir a
+  abertura da porta WebSocket 24678 do Vite;
+- `npm run typecheck`: aprovado;
+- `npm run lint`: aprovado com 0 erros e 22 avisos preexistentes fora do âmbito;
+- `npm run build`: aprovado;
+- `git diff --check`: aprovado.
+
+### Commit principal
+
+Não criado nesta missão, por falta de autorização explícita para fazer commit.
 
 ---
 
@@ -874,10 +907,10 @@ Eliminar definitivamente modelos antigos, em vez de apenas os esconder.
 
 # Próxima ação
 
-Resolver o Problema n.º 8 — o progresso da preparação pode transmitir falsa segurança — numa missão
+Resolver o Problema n.º 14 — duplicação aumenta o custo de cada correção futura — numa missão
 futura e fechada.
 
-Não iniciar automaticamente outro problema após o fecho do Problema n.º 10.
+Não iniciar automaticamente outro problema após o fecho do Problema n.º 13.
 
 ---
 

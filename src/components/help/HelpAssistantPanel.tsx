@@ -16,8 +16,8 @@ import { useCurrentProductHelpPageState } from "@/components/help/ProductHelpPag
 import { getSupabaseClient } from "@/lib/supabase";
 
 export const SUGESTOES_AJUDA = [
-  "O que posso fazer aqui?",
-  "Qual é o próximo passo?",
+  "O que posso fazer nesta página?",
+  "Onde encontro uma funcionalidade?",
   "Como funciona o Tribuno?",
 ] as const;
 
@@ -112,7 +112,9 @@ export function HelpAssistantPanel({ pathname, triggerClassName }: HelpAssistant
       >
         <SheetHeader className="shrink-0 border-b border-border/70 px-5 py-5 pr-12 text-left">
           <SheetTitle>Assistente Tribuno</SheetTitle>
-          <SheetDescription>Ajuda para perceber onde está e o que fazer a seguir.</SheetDescription>
+          <SheetDescription>
+            Esclarece dúvidas sobre funcionalidades e utilização do Tribuno.
+          </SheetDescription>
           <p className="text-xs text-muted-foreground">Não altera os seus dados.</p>
         </SheetHeader>
 
@@ -124,8 +126,8 @@ export function HelpAssistantPanel({ pathname, triggerClassName }: HelpAssistant
           {messages.length === 0 && (
             <div className="space-y-4">
               <p className="rounded-2xl rounded-tl-md bg-muted/70 px-4 py-3 text-sm leading-6 text-foreground">
-                Olá, sou o assistente do Tribuno. Posso explicar esta página, ajudar a encontrar uma
-                função ou indicar o próximo passo.
+                Olá, sou o assistente do Tribuno. Posso esclarecer dúvidas sobre esta página ou
+                ajudar a encontrar uma funcionalidade.
               </p>
               <div className="space-y-2" aria-label="Sugestões de perguntas">
                 {SUGESTOES_AJUDA.map((suggestion) => (

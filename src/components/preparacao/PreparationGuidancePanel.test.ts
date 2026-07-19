@@ -60,6 +60,17 @@ function criarEstado(
 }
 
 describe("estado de preparação da sessão", () => {
+  it("apresenta a preparação como interface central e preserva os seus blocos", () => {
+    assert.match(panelSource, />\s*Preparação da sessão\s*</);
+    assert.doesNotMatch(panelSource, /Assistente de preparação/);
+    assert.match(panelSource, />\s*Estado\s*</);
+    assert.match(panelSource, /Próxima ação/);
+    assert.match(panelSource, /Pendências principais/);
+    assert.match(panelSource, /Ver checklist completa/);
+    assert.match(panelSource, /Essencial/);
+    assert.match(panelSource, /Recomendado/);
+  });
+
   it("remove score, percentagem e barra de progresso da interface", () => {
     assert.doesNotMatch(
       panelSource,

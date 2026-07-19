@@ -22,6 +22,16 @@ const pageStateConsumers = [
 ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
 
 describe("painel do Assistente Tribuno", () => {
+  it("posiciona o assistente global como apoio opcional para dúvidas", () => {
+    assert.match(panel, /<SheetTitle>Assistente Tribuno<\/SheetTitle>/);
+    assert.match(panel, /Esclarece dúvidas sobre funcionalidades e utilização do Tribuno\./);
+    assert.doesNotMatch(panel, /Ajuda para perceber onde está e o que fazer a seguir\./);
+    assert.match(
+      panel,
+      /Olá, sou o assistente do Tribuno\. Posso esclarecer dúvidas sobre esta página ou\s+ajudar a encontrar uma funcionalidade\./,
+    );
+  });
+
   it("coloca Ajuda no fundo da sidebar e fora da navegação principal", () => {
     assert.match(sidebar, /border-t[\s\S]*<HelpAssistantPanel/);
     assert.match(sidebar, /pathname=\{pathname\}/);
@@ -49,10 +59,11 @@ describe("painel do Assistente Tribuno", () => {
 
   it("apresenta e envia as sugestões como mensagens normais", () => {
     assert.deepEqual(SUGESTOES_AJUDA, [
-      "O que posso fazer aqui?",
-      "Qual é o próximo passo?",
+      "O que posso fazer nesta página?",
+      "Onde encontro uma funcionalidade?",
       "Como funciona o Tribuno?",
     ]);
+    assert.equal(SUGESTOES_AJUDA.length, 3);
     assert.match(panel, /onClick=\{\(\) => void enviarMensagem\(suggestion\)\}/);
   });
 

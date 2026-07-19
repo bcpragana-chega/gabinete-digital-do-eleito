@@ -43,6 +43,15 @@ describe("composição das rotas de Assunto", () => {
     assert.match(index, /<DossieDocumentosCriadosSection dossieId=\{dossie\.id\}/);
   });
 
+  it("apresenta estado e próxima ação como informação estrutural do Assunto", () => {
+    assert.match(index, /title="Estado e próxima ação"/);
+    assert.match(index, /title="Situação atual"/);
+    assert.match(index, /Resumo do ponto em que este assunto se encontra\./);
+    assert.doesNotMatch(index, /title="Assistente"/);
+    assert.doesNotMatch(index, /Leitura do Tribuno/);
+    assert.doesNotMatch(index, /Síntese determinística do estado atual\./);
+  });
+
   it("rota canónica compõe o detalhe documental e as antigas redirecionam", () => {
     assert.match(editor, /createFileRoute\("\/_app\/documentos\/\$documentoId"\)/);
     assert.doesNotMatch(editor, /DossieDocumentosCriadosSection|function DossieDetalhePage/);

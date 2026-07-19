@@ -237,12 +237,12 @@ function DossieDetalhePage() {
                 <WorkspaceSection>
                   <SectionTitle
                     icon={Bot}
-                    title="Assistente"
-                    description="Síntese determinística do estado atual."
+                    title="Estado e próxima ação"
+                    description="Resumo do ponto em que este assunto se encontra."
                   />
                   <div className="mt-5 space-y-3">
                     <InfoCard
-                      title="Leitura do Tribuno"
+                      title="Situação atual"
                       description={`Este assunto está com ${estadoUx.estadoResumido}.`}
                     />
                     {estadoUx.recomendacoes.length > 0 && (
