@@ -12,8 +12,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { pedirAjudaTribuno } from "@/lib/ai/product-help-api";
 import type { MensagemAjuda } from "@/lib/ai/product-help";
+import { useCurrentProductHelpPageState } from "@/components/help/ProductHelpPageState";
 import { getSupabaseClient } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
 
 export const SUGESTOES_AJUDA = [
   "O que posso fazer aqui?",
@@ -30,10 +30,11 @@ export function podeEnviarMensagemAjuda(texto: string, envioEmCurso: boolean) {
 
 type HelpAssistantPanelProps = {
   pathname: string;
-  className?: string;
+  triggerClassName: string;
 };
 
-export function HelpAssistantPanel({ pathname, className }: HelpAssistantPanelProps) {
+export function HelpAssistantPanel({ pathname, triggerClassName }: HelpAssistantPanelProps) {
+  const pageState = useCurrentProductHelpPageState();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<MensagemAjuda[]>([]);
   const [draft, setDraft] = useState("");
@@ -79,7 +80,7 @@ export function HelpAssistantPanel({ pathname, className }: HelpAssistantPanelPr
       if (authError || !accessToken) throw new Error("AUTH_REQUIRED");
 
       const result = await pedirAjudaTribuno({
-        data: { accessToken, pathname, messages: nextMessages.slice(-8) },
+        data: { accessToken, pathname, messages: nextMessages.slice(-8), pageState },
       });
       if (!result.ok) throw new Error(result.code);
 
@@ -97,14 +98,7 @@ export function HelpAssistantPanel({ pathname, className }: HelpAssistantPanelPr
   return (
     <Sheet open={open} onOpenChange={alterarAbertura}>
       <SheetTrigger asChild>
-        <button
-          type="button"
-          aria-label="Abrir Assistente Tribuno"
-          className={cn(
-            "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
-            className,
-          )}
-        >
+        <button type="button" aria-label="Abrir Assistente Tribuno" className={triggerClassName}>
           <CircleHelp className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
           <span>Ajuda</span>
         </button>
@@ -152,15 +146,14 @@ export function HelpAssistantPanel({ pathname, className }: HelpAssistantPanelPr
           {messages.map((message, index) => (
             <div
               key={`${message.role}-${index}`}
-              className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <p
-                className={cn(
-                  "max-w-[88%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6",
+                className={`max-w-[88%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 ${
                   message.role === "user"
                     ? "rounded-tr-md bg-primary text-primary-foreground"
-                    : "rounded-tl-md bg-muted/70 text-foreground",
-                )}
+                    : "rounded-tl-md bg-muted/70 text-foreground"
+                }`}
               >
                 {message.content}
               </p>

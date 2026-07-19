@@ -15,10 +15,7 @@ describe("composição responsiva do WorkspaceHeader", () => {
     assert.match(header, /flex flex-col items-stretch[^"]*2xl:flex-row/);
     assert.doesNotMatch(header, /sm:flex-row sm:flex-wrap/);
     assert.match(header, /flex w-full min-w-0 items-start[^"]*2xl:flex-1/);
-    assert.match(
-      header,
-      /w-full min-w-0 max-w-full 2xl:w-auto 2xl:max-w-\[60%\] 2xl:shrink-0/,
-    );
+    assert.match(header, /w-full min-w-0 max-w-full 2xl:w-auto 2xl:max-w-\[60%\] 2xl:shrink-0/);
   });
 
   it("permite que as ações do documento ocupem a largura móvel e quebrem em desktop", () => {

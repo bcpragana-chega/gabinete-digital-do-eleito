@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, Clock, FileText, Landmark, ListChecks, MapPin } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
+import { useProductHelpPageState } from "@/components/help/ProductHelpPageState";
 import { NovaAssembleiaDialog } from "@/components/assembleias/NovaAssembleiaDialog";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
@@ -78,6 +79,24 @@ function AssembleiasPage() {
   const concluidas = assembleiasNaoArquivadas.filter(
     (assembleia) => assembleia.estado === "concluida",
   ).length;
+
+  useProductHelpPageState({
+    emptyState: assembleiasVisiveis.length === 0,
+    primaryAction: "Criar sessão",
+    currentStatus: assembleiasNaoArquivadas.length === 0 ? "Por iniciar" : "Com sessões",
+    nextStep:
+      assembleiasNaoArquivadas.length === 0
+        ? "Criar manualmente uma sessão ou analisar uma convocatória"
+        : emPreparacao > 0
+          ? "Abrir uma sessão em preparação"
+          : "Abrir uma sessão para consultar o estado",
+    summaryFacts: [
+      `${assembleiasNaoArquivadas.length} sessões não arquivadas`,
+      `${emPreparacao} em preparação`,
+      `${emAnalise} em análise`,
+      `${concluidas} concluídas`,
+    ],
+  });
 
   return (
     <>

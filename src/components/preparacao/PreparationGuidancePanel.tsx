@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, ClipboardList, ListChecks, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useProductHelpPageState } from "@/components/help/ProductHelpPageState";
 import { Card } from "@/components/ui/card";
 import {
   listarDocumentosACriarDaAssembleia,
@@ -149,6 +150,22 @@ export function PreparationGuidancePanel({
     estrategia,
     preparacao,
   ]);
+
+  useProductHelpPageState({
+    emptyState: documentos.length === 0 && pontos.length === 0 && rascunhos.length === 0,
+    primaryAction: state.nextAction.button,
+    currentStatus: state.readinessLabel,
+    nextStep: state.nextAction.description,
+    visibleWarnings: state.isComplete
+      ? undefined
+      : state.missingItems.slice(0, 3).map((item) => item.message),
+    summaryFacts: [
+      `${state.completedCount} de ${state.steps.length} passos concluídos`,
+      `${pontos.length} pontos da sessão`,
+      `${documentos.length} documentos associados`,
+      `${state.missingItems.length} passos incompletos`,
+    ],
+  });
 
   return (
     <section className={className}>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Activity, CalendarDays, Folder } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
+import { useProductHelpPageState } from "@/components/help/ProductHelpPageState";
 import { NovoDossieDialog } from "@/components/dossies/NovoDossieDialog";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
@@ -87,6 +88,22 @@ function DossiesPage() {
     (dossie) => dossie.estado === "em acompanhamento",
   ).length;
   const concluidos = dossiesNaoArquivados.filter((dossie) => dossie.estado === "concluido").length;
+
+  useProductHelpPageState({
+    emptyState: dossiesVisiveis.length === 0,
+    primaryAction: "Criar Assunto",
+    currentStatus: dossiesNaoArquivados.length === 0 ? "Por iniciar" : "Com conteúdo",
+    nextStep:
+      dossiesNaoArquivados.length === 0
+        ? "Criar um Assunto"
+        : "Abrir um Assunto para rever a próxima ação",
+    summaryFacts: [
+      `${dossiesNaoArquivados.length} assuntos não arquivados`,
+      `${ativos} ativos`,
+      `${emAcompanhamento} em acompanhamento`,
+      `${concluidos} concluídos`,
+    ],
+  });
 
   return (
     <>

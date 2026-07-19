@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { AdicionarBibliotecaWizard } from "@/components/biblioteca/AdicionarBibliotecaWizard";
 import { InstitutionalDocumentIntake } from "@/components/documentos/InstitutionalDocumentIntake";
+import { useProductHelpPageState } from "@/components/help/ProductHelpPageState";
 import { TopBar } from "@/components/layout/TopBar";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
@@ -181,6 +182,23 @@ function BibliotecaPage() {
 
   const estadoVazio = mensagemEstadoVazio();
   const pesquisaAtiva = pesquisa.trim().length > 0;
+
+  useProductHelpPageState({
+    emptyState: documentosVisiveis.length === 0,
+    primaryAction: "Adicionar documento",
+    currentStatus: documentos.length === 0 ? "Por iniciar" : "Com documentos",
+    nextStep:
+      documentos.length === 0
+        ? "Adicionar um documento ou analisar e organizar um PDF"
+        : porTratar > 0
+          ? "Rever os documentos por analisar"
+          : "Pesquisar ou filtrar a Biblioteca",
+    summaryFacts: [
+      `${documentos.length} documentos na Biblioteca`,
+      `${porTratar} documentos por analisar`,
+      `${documentosVisiveis.length} documentos visíveis no filtro atual`,
+    ],
+  });
 
   return (
     <>

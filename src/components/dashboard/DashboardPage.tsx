@@ -23,6 +23,7 @@ import type { LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { TopBar } from "@/components/layout/TopBar";
+import { useProductHelpPageState } from "@/components/help/ProductHelpPageState";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { WorkspacePage } from "@/components/ui/workspace";
@@ -162,6 +163,20 @@ export function DashboardPage() {
   });
   const metrics = criarMetricas({ ativas, documentos, rascunhosDaProxima, dossies });
   const activity = criarAtividade({ documentos, rascunhosDaProxima, dossiesAtivos });
+
+  useProductHelpPageState({
+    emptyState: !proxima && documentos.length === 0 && dossiesAtivos.length === 0,
+    primaryAction: mission.button,
+    currentStatus: !proxima ? "Sem próxima sessão" : `Preparação a ${progress}%`,
+    nextStep: mission.button,
+    visibleWarnings: alerts.length > 0 ? [`${alerts.length} alertas visíveis`] : undefined,
+    summaryFacts: [
+      proxima ? "Existe uma próxima sessão" : "Não existe uma próxima sessão",
+      `${pontosDaProxima.length} pontos na próxima sessão`,
+      `${tasks.length} tarefas visíveis`,
+      `${documentosGlobaisPorRever.length} documentos por rever`,
+    ],
+  });
 
   return (
     <>

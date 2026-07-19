@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, Clock, Landmark, MapPin } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
+import { useProductHelpPageState } from "@/components/help/ProductHelpPageState";
 import { Button } from "@/components/ui/button";
 import { EntityCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
@@ -28,6 +29,17 @@ function AgendaPage() {
   const proximas = assembleias
     .filter((assembleia) => assembleia.data >= hoje && assembleia.estado !== "arquivada")
     .sort((a, b) => `${a.data}T${a.hora}`.localeCompare(`${b.data}T${b.hora}`));
+
+  useProductHelpPageState({
+    emptyState: proximas.length === 0,
+    primaryAction: proximas.length === 0 ? "Ir para Sessões" : "Abrir uma sessão",
+    currentStatus: proximas.length === 0 ? "Sem próximas sessões" : "Com próximas sessões",
+    nextStep:
+      proximas.length === 0
+        ? "Criar ou atualizar uma Sessão"
+        : "Abrir a próxima sessão para consultar ou continuar a preparação",
+    summaryFacts: [`${proximas.length} próximas sessões visíveis`],
+  });
 
   return (
     <>

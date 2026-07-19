@@ -9,14 +9,34 @@ import {
 
 const panel = readFileSync(new URL("./HelpAssistantPanel.tsx", import.meta.url), "utf8");
 const sidebar = readFileSync(new URL("../layout/AppSidebar.tsx", import.meta.url), "utf8");
+const topBar = readFileSync(new URL("../layout/TopBar.tsx", import.meta.url), "utf8");
 const sidebarConfig = readFileSync(new URL("../layout/sidebar-config.ts", import.meta.url), "utf8");
 const sheet = readFileSync(new URL("../ui/sheet.tsx", import.meta.url), "utf8");
 const helpApi = readFileSync(new URL("../../lib/ai/product-help-api.ts", import.meta.url), "utf8");
+const pageStateConsumers = [
+  "../dashboard/DashboardPage.tsx",
+  "../../routes/_app.assuntos.index.tsx",
+  "../../routes/_app.sessoes.index.tsx",
+  "../preparacao/PreparationGuidancePanel.tsx",
+  "../../routes/_app.biblioteca.tsx",
+  "../../routes/_app.agenda.tsx",
+].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
 
 describe("painel do Assistente Tribuno", () => {
   it("coloca Ajuda no fundo da sidebar e fora da navegação principal", () => {
-    assert.match(sidebar, /border-t[\s\S]*<HelpAssistantPanel pathname=\{pathname\}/);
+    assert.match(sidebar, /border-t[\s\S]*<HelpAssistantPanel/);
+    assert.match(sidebar, /pathname=\{pathname\}/);
     assert.doesNotMatch(sidebarConfig, /Ajuda|CircleHelp|HelpAssistantPanel/);
+  });
+
+  it("reutiliza exatamente a variante visual dos itens de navegação", () => {
+    const trigger = panel.slice(panel.indexOf("<SheetTrigger"), panel.indexOf("</SheetTrigger>"));
+    assert.match(sidebar, /className=\{sidebarItemClassName\(active, "desktop"\)\}/);
+    assert.match(sidebar, /triggerClassName=\{sidebarItemClassName\(false, "desktop"\)\}/);
+    assert.match(topBar, /className=\{sidebarItemClassName\(active, "mobile"\)\}/);
+    assert.match(topBar, /triggerClassName=\{sidebarItemClassName\(false, "mobile"\)\}/);
+    assert.match(trigger, /className=\{triggerClassName\}/);
+    assert.doesNotMatch(trigger, /hover:bg-muted|rounded-xl px-3 py-2\.5/);
   });
 
   it("abre e fecha com Sheet, overlay e Escape acessíveis", () => {
@@ -73,5 +93,13 @@ describe("painel do Assistente Tribuno", () => {
     assert.doesNotMatch(panel, /product-help\.server/);
     assert.match(panel, /product-help-api/);
     assert.match(helpApi, /await import\("@\/lib\/ai\/product-help\.server"\)/);
+  });
+
+  it("inclui o estado seguro atual no pedido quando está disponível", () => {
+    assert.match(panel, /const pageState = useCurrentProductHelpPageState\(\)/);
+    assert.match(panel, /messages: nextMessages\.slice\(-8\), pageState/);
+    for (const consumer of pageStateConsumers) {
+      assert.match(consumer, /useProductHelpPageState\(\{/);
+    }
   });
 });

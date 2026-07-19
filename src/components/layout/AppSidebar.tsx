@@ -1,7 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { isSidebarItemActive, sidebarItems } from "@/components/layout/sidebar-config";
+import {
+  isSidebarItemActive,
+  sidebarItemClassName,
+  sidebarItems,
+} from "@/components/layout/sidebar-config";
 import { HelpAssistantPanel } from "@/components/help/HelpAssistantPanel";
-import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -27,16 +30,7 @@ export function AppSidebar() {
           const active = isSidebarItemActive(pathname, item);
 
           return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={cn(
-                "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
-                active
-                  ? "bg-muted/70 font-medium text-foreground before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-foreground/70"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-              )}
-            >
+            <Link key={item.to} to={item.to} className={sidebarItemClassName(active, "desktop")}>
               <Icon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
               <span>{item.label}</span>
             </Link>
@@ -45,7 +39,10 @@ export function AppSidebar() {
       </nav>
 
       <div className="border-t border-border/60 pt-3">
-        <HelpAssistantPanel pathname={pathname} />
+        <HelpAssistantPanel
+          pathname={pathname}
+          triggerClassName={sidebarItemClassName(false, "desktop")}
+        />
       </div>
     </aside>
   );

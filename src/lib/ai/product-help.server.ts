@@ -7,6 +7,7 @@ import {
   SYSTEM_PROMPT_AJUDA,
   type MensagemAjuda,
   type PedidoAjuda,
+  type ProductHelpPageState,
   type ResultadoAjuda,
 } from "@/lib/ai/product-help";
 
@@ -40,7 +41,28 @@ async function autenticarPedidoAjuda(accessToken: string) {
   return typeof user.id === "string" && user.id.trim() ? user.id : undefined;
 }
 
-export function construirPromptAjuda(pathname: string, messages: MensagemAjuda[]) {
+function linhasEstadoPagina(pageState?: ProductHelpPageState) {
+  if (!pageState) return ["Estado adicional: não fornecido por esta página."];
+
+  const linhas = [
+    pageState.emptyState === undefined
+      ? undefined
+      : `Estado vazio: ${pageState.emptyState ? "sim" : "não"}`,
+    pageState.primaryAction ? `Ação principal visível: ${pageState.primaryAction}` : undefined,
+    pageState.currentStatus ? `Estado atual: ${pageState.currentStatus}` : undefined,
+    pageState.nextStep ? `Próximo passo confirmado: ${pageState.nextStep}` : undefined,
+    ...(pageState.visibleWarnings ?? []).map((warning) => `Aviso visível: ${warning}`),
+    ...(pageState.summaryFacts ?? []).map((fact) => `Facto resumido: ${fact}`),
+  ].filter((linha): linha is string => Boolean(linha));
+
+  return linhas.length > 0 ? linhas : ["Estado adicional: não fornecido por esta página."];
+}
+
+export function construirPromptAjuda(
+  pathname: string,
+  messages: MensagemAjuda[],
+  pageState?: ProductHelpPageState,
+) {
   const contexto = resolverContextoAjuda(pathname);
   const historico = messages
     .slice(-8)
@@ -54,6 +76,9 @@ export function construirPromptAjuda(pathname: string, messages: MensagemAjuda[]
     `Página: ${contexto.pagina}`,
     `Pathname normalizado: ${contexto.pathname}`,
     `Funções disponíveis: ${contexto.descricao}`,
+    "",
+    "ESTADO SEGURO CONFIRMADO PELA INTERFACE",
+    ...linhasEstadoPagina(pageState),
     "",
     "BASE DE CONHECIMENTO CONTROLADA",
     BASE_CONHECIMENTO_AJUDA,
@@ -86,7 +111,7 @@ export async function executarPedidoAjuda(
   const answer = (
     await deps.responder({
       systemPrompt: SYSTEM_PROMPT_AJUDA,
-      userPrompt: construirPromptAjuda(input.pathname, input.messages),
+      userPrompt: construirPromptAjuda(input.pathname, input.messages, input.pageState),
       maxOutputTokens: 500,
     })
   )

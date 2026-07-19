@@ -12,11 +12,20 @@ import {
   SYSTEM_PROMPT_AJUDA,
   type PedidoAjuda,
 } from "./product-help";
+import { pedidoAjudaSchema, productHelpPageStateSchema } from "./product-help-api";
 
 const pedido = {
   accessToken: "token-seguro",
   pathname: "/assuntos/assunto-secreto",
   messages: [{ role: "user", content: "O que posso fazer aqui?" }],
+  pageState: {
+    emptyState: false,
+    primaryAction: "Rever assunto",
+    currentStatus: "Incompleto",
+    nextStep: "Rever a próxima ação",
+    visibleWarnings: ["Existe um passo incompleto"],
+    summaryFacts: ["2 documentos associados"],
+  },
 } satisfies PedidoAjuda;
 
 describe("Assistente de Ajuda do Tribuno", () => {
@@ -95,7 +104,53 @@ describe("Assistente de Ajuda do Tribuno", () => {
       /assunto-secreto|token-seguro|localStorage|store|documento integral/i,
     );
     assert.match(prompt, /Pathname normalizado: \/assuntos\/:assuntoId/);
+    assert.match(prompt, /ESTADO SEGURO CONFIRMADO PELA INTERFACE/);
+    assert.match(prompt, /Ação principal visível: Rever assunto/);
+    assert.match(prompt, /Próximo passo confirmado: Rever a próxima ação/);
+    assert.match(prompt, /Facto resumido: 2 documentos associados/);
     assert.match(prompt, /CONVERSA LIMITADA/);
+  });
+
+  it("funciona sem campos de estado adicionais", () => {
+    const parsed = pedidoAjudaSchema.parse({
+      accessToken: "token-seguro",
+      pathname: "/agenda",
+      messages: [{ role: "user", content: "E agora?" }],
+    });
+    const prompt = construirPromptAjuda(parsed.pathname, parsed.messages, parsed.pageState);
+
+    assert.match(prompt, /Estado adicional: não fornecido por esta página/);
+    assert.match(prompt, /Página: Agenda/);
+  });
+
+  it("aceita apenas o resumo tipado e rejeita IDs ou objetos completos", () => {
+    assert.equal(
+      productHelpPageStateSchema.safeParse({
+        emptyState: false,
+        sessionId: "sessao-secreta",
+        session: { id: "sessao-secreta", titulo: "conteúdo integral" },
+      }).success,
+      false,
+    );
+
+    const prompt = construirPromptAjuda("/sessoes/sessao-secreta", pedido.messages, {
+      emptyState: false,
+      summaryFacts: ["3 pontos da sessão"],
+    });
+    assert.doesNotMatch(prompt, /sessao-secreta|conteúdo integral/);
+    assert.match(prompt, /Facto resumido: 3 pontos da sessão/);
+  });
+
+  it("orienta perguntas vagas pelo próximo passo fornecido sem inventar conclusão", () => {
+    const prompt = construirPromptAjuda("/sessoes", [{ role: "user", content: "E agora?" }], {
+      emptyState: true,
+      primaryAction: "Criar sessão",
+      nextStep: "Criar manualmente uma sessão ou analisar uma convocatória",
+    });
+
+    assert.match(prompt, /Próximo passo confirmado: Criar manualmente uma sessão/);
+    assert.match(SYSTEM_PROMPT_AJUDA, /Perante perguntas vagas como “E agora\?”/);
+    assert.match(SYSTEM_PROMPT_AJUDA, /Nunca afirmes que uma tarefa está concluída/);
   });
 
   it("limita o histórico às oito mensagens mais recentes", () => {

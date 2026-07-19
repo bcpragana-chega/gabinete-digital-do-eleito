@@ -5,7 +5,11 @@ import type { ReactNode } from "react";
 import { UserAvatar } from "@/components/auth/UserAvatar";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
 import { HelpAssistantPanel } from "@/components/help/HelpAssistantPanel";
-import { isSidebarItemActive, sidebarItems } from "@/components/layout/sidebar-config";
+import {
+  isSidebarItemActive,
+  sidebarItemClassName,
+  sidebarItems,
+} from "@/components/layout/sidebar-config";
 import { UniversalSearch } from "@/components/search/UniversalSearch";
 import { primeiroNome, saudacaoPorHora, useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
@@ -136,12 +140,7 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
                         key={item.to}
                         to={item.to}
                         onClick={() => setMenuAberto(false)}
-                        className={cn(
-                          "flex min-h-11 items-center gap-3 rounded-2xl px-3.5 py-3 text-[15px] transition-all",
-                          active
-                            ? "bg-muted text-foreground font-medium"
-                            : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
-                        )}
+                        className={sidebarItemClassName(active, "mobile")}
                       >
                         <Icon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
                         <span>{item.label}</span>
@@ -151,7 +150,10 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
                 </nav>
 
                 <div className="border-t border-border/60 px-3 py-3 md:hidden">
-                  <HelpAssistantPanel pathname={pathname} />
+                  <HelpAssistantPanel
+                    pathname={pathname}
+                    triggerClassName={sidebarItemClassName(false, "mobile")}
+                  />
                 </div>
               </div>
             </SheetContent>

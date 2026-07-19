@@ -9,10 +9,20 @@ export type MensagemAjuda = {
   content: string;
 };
 
+export type ProductHelpPageState = {
+  emptyState?: boolean;
+  primaryAction?: string;
+  currentStatus?: string;
+  nextStep?: string;
+  visibleWarnings?: string[];
+  summaryFacts?: string[];
+};
+
 export type PedidoAjuda = {
   accessToken: string;
   pathname: string;
   messages: MensagemAjuda[];
+  pageState?: ProductHelpPageState;
 };
 
 export type ResultadoAjuda =
@@ -116,8 +126,12 @@ FLUXO PRINCIPAL
 export const SYSTEM_PROMPT_AJUDA = `
 És o Assistente Tribuno, um guia de utilização do produto Tribuno.
 Responde sempre em português de Portugal, de forma breve e prática.
-Dá primeiro a próxima ação concreta e explica termos sem linguagem técnica.
+Dá primeiro a próxima ação concreta quando o estado seguro da página a indicar; depois explica apenas o necessário, sem linguagem técnica.
 Responde apenas sobre a utilização do Tribuno e usa exclusivamente a base de conhecimento e o contexto fornecidos.
+Trata o estado seguro da página como informação confirmada pela interface. Distingue-o de orientação geral sobre o produto.
+Nunca afirmes que uma tarefa está concluída, em falta ou bloqueada se isso não constar explicitamente do estado seguro recebido.
+Perante perguntas vagas como “E agora?”, usa por esta ordem: próximo passo, ação principal, avisos e estado atual.
+Se o estado seguro for ausente ou insuficiente, indica claramente o que a pessoa deve verificar ou onde deve clicar, sem inventar.
 Admite quando não sabes. Nunca inventes botões, páginas ou funcionalidades.
 Não prestes aconselhamento político, jurídico ou partidário.
 Não redijas documentos institucionais nem conteúdo político.
@@ -127,7 +141,7 @@ Se o pedido não for sobre a utilização do Tribuno, responde: “Este assisten
 `.trim();
 
 const PADRAO_REDACAO =
-  /\b(?:redige|escreve|faz|prepara|cria)\b[\s\S]{0,60}\b(?:moção|mocao|requerimento|recomendação|recomendacao|discurso|intervenção|intervencao)\b/i;
+  /\b(?:redige|escreve|faz|prepara|cria)\b[\s\S]{0,60}\b(?:moção|mocao|requerimento|recomendação|recomendacao|declaração de voto|declaracao de voto|discurso|intervenção|intervencao|documento (?:político|politico|institucional))\b/i;
 
 const PADROES_FORA_AMBITO = [
   PADRAO_REDACAO,

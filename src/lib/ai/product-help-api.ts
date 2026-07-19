@@ -7,10 +7,24 @@ const mensagemSchema = z.object({
   content: z.string().trim().min(1).max(1000),
 });
 
+const textoEstadoSchema = z.string().trim().min(1).max(160);
+
+export const productHelpPageStateSchema = z
+  .object({
+    emptyState: z.boolean().optional(),
+    primaryAction: textoEstadoSchema.optional(),
+    currentStatus: textoEstadoSchema.optional(),
+    nextStep: textoEstadoSchema.optional(),
+    visibleWarnings: z.array(textoEstadoSchema).max(5).optional(),
+    summaryFacts: z.array(textoEstadoSchema).max(6).optional(),
+  })
+  .strict();
+
 export const pedidoAjudaSchema = z.object({
   accessToken: z.string().min(1).max(8192),
   pathname: z.string().min(1).max(300),
   messages: z.array(mensagemSchema).min(1).max(8),
+  pageState: productHelpPageStateSchema.optional(),
 });
 
 export const pedirAjudaTribuno = createServerFn({ method: "POST" })
