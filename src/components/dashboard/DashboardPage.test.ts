@@ -16,12 +16,20 @@ describe("composição da página Hoje", () => {
     );
   });
 
-  it("não duplica o onboarding e preserva as duas formas de criar sessão", () => {
-    assert.equal((dashboard.match(/<InstitutionalDocumentIntake/g) ?? []).length, 1);
+  it("não duplica o onboarding de sessão e preserva as duas formas de a criar", () => {
+    assert.match(dashboard, /action\.id === "onboarding-session"/);
     assert.equal((dashboard.match(/<NovaSessaoWizard/g) ?? []).length, 1);
     assert.match(dashboard, /triggerLabel="Carregar convocatória"/);
     assert.match(dashboard, /triggerLabel="Criar manualmente"/);
     assert.doesNotMatch(dashboard, /Começar por aqui/);
+  });
+
+  it("reutiliza os fluxos existentes para iniciar uma conta vazia", () => {
+    assert.match(dashboard, /action\.id === "onboarding-subject"/);
+    assert.equal((dashboard.match(/<NovoDossieDialog/g) ?? []).length, 1);
+    assert.match(dashboard, /triggerLabel="Analisar documentos"/);
+    assert.match(dashboard, /triggerVariant="secondary"/);
+    assert.match(dashboard, /documentoInicial=\{documentToAnalyze\}/);
   });
 
   it("faz a composição depender exclusivamente da decisão central", () => {

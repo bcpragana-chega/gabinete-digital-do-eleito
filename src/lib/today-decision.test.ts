@@ -19,19 +19,68 @@ function input(overrides: Partial<TodayDecisionInput> = {}): TodayDecisionInput 
   return {
     today: "2026-08-01",
     onboardingRequired: false,
+    activeSubjectCount: 1,
+    registeredSessionCount: 1,
+    documentsToOrganize: [],
     nextSession: session,
     ...overrides,
   };
 }
 
 describe("motor de decisão da página Hoje", () => {
-  it("transforma o onboarding sem próxima sessão na única ação principal", () => {
-    const decision = decideToday(input({ onboardingRequired: true, nextSession: undefined }));
+  it("sugere sessão a uma conta com assunto, mas sem próxima sessão", () => {
+    const decision = decideToday(
+      input({
+        onboardingRequired: true,
+        registeredSessionCount: 0,
+        nextSession: undefined,
+      }),
+    );
 
     assert.equal(decision.state, "onboarding");
     assert.equal(decision.primaryAction?.id, "onboarding-session");
     assert.deepEqual(decision.alerts, []);
     assert.deepEqual(decision.pendingItems, []);
+  });
+
+  it("faz uma conta totalmente vazia começar por um novo assunto", () => {
+    const decision = decideToday(
+      input({
+        onboardingRequired: true,
+        activeSubjectCount: 0,
+        registeredSessionCount: 0,
+        documentsToOrganize: [],
+        nextSession: undefined,
+      }),
+    );
+
+    assert.equal(decision.state, "onboarding");
+    assert.equal(decision.primaryAction?.title, "Começar um novo assunto");
+    assert.equal(decision.primaryAction?.label, "Novo assunto");
+    assert.equal(decision.primaryAction?.href, "/assuntos");
+    assert.deepEqual(decision.primaryAction?.secondaryAction, {
+      label: "Analisar documentos",
+      href: "/biblioteca",
+    });
+    assert.notEqual(decision.primaryAction?.id, "onboarding-session");
+    assert.deepEqual(decision.alerts, []);
+    assert.deepEqual(decision.pendingItems, []);
+  });
+
+  it("prioriza a organização de um documento quando não existem assunto ou sessão", () => {
+    const decision = decideToday(
+      input({
+        onboardingRequired: true,
+        activeSubjectCount: 0,
+        registeredSessionCount: 0,
+        documentsToOrganize: [{ id: "doc-library", title: "Regulamento municipal" }],
+        nextSession: undefined,
+      }),
+    );
+
+    assert.equal(decision.primaryAction?.id, "organize-document-doc-library");
+    assert.equal(decision.primaryAction?.href, "/documentos/doc-library?origem=biblioteca");
+    assert.notEqual(decision.primaryAction?.id, "onboarding-session");
   });
 
   it("dá prioridade a documento por rever sobre preparação genérica", () => {

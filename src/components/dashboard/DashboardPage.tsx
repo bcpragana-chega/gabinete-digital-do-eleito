@@ -4,6 +4,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { useProductHelpPageState } from "@/components/help/ProductHelpPageState";
 import { NovaSessaoWizard } from "@/components/assembleias/NovaSessaoWizard";
 import { InstitutionalDocumentIntake } from "@/components/documentos/InstitutionalDocumentIntake";
+import { NovoDossieDialog } from "@/components/dossies/NovoDossieDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { WorkspacePage } from "@/components/ui/workspace";
@@ -12,7 +13,8 @@ import {
   listarDocumentosACriarDaAssembleia,
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
-import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
+import { useDocumentos } from "@/lib/documentos-store";
+import { useDossies } from "@/lib/dossies-store";
 import {
   carregarPontosRemotosSeDisponivel,
   obterPontosDaAssembleia,
@@ -21,21 +23,43 @@ import {
 import { useAuth } from "@/lib/auth-store";
 import { temProximaAcaoConvocatoria } from "@/lib/onboarding-state";
 import { decideToday, type TodayAction, type TodayDecision } from "@/lib/today-decision";
-import type { Assembleia, DocumentoCriado } from "@/lib/types";
+import type { Assembleia, Documento, DocumentoCriado } from "@/lib/types";
 
 export function DashboardPage() {
   const { user } = useAuth();
   const assembleias = useAssembleias();
+  const dossies = useDossies();
+  const documentos = useDocumentos();
   const proxima = useMemo(() => obterProximaAssembleia(assembleias), [assembleias]);
-  const documentosDaProxima = useDocumentosDaAssembleia(proxima?.id ?? "");
+  const documentosDaProxima = useMemo(
+    () => documentos.filter((documento) => documento.assembleiaId === proxima?.id),
+    [documentos, proxima?.id],
+  );
   const pontosDaProxima = usePontosDaAssembleia(proxima?.id);
   const documentosCriados = useDocumentosCriadosDaAssembleia(proxima?.id);
+  const documentosParaOrganizar = useMemo(
+    () =>
+      documentos
+        .filter((documento) => !documento.archivedAt)
+        .sort((a, b) => prioridadeDocumento(a) - prioridadeDocumento(b)),
+    [documentos],
+  );
+  const assuntosAtivos = useMemo(
+    () => dossies.filter((dossie) => !dossie.archivedAt && dossie.estado !== "concluido"),
+    [dossies],
+  );
 
   const decision = useMemo(
     () =>
       decideToday({
         today: localDateKey(new Date()),
         onboardingRequired: temProximaAcaoConvocatoria(user?.id),
+        activeSubjectCount: assuntosAtivos.length,
+        registeredSessionCount: assembleias.length,
+        documentsToOrganize: documentosParaOrganizar.map((documento) => ({
+          id: documento.id,
+          title: documento.titulo,
+        })),
         nextSession: proxima
           ? {
               id: proxima.id,
@@ -69,7 +93,16 @@ export function DashboardPage() {
             }
           : undefined,
       }),
-    [documentosCriados, documentosDaProxima, pontosDaProxima, proxima, user?.id],
+    [
+      assembleias.length,
+      assuntosAtivos.length,
+      documentosCriados,
+      documentosDaProxima,
+      documentosParaOrganizar,
+      pontosDaProxima,
+      proxima,
+      user?.id,
+    ],
   );
 
   useProductHelpPageState({
@@ -100,7 +133,7 @@ export function DashboardPage() {
               {decision.primaryAction && (
                 <PrimaryActionCard
                   action={decision.primaryAction}
-                  onboarding={decision.state === "onboarding"}
+                  documentToAnalyze={documentosParaOrganizar[0]}
                 />
               )}
               {decision.alerts.length > 0 && <AlertsSection alerts={decision.alerts} />}
@@ -115,7 +148,13 @@ export function DashboardPage() {
   );
 }
 
-function PrimaryActionCard({ action, onboarding }: { action: TodayAction; onboarding: boolean }) {
+function PrimaryActionCard({
+  action,
+  documentToAnalyze,
+}: {
+  action: TodayAction;
+  documentToAnalyze?: Documento;
+}) {
   return (
     <Card className="relative overflow-hidden rounded-[14px] border-0 bg-[#082f49] p-6 text-white shadow-[0_18px_55px_rgba(5,31,49,0.18)] sm:p-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_10%,rgba(74,222,128,0.16),transparent_28%),linear-gradient(135deg,#031d2e_0%,#073754_58%,#04243a_100%)]" />
@@ -138,10 +177,25 @@ function PrimaryActionCard({ action, onboarding }: { action: TodayAction; onboar
           </p>
         )}
 
-        {onboarding ? (
+        {action.id === "onboarding-subject" ? (
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+            <NovoDossieDialog />
+            <InstitutionalDocumentIntake
+              triggerLabel="Analisar documentos"
+              triggerVariant="secondary"
+            />
+          </div>
+        ) : action.id === "onboarding-session" ? (
           <div className="mt-6 flex flex-col gap-2 sm:flex-row">
             <InstitutionalDocumentIntake triggerLabel="Carregar convocatória" />
             <NovaSessaoWizard triggerLabel="Criar manualmente" />
+          </div>
+        ) : action.id.startsWith("organize-document-") && documentToAnalyze ? (
+          <div className="mt-6 flex">
+            <InstitutionalDocumentIntake
+              documentoInicial={documentToAnalyze}
+              triggerLabel="Analisar documentos"
+            />
           </div>
         ) : (
           <Button
@@ -239,7 +293,10 @@ function ClearState() {
 function helpStatus(decision: TodayDecision) {
   if (decision.state === "clear") return "O mandato está em dia";
   if (decision.state === "critical") return "Existe uma ação crítica comprovada";
-  if (decision.state === "onboarding") return "É necessário preparar a primeira sessão";
+  if (decision.primaryAction?.id === "onboarding-subject") {
+    return "É necessário começar o acompanhamento do mandato";
+  }
+  if (decision.state === "onboarding") return "É útil preparar a próxima sessão";
   return "Existe uma próxima ação recomendada";
 }
 
@@ -297,4 +354,8 @@ function localDateKey(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function prioridadeDocumento(documento: Documento) {
+  return documento.estado === "Por rever" || documento.estado === "Importante" ? 0 : 1;
 }

@@ -285,6 +285,13 @@ fluxos existentes e aprovação de toda a validação obrigatória sem erros nov
   mas termina normalmente com os 349 testes aprovados.
 - O lint conserva 19 avisos preexistentes fora do âmbito desta missão.
 
+### Ajuste pós-validação com conta limpa
+
+A validação real mostrou que uma conta sem Assuntos, Documentos ou Sessões não deve assumir a
+preparação de uma primeira Sessão. A prioridade inicial foi corrigida para começar por um novo
+Assunto ou pelo fluxo documental existente de análise. A Sessão só é sugerida quando já existe
+trabalho que torne esse passo útil, deixando de ser um primeiro passo obrigatório.
+
 ---
 
 ## ⏳ Problema n.º 4 — As métricas parecem ornamentais para um eleito

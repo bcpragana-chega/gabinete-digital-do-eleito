@@ -68,7 +68,8 @@ describe("criação e preparação de sessões", () => {
   });
 
   it("o dashboard recomenda a convocatória sem a tornar obrigatória", () => {
-    assert.match(todayDecision, /Preparar a primeira sessão/);
+    assert.match(todayDecision, /Preparar a próxima sessão/);
+    assert.match(todayDecision, /input\.activeSubjectCount > 0 && input\.onboardingRequired/);
     assert.match(todayDecision, /Carrega a convocatória[\s\S]*ou cria a sessão manualmente/);
     assert.match(dashboard, /triggerLabel="Carregar convocatória"/);
     assert.match(dashboard, /triggerLabel="Criar manualmente"/);

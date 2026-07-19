@@ -11,6 +11,7 @@ export type TodayAction = TodayDestination & {
   title: string;
   explanation: string;
   context?: string;
+  secondaryAction?: TodayDestination;
 };
 
 export type TodayAlert = TodayDestination & {
@@ -43,6 +44,9 @@ export type TodaySession = {
 export type TodayDecisionInput = {
   today: string;
   onboardingRequired: boolean;
+  activeSubjectCount: number;
+  registeredSessionCount: number;
+  documentsToOrganize: Array<{ id: string; title: string }>;
   nextSession?: TodaySession;
 };
 
@@ -81,20 +85,61 @@ function buildCandidates(input: TodayDecisionInput): Candidate[] {
   const session = input.nextSession;
 
   if (!session) {
-    return input.onboardingRequired
-      ? [
-          {
-            id: "onboarding-session",
-            needKey: "onboarding-session",
-            priority: 8,
-            title: "Preparar a primeira sessão",
-            explanation:
-              "Carrega a convocatória para organizar os dados ou cria a sessão manualmente.",
-            label: "Preparar sessão",
-            href: "/sessoes",
+    const document = input.documentsToOrganize[0];
+    if (document) {
+      return [
+        {
+          id: `organize-document-${document.id}`,
+          needKey: `document-organization-${document.id}`,
+          priority: 7,
+          title: "Analisar e organizar documentos",
+          explanation: "Revê o documento para o integrar no acompanhamento do mandato.",
+          context: document.title,
+          label: "Analisar documentos",
+          href: `/documentos/${encodeURIComponent(document.id)}?origem=biblioteca`,
+        },
+      ];
+    }
+
+    const emptyAccount =
+      input.activeSubjectCount === 0 &&
+      input.documentsToOrganize.length === 0 &&
+      input.registeredSessionCount === 0;
+    if (emptyAccount) {
+      return [
+        {
+          id: "onboarding-subject",
+          needKey: "onboarding-subject",
+          priority: 7,
+          title: "Começar um novo assunto",
+          explanation:
+            "Cria um assunto ou analisa documentos para o Tribuno começar a acompanhar o teu mandato.",
+          label: "Novo assunto",
+          href: "/assuntos",
+          secondaryAction: {
+            label: "Analisar documentos",
+            href: "/biblioteca",
           },
-        ]
-      : [];
+        },
+      ];
+    }
+
+    if (input.activeSubjectCount > 0 && input.onboardingRequired) {
+      return [
+        {
+          id: "onboarding-session",
+          needKey: "onboarding-session",
+          priority: 8,
+          title: "Preparar a próxima sessão",
+          explanation:
+            "Carrega a convocatória para organizar os dados ou cria a sessão manualmente.",
+          label: "Preparar sessão",
+          href: "/sessoes",
+        },
+      ];
+    }
+
+    return [];
   }
 
   const candidates: Candidate[] = [];
@@ -219,6 +264,7 @@ export function decideToday(input: TodayDecisionInput): TodayDecision {
         title: primaryCandidate.title,
         explanation: primaryCandidate.explanation,
         context: primaryCandidate.context,
+        secondaryAction: primaryCandidate.secondaryAction,
         label: primaryCandidate.label,
         href: primaryCandidate.href,
       }
