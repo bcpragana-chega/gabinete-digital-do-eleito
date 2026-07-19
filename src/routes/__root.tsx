@@ -81,7 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Tribuno é o gabinete digital para eleitos locais em Portugal: organize assembleias, documentos e preparação num único local.",
+          "Tribuno é o gabinete digital para eleitos locais em Portugal: organize sessões, documentos e preparação num único local.",
       },
       { name: "author", content: "Tribuno" },
       { property: "og:type", content: "website" },

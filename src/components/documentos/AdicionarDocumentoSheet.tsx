@@ -25,9 +25,7 @@ export function AdicionarDocumentoSheet({ assembleiaId }: { assembleiaId: string
       <SheetContent className="flex h-full w-full flex-col overflow-hidden p-0 sm:max-w-md">
         <SheetHeader className="shrink-0 border-b border-border/70 px-6 py-5">
           <SheetTitle>Adicionar documento</SheetTitle>
-          <SheetDescription>
-            Associe um PDF a esta assembleia para consulta posterior.
-          </SheetDescription>
+          <SheetDescription>Associe um PDF a esta sessão para consulta posterior.</SheetDescription>
         </SheetHeader>
         <DocumentoForm
           assembleiaId={assembleiaId}

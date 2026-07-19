@@ -22,10 +22,10 @@ import type { DocumentoCriado } from "@/lib/types";
 export const Route = createFileRoute("/_app/sessoes/$id/preparacao/documentos-a-criar")({
   head: () => ({
     meta: [
-      { title: "Documentos a Criar — Preparação — Tribuno" },
+      { title: "Documentos — Preparação — Tribuno" },
       {
         name: "description",
-        content: "Central de rascunhos e documentos a criar da sessão.",
+        content: "Documentos produzidos durante a preparação da sessão.",
       },
     ],
   }),
@@ -57,7 +57,7 @@ function DocumentosACriarPage() {
   if (!assembleia) {
     return (
       <>
-        <TopBar breadcrumb="Documentos a Criar" />
+        <TopBar breadcrumb="Documentos" />
         <main className="px-8 py-10 max-w-7xl">
           <Link
             to="/sessoes"
@@ -106,7 +106,7 @@ function DocumentosACriarPage() {
               Preparação
             </Link>
             <span className="mx-2 text-muted-foreground/60">/</span>
-            <span className="text-foreground">Documentos a Criar</span>
+            <span className="text-foreground">Documentos</span>
           </span>
         }
       />
@@ -124,7 +124,7 @@ function DocumentosACriarPage() {
         <PageHeader
           icon={FilePlus2}
           eyebrow="Preparação"
-          title="Documentos a Criar"
+          title="Documentos"
           description="Central dos rascunhos criados para esta sessão, incluindo moções, recomendações, requerimentos e declarações de voto."
         />
 
@@ -192,7 +192,7 @@ function DocumentoACriarCentralCard({
               ? `Ponto ${ponto.numero} · ${ponto.titulo}`
               : rascunho.assuntoId
                 ? "Documento vindo de um assunto"
-                : "Documento geral da assembleia"}
+                : "Documento geral da sessão"}
           </p>
         </div>
       </div>

@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_app/sessoes/$id/documentos/$docId")({
       { title: "Documento — Tribuno" },
       {
         name: "description",
-        content: "Detalhe do documento da assembleia municipal.",
+        content: "Detalhe do documento da sessão.",
       },
     ],
   }),

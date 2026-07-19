@@ -25,13 +25,12 @@ describe("composição responsiva do WorkspaceHeader", () => {
     );
   });
 
-  it("é usado pelos cinco workspaces cobertos pela regressão", () => {
+  it("é usado pelos quatro workspaces que precisam de cabeçalho detalhado", () => {
     const consumidores = [
       "src/routes/_app.assuntos.$dossieId.index.tsx",
       "src/routes/_app.documentos.$documentoId.tsx",
       "src/routes/_app.sessoes.$id.tsx",
       "src/routes/_app.sessoes.$id.preparacao.pontos.$pontoId.tsx",
-      "src/routes/_app.caixa-de-entrada.tsx",
     ];
 
     for (const consumidor of consumidores) {

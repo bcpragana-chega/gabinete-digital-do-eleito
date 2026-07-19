@@ -36,7 +36,7 @@ const descricoesPorTitulo: Record<string, string> = {
   Preparação: "Reveja a ordem de trabalhos e defina a posição política.",
   "Preparação da sessão": "Reveja a ordem de trabalhos e defina a posição política.",
   "Documentos da sessão": "Consulte e prepare os documentos necessários para a sessão.",
-  "Documentos a criar": "Prepare os documentos ainda pendentes para esta sessão.",
+  Documentos: "Prepare os documentos ainda pendentes para esta sessão.",
   "Estratégia da sessão": "Defina objetivos, mensagens e limites para a sessão.",
   "Pontos da sessão": "Prepare cada ponto da ordem de trabalhos.",
   "Ponto da sessão": "Analise o ponto e prepare a intervenção necessária.",
@@ -46,13 +46,12 @@ const descricoesPorTitulo: Record<string, string> = {
   "Documento do assunto": "Edite, reveja e finalize o documento institucional.",
   Biblioteca: "Consulte e organize os documentos do mandato.",
   Agenda: "Acompanhe as próximas sessões e compromissos.",
-  "Caixa de Entrada": "Organize informação recebida e encaminhe o próximo passo.",
   Definições: "Gira o perfil institucional e as preferências do Tribuno.",
 };
 
 function tituloPorPathname(pathname: string) {
   if (pathname.includes("/documentos/")) return "Documento";
-  if (pathname.endsWith("/preparacao/documentos-a-criar")) return "Documentos a criar";
+  if (pathname.endsWith("/preparacao/documentos-a-criar")) return "Documentos";
   if (pathname.endsWith("/preparacao/documentos")) return "Documentos da sessão";
   if (pathname.endsWith("/preparacao/estrategia")) return "Estratégia da sessão";
   if (pathname.includes("/preparacao/pontos/")) return "Ponto da sessão";
@@ -63,7 +62,7 @@ function tituloPorPathname(pathname: string) {
   if (pathname === "/sessoes") return "Sessões";
   if (pathname === "/assuntos") return "Assuntos";
   if (pathname === "/biblioteca") return "Biblioteca";
-  if (pathname === "/caixa-de-entrada") return "Caixa de Entrada";
+  if (pathname === "/caixa-de-entrada") return "Biblioteca";
   if (pathname === "/agenda") return "Agenda";
   if (pathname === "/historico") return "Histórico";
   if (pathname === "/definicoes") return "Definições";

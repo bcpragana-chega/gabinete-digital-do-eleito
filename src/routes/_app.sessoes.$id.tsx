@@ -742,7 +742,7 @@ function AssembleiaDetailPage() {
               <WorkspaceSection>
                 <SectionTitle
                   icon={ScrollText}
-                  title="Documentos a criar"
+                  title="Documentos"
                   description="Rascunhos que devem estar prontos para a sessão."
                   actions={
                     <Button asChild variant="secondary" size="sm" className="w-full sm:w-auto">

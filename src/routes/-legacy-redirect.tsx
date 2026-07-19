@@ -1,5 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { construirDestinoLegado } from "./-legacy-redirect-path";
 
 type LegacyRedirectProps = {
   to: string;
@@ -10,11 +11,8 @@ export function LegacyRedirect({ to, params }: LegacyRedirectProps) {
   const router = useRouter();
 
   useEffect(() => {
-    const destino = Object.entries(params ?? {}).reduce(
-      (path, [param, value]) => path.replace(`$${param}`, encodeURIComponent(value)),
-      to,
-    );
-    router.history.replace(destino);
+    const queryEHash = `${window.location.search}${window.location.hash}`;
+    router.history.replace(construirDestinoLegado(to, params, queryEHash));
   }, [params, router.history, to]);
 
   return null;

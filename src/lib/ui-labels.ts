@@ -6,7 +6,7 @@ export const TERMS = {
   sessoes: "Sessões",
   assunto: "Assunto",
   assuntos: "Assuntos",
-  caixaEntrada: "Caixa de Entrada",
+  caixaEntrada: "Biblioteca",
 } as const;
 
 export function labelEstadoDocumento(estado: EstadoDocumento) {

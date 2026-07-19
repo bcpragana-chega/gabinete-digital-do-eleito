@@ -38,7 +38,7 @@ export function AdicionarPerguntaDialog({ assembleiaId, onAdicionar }: Props) {
   return (
     <AdicionarItemPreparacao
       tituloFormulario="Nova pergunta"
-      descricaoFormulario="Registe uma pergunta para usar durante a assembleia."
+      descricaoFormulario="Registe uma pergunta para usar durante a sessão."
       textoGuardar="Guardar pergunta"
       campos={campos}
       valoresIniciais={{

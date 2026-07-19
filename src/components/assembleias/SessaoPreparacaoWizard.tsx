@@ -555,7 +555,7 @@ function WizardStepDocumentosCriar({
 }) {
   return (
     <div className="space-y-5">
-      <StepTitle title="Passo 5 — Documentos a Criar" question="Que documentos queres preparar?" />
+      <StepTitle title="Passo 5 — Documentos" question="Que documentos queres preparar?" />
 
       <div className="rounded-2xl border border-border bg-card p-4">
         <div className="grid gap-3 lg:grid-cols-[180px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.3fr)_auto] lg:items-end">
@@ -639,7 +639,7 @@ function WizardStepDocumentosCriar({
       {pontos.length === 0 && (
         <InfoCard
           title="Adicione primeiro um ponto"
-          description="Os documentos a criar ficam ligados a um ponto da ordem de trabalhos."
+          description="Os documentos ficam ligados a um ponto da ordem de trabalhos."
         />
       )}
 

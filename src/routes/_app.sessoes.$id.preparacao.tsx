@@ -15,8 +15,7 @@ export const Route = createFileRoute("/_app/sessoes/$id/preparacao")({
       { title: "Preparação — Sessão — Tribuno" },
       {
         name: "description",
-        content:
-          "Prepare a sessão: documentos, estratégia, pontos da ordem de trabalhos e documentos a criar.",
+        content: "Prepare a sessão: documentos, estratégia e pontos da ordem de trabalhos.",
       },
     ],
   }),

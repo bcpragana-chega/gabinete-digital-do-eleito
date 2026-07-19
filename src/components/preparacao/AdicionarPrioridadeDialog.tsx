@@ -49,7 +49,7 @@ export function AdicionarPrioridadeDialog({ assembleiaId, onAdicionar }: Props) 
   return (
     <AdicionarItemPreparacao
       tituloFormulario="Nova prioridade"
-      descricaoFormulario="Defina um tema que pretende preparar para esta assembleia."
+      descricaoFormulario="Defina um tema que pretende preparar para esta sessão."
       textoGuardar="Guardar prioridade"
       campos={campos}
       valoresIniciais={{
