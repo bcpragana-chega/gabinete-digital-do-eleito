@@ -16,6 +16,7 @@ import { DossieDocumentosCriadosSection } from "@/components/dossies/DossieDocum
 import { DossieNotasSection } from "@/components/dossies/DossieNotasSection";
 import { DossieRelacionadosSection } from "@/components/dossies/DossieRelacionadosSection";
 import { DossieTimelineSection } from "@/components/dossies/DossieTimelineSection";
+import { DossieAcompanhamentoSection } from "@/components/dossies/DossieAcompanhamentoSection";
 import { ActionCard, InfoCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
@@ -276,6 +277,8 @@ function DossieDetalhePage() {
             <div id="documentos-assunto" className="scroll-mt-24">
               <DossieDocumentosCriadosSection dossieId={dossie.id} />
             </div>
+
+            <DossieAcompanhamentoSection dossieId={dossie.id} />
 
             <WorkspaceSection id="contexto-assunto" className="scroll-mt-24">
               <SectionTitle

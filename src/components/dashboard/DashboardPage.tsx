@@ -25,12 +25,15 @@ import { useAuth } from "@/lib/auth-store";
 import { temProximaAcaoConvocatoria } from "@/lib/onboarding-state";
 import { decideToday, type TodayAction, type TodayDecision } from "@/lib/today-decision";
 import type { Assembleia, Documento, DocumentoCriado } from "@/lib/types";
+import { useAcompanhamentos } from "@/lib/acompanhamentos-store";
+import { ordenarAcompanhamentos } from "@/lib/acompanhamento-politico";
 
 export function DashboardPage() {
   const { user } = useAuth();
   const assembleias = useAssembleias();
   const dossies = useDossies();
   const documentos = useDocumentos();
+  const acompanhamentos = useAcompanhamentos();
   const proxima = useMemo(() => obterProximaAssembleia(assembleias), [assembleias]);
   const documentosDaProxima = useMemo(
     () => documentos.filter((documento) => documento.assembleiaId === proxima?.id),
@@ -49,6 +52,13 @@ export function DashboardPage() {
     () => dossies.filter((dossie) => !dossie.archivedAt && dossie.estado !== "concluido"),
     [dossies],
   );
+  const acompanhamentosAtuais = useMemo(() => {
+    const porAssunto = new Map<string, (typeof acompanhamentos)[number]>();
+    for (const evento of ordenarAcompanhamentos(acompanhamentos)) {
+      if (!porAssunto.has(evento.assuntoId)) porAssunto.set(evento.assuntoId, evento);
+    }
+    return [...porAssunto.values()];
+  }, [acompanhamentos]);
 
   const decision = useMemo(
     () =>
@@ -60,6 +70,15 @@ export function DashboardPage() {
         documentsToOrganize: documentosParaOrganizar.map((documento) => ({
           id: documento.id,
           title: documento.titulo,
+        })),
+        politicalFollowUps: acompanhamentosAtuais.map((evento) => ({
+          id: evento.id,
+          subjectId: evento.assuntoId,
+          subjectTitle:
+            dossies.find((dossie) => dossie.id === evento.assuntoId)?.titulo ?? "Assunto",
+          state: evento.estado,
+          deadline: evento.prazo,
+          nextActionAt: evento.proximaAcaoEm,
         })),
         nextSession: proxima
           ? {
@@ -81,19 +100,15 @@ export function DashboardPage() {
                     documento.estado === "rascunho" || documento.estado === "em revisão",
                 )
                 .map((documento) => ({ id: documento.id, title: documento.titulo })),
-              followUps: documentosCriados
-                .filter(
-                  (documento) =>
-                    documento.estado === "apresentado" &&
-                    (documento.tipo === "Recomendação" || documento.tipo === "Requerimento"),
-                )
-                .map((documento) => ({ id: documento.id, title: documento.titulo })),
+              followUps: [],
             }
           : undefined,
       }),
     [
       assembleias.length,
       assuntosAtivos.length,
+      acompanhamentosAtuais,
+      dossies,
       documentosCriados,
       documentosDaProxima,
       documentosParaOrganizar,

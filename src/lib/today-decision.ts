@@ -47,6 +47,20 @@ export type TodayDecisionInput = {
   activeSubjectCount: number;
   registeredSessionCount: number;
   documentsToOrganize: Array<{ id: string; title: string }>;
+  politicalFollowUps: Array<{
+    id: string;
+    subjectId: string;
+    subjectTitle: string;
+    state:
+      | "a_preparar"
+      | "a_aguardar"
+      | "resposta_recebida"
+      | "exige_acao"
+      | "resolvido"
+      | "encerrado_sem_resolucao";
+    deadline?: string;
+    nextActionAt?: string;
+  }>;
   nextSession?: TodaySession;
 };
 
@@ -83,22 +97,67 @@ function sessionContext(session: TodaySession) {
 
 function buildCandidates(input: TodayDecisionInput): Candidate[] {
   const session = input.nextSession;
+  const candidates: Candidate[] = [];
+
+  for (const followUp of input.politicalFollowUps) {
+    if (followUp.state === "resolvido" || followUp.state === "encerrado_sem_resolucao") continue;
+    const href = `/assuntos/${encodeURIComponent(followUp.subjectId)}#acompanhamento`;
+    const needKey = `political-follow-up-${followUp.id}`;
+    if (followUp.state === "resposta_recebida") {
+      candidates.push({
+        id: `decide-response-${followUp.id}`,
+        needKey,
+        priority: 2.1,
+        title: "Decidir sobre a resposta recebida",
+        explanation: followUp.subjectTitle,
+        label: "Avaliar resposta",
+        href,
+      });
+      continue;
+    }
+    if (followUp.nextActionAt && daysBetween(input.today, followUp.nextActionAt) <= 0) {
+      candidates.push({
+        id: `due-next-action-${followUp.id}`,
+        needKey,
+        priority: 2.2,
+        title: "Executar próxima ação do acompanhamento",
+        explanation: followUp.subjectTitle,
+        label: "Ver acompanhamento",
+        href,
+      });
+      continue;
+    }
+    if (
+      followUp.state === "a_aguardar" &&
+      followUp.deadline &&
+      daysBetween(input.today, followUp.deadline) < 0
+    ) {
+      candidates.push({
+        id: `overdue-deadline-${followUp.id}`,
+        needKey,
+        priority: 2.3,
+        title: "Prazo ultrapassado sem resposta",
+        explanation: followUp.subjectTitle,
+        label: "Ver acompanhamento",
+        href,
+      });
+    }
+  }
 
   if (!session) {
     const document = input.documentsToOrganize[0];
     if (document) {
-      return [
-        {
-          id: `organize-document-${document.id}`,
-          needKey: `document-organization-${document.id}`,
-          priority: 7,
-          title: "Analisar e organizar documentos",
-          explanation: "Revê o documento para o integrar no acompanhamento do mandato.",
-          context: document.title,
-          label: "Analisar documentos",
-          href: `/documentos/${encodeURIComponent(document.id)}?origem=biblioteca`,
-        },
-      ];
+      candidates.push({
+        id: `organize-document-${document.id}`,
+        needKey: `document-organization-${document.id}`,
+        priority: 7,
+        title: "Analisar e organizar documentos",
+        explanation: "Revê o documento para o integrar no acompanhamento do mandato.",
+        context: document.title,
+        label: "Analisar documentos",
+        href: `/documentos/${encodeURIComponent(document.id)}?origem=biblioteca`,
+      });
+      return candidates.sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
     }
 
     const emptyAccount =
@@ -106,43 +165,39 @@ function buildCandidates(input: TodayDecisionInput): Candidate[] {
       input.documentsToOrganize.length === 0 &&
       input.registeredSessionCount === 0;
     if (emptyAccount) {
-      return [
-        {
-          id: "onboarding-subject",
-          needKey: "onboarding-subject",
-          priority: 7,
-          title: "Começar um novo assunto",
-          explanation:
-            "Cria um assunto ou analisa documentos para o Tribuno começar a acompanhar o teu mandato.",
-          label: "Novo assunto",
-          href: "/assuntos",
-          secondaryAction: {
-            label: "Analisar documentos",
-            href: "/biblioteca",
-          },
+      candidates.push({
+        id: "onboarding-subject",
+        needKey: "onboarding-subject",
+        priority: 7,
+        title: "Começar um novo assunto",
+        explanation:
+          "Cria um assunto ou analisa documentos para o Tribuno começar a acompanhar o teu mandato.",
+        label: "Novo assunto",
+        href: "/assuntos",
+        secondaryAction: {
+          label: "Analisar documentos",
+          href: "/biblioteca",
         },
-      ];
+      });
+      return candidates.sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
     }
 
     if (input.activeSubjectCount > 0 && input.onboardingRequired) {
-      return [
-        {
-          id: "onboarding-session",
-          needKey: "onboarding-session",
-          priority: 8,
-          title: "Preparar a próxima sessão",
-          explanation:
-            "Carrega a convocatória para organizar os dados ou cria a sessão manualmente.",
-          label: "Preparar sessão",
-          href: "/sessoes",
-        },
-      ];
+      candidates.push({
+        id: "onboarding-session",
+        needKey: "onboarding-session",
+        priority: 8,
+        title: "Preparar a próxima sessão",
+        explanation: "Carrega a convocatória para organizar os dados ou cria a sessão manualmente.",
+        label: "Preparar sessão",
+        href: "/sessoes",
+      });
+      return candidates.sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
     }
 
-    return [];
+    return candidates.sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
   }
 
-  const candidates: Candidate[] = [];
   const daysUntilSession = daysBetween(input.today, session.date);
   const unfinishedPreparation = !session.preparationComplete;
   const criticalSession = unfinishedPreparation && daysUntilSession >= 0 && daysUntilSession <= 3;
@@ -229,7 +284,7 @@ function buildCandidates(input: TodayDecisionInput): Candidate[] {
     });
   }
 
-  return candidates.sort((a, b) => a.priority - b.priority);
+  return candidates.sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
 }
 
 function buildAlerts(input: TodayDecisionInput, primaryAction: TodayAction | null): TodayAlert[] {

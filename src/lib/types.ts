@@ -198,6 +198,38 @@ export interface Dossie {
   archivedAt?: string;
 }
 
+export type TipoAcompanhamentoPolitico =
+  | "entrega"
+  | "resposta"
+  | "insistencia"
+  | "regresso_sessao"
+  | "comunicacao_publica"
+  | "resolucao"
+  | "nota";
+
+export type EstadoAcompanhamentoPolitico =
+  | "a_preparar"
+  | "a_aguardar"
+  | "resposta_recebida"
+  | "exige_acao"
+  | "resolvido"
+  | "encerrado_sem_resolucao";
+
+export interface AcompanhamentoPolitico {
+  id: string;
+  assuntoId: string;
+  documentoCriadoId?: string;
+  tipo: TipoAcompanhamentoPolitico;
+  data: string;
+  descricao: string;
+  destinatario?: string;
+  prazo?: string;
+  proximaAcaoEm?: string;
+  estado: EstadoAcompanhamentoPolitico;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DossieNota {
   id: string;
   dossieId: string;

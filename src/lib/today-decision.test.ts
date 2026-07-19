@@ -24,6 +24,7 @@ function input(overrides: Partial<TodayDecisionInput> = {}): TodayDecisionInput 
     documentsToOrganize: [],
     nextSession: session,
     ...overrides,
+    politicalFollowUps: overrides.politicalFollowUps ?? [],
   };
 }
 
@@ -210,5 +211,129 @@ describe("motor de decisão da página Hoje", () => {
     );
 
     assert.equal(decision.primaryAction?.id, "critical-session-session-1");
+  });
+
+  it("inclui prazo ultrapassado sem resposta", () => {
+    const decision = decideToday(
+      input({
+        nextSession: undefined,
+        politicalFollowUps: [
+          {
+            id: "a1",
+            subjectId: "s1",
+            subjectTitle: "Mobilidade",
+            state: "a_aguardar",
+            deadline: "2026-07-31",
+          },
+        ],
+      }),
+    );
+    assert.equal(decision.primaryAction?.id, "overdue-deadline-a1");
+  });
+
+  it("não antecipa um prazo futuro", () => {
+    const decision = decideToday(
+      input({
+        nextSession: undefined,
+        politicalFollowUps: [
+          {
+            id: "a1",
+            subjectId: "s1",
+            subjectTitle: "Mobilidade",
+            state: "a_aguardar",
+            deadline: "2026-08-02",
+          },
+        ],
+      }),
+    );
+    assert.equal(decision.state, "clear");
+  });
+
+  it("inclui próxima ação marcada para hoje ou vencida", () => {
+    for (const nextActionAt of ["2026-08-01", "2026-07-30"]) {
+      const decision = decideToday(
+        input({
+          nextSession: undefined,
+          politicalFollowUps: [
+            {
+              id: nextActionAt,
+              subjectId: "s1",
+              subjectTitle: "Mobilidade",
+              state: "a_aguardar",
+              nextActionAt,
+            },
+          ],
+        }),
+      );
+      assert.match(decision.primaryAction?.id ?? "", /^due-next-action-/);
+    }
+  });
+
+  it("inclui resposta recebida ainda sem decisão", () => {
+    const decision = decideToday(
+      input({
+        nextSession: undefined,
+        politicalFollowUps: [
+          { id: "a1", subjectId: "s1", subjectTitle: "Mobilidade", state: "resposta_recebida" },
+        ],
+      }),
+    );
+    assert.equal(decision.primaryAction?.id, "decide-response-a1");
+  });
+
+  it("não cria urgência por um acompanhamento aberto sem condição concreta", () => {
+    const decision = decideToday(
+      input({
+        nextSession: undefined,
+        politicalFollowUps: [
+          { id: "a1", subjectId: "s1", subjectTitle: "Mobilidade", state: "a_aguardar" },
+        ],
+      }),
+    );
+    assert.equal(decision.state, "clear");
+  });
+
+  it("exclui acompanhamentos resolvidos e encerrados sem resolução", () => {
+    for (const state of ["resolvido", "encerrado_sem_resolucao"] as const) {
+      const decision = decideToday(
+        input({
+          nextSession: undefined,
+          politicalFollowUps: [
+            {
+              id: state,
+              subjectId: "s1",
+              subjectTitle: "Mobilidade",
+              state,
+              deadline: "2026-01-01",
+              nextActionAt: "2026-01-01",
+            },
+          ],
+        }),
+      );
+      assert.equal(decision.state, "clear");
+    }
+  });
+
+  it("não duplica um acompanhamento com prazo e próxima ação vencidos", () => {
+    const decision = decideToday(
+      input({
+        politicalFollowUps: [
+          {
+            id: "a1",
+            subjectId: "s1",
+            subjectTitle: "Mobilidade",
+            state: "a_aguardar",
+            deadline: "2026-07-01",
+            nextActionAt: "2026-07-02",
+          },
+        ],
+      }),
+    );
+    const needs = [
+      ...(decision.primaryAction ? [decision.primaryAction.needKey] : []),
+      ...decision.alerts.map((item) => item.needKey),
+      ...decision.pendingItems.map((item) => item.needKey),
+    ];
+    assert.equal(needs.filter((key) => key === "political-follow-up-a1").length, 1);
   });
 });
