@@ -54,7 +54,7 @@ export const Route = createFileRoute("/_app/biblioteca")({
 
 const separadores = [
   { id: "todos", label: "Todos" },
-  { id: "por-tratar", label: "Por analisar" },
+  { id: "por-tratar", label: "Por rever" },
   { id: "leis", label: "Leis e regulamentos" },
   { id: "programas", label: "Programas eleitorais" },
   { id: "atas", label: "Atas" },
@@ -94,16 +94,14 @@ function formatarData(data?: string) {
 }
 
 function estadoDocumento(documento: Documento): EstadoBiblioteca {
-  const inbox = obterInboxDocumento(documento.id);
-
-  if (inbox.archivedAt || documento.estado === "Arquivado") return "arquivado";
-  if (inbox.estado === "Tratado" || documento.estado === "Revisto") return "analisado";
-  return "por analisar";
+  if (documento.archivedAt) return "Arquivado";
+  if (documento.estado === "Revisto") return "Revisto";
+  return "Por rever";
 }
 
 function estadoTone(estado: EstadoBiblioteca) {
-  if (estado === "analisado") return "success";
-  if (estado === "arquivado") return "muted";
+  if (estado === "Revisto") return "success";
+  if (estado === "Arquivado") return "muted";
   return "warning";
 }
 
@@ -125,7 +123,7 @@ function BibliotecaPage() {
     })),
   );
 
-  const porTratar = itensBiblioteca.filter((item) => item.estado === "por analisar").length;
+  const porTratar = itensBiblioteca.filter((item) => item.estado === "Por rever").length;
 
   const documentosVisiveis = filtrarItensBiblioteca(itensBiblioteca, {
     pesquisa,
@@ -169,8 +167,8 @@ function BibliotecaPage() {
 
     if (separadorAtivo === "por-tratar") {
       return {
-        title: "Não há documentos por analisar",
-        description: "Os documentos pendentes de análise aparecerão aqui.",
+        title: "Não há documentos por rever",
+        description: "Os documentos pendentes de revisão humana aparecerão aqui.",
       };
     }
 
@@ -191,11 +189,11 @@ function BibliotecaPage() {
       documentos.length === 0
         ? "Adicionar um documento ou analisar e organizar um PDF"
         : porTratar > 0
-          ? "Rever os documentos por analisar"
+          ? "Rever os documentos por rever"
           : "Pesquisar ou filtrar a Biblioteca",
     summaryFacts: [
       `${documentos.length} documentos na Biblioteca`,
-      `${porTratar} documentos por analisar`,
+      `${porTratar} documentos por rever`,
       `${documentosVisiveis.length} documentos visíveis no filtro atual`,
     ],
   });
@@ -288,8 +286,7 @@ function BibliotecaPage() {
               <div className="mt-6 grid gap-3">
                 {documentosVisiveis.map(({ documento, estado, categoria, assunto, sessao }) => {
                   const CategoriaIcon = visuaisCategoria[categoria].icon;
-                  const acaoAbrir =
-                    estado === "por analisar" ? "Rever documento" : "Abrir documento";
+                  const acaoAbrir = estado === "Por rever" ? "Rever documento" : "Abrir documento";
 
                   return (
                     <article
@@ -316,6 +313,9 @@ function BibliotecaPage() {
 
                             <div className="mt-2 flex flex-wrap gap-2">
                               <StatusBadge tone={estadoTone(estado)}>{estado}</StatusBadge>
+                              {documento.importante && (
+                                <StatusBadge tone="warning">Importante</StatusBadge>
+                              )}
                             </div>
 
                             <div className="mt-3 flex flex-wrap gap-2 text-xs">

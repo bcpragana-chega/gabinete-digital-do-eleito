@@ -10,8 +10,6 @@ export const TERMS = {
 } as const;
 
 export function labelEstadoDocumento(estado: EstadoDocumento) {
-  if (estado === "Por rever") return "Por analisar";
-  if (estado === "Revisto") return "Analisado";
   return estado;
 }
 

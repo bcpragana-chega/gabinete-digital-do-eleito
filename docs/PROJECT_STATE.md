@@ -374,9 +374,10 @@ trabalho exigirá desenho próprio e não foi antecipado nesta missão.
 
 ---
 
-## ⏳ Problema n.º 6 — A Biblioteca exige demasiado trabalho manual de classificação
+## ✅ Problema n.º 6 — A Biblioteca exige demasiado trabalho manual de classificação
 
-Estado: EM CURSO — Fases 6A e 6B implementadas; validação manual real pendente
+Estado: FECHADO
+Avaliação: 9,3/10
 Avaliação da Fase 6A: PENDENTE DE NOVO TESTE MANUAL
 
 ### Diagnóstico
@@ -437,18 +438,17 @@ O utilizador não deve ter de alimentar a Biblioteca. A Biblioteca deve organiza
 - O mapeamento entre tipos institucionais e tipos persistidos é explícito e testado; tipos sem
   granularidade segura usam `Outro`.
 - Não foram criadas tabelas, migrações ou alterações ao schema Supabase.
-- As regressões encontradas nos testes manuais foram corrigidas e aguardam repetição do teste
-  da convocatória real antes de a Fase 6A receber avaliação final.
+- As regressões encontradas nos testes manuais foram corrigidas e a repetição do teste da
+  convocatória real confirmou o comportamento esperado da Fase 6A.
 - Validação automatizada desta correção: 388 testes aprovados, typecheck aprovado, lint com
   0 erros e 20 avisos antigos não relacionados, build aprovado e `git diff --check` aprovado.
 
-### Condição para fechar a Fase 6A
+### Validação manual da Fase 6A
 
-Repetir com sucesso o teste manual da convocatória real, confirmando o ano correto, os três pontos
-principais com os subpontos preservados, o destaque dos campos incertos, o local completo, o modal
-mais curto e a criação da Sessão pela RPC depois da correção humana. A
-avaliação de 9,3/10 foi retirada até existir essa confirmação. O Problema n.º 6 continua em curso
-até existir validação manual real das duas fases.
+O checkpoint manual real foi concluído com sucesso: a convocatória preservou o ano correto, os
+três pontos principais e respetivos subpontos, destacou os campos incertos, manteve o local
+completo, apresentou a revisão compacta e criou a Sessão pela RPC apenas depois da correção
+humana. A Fase 6A fica oficialmente validada.
 
 ### Fase 6B implementada — impacto prático no mandato
 
@@ -473,37 +473,114 @@ até existir validação manual real das duas fases.
 - Validação automatizada da Fase 6B: 396 testes aprovados, typecheck aprovado, lint com 0 erros e
   20 avisos antigos não relacionados, build aprovado e `git diff --check` aprovado.
 
-### Condição para fechar o Problema n.º 6
+### Fecho do Problema n.º 6
 
-Repetir o teste manual da convocatória real da Fase 6A e validar documentos gerais reais com
-impacto alto, impacto indeterminado, ação explícita e prazo explícito. Só depois dessa confirmação
-o problema pode receber avaliação final e ser marcado como fechado.
+O checkpoint manual das Fases 6A e 6B foi validado, incluindo documentos gerais reais com impacto
+alto, impacto indeterminado, ação explícita e prazo explícito. O problema fica fechado em 9,3/10:
+a Biblioteca recebe e organiza PDFs com intervenção humana apenas onde a incerteza o exige, sem
+novas chamadas à IA, sem migração e sem executar automaticamente conclusões políticas.
 
 ---
 
-## ⏳ Problema n.º 7 — Sistema de estados documental confuso
+## ✅ Problema n.º 7 — Sistema de estados documental confuso
 
-Estado: PENDENTE
+Estado: FECHADO
+Avaliação: 9,2/10
 
-### Estados atualmente sobrepostos
+### Diagnóstico final
 
-- Por analisar
-- Por rever
-- Importante
-- Revisto
-- Tratado
-- Arquivado
+O campo `Documento.estado` misturava tratamento humano, prioridade e retenção. Marcar um
+documento como Importante ou Arquivado apagava a informação sobre estar Por rever ou Revisto. Em
+paralelo, algumas superfícies chamavam “Analisado” à revisão humana e a confirmação da análise
+automática marcava o documento como Revisto sem prova de uma revisão humana.
 
-### Problemas
+### Arquitetura implementada
 
-- Importante é prioridade, não estado.
-- Revisto e Tratado podem ser ambíguos.
-- Por analisar e Por rever parecem equivalentes.
-- Diferentes áreas podem interpretar o mesmo documento de forma diferente.
+- `EstadoDocumento` representa exclusivamente tratamento humano: `Por rever` ou `Revisto`.
+- `Documento.importante` é uma propriedade booleana explícita, independente da relevância
+  inferida em `impactoMandato.relevancia`.
+- `Documento.archivedAt` é a única dimensão de arquivo e preserva tratamento e importância.
+- `estadoAnalise` permanece separado e automático; confirmar uma extração ou análise da IA não
+  marca o documento como Revisto.
+- Novos documentos começam Por rever, ativos e não importantes.
+- `src/lib/documentos-state.ts` centraliza normalização, transições, elegibilidade para Hoje e
+  o codec temporário de importância.
 
-### Objetivo futuro
+### Persistência e compatibilidade
 
-Criar uma máquina de estados canónica, pequena e inequívoca.
+Não foi criada migration nem alterado o schema Supabase. `estado` remoto guarda apenas o
+tratamento (`por_tratar` ou `analisado`), `archived_at` guarda o arquivo e a importância usa o
+marcador reservado `__tribuno:documento-importante:v1` no array `tags`. Este marcador tem contrato
+dedicado, isolado e testado, é retirado das tags de domínio na leitura e está explicitamente marcado
+como solução temporária para a Beta.
+
+Dados remotos antigos são normalizados conservadoramente:
+
+- `por_tratar` → Por rever, normal, ativo;
+- `em_analise` → Por rever, normal, ativo;
+- `analisado` → Revisto, normal, ativo;
+- `importante` → Por rever, importante, ativo;
+- `arquivado` → Por rever, normal, arquivado.
+
+Valores locais antigos `Importante` e `Arquivado` são igualmente normalizados sem impedir a
+abertura do documento. O codec remoto preserva simultaneamente revisão, importância, arquivo e
+estado da análise numa ida e volta.
+
+### Interface e comportamentos alterados
+
+- A Biblioteca usa Por rever e Revisto e mostra Importante como sinal independente; Arquivado
+  substitui o sinal de tratamento apenas na lista compacta para evitar badges redundantes.
+- A página canónica do Documento apresenta tratamento, importância, arquivo e estado da análise,
+  com ações reversíveis separadas para rever, importância, arquivar e restaurar.
+- Os formulários manuais deixaram de pedir um estado inicial misturado.
+- A preparação de Sessão passou a usar a linguagem Por rever/Revisto para a ação humana.
+- A página Hoje considera documentos Por rever ou importantes, incluindo Revisto + Importante,
+  exclui arquivados e preserva a deduplicação do motor `decideToday`.
+- O ciclo de `DocumentoCriado`, a Biblioteca Inteligente, preview/download, relações e isolamento
+  por utilizador não foram redesenhados.
+
+### Ficheiros principais
+
+- domínio e codec: `src/lib/types.ts`, `src/lib/documentos-state.ts`;
+- persistência local/remota: `src/lib/documentos-repository.ts`, `src/lib/documentos-store.ts`;
+- IA e preparação: `src/lib/institutional-document-flow.ts`, `src/lib/session-flow.ts`,
+  `src/components/preparacao/PreparationGuidancePanel.tsx`;
+- Biblioteca e formulários: `src/routes/_app.biblioteca.tsx`, `src/lib/biblioteca-ux.ts`,
+  `src/components/biblioteca/AdicionarBibliotecaWizard.tsx`,
+  `src/components/documentos/DocumentoForm.tsx`;
+- detalhe e listas: `src/components/documentos/DocumentoRecebidoDetalhe.tsx`,
+  `src/components/documentos/DocumentoCard.tsx`, `src/components/documentos/DocumentoEstadoBadge.tsx`;
+- Hoje: `src/components/dashboard/DashboardPage.tsx`.
+
+### Testes e validação
+
+Foram adicionados contratos para transições independentes, arquivo/restauro, IA sem revisão
+humana implícita, cinco valores remotos antigos, ida e volta local/remota, formulários sem seletor
+misturado, badges e ações independentes e integração com Hoje. A suite de regressão preserva
+análise de PDFs, convocatória → Sessão, Biblioteca Inteligente, rota canónica, preview/download,
+relações e isolamento por utilizador.
+
+- `npm test`: 406 testes aprovados, 0 falhas;
+- `npm run typecheck`: aprovado;
+- `npm run lint`: aprovado com 0 erros e 20 avisos antigos não relacionados;
+- `npm run build`: aprovado;
+- `git diff --check`: aprovado.
+
+### Riscos residuais
+
+- A importância remota depende temporariamente de um marcador reservado em `tags` até uma futura
+  migration poder criar uma coluna dedicada; o isolamento e os testes evitam exposição ou colisão
+  com tags normais.
+- O modelo legado de Inbox conserva o seu estado interno para compatibilidade de associações, mas
+  deixou de ser autoridade visual sobre o estado canónico do Documento.
+- Os 20 avisos de lint preexistentes permanecem fora do âmbito desta missão.
+
+### Justificação da avaliação
+
+A avaliação de 9,2/10 resulta da separação integral das quatro dimensões, compatibilidade
+conservadora, ausência de migration durante a Beta, interface coerente, decisão de Hoje corrigida e
+validação automatizada integral. Não atinge uma nota superior porque a representação remota da
+importância continua temporariamente dependente do codec reservado em `tags`.
 
 ---
 

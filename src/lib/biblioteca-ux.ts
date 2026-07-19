@@ -18,7 +18,7 @@ export type SeparadorBiblioteca =
   | "relatorios"
   | "outros";
 
-export type EstadoBiblioteca = "por analisar" | "analisado" | "arquivado";
+export type EstadoBiblioteca = "Por rever" | "Revisto" | "Arquivado";
 
 export type ItemBiblioteca = {
   documento: Documento;
@@ -77,7 +77,7 @@ export function filtrarItensBiblioteca(
     const correspondeAoSeparador =
       separador === "todos" ||
       (separador === "por-tratar"
-        ? item.estado === "por analisar"
+        ? item.estado === "Por rever"
         : separadorDaCategoria(item.categoria) === separador);
 
     if (!correspondeAoSeparador) return false;
@@ -94,10 +94,10 @@ export function filtrarItensBiblioteca(
 }
 
 export function ordenarItensBiblioteca(itens: ItemBiblioteca[]) {
-  // Regra da Biblioteca: por analisar primeiro; dentro de cada grupo, data mais recente primeiro.
+  // Regra da Biblioteca: por rever primeiro; dentro de cada grupo, data mais recente primeiro.
   return [...itens].sort((a, b) => {
-    const prioridadeA = a.estado === "por analisar" ? 0 : 1;
-    const prioridadeB = b.estado === "por analisar" ? 0 : 1;
+    const prioridadeA = a.estado === "Por rever" ? 0 : 1;
+    const prioridadeB = b.estado === "Por rever" ? 0 : 1;
     if (prioridadeA !== prioridadeB) return prioridadeA - prioridadeB;
 
     const porData = b.documento.data.localeCompare(a.documento.data);

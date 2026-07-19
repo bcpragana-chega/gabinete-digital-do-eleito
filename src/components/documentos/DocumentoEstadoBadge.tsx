@@ -5,8 +5,6 @@ import { cn } from "@/lib/utils";
 const styles: Record<EstadoDocumento, string> = {
   "Por rever": "bg-status-preparacao text-status-preparacao-foreground",
   Revisto: "bg-status-concluida text-status-concluida-foreground",
-  Importante: "bg-status-alerta text-status-alerta-foreground",
-  Arquivado: "bg-muted text-muted-foreground",
 };
 
 export function DocumentoEstadoBadge({

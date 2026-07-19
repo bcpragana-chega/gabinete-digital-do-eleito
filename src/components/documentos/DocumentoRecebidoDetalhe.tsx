@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { CalendarDays, ChevronLeft, FileText, X } from "lucide-react";
+import { Archive, CalendarDays, ChevronLeft, FileText, RotateCcw, Star, X } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { DocumentoEstadoBadge } from "@/components/documentos/DocumentoEstadoBadge";
 import { DocumentoPreview } from "@/components/documentos/DocumentoPreview";
@@ -17,7 +17,12 @@ import {
 import { formatarData } from "@/lib/mock-data";
 import { analiseGeralPodeMostrarImpacto } from "@/lib/institutional-document-impact";
 import { useAssembleia } from "@/lib/assembleias-store";
-import { useDocumentos } from "@/lib/documentos-store";
+import { editarDocumento, useDocumentos } from "@/lib/documentos-store";
+import {
+  alteracoesArquivoDocumento,
+  alteracoesImportanciaDocumento,
+  alteracoesTratamentoDocumento,
+} from "@/lib/documentos-state";
 import {
   criarRelacaoTribuno,
   removerRelacaoTribunoPorObjetos,
@@ -139,6 +144,24 @@ export function DocumentoRecebidoDetalhe({
     });
   }
 
+  function atualizarTratamento() {
+    editarDocumento(
+      docId,
+      alteracoesTratamentoDocumento(documento.estado === "Revisto" ? "Por rever" : "Revisto"),
+    );
+  }
+
+  function alternarImportancia() {
+    editarDocumento(docId, alteracoesImportanciaDocumento(!documento.importante));
+  }
+
+  function alternarArquivo() {
+    editarDocumento(
+      docId,
+      alteracoesArquivoDocumento(documento.archivedAt ? undefined : new Date().toISOString()),
+    );
+  }
+
   return (
     <>
       <TopBar
@@ -220,6 +243,16 @@ export function DocumentoRecebidoDetalhe({
                       {documento.tipo}
                     </span>
                     <DocumentoEstadoBadge estado={documento.estado} />
+                    {documento.importante && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-status-alerta px-2 py-0.5 text-[11px] font-medium text-status-alerta-foreground">
+                        <Star className="h-3 w-3 fill-current" /> Importante
+                      </span>
+                    )}
+                    {documento.archivedAt && (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        Arquivado
+                      </span>
+                    )}
                   </div>
                   <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-foreground">
                     {documento.titulo}
@@ -234,6 +267,36 @@ export function DocumentoRecebidoDetalhe({
                       {documento.notas}
                     </p>
                   )}
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Análise automática: {labelEstadoAnalise(documento.estadoAnalise)}
+                  </p>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={atualizarTratamento}
+                    >
+                      {documento.estado === "Revisto"
+                        ? "Marcar como por rever"
+                        : "Marcar como revisto"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={alternarImportancia}
+                    >
+                      <Star className={documento.importante ? "fill-current" : ""} />
+                      {documento.importante
+                        ? "Deixar de marcar importante"
+                        : "Marcar como importante"}
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={alternarArquivo}>
+                      {documento.archivedAt ? <RotateCcw /> : <Archive />}
+                      {documento.archivedAt ? "Restaurar" : "Arquivar"}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </section>
@@ -372,6 +435,8 @@ function DocumentosLigadosSection({
                       {formatarData(documento.data)}
                     </span>
                     <span>{documento.estado}</span>
+                    {documento.importante && <span>Importante</span>}
+                    {documento.archivedAt && <span>Arquivado</span>}
                   </p>
                 </div>
               </div>
@@ -392,4 +457,13 @@ function DocumentosLigadosSection({
       )}
     </section>
   );
+}
+
+function labelEstadoAnalise(estado: Documento["estadoAnalise"]) {
+  if (estado === "a_analisar") return "a analisar";
+  if (estado === "analisado") return "analisada";
+  if (estado === "necessita_confirmacao") return "necessita confirmação";
+  if (estado === "confirmado") return "confirmada";
+  if (estado === "erro") return "erro";
+  return "não iniciada";
 }

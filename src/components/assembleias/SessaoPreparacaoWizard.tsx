@@ -162,7 +162,8 @@ export function SessaoPreparacaoWizard({
     return subscreverDocumentosACriar(atualizar);
   }, [assembleia.id, open]);
 
-  const documentosAnalisados = documentos.filter(documentoRevisto);
+  const documentosAtivos = documentos.filter((documento) => !documento.archivedAt);
+  const documentosAnalisados = documentosAtivos.filter(documentoRevisto);
   const pontosPreparados = pontos.filter(pontoPreparado);
   const estrategiaPreenchida = [
     estrategiaForm.objetivoPolitico,
@@ -170,8 +171,8 @@ export function SessaoPreparacaoWizard({
     estrategiaForm.naoFazer,
   ].some((campo) => campo.trim().length > 0);
   const alertasPendentes = [
-    documentos.length > documentosAnalisados.length
-      ? `${documentos.length - documentosAnalisados.length} documentos por analisar`
+    documentosAtivos.length > documentosAnalisados.length
+      ? `${documentosAtivos.length - documentosAnalisados.length} documentos por rever`
       : null,
     pontos.length > pontosPreparados.length
       ? `${pontos.length - pontosPreparados.length} pontos por preparar`
@@ -234,7 +235,7 @@ export function SessaoPreparacaoWizard({
           {step === 1 && (
             <WizardStepDocumentos
               assembleiaId={assembleia.id}
-              documentos={documentos}
+              documentos={documentosAtivos}
               documentosAnalisadosIds={
                 new Set(documentosAnalisados.map((documento) => documento.id))
               }
@@ -277,7 +278,7 @@ export function SessaoPreparacaoWizard({
           {step === 5 && (
             <WizardStepRevisao
               assembleia={assembleia}
-              documentos={documentos}
+              documentos={documentosAtivos}
               documentosAnalisados={documentosAnalisados.length}
               pontos={pontos}
               pontosPreparados={pontosPreparados.length}
@@ -383,7 +384,7 @@ function WizardStepDocumentos({
                 description={documento.notas || documento.ficheiroNome || "Documento da sessão."}
                 meta={
                   <StatusBadge tone={analisado ? "success" : "warning"}>
-                    {analisado ? "Analisado" : "Por analisar"}
+                    {analisado ? "Revisto" : "Por rever"}
                   </StatusBadge>
                 }
                 actions={
@@ -398,7 +399,7 @@ function WizardStepDocumentos({
                       size="sm"
                       onClick={() => onMarcarAnalisado(documento.id)}
                     >
-                      Marcar analisado
+                      Marcar como revisto
                     </Button>
                   )
                 }
@@ -708,7 +709,7 @@ function WizardStepRevisao({
         <InfoCard icon={Landmark} title="Sessão" description={assembleia.nome} />
         <InfoCard
           icon={FileText}
-          title="Documentos analisados"
+          title="Documentos revistos"
           description={`${documentosAnalisados} de ${documentos.length}`}
         />
         <InfoCard

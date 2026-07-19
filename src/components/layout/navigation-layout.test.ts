@@ -67,7 +67,7 @@ describe("cabeçalhos canónicos e navegação", () => {
 
     assert.match(biblioteca, /triggerLabel="Adicionar e analisar PDF"/);
     assert.match(biblioteca, /Ainda não está ligado a um assunto ou sessão/);
-    assert.match(biblioteca, /estado === "por analisar" \? "Rever documento"/);
+    assert.match(biblioteca, /estado === "Por rever" \? "Rever documento"/);
     assert.doesNotMatch(biblioteca, /Compreender PDF|Sem ligação institucional/);
 
     assert.match(intake, /Analisar documento/);

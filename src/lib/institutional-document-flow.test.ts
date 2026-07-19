@@ -425,6 +425,7 @@ describe("confirmação institucional", () => {
     assert.equal(idGuardado, documento.id);
     assert.equal(guardado.id, documento.id);
     assert.equal(alteracoes?.resumo, "Resumo da ata.");
+    assert.equal(alteracoes?.estado, "Por rever");
     assert.equal(alteracoes?.estadoAnalise, "confirmado");
     assert.equal(alteracoes?.analiseInstitucional?.impactoMandato?.relevancia, "media");
   });

@@ -14,6 +14,7 @@ import {
   subscreverDocumentosACriar,
 } from "@/lib/documentos-a-criar-store";
 import { useDocumentos } from "@/lib/documentos-store";
+import { documentoGeraPendenciaHoje } from "@/lib/documentos-state";
 import { useDossies } from "@/lib/dossies-store";
 import {
   carregarPontosRemotosSeDisponivel,
@@ -40,7 +41,7 @@ export function DashboardPage() {
   const documentosParaOrganizar = useMemo(
     () =>
       documentos
-        .filter((documento) => !documento.archivedAt)
+        .filter(documentoGeraPendenciaHoje)
         .sort((a, b) => prioridadeDocumento(a) - prioridadeDocumento(b)),
     [documentos],
   );
@@ -69,10 +70,7 @@ export function DashboardPage() {
               location: proxima.local,
               preparationComplete: proxima.preparacaoEstado === "pronta",
               documentsToReview: documentosDaProxima
-                .filter(
-                  (documento) =>
-                    documento.estado === "Por rever" || documento.estado === "Importante",
-                )
+                .filter(documentoGeraPendenciaHoje)
                 .map((documento) => ({ id: documento.id, title: documento.titulo })),
               pendingPoints: pontosDaProxima
                 .filter((ponto) => ponto.estado !== "Preparado")
@@ -357,5 +355,7 @@ function localDateKey(date: Date) {
 }
 
 function prioridadeDocumento(documento: Documento) {
-  return documento.estado === "Por rever" || documento.estado === "Importante" ? 0 : 1;
+  if (documento.estado === "Por rever" && documento.importante) return 0;
+  if (documento.estado === "Por rever") return 1;
+  return documento.importante ? 2 : 3;
 }

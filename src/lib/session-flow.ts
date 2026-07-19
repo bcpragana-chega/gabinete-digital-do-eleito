@@ -24,12 +24,12 @@ export type SessionFlowState = {
 };
 
 export function documentoRevisto(documento: Pick<Documento, "estado">) {
-  return documento.estado !== "Por rever";
+  return documento.estado === "Revisto";
 }
 
 export function calcularFluxoSessao(input: {
   sessao: Assembleia;
-  documentos: Array<Pick<Documento, "estado">>;
+  documentos: Array<Pick<Documento, "estado" | "archivedAt">>;
   pontos: Array<
     Pick<PontoOrdemTrabalhos, "estado" | "posicaoPolitica" | "linhaIntervencao" | "sentidoVoto">
   >;
@@ -37,6 +37,7 @@ export function calcularFluxoSessao(input: {
   documentosPoliticosCount: number;
 }): SessionFlowState {
   const { sessao, documentos, pontos, assuntosCount, documentosPoliticosCount } = input;
+  const documentosAtivos = documentos.filter((documento) => !documento.archivedAt);
   const pontosPreparados =
     pontos.length > 0 &&
     pontos.every((ponto) =>
@@ -47,7 +48,8 @@ export function calcularFluxoSessao(input: {
         (ponto.estado === "Preparado" || ponto.estado === "Concluído"),
       ),
     );
-  const documentosRevistos = documentos.length === 0 || documentos.every(documentoRevisto);
+  const documentosRevistos =
+    documentosAtivos.length === 0 || documentosAtivos.every(documentoRevisto);
 
   const steps: SessionFlowStep[] = [
     {
@@ -65,7 +67,7 @@ export function calcularFluxoSessao(input: {
       requirement: "required",
       done: documentosRevistos,
       href: `#documentos`,
-      action: documentos.length ? "Rever documentos" : "Adicionar documentos",
+      action: documentosAtivos.length ? "Rever documentos" : "Adicionar documentos",
       missing: "Existem documentos por rever.",
     },
     {

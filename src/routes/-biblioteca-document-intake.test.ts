@@ -9,6 +9,8 @@ function fonte(path: string) {
 const biblioteca = fonte("src/routes/_app.biblioteca.tsx");
 const manual = fonte("src/components/biblioteca/AdicionarBibliotecaWizard.tsx");
 const intake = fonte("src/components/documentos/InstitutionalDocumentIntake.tsx");
+const detalhe = fonte("src/components/documentos/DocumentoRecebidoDetalhe.tsx");
+const formularioSessao = fonte("src/components/documentos/DocumentoForm.tsx");
 
 describe("entrada documental principal da Biblioteca", () => {
   it("apresenta a análise de PDF como única ação principal", () => {
@@ -20,6 +22,27 @@ describe("entrada documental principal da Biblioteca", () => {
   it("mantém a entrada manual como alternativa secundária", () => {
     assert.match(biblioteca, /<AdicionarBibliotecaWizard \/>/);
     assert.match(manual, /Adicionar manualmente/);
+  });
+
+  it("cria manualmente por rever, ativo e não importante sem seletor misturado", () => {
+    assert.match(manual, /estado: "Por rever"/);
+    assert.match(manual, /importante: false/);
+    assert.doesNotMatch(manual, /Estado inicial|setEstado|EstadoInicial/);
+    assert.match(formularioSessao, /estado: "Por rever"/);
+    assert.match(formularioSessao, /importante: false/);
+    assert.doesNotMatch(formularioSessao, /<Label>Estado<\/Label>|setEstado/);
+  });
+
+  it("apresenta tratamento, importância e arquivo como badges e ações independentes", () => {
+    assert.match(detalhe, /<DocumentoEstadoBadge estado=\{documento\.estado\}/);
+    assert.match(detalhe, /documento\.importante[\s\S]*Importante/);
+    assert.match(detalhe, /documento\.archivedAt[\s\S]*Arquivado/);
+    assert.match(detalhe, /Marcar como revisto/);
+    assert.match(detalhe, /Marcar como por rever/);
+    assert.match(detalhe, /Marcar como importante/);
+    assert.match(detalhe, /Deixar de marcar importante/);
+    assert.match(detalhe, /Restaurar/);
+    assert.match(detalhe, /Arquivar/);
   });
 
   it("a revisão documental geral não contém linguagem nem campos de Sessão", () => {

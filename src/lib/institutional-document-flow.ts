@@ -276,7 +276,8 @@ export async function confirmarDocumentoNaBibliotecaComDependencias(input: {
     titulo,
     tipo: input.tipo,
     resumo: input.analise.resumoCompreensao.trim() || input.documento.resumo,
-    estado: necessitaConfirmacao ? "Por rever" : "Revisto",
+    // Confirmar a extração automática não prova revisão humana do documento.
+    estado: "Por rever",
     estadoAnalise: necessitaConfirmacao ? "necessita_confirmacao" : "confirmado",
     analiseInstitucional: input.analise,
   });

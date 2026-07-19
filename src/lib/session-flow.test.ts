@@ -62,4 +62,15 @@ describe("fluxo central da sessão", () => {
     assert.equal(documentoRevisto({ estado: "Por rever" }), false);
     assert.equal(documentoRevisto({ estado: "Revisto" }), true);
   });
+
+  it("ignora documentos arquivados nas pendências ativas da sessão", () => {
+    const state = calcularFluxoSessao({
+      sessao,
+      documentos: [{ estado: "Por rever", archivedAt: "2026-07-19T10:00:00.000Z" }],
+      pontos: [ponto],
+      assuntosCount: 1,
+      documentosPoliticosCount: 1,
+    });
+    assert.equal(state.steps.find((step) => step.id === "documentos")?.done, true);
+  });
 });

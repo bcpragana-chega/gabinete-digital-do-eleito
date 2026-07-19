@@ -37,6 +37,7 @@ describe("composição da página Hoje", () => {
     assert.match(dashboard, /decision\.state === "clear"/);
     assert.match(dashboard, /decision\.alerts\.length > 0/);
     assert.match(dashboard, /decision\.pendingItems\.length > 0/);
+    assert.match(dashboard, /\.filter\(documentoGeraPendenciaHoje\)/);
   });
 
   it("preserva destinos funcionais e a rota canónica de Documento", () => {

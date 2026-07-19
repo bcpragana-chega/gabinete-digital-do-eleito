@@ -379,7 +379,7 @@ export function criarEstadoPreparacao({
   preparacao,
 }: {
   assembleiaId: string;
-  documentos: Array<{ estado: string }>;
+  documentos: Array<{ estado: string; archivedAt?: string }>;
   pontos: PontoOrdemTrabalhos[];
   rascunhos: Array<unknown>;
   estrategia: {
@@ -394,9 +394,10 @@ export function criarEstadoPreparacao({
     perguntas: Array<unknown>;
   };
 }) {
-  const documentsUploaded = documentos.length > 0;
+  const documentosAtivos = documentos.filter((documento) => !documento.archivedAt);
+  const documentsUploaded = documentosAtivos.length > 0;
   const documentsReviewed = documentsUploaded
-    ? documentos.every((documento) => documento.estado !== "Por rever")
+    ? documentosAtivos.every((documento) => documento.estado === "Revisto")
     : false;
   const pointsAdded = pontos.length > 0;
   const strategyCompleted = [
@@ -435,8 +436,8 @@ export function criarEstadoPreparacao({
     },
     {
       id: "documents-reviewed",
-      label: "Documentos analisados",
-      description: "Confirme que os documentos carregados já foram analisados.",
+      label: "Documentos revistos",
+      description: "Confirme que os documentos carregados já foram revistos.",
       done: documentsReviewed,
       href: `/sessoes/${assembleiaId}/preparacao/documentos`,
       cta: documentsUploaded ? "Analisar documentos" : "Carregar documentos",
@@ -483,7 +484,7 @@ export function criarEstadoPreparacao({
     if (documentsUploaded) {
       missingItems.push({
         id: "missing-documents-reviewed",
-        message: "Os documentos carregados ainda não foram analisados.",
+        message: "Os documentos carregados ainda não foram revistos.",
         href: `/sessoes/${assembleiaId}/preparacao/documentos`,
         cta: "Analisar documentos",
         classification: "essential",

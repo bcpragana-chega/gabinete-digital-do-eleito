@@ -166,6 +166,7 @@ export interface NovoDocumentoInput {
   tipo: TipoDocumento;
   data: string;
   estado: EstadoDocumento;
+  importante?: boolean;
   origem?: string;
   ficheiroNome?: string;
   ficheiroTipo?: string;
@@ -184,6 +185,7 @@ function criarDocumento(input: NovoDocumentoInput, id: string = crypto.randomUUI
     createdAt: agora,
     updatedAt: agora,
     assembleiaOrigemId: input.assembleiaId !== "biblioteca" ? input.assembleiaId : undefined,
+    importante: input.importante ?? false,
     ...input,
   };
 }

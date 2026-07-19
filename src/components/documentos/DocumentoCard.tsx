@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { FileText, ChevronRight } from "lucide-react";
+import { FileText, ChevronRight, Star } from "lucide-react";
 import type { Documento } from "@/lib/types";
 import { formatarDataCurta } from "@/lib/mock-data";
 import { DocumentoEstadoBadge } from "./DocumentoEstadoBadge";
@@ -21,6 +21,14 @@ export function DocumentoCard({ documento }: { documento: Documento }) {
             {documento.tipo}
           </span>
           <DocumentoEstadoBadge estado={documento.estado} />
+          {documento.importante && (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-status-alerta-foreground">
+              <Star className="h-3.5 w-3.5 fill-current" /> Importante
+            </span>
+          )}
+          {documento.archivedAt && (
+            <span className="text-xs font-medium text-muted-foreground">Arquivado</span>
+          )}
         </div>
         <div className="mt-0.5 font-medium text-foreground truncate">{documento.titulo}</div>
         <div className="mt-0.5 text-xs text-muted-foreground">

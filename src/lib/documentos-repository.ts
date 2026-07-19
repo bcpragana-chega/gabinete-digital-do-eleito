@@ -2,6 +2,12 @@ import { removerDocumentoPDF, DOCUMENTOS_STORAGE_BUCKET } from "@/lib/documentos
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
 import type { Documento, EstadoDocumento, TipoDocumento } from "@/lib/types";
 import {
+  codificarImportanciaEmTags,
+  importanciaDasTags,
+  normalizarDocumento,
+  tagsDeDominio,
+} from "@/lib/documentos-state";
+import {
   guardarJSONParaUtilizador,
   guardarJSONPorUtilizador,
   lerJSONParaUtilizador,
@@ -12,7 +18,7 @@ const STORAGE_KEY = "tribuno:documentos";
 
 type EstadoDocumentoRemoto = "por_tratar" | "em_analise" | "analisado" | "importante" | "arquivado";
 
-type DocumentoRow = {
+export type DocumentoRow = {
   id: string;
   user_id: string;
   titulo: string;
@@ -79,15 +85,11 @@ function tipoSeguro(valor: unknown): TipoDocumento {
 
 function estadoParaRemoto(estado: EstadoDocumento): EstadoDocumentoRemoto {
   if (estado === "Revisto") return "analisado";
-  if (estado === "Importante") return "importante";
-  if (estado === "Arquivado") return "arquivado";
   return "por_tratar";
 }
 
 function estadoDeRemoto(estado: unknown): EstadoDocumento {
   if (estado === "analisado") return "Revisto";
-  if (estado === "importante") return "Importante";
-  if (estado === "arquivado") return "Arquivado";
   return "Por rever";
 }
 
@@ -96,12 +98,12 @@ function idSessaoReal(documento: Documento) {
   return id && id !== "biblioteca" ? id : null;
 }
 
-function fromRow(row: DocumentoRow): Documento {
+export function documentoFromRow(row: DocumentoRow): Documento {
   const assembleiaId =
     row.assembleia_origem_id ??
     (row.origem_tipo === "sessao" && row.origem_ref ? row.origem_ref : "biblioteca");
 
-  return {
+  return normalizarDocumento({
     id: row.id,
     assembleiaId,
     titulo: textoSeguro(row.titulo),
@@ -122,7 +124,8 @@ function fromRow(row: DocumentoRow): Documento {
     textoExtraido: textoSeguro(row.texto_extraido) || undefined,
     resumo: textoSeguro(row.resumo) || undefined,
     notas: textoSeguro(row.notas) || undefined,
-    tags: Array.isArray(row.tags) ? row.tags : [],
+    tags: tagsDeDominio(row.tags),
+    importante: row.estado === "importante" || importanciaDasTags(row.tags),
     assuntoOrigemId: row.assunto_origem_id ?? undefined,
     assembleiaOrigemId: row.assembleia_origem_id ?? undefined,
     pontoOrigemId: row.ponto_origem_id ?? undefined,
@@ -132,13 +135,14 @@ function fromRow(row: DocumentoRow): Documento {
     analiseInstitucional: row.analise_institucional ?? undefined,
     analiseInstitucionalEm: row.analise_institucional_em ?? undefined,
     analiseInstitucionalVersao: row.analise_institucional_versao ?? undefined,
-    archivedAt: row.archived_at ?? undefined,
+    archivedAt: row.archived_at ?? (row.estado === "arquivado" ? row.updated_at : undefined),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-  };
+  });
 }
 
-function toRow(userId: string, documento: Documento): DocumentoRow {
+export function documentoToRow(userId: string, documentoOriginal: Documento): DocumentoRow {
+  const documento = normalizarDocumento(documentoOriginal);
   const agora = new Date().toISOString();
   const createdAt = documento.createdAt ?? agora;
   const updatedAt = documento.updatedAt ?? agora;
@@ -171,7 +175,7 @@ function toRow(userId: string, documento: Documento): DocumentoRow {
     texto_extraido: textoSeguro(documento.textoExtraido) || null,
     resumo: textoSeguro(documento.resumo) || null,
     notas: textoSeguro(documento.notas) || null,
-    tags: Array.isArray(documento.tags) ? documento.tags : [],
+    tags: codificarImportanciaEmTags(documento.tags, documento.importante === true),
     assunto_origem_id: assuntoOrigemId,
     assembleia_origem_id: assembleiaOrigemId,
     ponto_origem_id: pontoOrigemId,
@@ -222,12 +226,13 @@ export function carregarDocumentosLocais(userId?: string) {
   const parsed = userId
     ? lerJSONParaUtilizador<Documento[]>(STORAGE_KEY, userId, [])
     : lerJSONPorUtilizador<Documento[]>(STORAGE_KEY, []);
-  return Array.isArray(parsed) ? parsed : [];
+  return Array.isArray(parsed) ? parsed.map(normalizarDocumento) : [];
 }
 
 export function guardarDocumentosLocais(documentos: Documento[], userId?: string) {
-  if (userId) guardarJSONParaUtilizador(STORAGE_KEY, userId, documentos);
-  else guardarJSONPorUtilizador(STORAGE_KEY, documentos);
+  const normalizados = documentos.map(normalizarDocumento);
+  if (userId) guardarJSONParaUtilizador(STORAGE_KEY, userId, normalizados);
+  else guardarJSONPorUtilizador(STORAGE_KEY, normalizados);
 }
 
 export async function carregarDocumentosRemotos(userId?: string) {
@@ -248,7 +253,7 @@ export async function carregarDocumentosRemotos(userId?: string) {
     throw new Error("DOCUMENTOS_OWNER_MISMATCH");
   }
 
-  return (data ?? []).map((row) => fromRow(row as DocumentoRow));
+  return (data ?? []).map((row) => documentoFromRow(row as DocumentoRow));
 }
 
 export async function carregarDocumentoRemotoPorId(id: string) {
@@ -264,7 +269,7 @@ export async function carregarDocumentoRemotoPorId(id: string) {
   );
 
   if (error) throw error;
-  return data ? fromRow(data as DocumentoRow) : undefined;
+  return data ? documentoFromRow(data as DocumentoRow) : undefined;
 }
 
 export async function guardarDocumentoRemoto(userId: string, documento: Documento) {
@@ -274,7 +279,7 @@ export async function guardarDocumentoRemoto(userId: string, documento: Document
   const supabase = getSupabaseClient();
   if (!supabase) return false;
 
-  const row = toRow(supabaseUserId, documento);
+  const row = documentoToRow(supabaseUserId, documento);
 
   const response = await withSupabaseTimeout(
     supabase

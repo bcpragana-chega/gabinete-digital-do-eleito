@@ -15,7 +15,7 @@ function criarItem({
   titulo,
   tipo = "Outro",
   data = "2026-07-01",
-  estado = "analisado",
+  estado = "Revisto",
   categoria = "Outro",
   assunto,
   sessao,
@@ -92,21 +92,21 @@ describe("pesquisa da Biblioteca", () => {
 });
 
 describe("ordenação da Biblioteca", () => {
-  it("coloca por analisar primeiro e ordena cada grupo pela data mais recente", () => {
+  it("coloca por rever primeiro e ordena cada grupo pela data mais recente", () => {
     const ordenados = ordenarItensBiblioteca([
       criarItem({ id: "analisado-recente", titulo: "C", data: "2026-07-18" }),
       criarItem({
         id: "pendente-antigo",
         titulo: "B",
         data: "2026-06-01",
-        estado: "por analisar",
+        estado: "Por rever",
       }),
-      criarItem({ id: "arquivado", titulo: "D", data: "2026-07-10", estado: "arquivado" }),
+      criarItem({ id: "arquivado", titulo: "D", data: "2026-07-10", estado: "Arquivado" }),
       criarItem({
         id: "pendente-recente",
         titulo: "A",
         data: "2026-07-01",
-        estado: "por analisar",
+        estado: "Por rever",
       }),
     ]);
 

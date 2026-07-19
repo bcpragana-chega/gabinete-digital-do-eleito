@@ -15,11 +15,8 @@ import { adicionarDocumentoComUpload } from "@/lib/documentos-store";
 import { DocumentoStorageErro } from "@/lib/documentos-storage";
 import { preencherTituloPeloFicheiro } from "@/lib/biblioteca-ux";
 import {
-  arquivarInboxDocumento,
   associarInboxDocumentoAAssembleia,
   associarInboxDocumentoADossie,
-  definirEstadoInboxDocumento,
-  marcarInboxDocumentoComoTratado,
 } from "@/lib/inbox-store";
 import { Button } from "@/components/ui/button";
 import { InfoCard } from "@/components/ui/cards";
@@ -41,7 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { EstadoDocumento, TipoDocumento } from "@/lib/types";
+import type { TipoDocumento } from "@/lib/types";
 
 type TipoBiblioteca =
   | "Lei ou regulamento"
@@ -52,7 +49,6 @@ type TipoBiblioteca =
   | "Notícia"
   | "Outro";
 
-type EstadoInicial = "Por analisar" | "Analisado" | "Arquivado";
 type Ligacao = "Assunto" | "Sessão" | "Ambos" | "Nenhum por agora";
 
 const passos = ["Documento", "Classificar", "Ligar", "Revisão"];
@@ -65,7 +61,6 @@ const tipos: TipoBiblioteca[] = [
   "Notícia",
   "Outro",
 ];
-const estados: EstadoInicial[] = ["Por analisar", "Analisado", "Arquivado"];
 const ligacoes: Ligacao[] = ["Assunto", "Sessão", "Ambos", "Nenhum por agora"];
 
 function hoje() {
@@ -77,12 +72,6 @@ function mapearTipoDocumento(tipo: TipoBiblioteca): TipoDocumento {
   if (tipo === "Ata") return "Ata";
   if (tipo === "Relatório") return "Relatório";
   return "Outro";
-}
-
-function mapearEstadoDocumento(estado: EstadoInicial): EstadoDocumento {
-  if (estado === "Analisado") return "Revisto";
-  if (estado === "Arquivado") return "Arquivado";
-  return "Por rever";
 }
 
 function Progress({ step }: { step: number }) {
@@ -132,7 +121,6 @@ export function AdicionarBibliotecaWizard() {
   const [ficheiroTipo, setFicheiroTipo] = useState<string | undefined>();
   const [ficheiro, setFicheiro] = useState<File | undefined>();
   const [tipo, setTipo] = useState<TipoBiblioteca>("Outro");
-  const [estado, setEstado] = useState<EstadoInicial>("Por analisar");
   const [ligacao, setLigacao] = useState<Ligacao>("Nenhum por agora");
   const [dossieId, setDossieId] = useState("");
   const [assembleiaId, setAssembleiaId] = useState("");
@@ -151,7 +139,6 @@ export function AdicionarBibliotecaWizard() {
     setFicheiroTipo(undefined);
     setFicheiro(undefined);
     setTipo("Outro");
-    setEstado("Por analisar");
     setLigacao("Nenhum por agora");
     setDossieId("");
     setAssembleiaId("");
@@ -177,7 +164,8 @@ export function AdicionarBibliotecaWizard() {
         titulo: titulo.trim(),
         tipo: mapearTipoDocumento(tipo),
         data: hoje(),
-        estado: mapearEstadoDocumento(estado),
+        estado: "Por rever",
+        importante: false,
         ficheiroNome,
         ficheiroTipo,
         ficheiroTamanho: ficheiro?.size,
@@ -207,18 +195,6 @@ export function AdicionarBibliotecaWizard() {
 
     if (precisaSessao && assembleiaId) {
       associarInboxDocumentoAAssembleia(documento.id, assembleiaId);
-    }
-
-    if (estado === "Por analisar") {
-      definirEstadoInboxDocumento(documento.id, "Novo");
-    }
-
-    if (estado === "Analisado") {
-      marcarInboxDocumentoComoTratado(documento.id);
-    }
-
-    if (estado === "Arquivado") {
-      arquivarInboxDocumento(documento.id);
     }
 
     setOpen(false);
@@ -301,7 +277,7 @@ export function AdicionarBibliotecaWizard() {
           {step === 1 && (
             <div className="space-y-5">
               <StepTitle title="Passo 2 — Classificar" question="Que tipo de documento é?" />
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4">
                 <div className="space-y-2">
                   <Label>Tipo</Label>
                   <Select value={tipo} onValueChange={(value) => setTipo(value as TipoBiblioteca)}>
@@ -317,24 +293,9 @@ export function AdicionarBibliotecaWizard() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Estado inicial</Label>
-                  <Select
-                    value={estado}
-                    onValueChange={(value) => setEstado(value as EstadoInicial)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {estados.map((item) => (
-                        <SelectItem key={item} value={item}>
-                          {item}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  O documento será adicionado como Por rever, ativo e não importante.
+                </p>
               </div>
             </div>
           )}
@@ -410,7 +371,7 @@ export function AdicionarBibliotecaWizard() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <InfoCard icon={FileText} title="Título" description={titulo || "Por preencher"} />
                 <InfoCard icon={FileText} title="Tipo" description={tipo} />
-                <InfoCard icon={CheckCircle2} title="Estado" description={estado} />
+                <InfoCard icon={CheckCircle2} title="Tratamento" description="Por rever" />
                 <InfoCard icon={Landmark} title="Ligação" description={ligacao} />
                 {ficheiroNome && (
                   <InfoCard

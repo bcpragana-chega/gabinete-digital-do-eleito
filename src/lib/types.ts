@@ -15,7 +15,7 @@ export type TipoDocumento =
   | "Declaração de voto"
   | "Outro";
 
-export type EstadoDocumento = "Por rever" | "Revisto" | "Importante" | "Arquivado";
+export type EstadoDocumento = "Por rever" | "Revisto";
 export type EstadoAnaliseDocumento =
   | "nao_analisado"
   | "a_analisar"
@@ -71,6 +71,8 @@ export interface Documento {
   tipo: TipoDocumento;
   data: string;
   estado: EstadoDocumento;
+  /** Prioridade atribuída explicitamente pelo utilizador; não é relevância inferida pela IA. */
+  importante?: boolean;
   origem?: string;
   origemTipo?: string;
   origemRef?: string;

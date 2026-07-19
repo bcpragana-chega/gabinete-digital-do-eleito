@@ -63,7 +63,7 @@ const tiposBase: TipoDocumento[] = [
 const estadosBase: EstadoDocumento[] = [
   "Revisto",
   "Por rever",
-  "Importante",
+  "Por rever",
   "Revisto",
   "Por rever",
   "Revisto",
@@ -77,6 +77,7 @@ export const documentos: Documento[] = assembleias.flatMap((a) =>
     tipo,
     data: a.data,
     estado: estadosBase[idx],
+    importante: idx === 2,
     paginas: 6 + ((idx * 7) % 24),
     createdAt: `${a.data}T09:00:00.000Z`,
   })),

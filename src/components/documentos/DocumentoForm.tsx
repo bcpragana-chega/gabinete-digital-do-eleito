@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { EstadoDocumento, TipoDocumento } from "@/lib/types";
+import type { TipoDocumento } from "@/lib/types";
 import { adicionarDocumentoComUpload, type NovoDocumentoInput } from "@/lib/documentos-store";
 import { DocumentoStorageErro } from "@/lib/documentos-storage";
 
@@ -28,8 +28,6 @@ const tipos: TipoDocumento[] = [
   "Outro",
 ];
 
-const estados: EstadoDocumento[] = ["Por rever", "Revisto", "Importante", "Arquivado"];
-
 function hoje(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -46,7 +44,6 @@ export function DocumentoForm({
   const [titulo, setTitulo] = useState("");
   const [tipo, setTipo] = useState<TipoDocumento>("Convocatória");
   const [data, setData] = useState(hoje());
-  const [estado, setEstado] = useState<EstadoDocumento>("Por rever");
   const [ficheiroNome, setFicheiroNome] = useState<string | undefined>();
   const [ficheiroTipo, setFicheiroTipo] = useState<string | undefined>();
   const [ficheiro, setFicheiro] = useState<File | undefined>();
@@ -66,7 +63,8 @@ export function DocumentoForm({
       titulo: titulo.trim(),
       tipo,
       data,
-      estado,
+      estado: "Por rever",
+      importante: false,
       ficheiroNome,
       ficheiroTipo,
       ficheiroTamanho: ficheiro?.size,
@@ -109,7 +107,7 @@ export function DocumentoForm({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4">
           <div className="space-y-2">
             <Label>Tipo</Label>
             <Select value={tipo} onValueChange={(v) => setTipo(v as TipoDocumento)}>
@@ -120,22 +118,6 @@ export function DocumentoForm({
                 {tipos.map((t) => (
                   <SelectItem key={t} value={t}>
                     {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Estado</Label>
-            <Select value={estado} onValueChange={(v) => setEstado(v as EstadoDocumento)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {estados.map((e) => (
-                  <SelectItem key={e} value={e}>
-                    {e}
                   </SelectItem>
                 ))}
               </SelectContent>
