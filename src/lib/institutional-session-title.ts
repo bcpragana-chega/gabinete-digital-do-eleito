@@ -1,4 +1,5 @@
 import type { AnaliseDocumentoInstitucional } from "@/lib/types";
+import { validarDataCivilIso } from "@/lib/civil-date";
 
 type SessaoInstitucional = NonNullable<AnaliseDocumentoInstitucional["sessao"]>;
 
@@ -28,15 +29,9 @@ function entidadeCurta(sessao?: SessaoInstitucional) {
 }
 
 function dataLegivel(data?: string) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(data?.trim() ?? "");
-  if (!match) return undefined;
-  const ano = Number(match[1]);
-  const mes = Number(match[2]);
-  const dia = Number(match[3]);
-  const bissexto = ano % 4 === 0 && (ano % 100 !== 0 || ano % 400 === 0);
-  const diasNoMes = [31, bissexto ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  if (mes < 1 || mes > 12 || dia < 1 || dia > diasNoMes[mes - 1]) return undefined;
-  return `${dia} ${MESES[mes - 1]} ${ano}`;
+  const resultado = validarDataCivilIso(data ?? "", { validarAnoPlausivel: true });
+  if (!resultado.ok) return undefined;
+  return `${resultado.dia} ${MESES[resultado.mes - 1]} ${resultado.ano}`;
 }
 
 export function gerarTituloSessaoManual(input: {

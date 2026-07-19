@@ -5,15 +5,21 @@ import {
   carregarDocumentoParaAnaliseComDependencias,
   confirmarAnaliseDocumentoComDependencias,
   confirmarDocumentoNaBibliotecaComDependencias,
+  confirmarSessaoValidadaComDependencias,
+  corrigirCampoSessao,
   decidirDestinoAnalise,
   destinoPreparaSessao,
   executarConfirmacaoAnaliseComDependencias,
   LIMIAR_CONFIANCA_DESTINO_DOCUMENTAL,
   mapearTipoDocumentoInstitucional,
+  obterIncertezaCampoSessao,
+  prepararAnaliseParaConfirmacaoSessao,
   temCamposEssenciaisIncertos,
+  validarCamposConfirmacaoSessao,
   validarDadosConfirmacaoAnalise,
   validarResultadoConfirmacaoAnalise,
 } from "./institutional-document-flow";
+import { normalizarAnaliseDocumentoInstitucional } from "./ai/institutional-document-analysis";
 import type { AnaliseDocumentoInstitucional, Documento, TipoDocumentoInstitucional } from "./types";
 
 const component = readFileSync(
@@ -60,6 +66,24 @@ function analiseTipo(
 }
 
 describe("confirmação institucional", () => {
+  it("preserva data e local canónicos desde a análise normalizada até à revisão", () => {
+    const local = "Centro Cultural D. Dinis, Rua João Silva, nº 10, 1.º andar";
+    const normalizada = normalizarAnaliseDocumentoInstitucional(
+      analiseTipo("convocatoria", {
+        sessao: {
+          orgao: "Órgão Deliberativo",
+          data: "2026-06-30",
+          hora: "21:00",
+          local,
+        },
+      }),
+    );
+    assert.equal(normalizada.sessao?.data, "2026-06-30");
+    assert.equal(normalizada.sessao?.local, local);
+    assert.match(component, /type="date"[\s\S]*value=\{sessao\.data \?\? ""\}/);
+    assert.match(component, /<Textarea[\s\S]*value=\{sessao\.local \?\? ""\}/);
+  });
+
   it("decide deterministicamente o destino com limiar explícito", () => {
     assert.equal(LIMIAR_CONFIANCA_DESTINO_DOCUMENTAL, 0.75);
     assert.equal(decidirDestinoAnalise(analiseTipo("convocatoria")), "preparar_sessao");
@@ -141,6 +165,80 @@ describe("confirmação institucional", () => {
       onConfirmado: () => undefined,
     });
     assert.equal(chamadasRpc, 1);
+  });
+
+  it("assinala e retira a incerteza essencial depois de uma correção válida", () => {
+    const incerta = analiseTipo("convocatoria", {
+      sessao: { orgao: "Órgão Deliberativo", data: "2026-06-30", hora: "21:00" },
+      camposIncertos: [{ campo: "órgão", motivo: "Confirmar a designação oficial." }],
+    });
+    assert.equal(
+      obterIncertezaCampoSessao(incerta, "orgao")?.motivo,
+      "Confirmar a designação oficial.",
+    );
+    const corrigida = corrigirCampoSessao(incerta, "orgao", "Assembleia de Freguesia de Porches");
+    assert.equal(obterIncertezaCampoSessao(corrigida, "orgao"), undefined);
+    assert.equal(corrigida.sessao?.orgao, "Assembleia de Freguesia de Porches");
+  });
+
+  it("envia à RPC a data ISO validada sem alterar o local", async () => {
+    const local = "Centro Cultural D. Dinis, Rua João Silva, nº 10, 1.º andar";
+    const value = analiseTipo("convocatoria", {
+      sessao: {
+        orgao: "Assembleia de Freguesia de Porches",
+        data: "2026-06-30",
+        hora: "21:00",
+        local,
+      },
+    });
+    let payload: AnaliseDocumentoInstitucional | undefined;
+    await confirmarSessaoValidadaComDependencias({
+      analise: value,
+      agora: new Date("2026-07-19T12:00:00Z"),
+      confirmar: async (analiseValidada) => {
+        payload = analiseValidada;
+        return undefined;
+      },
+    });
+    assert.equal(payload?.sessao?.data, "2026-06-30");
+    assert.equal(payload?.sessao?.local, local);
+  });
+
+  it("não chama a RPC com ano implausível ou data inexistente", async () => {
+    let chamadas = 0;
+    for (const data of ["3066-06-30", "2026-02-30"]) {
+      await assert.rejects(
+        confirmarSessaoValidadaComDependencias({
+          analise: analiseTipo("convocatoria", {
+            sessao: { orgao: "Assembleia Municipal", data, hora: "21:00" },
+          }),
+          agora: new Date("2026-07-19T12:00:00Z"),
+          confirmar: async () => {
+            chamadas += 1;
+          },
+        }),
+      );
+    }
+    assert.equal(chamadas, 0);
+    assert.match(
+      validarCamposConfirmacaoSessao(
+        analiseTipo("convocatoria", {
+          sessao: { orgao: "Assembleia Municipal", data: "3066-06-30", hora: "21:00" },
+        }),
+        new Date("2026-07-19T12:00:00Z"),
+      ).data ?? "",
+      /2046/,
+    );
+  });
+
+  it("mantém datas históricas válidas e prepara o payload canónico", () => {
+    const preparada = prepararAnaliseParaConfirmacaoSessao(
+      analiseTipo("convocatoria", {
+        sessao: { orgao: "Assembleia Municipal", data: "1974-04-25", hora: "21:00" },
+      }),
+      new Date("2026-07-19T12:00:00Z"),
+    );
+    assert.equal(preparada.sessao?.data, "1974-04-25");
   });
 
   it("mapeia todos os tipos institucionais sem inventar granularidade", () => {
@@ -285,14 +383,10 @@ describe("confirmação institucional", () => {
       data: "2026-07-29",
       hora: "21:00",
     };
-    for (const sessao of [
-      { ...base, orgao: "" },
-      { ...base, data: "2026-02-30" },
-      { ...base, data: "29-07-2026" },
-      { ...base, hora: "25:00" },
-    ]) {
-      assert.match(validarDadosConfirmacaoAnalise(analise(sessao)) ?? "", /órgão, a data e a hora/);
-    }
+    assert.ok(validarCamposConfirmacaoSessao(analise({ ...base, orgao: "" })).orgao);
+    assert.ok(validarCamposConfirmacaoSessao(analise({ ...base, data: "2026-02-30" })).data);
+    assert.ok(validarCamposConfirmacaoSessao(analise({ ...base, data: "29-07-2026" })).data);
+    assert.ok(validarCamposConfirmacaoSessao(analise({ ...base, hora: "25:00" })).hora);
   });
 
   it("confirma apenas uma resposta RPC válida com sessaoId e hidrata antes de devolver", async () => {

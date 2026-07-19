@@ -25,12 +25,17 @@ import {
   carregarDocumentoParaAnalise,
   confirmarAnaliseDocumento,
   confirmarDocumentoNaBiblioteca,
+  corrigirCampoSessao,
   decidirDestinoAnalise,
   destinoPreparaSessao,
   destinoRequerConfirmacao,
   executarConfirmacaoAnaliseComDependencias,
   mapearTipoDocumentoInstitucional,
+  obterIncertezaCampoSessao,
+  validarCamposConfirmacaoSessao,
   validarDadosConfirmacaoAnalise,
+  type CampoSessaoEditavel,
+  type ErrosCamposConfirmacaoSessao,
 } from "@/lib/institutional-document-flow";
 import {
   gerarTituloSessaoInstitucional,
@@ -67,6 +72,7 @@ export function InstitutionalDocumentIntake({
   const [error, setError] = useState("");
   const [analysisNotice, setAnalysisNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<ErrosCamposConfirmacaoSessao>({});
   const confirmacaoEmCurso = useRef(false);
 
   function reset() {
@@ -82,6 +88,7 @@ export function InstitutionalDocumentIntake({
     setError("");
     setAnalysisNotice("");
     setSaving(false);
+    setFieldErrors({});
   }
 
   function changeOpen(value: boolean) {
@@ -113,6 +120,7 @@ export function InstitutionalDocumentIntake({
     let uploadedDocument: Documento | undefined;
     setStep("analysing");
     setError("");
+    setFieldErrors({});
     setAnalysisNotice("");
     try {
       const uploaded = await carregarDocumentoParaAnalise(file);
@@ -140,6 +148,7 @@ export function InstitutionalDocumentIntake({
     if (!documento) return uploadAndAnalyse();
     setStep("analysing");
     setError("");
+    setFieldErrors({});
     setAnalysisNotice("");
     try {
       const result = await analisarDocumentoCarregado(documento.id);
@@ -167,7 +176,8 @@ export function InstitutionalDocumentIntake({
     if (!documento || !analise || confirmacaoEmCurso.current) return;
     const erroValidacao = validarDadosConfirmacaoAnalise(analise);
     if (erroValidacao) {
-      setError(erroValidacao);
+      setFieldErrors(validarCamposConfirmacaoSessao(analise));
+      setError("");
       return;
     }
     confirmacaoEmCurso.current = true;
@@ -272,7 +282,7 @@ export function InstitutionalDocumentIntake({
               ? "A analisar o contexto institucional e a preparar a próxima ação."
               : step === "review" || step === "duplicate"
                 ? preparaSessao
-                  ? "Pode corrigir os dados antes de confirmar. A sessão só será criada depois da confirmação."
+                  ? "Reveja os dados assinalados. A Sessão só será preparada depois da sua confirmação."
                   : "Confirme os dados essenciais antes de guardar o documento na Biblioteca."
                 : "Carregue o PDF para análise. Poderá rever os dados antes de confirmar."}
           </DialogDescription>
@@ -308,12 +318,7 @@ export function InstitutionalDocumentIntake({
           )}
           {step === "review" && analise && (
             <div className="space-y-4">
-              <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm leading-6 text-muted-foreground">
-                {preparaSessao
-                  ? "Reveja e corrija o que for necessário. A sessão só será criada depois da sua confirmação."
-                  : "O PDF já está carregado. Confirme a organização do mesmo Documento na Biblioteca."}
-              </p>
-              {analysisNotice && (
+              {analysisNotice && !preparaSessao && (
                 <p className="rounded-xl border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
                   {analysisNotice}
                 </p>
@@ -325,6 +330,10 @@ export function InstitutionalDocumentIntake({
                   titulo={tituloSessao}
                   tituloPersonalizado={tituloPersonalizado}
                   onTituloAutomaticoChange={setTituloSessao}
+                  validationErrors={fieldErrors}
+                  onValidationErrorClear={(campo) =>
+                    setFieldErrors((atuais) => ({ ...atuais, [campo]: undefined }))
+                  }
                   onTituloChange={(value) => {
                     if (value.trim()) {
                       setTituloSessao(value);
@@ -507,6 +516,8 @@ export function ReviewForm({
   tituloPersonalizado,
   onTituloAutomaticoChange,
   onTituloChange,
+  validationErrors = {},
+  onValidationErrorClear,
 }: {
   analise: AnaliseDocumentoInstitucional;
   onChange: (value: AnaliseDocumentoInstitucional) => void;
@@ -514,11 +525,27 @@ export function ReviewForm({
   tituloPersonalizado: boolean;
   onTituloAutomaticoChange: (value: string) => void;
   onTituloChange: (value: string) => void;
+  validationErrors?: ErrosCamposConfirmacaoSessao;
+  onValidationErrorClear?: (campo: keyof ErrosCamposConfirmacaoSessao) => void;
 }) {
   const sessao = analise.sessao ?? { tipo: "desconhecida" as const };
+  const outrasIncertezas = analise.camposIncertos.filter(
+    (item) =>
+      !(["orgao", "data", "hora", "local"] as CampoSessaoEditavel[]).some(
+        (campo) => obterIncertezaCampoSessao(analise, campo) === item,
+      ),
+  );
   const updateSession = (field: string, value: string) => {
-    const next = { ...analise, sessao: { ...sessao, [field]: value || undefined } };
+    const campoSessao = ["orgao", "data", "hora", "local"].includes(field)
+      ? (field as CampoSessaoEditavel)
+      : undefined;
+    const next = campoSessao
+      ? corrigirCampoSessao(analise, campoSessao, value)
+      : { ...analise, sessao: { ...sessao, [field]: value || undefined } };
     onChange(next);
+    if (campoSessao && !obterIncertezaCampoSessao(next, campoSessao)) {
+      onValidationErrorClear?.(campoSessao as keyof ErrosCamposConfirmacaoSessao);
+    }
     if (["tipo", "entidade", "orgao", "data"].includes(field))
       onTituloAutomaticoChange(
         resolverTituloSessaoInstitucional({
@@ -544,6 +571,8 @@ export function ReviewForm({
           label="Órgão"
           value={sessao.orgao ?? ""}
           onChange={(v) => updateSession("orgao", v)}
+          uncertainty={obterIncertezaCampoSessao(analise, "orgao")?.motivo}
+          error={validationErrors.orgao}
         />
         <Field
           label="Entidade"
@@ -571,24 +600,48 @@ export function ReviewForm({
           type="date"
           value={sessao.data ?? ""}
           onChange={(v) => updateSession("data", v)}
+          uncertainty={obterIncertezaCampoSessao(analise, "data")?.motivo}
+          error={validationErrors.data}
         />
         <Field
           label="Hora"
           type="time"
           value={sessao.hora ?? ""}
           onChange={(v) => updateSession("hora", v)}
+          uncertainty={obterIncertezaCampoSessao(analise, "hora")?.motivo}
+          error={validationErrors.hora}
         />
-        <Field
-          label="Local"
-          value={sessao.local ?? ""}
-          onChange={(v) => updateSession("local", v)}
-        />
+        <div className="space-y-2">
+          <Label>
+            Local
+            {obterIncertezaCampoSessao(analise, "local") && (
+              <span className="ml-2 text-xs font-medium text-amber-700 dark:text-amber-300">
+                Confirmar
+              </span>
+            )}
+          </Label>
+          <Textarea
+            value={sessao.local ?? ""}
+            rows={2}
+            className={
+              obterIncertezaCampoSessao(analise, "local")
+                ? "border-amber-500 focus-visible:ring-amber-500/30"
+                : undefined
+            }
+            onChange={(event) => updateSession("local", event.target.value)}
+          />
+          {obterIncertezaCampoSessao(analise, "local") && (
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              {obterIncertezaCampoSessao(analise, "local")?.motivo}
+            </p>
+          )}
+        </div>
       </div>
-      {analise.camposIncertos.length > 0 && (
+      {outrasIncertezas.length > 0 && (
         <div className="rounded-xl border border-status-alerta/30 p-4">
           <p className="text-sm font-medium">Confirme estes detalhes</p>
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-            {analise.camposIncertos.map((item) => (
+            {outrasIncertezas.map((item) => (
               <li key={`${item.campo}:${item.motivo}`}>
                 • {item.campo}: {item.motivo}
               </li>
@@ -691,16 +744,44 @@ function Field({
   value,
   onChange,
   type = "text",
+  uncertainty,
+  error,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  uncertainty?: string;
+  error?: string;
 }) {
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
-      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+      <Label>
+        {label}
+        {uncertainty && (
+          <span className="ml-2 text-xs font-medium text-amber-700 dark:text-amber-300">
+            Confirmar
+          </span>
+        )}
+      </Label>
+      <Input
+        type={type}
+        value={value}
+        className={
+          error
+            ? "border-destructive focus-visible:ring-destructive/30"
+            : uncertainty
+              ? "border-amber-500 focus-visible:ring-amber-500/30"
+              : undefined
+        }
+        aria-invalid={Boolean(error)}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {error ? (
+        <p className="text-xs text-destructive">{error}</p>
+      ) : uncertainty ? (
+        <p className="text-xs text-amber-700 dark:text-amber-300">{uncertainty}</p>
+      ) : null}
     </div>
   );
 }

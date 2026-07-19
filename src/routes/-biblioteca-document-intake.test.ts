@@ -40,4 +40,19 @@ describe("entrada documental principal da Biblioteca", () => {
     assert.match(intake, /preparaSessao[\s\S]*Confirmar e preparar sessão/);
     assert.match(intake, /preparaSessao[\s\S]*confirm\(\)/);
   });
+
+  it("assinala incertezas junto dos campos e mantém o local integralmente editável", () => {
+    const inicio = intake.indexOf("export function ReviewForm");
+    const formularioSessao = intake.slice(inicio);
+    assert.match(formularioSessao, /obterIncertezaCampoSessao\(analise, "orgao"\)/);
+    assert.match(formularioSessao, /Confirmar/);
+    assert.match(formularioSessao, /border-amber-500/);
+    assert.match(formularioSessao, /<Textarea[\s\S]*value=\{sessao\.local \?\? ""\}/);
+  });
+
+  it("apresenta uma única instrução introdutória para a revisão de Sessão", () => {
+    assert.equal(intake.match(/Reveja os dados assinalados/g)?.length, 1);
+    assert.doesNotMatch(intake, /Reveja e corrija o que for necessário/);
+    assert.doesNotMatch(intake, /Pode corrigir os dados antes de confirmar/);
+  });
 });

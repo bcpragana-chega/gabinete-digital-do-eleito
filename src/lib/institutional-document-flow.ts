@@ -7,6 +7,7 @@ import {
 import { carregarAssembleiasRemotasSeDisponivel } from "@/lib/assembleias-store";
 import { carregarPontosRemotosSeDisponivel } from "@/lib/pontos-store";
 import { getSupabaseClient, withSupabaseTimeout } from "@/lib/supabase";
+import { validarDataCivilIso } from "@/lib/civil-date";
 import type {
   AnaliseDocumentoInstitucional,
   Documento,
@@ -46,6 +47,40 @@ export function temCamposEssenciaisIncertos(analise: AnaliseDocumentoInstitucion
     if (["documento", "tipo", "titulo"].some((item) => normalizado.includes(item))) return true;
     return sessao && ["sessao", "orgao", "data", "hora"].some((item) => normalizado.includes(item));
   });
+}
+
+export type CampoSessaoEditavel = "orgao" | "data" | "hora" | "local";
+
+export function obterIncertezaCampoSessao(
+  analise: AnaliseDocumentoInstitucional,
+  campo: CampoSessaoEditavel,
+) {
+  return analise.camposIncertos.find(({ campo: campoIncerto }) =>
+    campoNormalizado(campoIncerto).includes(campo),
+  );
+}
+
+function valorCorrigidoValido(campo: CampoSessaoEditavel, value: string, agora?: Date) {
+  if (campo === "data") return validarDataCivilIso(value, { agora, validarAnoPlausivel: true }).ok;
+  if (campo === "hora") return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+  return value.trim().length > 0;
+}
+
+export function corrigirCampoSessao(
+  analise: AnaliseDocumentoInstitucional,
+  campo: CampoSessaoEditavel,
+  value: string,
+  agora?: Date,
+): AnaliseDocumentoInstitucional {
+  const incerteza = obterIncertezaCampoSessao(analise, campo);
+  return {
+    ...analise,
+    sessao: { ...analise.sessao, [campo]: value || undefined },
+    camposIncertos:
+      incerteza && valorCorrigidoValido(campo, value, agora)
+        ? analise.camposIncertos.filter((item) => item !== incerteza)
+        : analise.camposIncertos,
+  };
 }
 
 export function mapearTipoDocumentoInstitucional(tipo: TipoDocumentoInstitucional): TipoDocumento {
@@ -152,25 +187,57 @@ export type ResultadoConfirmacaoAnalise =
   | { status: "confirmado"; sessaoId: string; pontosCriados: number }
   | { status: "duplicado"; sessaoId: string };
 
-const MENSAGEM_DADOS_OBRIGATORIOS = "Confirme o órgão, a data e a hora antes de preparar a sessão.";
+export type ErrosCamposConfirmacaoSessao = Partial<Record<"orgao" | "data" | "hora", string>>;
 
-function dataIsoValida(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const [ano, mes, dia] = value.split("-").map(Number);
-  const data = new Date(Date.UTC(ano, mes - 1, dia));
-  return (
-    data.getUTCFullYear() === ano && data.getUTCMonth() === mes - 1 && data.getUTCDate() === dia
-  );
-}
-
-export function validarDadosConfirmacaoAnalise(analise: AnaliseDocumentoInstitucional) {
+export function validarCamposConfirmacaoSessao(
+  analise: AnaliseDocumentoInstitucional,
+  agora: Date = new Date(),
+): ErrosCamposConfirmacaoSessao {
   const orgao = analise.sessao?.orgao?.trim() ?? "";
   const data = analise.sessao?.data?.trim() ?? "";
   const hora = analise.sessao?.hora?.trim() ?? "";
-  if (!orgao || !dataIsoValida(data) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) {
-    return MENSAGEM_DADOS_OBRIGATORIOS;
+  const erros: ErrosCamposConfirmacaoSessao = {};
+  if (!orgao) erros.orgao = "Confirme o órgão da Sessão.";
+
+  const resultadoData = validarDataCivilIso(data, { agora, validarAnoPlausivel: true });
+  if (!resultadoData.ok) {
+    erros.data =
+      resultadoData.erro === "ano_implausivel"
+        ? `Confirme o ano. A data não pode ser posterior a ${resultadoData.anoMaximo}.`
+        : resultadoData.erro === "inexistente"
+          ? "Introduza uma data real."
+          : "Introduza a data no formato AAAA-MM-DD.";
   }
-  return undefined;
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) erros.hora = "Introduza uma hora válida.";
+  return erros;
+}
+
+export function validarDadosConfirmacaoAnalise(
+  analise: AnaliseDocumentoInstitucional,
+  agora: Date = new Date(),
+) {
+  return Object.values(validarCamposConfirmacaoSessao(analise, agora))[0];
+}
+
+export function prepararAnaliseParaConfirmacaoSessao<
+  T extends AnaliseDocumentoInstitucional & { tituloSessao?: string },
+>(analise: T, agora: Date = new Date()): T {
+  const erro = validarDadosConfirmacaoAnalise(analise, agora);
+  if (erro) throw new Error(erro);
+  const data = validarDataCivilIso(analise.sessao?.data ?? "", {
+    agora,
+    validarAnoPlausivel: true,
+  });
+  if (!data.ok) throw new Error("DATA_SESSAO_INVALIDA");
+  return { ...analise, sessao: { ...analise.sessao, data: data.valor } };
+}
+
+export async function confirmarSessaoValidadaComDependencias<T>(input: {
+  analise: AnaliseDocumentoInstitucional & { tituloSessao?: string };
+  confirmar: (analise: AnaliseDocumentoInstitucional & { tituloSessao?: string }) => Promise<T>;
+  agora?: Date;
+}) {
+  return input.confirmar(prepararAnaliseParaConfirmacaoSessao(input.analise, input.agora));
 }
 
 export function validarResultadoConfirmacaoAnalise(value: unknown): ResultadoConfirmacaoAnalise {
@@ -220,26 +287,30 @@ export async function confirmarAnaliseDocumento(input: {
 }): Promise<ResultadoConfirmacaoAnalise> {
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
-  return confirmarAnaliseDocumentoComDependencias(
-    async () => {
-      const { data, error } = await withSupabaseTimeout(
-        supabase.rpc("confirmar_analise_documento_sessao", {
-          p_documento_id: input.documentoId,
-          p_analise: input.analise,
-          p_modo: input.modo ?? "criar",
-          p_sessao_existente_id: input.sessaoExistenteId ?? null,
-        }),
-        "WOW_CONFIRM",
-        20000,
-      );
-      if (error) throw error;
-      return data;
-    },
-    () =>
-      Promise.all([
-        carregarAssembleiasRemotasSeDisponivel(),
-        carregarPontosRemotosSeDisponivel(),
-        carregarDocumentosRemotosSeDisponivel(),
-      ]),
-  );
+  return confirmarSessaoValidadaComDependencias({
+    analise: input.analise,
+    confirmar: (analiseValidada) =>
+      confirmarAnaliseDocumentoComDependencias(
+        async () => {
+          const { data, error } = await withSupabaseTimeout(
+            supabase.rpc("confirmar_analise_documento_sessao", {
+              p_documento_id: input.documentoId,
+              p_analise: analiseValidada,
+              p_modo: input.modo ?? "criar",
+              p_sessao_existente_id: input.sessaoExistenteId ?? null,
+            }),
+            "WOW_CONFIRM",
+            20000,
+          );
+          if (error) throw error;
+          return data;
+        },
+        () =>
+          Promise.all([
+            carregarAssembleiasRemotasSeDisponivel(),
+            carregarPontosRemotosSeDisponivel(),
+            carregarDocumentosRemotosSeDisponivel(),
+          ]),
+      ),
+  });
 }

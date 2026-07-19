@@ -72,7 +72,7 @@ describe("cabeçalhos canónicos e navegação", () => {
 
     assert.match(intake, /Analisar documento/);
     assert.match(intake, /Adicionar e analisar/);
-    assert.match(intake, /A sessão só será criada depois da sua confirmação/);
+    assert.match(intake, /A Sessão só será preparada depois da sua confirmação/);
     assert.doesNotMatch(intake, />Compreender<|Adicionar e compreender|A compreender o documento/);
   });
 

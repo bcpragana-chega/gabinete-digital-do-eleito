@@ -43,6 +43,20 @@ describe("título determinístico da sessão institucional", () => {
     assert.equal(gerarTituloSessaoInstitucional({ data: "2026-04-28" }), "Sessão · 28 abril 2026");
   });
 
+  it("deriva o título da data ISO canónica sem corromper o ano", () => {
+    const titulo = gerarTituloSessaoInstitucional({
+      tipo: "ordinaria",
+      entidade: "Freguesia de Porches",
+      data: "2026-06-30",
+    });
+    assert.equal(titulo, "Sessão ordinária · Porches · 30 junho 2026");
+    assert.doesNotMatch(titulo, /3066/);
+    assert.doesNotMatch(
+      gerarTituloSessaoInstitucional({ entidade: "Freguesia de Porches", data: "3066-06-30" }),
+      /3066/,
+    );
+  });
+
   it("usa Sessão sem dados", () => {
     assert.equal(gerarTituloSessaoInstitucional(), "Sessão");
   });

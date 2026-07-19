@@ -376,7 +376,7 @@ trabalho exigirá desenho próprio e não foi antecipado nesta missão.
 
 ## ⏳ Problema n.º 6 — A Biblioteca exige demasiado trabalho manual de classificação
 
-Estado: EM CURSO — Fase 6A corrigida; validação manual pendente; Fase 6B pendente
+Estado: EM CURSO — segunda correção da Fase 6A concluída; validação manual pendente; Fase 6B pendente
 Avaliação da Fase 6A: PENDENTE DE NOVO TESTE MANUAL
 
 ### Diagnóstico
@@ -410,6 +410,12 @@ O utilizador não deve ter de alimentar a Biblioteca. A Biblioteca deve organiza
   de revisão, duplicados, criação ou atualização de Sessão, pontos, onboarding e navegação.
 - Convocatórias reconhecidas com órgão, data ou hora incertos permanecem na revisão de Sessão;
   a incerteza exige correção humana, mas não altera o destino institucional reconhecido.
+- A data de Sessão tem um contrato civil único `YYYY-MM-DD`; a revisão, o título e a RPC usam o
+  mesmo valor, sem parsing de locale ou conversões UTC.
+- Datas inexistentes ou com ano superior ao ano atual mais 20 são bloqueadas antes da RPC, sem
+  impedir datas históricas válidas.
+- Incertezas de órgão, data, hora e local são apresentadas junto do respetivo campo e desaparecem
+  após uma correção válida; o local completo permanece editável sem truncamento.
 - Atas, propostas, regulamentos e restantes documentos reconhecidos são confirmados e organizados
   na Biblioteca sem criar Sessão nem chamar a RPC de confirmação de Sessão.
 - Documentos desconhecidos, de baixa confiança, com campos essenciais incertos ou sem dados essenciais ficam
@@ -419,17 +425,17 @@ O utilizador não deve ter de alimentar a Biblioteca. A Biblioteca deve organiza
 - O mapeamento entre tipos institucionais e tipos persistidos é explícito e testado; tipos sem
   granularidade segura usam `Outro`.
 - Não foram criadas tabelas, migrações ou alterações ao schema Supabase.
-- A regressão encontrada no teste manual foi corrigida no motor determinístico e aguarda repetição
-  desse teste antes de a Fase 6A receber avaliação final.
-- Validação automatizada da correção: 370 testes aprovados, typecheck aprovado, lint com 0 erros e
-  20 avisos antigos não relacionados, build aprovado e `git diff --check` aprovado.
+- As regressões encontradas nos dois testes manuais foram corrigidas e aguardam repetição do teste
+  da convocatória real antes de a Fase 6A receber avaliação final.
+- Validação automatizada da segunda correção: 381 testes aprovados, typecheck aprovado, lint com
+  0 erros e 20 avisos antigos não relacionados, build aprovado e `git diff --check` aprovado.
 
 ### Condição para fechar a Fase 6A
 
-Repetir com sucesso o teste manual da convocatória real, confirmando que uma incerteza no órgão
-abre a revisão de Sessão e termina na RPC existente depois da correção humana. A avaliação de
-9,3/10 foi retirada até existir essa confirmação. O Problema n.º 6 continua em curso porque a
-Fase 6B permanece deliberadamente pendente.
+Repetir com sucesso o teste manual da convocatória real, confirmando o ano correto, o destaque dos
+campos incertos, o local completo e a criação da Sessão pela RPC depois da correção humana. A
+avaliação de 9,3/10 foi retirada até existir essa confirmação. O Problema n.º 6 continua em curso
+porque a Fase 6B permanece deliberadamente pendente.
 
 ### Fase 6B pendente
 
