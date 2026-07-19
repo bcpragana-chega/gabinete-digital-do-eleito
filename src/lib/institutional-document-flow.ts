@@ -8,6 +8,7 @@ import { carregarAssembleiasRemotasSeDisponivel } from "@/lib/assembleias-store"
 import { carregarPontosRemotosSeDisponivel } from "@/lib/pontos-store";
 import { getSupabaseClient, withSupabaseTimeout } from "@/lib/supabase";
 import { validarDataCivilIso } from "@/lib/civil-date";
+import { orgaoInstitucionalGenerico } from "@/lib/institutional-session-title";
 import type {
   AnaliseDocumentoInstitucional,
   Documento,
@@ -40,8 +41,11 @@ function campoNormalizado(campo: string) {
     .toLowerCase();
 }
 
+export { orgaoInstitucionalGenerico } from "@/lib/institutional-session-title";
+
 export function temCamposEssenciaisIncertos(analise: AnaliseDocumentoInstitucional) {
   const sessao = TIPOS_SESSAO.has(analise.tipoDocumento);
+  if (sessao && orgaoInstitucionalGenerico(analise.sessao?.orgao)) return true;
   return analise.camposIncertos.some(({ campo }) => {
     const normalizado = campoNormalizado(campo);
     if (["documento", "tipo", "titulo"].some((item) => normalizado.includes(item))) return true;
@@ -55,15 +59,159 @@ export function obterIncertezaCampoSessao(
   analise: AnaliseDocumentoInstitucional,
   campo: CampoSessaoEditavel,
 ) {
-  return analise.camposIncertos.find(({ campo: campoIncerto }) =>
+  const explicita = analise.camposIncertos.find(({ campo: campoIncerto }) =>
     campoNormalizado(campoIncerto).includes(campo),
   );
+  if (explicita) return explicita;
+  if (campo === "orgao" && orgaoInstitucionalGenerico(analise.sessao?.orgao)) {
+    return {
+      campo: "órgão",
+      motivo: "A designação exata do órgão não foi identificada.",
+    };
+  }
+  return undefined;
 }
 
 function valorCorrigidoValido(campo: CampoSessaoEditavel, value: string, agora?: Date) {
   if (campo === "data") return validarDataCivilIso(value, { agora, validarAnoPlausivel: true }).ok;
   if (campo === "hora") return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+  if (campo === "orgao") return value.trim().length > 0 && !orgaoInstitucionalGenerico(value);
   return value.trim().length > 0;
+}
+
+const MESES_PORTUGUESES: Record<string, number> = {
+  janeiro: 1,
+  fevereiro: 2,
+  marco: 3,
+  abril: 4,
+  maio: 5,
+  junho: 6,
+  julho: 7,
+  agosto: 8,
+  setembro: 9,
+  outubro: 10,
+  novembro: 11,
+  dezembro: 12,
+};
+
+function datasExplicitasNoTexto(texto: string, agora: Date) {
+  const datas = new Set<string>();
+  for (const match of texto.matchAll(/\b\d{4}-\d{2}-\d{2}\b/g)) {
+    const resultado = validarDataCivilIso(match[0], { agora, validarAnoPlausivel: true });
+    if (resultado.ok) datas.add(resultado.valor);
+  }
+
+  const normalizado = campoNormalizado(texto);
+  const padrao =
+    /\b(\d{1,2})\s+de\s+(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+(\d{4})\b/g;
+  for (const match of normalizado.matchAll(padrao)) {
+    const valor = `${match[3]}-${String(MESES_PORTUGUESES[match[2]]).padStart(2, "0")}-${String(Number(match[1])).padStart(2, "0")}`;
+    const resultado = validarDataCivilIso(valor, { agora, validarAnoPlausivel: true });
+    if (resultado.ok) datas.add(resultado.valor);
+  }
+  return [...datas];
+}
+
+export type ResolucaoDataSessao =
+  | { estado: "preservada" | "resolvida"; data: string }
+  | { estado: "confirmacao_necessaria"; motivo: string };
+
+export function resolverDataSessaoInstitucional(
+  analise: AnaliseDocumentoInstitucional,
+  agora: Date = new Date(),
+): ResolucaoDataSessao {
+  const estruturada = analise.sessao?.data?.trim() ?? "";
+  const valida = validarDataCivilIso(estruturada, { agora, validarAnoPlausivel: true });
+  if (valida.ok) return { estado: "preservada", data: valida.valor };
+
+  const textos = [
+    analise.resumoCompreensao,
+    ...analise.informacaoRelevante.flatMap((item) => [item.titulo, item.descricao]),
+  ];
+  let candidatas = [...new Set(textos.flatMap((texto) => datasExplicitasNoTexto(texto, agora)))];
+
+  const partesEstruturadas = /^\d{4}-(\d{2})-(\d{2})$/.exec(estruturada);
+  if (partesEstruturadas) {
+    candidatas = candidatas.filter(
+      (data) => data.slice(5) === `${partesEstruturadas[1]}-${partesEstruturadas[2]}`,
+    );
+  }
+  if (candidatas.length === 1) return { estado: "resolvida", data: candidatas[0] };
+  return {
+    estado: "confirmacao_necessaria",
+    motivo:
+      candidatas.length > 1
+        ? "Foram encontradas várias datas possíveis. Confirme a data da sessão."
+        : "A data estruturada é inválida ou implausível. Confirme a data da sessão.",
+  };
+}
+
+type PontoOrdemTrabalhos = AnaliseDocumentoInstitucional["pontosOrdemTrabalhos"][number];
+
+function textoSubordinado(ponto: PontoOrdemTrabalhos) {
+  return [ponto.titulo.trim(), ponto.descricao?.trim()].filter(Boolean).join("\n");
+}
+
+export function normalizarHierarquiaOrdemTrabalhos(pontos: PontoOrdemTrabalhos[]) {
+  const principais: PontoOrdemTrabalhos[] = [];
+  for (const ponto of pontos) {
+    const titulo = ponto.titulo.trim();
+    const subponto = /^\d+\.\d+[.)]?\s+/.test(titulo);
+    const itemMarcado = /^[-–—•]\s+/.test(titulo);
+    const marcadorPrincipal = /^(\d+)[.)]\s+(.+)$/.exec(titulo);
+    const numeroPrincipal = marcadorPrincipal ? Number(marcadorPrincipal[1]) : undefined;
+    const iniciaPrincipal =
+      !subponto &&
+      !itemMarcado &&
+      (principais.length === 0 ||
+        numeroPrincipal === principais.length + 1 ||
+        (!marcadorPrincipal && ponto.numero === principais.length + 1));
+
+    if (iniciaPrincipal) {
+      principais.push({
+        ...ponto,
+        numero: principais.length + 1,
+        titulo: marcadorPrincipal?.[2].trim() ?? titulo,
+      });
+      continue;
+    }
+
+    const anterior = principais.at(-1);
+    if (!anterior) {
+      principais.push({ ...ponto, numero: 1 });
+      continue;
+    }
+    anterior.descricao = [anterior.descricao?.trim(), textoSubordinado(ponto)]
+      .filter(Boolean)
+      .join("\n");
+  }
+  return principais;
+}
+
+export function prepararAnaliseInstitucionalParaRevisao(
+  analise: AnaliseDocumentoInstitucional,
+  agora: Date = new Date(),
+): AnaliseDocumentoInstitucional {
+  if (!TIPOS_SESSAO.has(analise.tipoDocumento)) return analise;
+  const resolucao = resolverDataSessaoInstitucional(analise, agora);
+  const incertezasSemData = analise.camposIncertos.filter(
+    ({ campo }) => !campoNormalizado(campo).includes("data"),
+  );
+  const camposIncertos =
+    resolucao.estado === "confirmacao_necessaria"
+      ? [...incertezasSemData, { campo: "data", motivo: resolucao.motivo }]
+      : resolucao.estado === "resolvida"
+        ? incertezasSemData
+        : analise.camposIncertos;
+  return {
+    ...analise,
+    sessao: {
+      ...analise.sessao,
+      data: resolucao.estado === "confirmacao_necessaria" ? undefined : resolucao.data,
+    },
+    pontosOrdemTrabalhos: normalizarHierarquiaOrdemTrabalhos(analise.pontosOrdemTrabalhos),
+    camposIncertos,
+  };
 }
 
 export function corrigirCampoSessao(
@@ -180,7 +328,7 @@ export async function analisarDocumentoCarregado(documentoId: string) {
   });
   if (!result.ok) throw Object.assign(new Error(result.message), { code: result.code });
   await carregarDocumentosRemotosSeDisponivel();
-  return result;
+  return { ...result, analise: prepararAnaliseInstitucionalParaRevisao(result.analise) };
 }
 
 export type ResultadoConfirmacaoAnalise =
@@ -198,6 +346,7 @@ export function validarCamposConfirmacaoSessao(
   const hora = analise.sessao?.hora?.trim() ?? "";
   const erros: ErrosCamposConfirmacaoSessao = {};
   if (!orgao) erros.orgao = "Confirme o órgão da Sessão.";
+  else if (orgaoInstitucionalGenerico(orgao)) erros.orgao = "Confirme a designação exata do órgão.";
 
   const resultadoData = validarDataCivilIso(data, { agora, validarAnoPlausivel: true });
   if (!resultadoData.ok) {
@@ -222,14 +371,15 @@ export function validarDadosConfirmacaoAnalise(
 export function prepararAnaliseParaConfirmacaoSessao<
   T extends AnaliseDocumentoInstitucional & { tituloSessao?: string },
 >(analise: T, agora: Date = new Date()): T {
-  const erro = validarDadosConfirmacaoAnalise(analise, agora);
+  const preparada = prepararAnaliseInstitucionalParaRevisao(analise, agora) as T;
+  const erro = validarDadosConfirmacaoAnalise(preparada, agora);
   if (erro) throw new Error(erro);
-  const data = validarDataCivilIso(analise.sessao?.data ?? "", {
+  const data = validarDataCivilIso(preparada.sessao?.data ?? "", {
     agora,
     validarAnoPlausivel: true,
   });
   if (!data.ok) throw new Error("DATA_SESSAO_INVALIDA");
-  return { ...analise, sessao: { ...analise.sessao, data: data.valor } };
+  return { ...preparada, sessao: { ...preparada.sessao, data: data.valor } };
 }
 
 export async function confirmarSessaoValidadaComDependencias<T>(input: {

@@ -21,10 +21,24 @@ const MESES = [
 const PREFIXO_INSTITUCIONAL =
   /^(?:Assembleia de Freguesia de|Junta de Freguesia de|Assembleia Municipal de|Câmara Municipal de|Município de|Freguesia de)\s+/i;
 
+const ORGAOS_GENERICOS = new Set([
+  "orgao deliberativo",
+  "assembleia",
+  "orgao deliberativo (assembleia)",
+]);
+
+export function orgaoInstitucionalGenerico(value: string | undefined) {
+  const normalizado = (value ?? "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  return ORGAOS_GENERICOS.has(normalizado);
+}
+
 function entidadeCurta(sessao?: SessaoInstitucional) {
-  const valor = (sessao?.entidade?.trim() || sessao?.orgao?.trim() || "")
-    .replace(PREFIXO_INSTITUCIONAL, "")
-    .trim();
+  const orgao = orgaoInstitucionalGenerico(sessao?.orgao) ? "" : sessao?.orgao?.trim();
+  const valor = (sessao?.entidade?.trim() || orgao || "").replace(PREFIXO_INSTITUCIONAL, "").trim();
   return valor || undefined;
 }
 

@@ -68,6 +68,16 @@ describe("título determinístico da sessão institucional", () => {
     );
   });
 
+  it("não usa uma designação genérica de órgão no título", () => {
+    assert.equal(
+      gerarTituloSessaoInstitucional({
+        orgao: "Órgão Deliberativo (Assembleia)",
+        data: "2026-06-30",
+      }),
+      "Sessão · 30 junho 2026",
+    );
+  });
+
   it("remove o prefixo apenas no título", () => {
     const sessao = { entidade: "Câmara Municipal de Lagoa" };
     assert.equal(gerarTituloSessaoInstitucional(sessao), "Sessão · Lagoa");

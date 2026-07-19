@@ -376,7 +376,7 @@ trabalho exigirá desenho próprio e não foi antecipado nesta missão.
 
 ## ⏳ Problema n.º 6 — A Biblioteca exige demasiado trabalho manual de classificação
 
-Estado: EM CURSO — segunda correção da Fase 6A concluída; validação manual pendente; Fase 6B pendente
+Estado: EM CURSO — correção final automatizada da Fase 6A concluída; validação manual pendente; Fase 6B pendente
 Avaliação da Fase 6A: PENDENTE DE NOVO TESTE MANUAL
 
 ### Diagnóstico
@@ -404,6 +404,9 @@ O utilizador não deve ter de alimentar a Biblioteca. A Biblioteca deve organiza
 
 - “Adicionar e analisar PDF” é a ação principal da Biblioteca.
 - A adição manual continua disponível como alternativa secundária para casos excecionais.
+- O conflito 2026/3066 foi rastreado à resposta estruturada: o schema anterior verificava apenas
+  a forma de quatro dígitos, a normalização preservava o valor e o estado React, o título e o
+  payload recebiam-no sem qualquer transformação. O resumo textual era um campo independente.
 - Uma função pura distingue `preparar_sessao`, `confirmar_dados_sessao`,
   `guardar_biblioteca` e `confirmar_dados_documento`, com limiar de confiança único de 0,75.
 - Convocatórias e ordens de trabalhos suficientemente identificadas preservam o fluxo validado
@@ -414,8 +417,17 @@ O utilizador não deve ter de alimentar a Biblioteca. A Biblioteca deve organiza
   mesmo valor, sem parsing de locale ou conversões UTC.
 - Datas inexistentes ou com ano superior ao ano atual mais 20 são bloqueadas antes da RPC, sem
   impedir datas históricas válidas.
+- Quando a data estruturada é inválida ou implausível, uma resolução conservadora procura apenas
+  datas explícitas no resumo e na informação relevante já extraídos. Só corrige quando existe uma
+  candidata inequívoca e coerente; a ambiguidade mantém o campo por confirmar e bloqueia a RPC.
+- A ordem de trabalhos mantém apenas os pontos principais. Subpontos numerados, como `3.1`, e
+  itens iniciados por marcador são agregados na descrição do ponto anterior, com o texto integral.
 - Incertezas de órgão, data, hora e local são apresentadas junto do respetivo campo e desaparecem
   após uma correção válida; o local completo permanece editável sem truncamento.
+- Designações genéricas de órgão continuam assinaladas como “Confirmação necessária”, não entram
+  no título automático e bloqueiam a confirmação até serem substituídas por uma designação exata.
+- Descrições de pontos com conteúdo permanecem visíveis e editáveis; textareas vazias ficam
+  recolhidas sob a ação secundária “Adicionar descrição”, reduzindo a altura do modal.
 - Atas, propostas, regulamentos e restantes documentos reconhecidos são confirmados e organizados
   na Biblioteca sem criar Sessão nem chamar a RPC de confirmação de Sessão.
 - Documentos desconhecidos, de baixa confiança, com campos essenciais incertos ou sem dados essenciais ficam
@@ -425,15 +437,16 @@ O utilizador não deve ter de alimentar a Biblioteca. A Biblioteca deve organiza
 - O mapeamento entre tipos institucionais e tipos persistidos é explícito e testado; tipos sem
   granularidade segura usam `Outro`.
 - Não foram criadas tabelas, migrações ou alterações ao schema Supabase.
-- As regressões encontradas nos dois testes manuais foram corrigidas e aguardam repetição do teste
+- As regressões encontradas nos testes manuais foram corrigidas e aguardam repetição do teste
   da convocatória real antes de a Fase 6A receber avaliação final.
-- Validação automatizada da segunda correção: 381 testes aprovados, typecheck aprovado, lint com
+- Validação automatizada desta correção: 388 testes aprovados, typecheck aprovado, lint com
   0 erros e 20 avisos antigos não relacionados, build aprovado e `git diff --check` aprovado.
 
 ### Condição para fechar a Fase 6A
 
-Repetir com sucesso o teste manual da convocatória real, confirmando o ano correto, o destaque dos
-campos incertos, o local completo e a criação da Sessão pela RPC depois da correção humana. A
+Repetir com sucesso o teste manual da convocatória real, confirmando o ano correto, os três pontos
+principais com os subpontos preservados, o destaque dos campos incertos, o local completo, o modal
+mais curto e a criação da Sessão pela RPC depois da correção humana. A
 avaliação de 9,3/10 foi retirada até existir essa confirmação. O Problema n.º 6 continua em curso
 porque a Fase 6B permanece deliberadamente pendente.
 

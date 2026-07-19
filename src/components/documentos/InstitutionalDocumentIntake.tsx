@@ -32,6 +32,7 @@ import {
   executarConfirmacaoAnaliseComDependencias,
   mapearTipoDocumentoInstitucional,
   obterIncertezaCampoSessao,
+  prepararAnaliseInstitucionalParaRevisao,
   validarCamposConfirmacaoSessao,
   validarDadosConfirmacaoAnalise,
   type CampoSessaoEditavel,
@@ -99,7 +100,9 @@ export function InstitutionalDocumentIntake({
     }
     if (documentoInicial) {
       setDocumento(documentoInicial);
-      const analiseInicial = documentoInicial.analiseInstitucional ?? analiseVazia();
+      const analiseInicial = prepararAnaliseInstitucionalParaRevisao(
+        documentoInicial.analiseInstitucional ?? analiseVazia(),
+      );
       setAnalise(analiseInicial);
       setTituloDocumento(documentoInicial.titulo);
       setTipoDocumento(
@@ -107,9 +110,7 @@ export function InstitutionalDocumentIntake({
           ? mapearTipoDocumentoInstitucional(analiseInicial.tipoDocumento)
           : documentoInicial.tipo,
       );
-      setTituloSessao(
-        gerarTituloSessaoInstitucional(documentoInicial.analiseInstitucional?.sessao),
-      );
+      setTituloSessao(gerarTituloSessaoInstitucional(analiseInicial.sessao));
       setTituloPersonalizado(false);
       setStep("review");
     }
@@ -616,7 +617,7 @@ export function ReviewForm({
             Local
             {obterIncertezaCampoSessao(analise, "local") && (
               <span className="ml-2 text-xs font-medium text-amber-700 dark:text-amber-300">
-                Confirmar
+                Confirmação necessária
               </span>
             )}
           </Label>
@@ -685,12 +686,11 @@ export function ReviewForm({
                     onChange({ ...analise, pontosOrdemTrabalhos: next });
                   }}
                 />
-                <Textarea
-                  value={ponto.descricao ?? ""}
-                  placeholder="Descrição opcional"
-                  onChange={(e) => {
+                <PontoDescricaoEditor
+                  descricao={ponto.descricao ?? ""}
+                  onChange={(value) => {
                     const next = [...pontos];
-                    next[index] = { ...ponto, descricao: e.target.value };
+                    next[index] = { ...ponto, descricao: value || undefined };
                     onChange({ ...analise, pontosOrdemTrabalhos: next });
                   }}
                 />
@@ -739,6 +739,38 @@ export function ReviewForm({
   );
 }
 
+function PontoDescricaoEditor({
+  descricao,
+  onChange,
+}: {
+  descricao: string;
+  onChange: (value: string) => void;
+}) {
+  const [aberta, setAberta] = useState(Boolean(descricao.trim()));
+  const visivel = aberta || Boolean(descricao.trim());
+  if (!visivel) {
+    return (
+      <Button size="sm" variant="ghost" className="w-fit" onClick={() => setAberta(true)}>
+        Adicionar descrição
+      </Button>
+    );
+  }
+  return (
+    <div className="space-y-1">
+      <Textarea
+        value={descricao}
+        placeholder="Descrição opcional"
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {!descricao.trim() && (
+        <Button size="sm" variant="ghost" onClick={() => setAberta(false)}>
+          Ocultar descrição
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function Field({
   label,
   value,
@@ -760,7 +792,7 @@ function Field({
         {label}
         {uncertainty && (
           <span className="ml-2 text-xs font-medium text-amber-700 dark:text-amber-300">
-            Confirmar
+            Confirmação necessária
           </span>
         )}
       </Label>

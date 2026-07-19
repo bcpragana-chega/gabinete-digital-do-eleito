@@ -12,14 +12,19 @@ import {
   executarConfirmacaoAnaliseComDependencias,
   LIMIAR_CONFIANCA_DESTINO_DOCUMENTAL,
   mapearTipoDocumentoInstitucional,
+  normalizarHierarquiaOrdemTrabalhos,
   obterIncertezaCampoSessao,
+  orgaoInstitucionalGenerico,
   prepararAnaliseParaConfirmacaoSessao,
+  prepararAnaliseInstitucionalParaRevisao,
+  resolverDataSessaoInstitucional,
   temCamposEssenciaisIncertos,
   validarCamposConfirmacaoSessao,
   validarDadosConfirmacaoAnalise,
   validarResultadoConfirmacaoAnalise,
 } from "./institutional-document-flow";
 import { normalizarAnaliseDocumentoInstitucional } from "./ai/institutional-document-analysis";
+import { gerarTituloSessaoInstitucional } from "./institutional-session-title";
 import type { AnaliseDocumentoInstitucional, Documento, TipoDocumentoInstitucional } from "./types";
 
 const component = readFileSync(
@@ -66,6 +71,119 @@ function analiseTipo(
 }
 
 describe("confirmação institucional", () => {
+  it("preserva uma data estruturada plausível", () => {
+    assert.deepEqual(
+      resolverDataSessaoInstitucional(analiseTipo("convocatoria"), new Date("2026-07-19")),
+      { estado: "preservada", data: "2026-07-29" },
+    );
+  });
+
+  it("resolve conservadoramente o conflito 3066/2026 pelas datas explícitas coerentes", async () => {
+    const original = analiseTipo("convocatoria", {
+      sessao: { orgao: "Assembleia Municipal", data: "3066-06-30", hora: "21:00" },
+      resumoCompreensao: "A sessão está convocada para 30 de junho de 2026.",
+      informacaoRelevante: [
+        { titulo: "Ata", descricao: "Aprovação da ata de 28 de abril de 2026." },
+      ],
+      camposIncertos: [{ campo: "data", motivo: "O ano deve ser confirmado." }],
+    });
+    const preparada = prepararAnaliseInstitucionalParaRevisao(original, new Date("2026-07-19"));
+    assert.deepEqual(resolverDataSessaoInstitucional(original, new Date("2026-07-19")), {
+      estado: "resolvida",
+      data: "2026-06-30",
+    });
+    assert.equal(preparada.sessao?.data, "2026-06-30");
+    assert.equal(obterIncertezaCampoSessao(preparada, "data"), undefined);
+    assert.match(gerarTituloSessaoInstitucional(preparada.sessao), /30 junho 2026/);
+    let payload: AnaliseDocumentoInstitucional | undefined;
+    await confirmarSessaoValidadaComDependencias({
+      analise: original,
+      agora: new Date("2026-07-19"),
+      confirmar: async (valor) => {
+        payload = valor;
+      },
+    });
+    assert.equal(payload?.sessao?.data, "2026-06-30");
+    assert.doesNotMatch(gerarTituloSessaoInstitucional(preparada.sessao), /3066/);
+  });
+
+  it("não escolhe automaticamente entre várias datas possíveis", () => {
+    const original = analiseTipo("convocatoria", {
+      sessao: { orgao: "Assembleia Municipal", data: "data ilegível", hora: "21:00" },
+      resumoCompreensao: "Referências a 30 de junho de 2026 e 1 de julho de 2026.",
+    });
+    const resolucao = resolverDataSessaoInstitucional(original, new Date("2026-07-19"));
+    const preparada = prepararAnaliseInstitucionalParaRevisao(original, new Date("2026-07-19"));
+    assert.equal(resolucao.estado, "confirmacao_necessaria");
+    assert.equal(preparada.sessao?.data, undefined);
+    assert.match(obterIncertezaCampoSessao(preparada, "data")?.motivo ?? "", /várias datas/);
+    assert.ok(validarCamposConfirmacaoSessao(preparada).data);
+  });
+
+  it("preserva três pontos principais e agrega marcadores subordinados sem perder texto", () => {
+    const pontos = normalizarHierarquiaOrdemTrabalhos([
+      { numero: 1, titulo: "1. Período de intervenção dos cidadãos", confianca: 0.9 },
+      { numero: 2, titulo: "2. Período antes da ordem do dia", confianca: 0.9 },
+      { numero: 3, titulo: "- Substituição dos deputados.", confianca: 0.9 },
+      {
+        numero: 4,
+        titulo: "- Aprovação da ata da sessão ordinária de 28 de abril de 2026.",
+        confianca: 0.9,
+      },
+      { numero: 5, titulo: "3. Período da ordem do dia", confianca: 0.9 },
+      {
+        numero: 6,
+        titulo: "3.1 Apreciação de uma informação do Presidente...",
+        confianca: 0.9,
+      },
+      {
+        numero: 7,
+        titulo: "3.2 Apreciação da situação financeira...",
+        descricao: "Texto complementar integral.",
+        confianca: 0.9,
+      },
+    ]);
+    assert.equal(pontos.length, 3);
+    assert.match(pontos[1].descricao ?? "", /- Substituição dos deputados\./);
+    assert.match(pontos[1].descricao ?? "", /- Aprovação da ata da sessão ordinária/);
+    assert.match(pontos[2].descricao ?? "", /3\.1 Apreciação/);
+    assert.match(pontos[2].descricao ?? "", /3\.2 Apreciação[\s\S]*Texto complementar integral\./);
+  });
+
+  it("mantém órgão genérico incerto e só retira o aviso após correção específica", () => {
+    const generica = analiseTipo("convocatoria", {
+      sessao: {
+        orgao: "Órgão Deliberativo (Assembleia)",
+        data: "2026-06-30",
+        hora: "21:00",
+      },
+    });
+    assert.equal(orgaoInstitucionalGenerico(generica.sessao?.orgao), true);
+    assert.match(obterIncertezaCampoSessao(generica, "orgao")?.motivo ?? "", /designação exata/);
+    assert.ok(validarCamposConfirmacaoSessao(generica).orgao);
+    const aindaGenerica = corrigirCampoSessao(generica, "orgao", "Assembleia");
+    assert.ok(obterIncertezaCampoSessao(aindaGenerica, "orgao"));
+    const corrigida = corrigirCampoSessao(
+      aindaGenerica,
+      "orgao",
+      "Assembleia de Freguesia de Porches",
+    );
+    assert.equal(obterIncertezaCampoSessao(corrigida, "orgao"), undefined);
+  });
+
+  it("esconde descrições vazias, permite abri-las e mantém descrições existentes editáveis", () => {
+    const editor = component.slice(
+      component.indexOf("function PontoDescricaoEditor"),
+      component.indexOf("function Field"),
+    );
+    assert.match(editor, /useState\(Boolean\(descricao\.trim\(\)\)\)/);
+    assert.match(editor, /if \(!visivel\)[\s\S]*Adicionar descrição/);
+    assert.match(editor, /onClick=\{\(\) => setAberta\(true\)\}/);
+    assert.match(editor, /<Textarea[\s\S]*value=\{descricao\}/);
+    assert.match(editor, /Ocultar descrição/);
+    assert.match(component, /variant="secondary"[\s\S]*Adicionar ponto/);
+  });
+
   it("preserva data e local canónicos desde a análise normalizada até à revisão", () => {
     const local = "Centro Cultural D. Dinis, Rua João Silva, nº 10, 1.º andar";
     const normalizada = normalizarAnaliseDocumentoInstitucional(
