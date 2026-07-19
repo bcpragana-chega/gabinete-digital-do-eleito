@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useBlocker } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -48,6 +48,11 @@ import {
 import {
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
+  mensagemContextoInstitucionalObrigatorio,
+  mensagemErroGeracaoPDF,
+  mensagemErroGeracaoWord,
+  mensagemLogoObrigatorio,
+  type ResultadoExportacaoDocumento,
 } from "@/lib/documentos-criados-export";
 import {
   isTipoDocumentoInstitucional,
@@ -55,7 +60,6 @@ import {
   obterDadosInstitucionais,
   obterSecoesDocumentoInstitucional,
   resolverDataInstitucionalDocumento,
-  validarDocumentoInstitucional,
   type ContextoDocumentoInstitucional,
 } from "@/lib/documentos-institucionais";
 import { adicionarEventoAutomaticoTimelineDossie } from "@/lib/dossie-timeline-store";
@@ -141,6 +145,10 @@ export function DocumentoCriadoDetalhe({
   const [downloadPendente, setDownloadPendente] = useState<"pdf" | "word">();
   const [downloadDataProvisoria, setDownloadDataProvisoria] = useState<"pdf" | "word">();
   const [errosDocumento, setErrosDocumento] = useState<string[]>([]);
+  const [erroExportacao, setErroExportacao] = useState<string>();
+  const [tipoExportacaoFalhada, setTipoExportacaoFalhada] = useState<"pdf" | "word">();
+  const [exportacaoEmCurso, setExportacaoEmCurso] = useState<"pdf" | "word">();
+  const exportacaoEmCursoRef = useRef(false);
   const dossie = useDossie(documento?.assuntoId ?? "");
 
   useEffect(() => {
@@ -337,7 +345,45 @@ export function DocumentoCriadoDetalhe({
     };
   }
 
-  function descarregar(tipo: "pdf" | "word", base = documento, permitirDataProvisoria = false) {
+  function tratarResultadoExportacao(
+    tipo: "pdf" | "word",
+    resultado: ResultadoExportacaoDocumento,
+  ) {
+    if (resultado.status === "sucesso") {
+      setErroExportacao(undefined);
+      setTipoExportacaoFalhada(undefined);
+      setErrosDocumento([]);
+      return;
+    }
+    if (resultado.status === "contexto-institucional-em-falta") {
+      setErroExportacao(mensagemContextoInstitucionalObrigatorio);
+      setTipoExportacaoFalhada(undefined);
+      return;
+    }
+    if (resultado.status === "logo-em-falta") {
+      setErroExportacao(mensagemLogoObrigatorio);
+      setTipoExportacaoFalhada(undefined);
+      return;
+    }
+    if (resultado.status === "documento-invalido") {
+      setErroExportacao(undefined);
+      setTipoExportacaoFalhada(undefined);
+      setErrosDocumento(resultado.erros);
+      return;
+    }
+    if (resultado.status === "data-provisoria") {
+      setDownloadDataProvisoria(tipo);
+      return;
+    }
+    setErroExportacao(tipo === "pdf" ? mensagemErroGeracaoPDF : mensagemErroGeracaoWord);
+    setTipoExportacaoFalhada(tipo);
+  }
+
+  async function descarregar(
+    tipo: "pdf" | "word",
+    base = documento,
+    permitirDataProvisoria = false,
+  ) {
     const atual = documentoAtualParaExportar(base);
     if (!atual) return;
     const dataInstitucional = resolverDataInstitucionalDocumento(contextoDocumento);
@@ -345,20 +391,33 @@ export function DocumentoCriadoDetalhe({
       setDownloadDataProvisoria(tipo);
       return;
     }
+    if (exportacaoEmCursoRef.current) return;
+
     const contextoExportacao = { ...contextoDocumento, permitirDataProvisoria };
-    if (isTipoDocumentoInstitucional(atual.tipo)) {
-      const validacao = validarDocumentoInstitucional(atual, contextoExportacao);
-      setErrosDocumento(validacao.erros);
-      if (!validacao.pronto) return;
+    exportacaoEmCursoRef.current = true;
+    setExportacaoEmCurso(tipo);
+    setErroExportacao(undefined);
+    setTipoExportacaoFalhada(undefined);
+
+    try {
+      const resultado =
+        tipo === "pdf"
+          ? await exportarDocumentoCriadoPDF(atual, contextoExportacao)
+          : await exportarDocumentoCriadoWord(atual, contextoExportacao);
+      tratarResultadoExportacao(tipo, resultado);
+    } catch {
+      setErroExportacao(tipo === "pdf" ? mensagemErroGeracaoPDF : mensagemErroGeracaoWord);
+      setTipoExportacaoFalhada(tipo);
+    } finally {
+      exportacaoEmCursoRef.current = false;
+      setExportacaoEmCurso(undefined);
     }
-    setErrosDocumento([]);
-    if (tipo === "pdf") exportarDocumentoCriadoPDF(atual, contextoExportacao);
-    else exportarDocumentoCriadoWord(atual, contextoExportacao);
   }
 
   function pedirDownload(tipo: "pdf" | "word") {
+    if (exportacaoEmCursoRef.current) return;
     if (dirty) setDownloadPendente(tipo);
-    else descarregar(tipo);
+    else void descarregar(tipo);
   }
 
   async function guardarEDescarregar() {
@@ -367,7 +426,7 @@ export function DocumentoCriadoDetalhe({
     const persistido = await guardar();
     if (!persistido) return;
     setDownloadPendente(undefined);
-    descarregar(tipo, persistido);
+    await descarregar(tipo, persistido);
   }
 
   function exportarPDF() {
@@ -518,7 +577,7 @@ export function DocumentoCriadoDetalhe({
               type="button"
               variant="secondary"
               onClick={() => {
-                if (downloadPendente) descarregar(downloadPendente);
+                if (downloadPendente) void descarregar(downloadPendente);
                 setDownloadPendente(undefined);
               }}
             >
@@ -572,7 +631,7 @@ export function DocumentoCriadoDetalhe({
               onClick={() => {
                 const tipo = downloadDataProvisoria;
                 setDownloadDataProvisoria(undefined);
-                if (tipo) descarregar(tipo, documento, true);
+                if (tipo) void descarregar(tipo, documento, true);
               }}
             >
               Descarregar com data provisória
@@ -681,19 +740,27 @@ export function DocumentoCriadoDetalhe({
                       type="button"
                       variant="secondary"
                       onClick={exportarPDF}
-                      disabled={!documento}
+                      disabled={!documento || Boolean(exportacaoEmCurso)}
                     >
-                      <Download className="mr-2 h-4 w-4" />
-                      Descarregar PDF
+                      {exportacaoEmCurso === "pdf" ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      {exportacaoEmCurso === "pdf" ? "A gerar PDF..." : "Descarregar PDF"}
                     </Button>
                     <Button
                       type="button"
                       variant="secondary"
                       onClick={exportarWord}
-                      disabled={!documento}
+                      disabled={!documento || Boolean(exportacaoEmCurso)}
                     >
-                      <FileDown className="mr-2 h-4 w-4" />
-                      Exportar Word
+                      {exportacaoEmCurso === "word" ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileDown className="mr-2 h-4 w-4" />
+                      )}
+                      {exportacaoEmCurso === "word" ? "A gerar Word..." : "Exportar Word"}
                     </Button>
                   </div>
                 }
@@ -854,13 +921,38 @@ export function DocumentoCriadoDetalhe({
               />
 
               {errosDocumento.length > 0 && (
-                <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                <div
+                  className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+                  role="alert"
+                >
                   <p className="font-semibold">O documento ainda não está pronto para exportar.</p>
                   <ul className="mt-2 list-disc space-y-1 pl-5">
                     {errosDocumento.map((erro) => (
                       <li key={erro}>{erro}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {erroExportacao && (
+                <div
+                  className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+                  role="alert"
+                >
+                  <span>{erroExportacao}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      const tipo = tipoExportacaoFalhada;
+                      setErroExportacao(undefined);
+                      setTipoExportacaoFalhada(undefined);
+                      if (tipo) pedirDownload(tipo);
+                    }}
+                  >
+                    {tipoExportacaoFalhada ? "Tentar novamente" : "Fechar"}
+                  </Button>
                 </div>
               )}
 

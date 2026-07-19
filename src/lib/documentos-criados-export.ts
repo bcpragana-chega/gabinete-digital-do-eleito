@@ -49,6 +49,30 @@ export const mensagemContextoInstitucionalObrigatorio =
   "Complete o seu perfil institucional antes de gerar documentos oficiais. Confirme o município e, quando aplicável, a freguesia.";
 export const mensagemDataInstitucionalProvisoria =
   "Este documento não está associado a uma Sessão. A data apresentada é provisória.";
+export const mensagemErroGeracaoPDF = "Não foi possível gerar o PDF. Tente novamente.";
+export const mensagemErroGeracaoWord = "Não foi possível gerar o ficheiro Word. Tente novamente.";
+
+export type EtapaErroExportacao =
+  | "criacao-canvas"
+  | "conversao-canvas-blob"
+  | "criacao-pdf"
+  | "criacao-docx"
+  | "inicio-download";
+
+export type ResultadoExportacaoDocumento =
+  | { status: "sucesso" }
+  | { status: "contexto-institucional-em-falta" }
+  | { status: "data-provisoria" }
+  | { status: "logo-em-falta" }
+  | { status: "documento-invalido"; erros: string[] }
+  | { status: "erro-geracao"; etapa: EtapaErroExportacao };
+
+type DependenciasExportacao = {
+  desenharPaginasPdf?: typeof desenharPaginasDocumento;
+  criarPdf?: typeof criarPdfComPaginasCanvas;
+  criarDocx?: typeof criarBlobDocumentoWord;
+  iniciarDownload?: typeof iniciarDownload;
+};
 const titulosRaciocinioInterno = new Set([
   "FACTOS",
   "PROBLEMA",
@@ -154,11 +178,7 @@ function validarAntesDeExportar(
   contexto: ContextoDocumentoInstitucional,
 ) {
   const validacao = validarDocumentoInstitucional(documento, contexto);
-  if (validacao.pronto) return true;
-  window.dispatchEvent(
-    new CustomEvent("tribuno:documento-institucional-invalido", { detail: validacao }),
-  );
-  return false;
+  return validacao.pronto ? undefined : validacao.erros;
 }
 
 function linhaPlaceholder(linha: string) {
@@ -247,49 +267,63 @@ function normalizarConteudoSecao(conteudo: string) {
     .trim();
 }
 
-export function exportarDocumentoCriadoPDF(
+export async function exportarDocumentoCriadoPDF(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
-) {
-  const contextoFinal = contextoComSnapshot(documento, contexto);
-  const contextoExportacao = resolverContextoExportacao(documento, contextoFinal);
-  if (contextoExportacao.status === "UNRESOLVED") {
-    window.dispatchEvent(new CustomEvent("tribuno:contexto-institucional-obrigatorio"));
-    return false;
+  dependencias: DependenciasExportacao = {},
+): Promise<ResultadoExportacaoDocumento> {
+  try {
+    const preparacao = prepararExportacao(documento, contexto);
+    if ("status" in preparacao) return preparacao;
+    return await gerarEDescarregarPdf(documento, preparacao.contexto, dependencias);
+  } catch {
+    return { status: "erro-geracao", etapa: "criacao-pdf" };
   }
-  const contextoResolvido = {
-    ...contextoFinal,
-    institutionalContext: contextoExportacao.context,
-  };
-
-  const dados = obterDadosInstitucionais(contextoResolvido);
-  if (dados.dataProvisoria && !contextoResolvido.permitirDataProvisoria) {
-    window.dispatchEvent(new CustomEvent("tribuno:data-institucional-provisoria"));
-    return false;
-  }
-
-  if (!validarAntesDeExportar(documento, contextoResolvido)) return false;
-
-  if (!perfilTemLogoInstitucional(contextoResolvido)) {
-    window.dispatchEvent(new CustomEvent("tribuno:logo-institucional-obrigatorio"));
-    return false;
-  }
-
-  void gerarEDescarregarPdf(documento, contextoResolvido);
-  return true;
 }
 
 export const exportarDocumentoCriadoPdf = exportarDocumentoCriadoPDF;
 
-export function exportarDocumentoCriadoWord(
+export async function exportarDocumentoCriadoWord(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
-) {
+  dependencias: DependenciasExportacao = {},
+): Promise<ResultadoExportacaoDocumento> {
+  let preparacao: ReturnType<typeof prepararExportacao>;
+  try {
+    preparacao = prepararExportacao(documento, contexto);
+  } catch {
+    return { status: "erro-geracao", etapa: "criacao-docx" };
+  }
+  if ("status" in preparacao) return preparacao;
+
+  let blob: Blob;
+  try {
+    blob = await (dependencias.criarDocx ?? criarBlobDocumentoWord)(documento, preparacao.contexto);
+  } catch {
+    return { status: "erro-geracao", etapa: "criacao-docx" };
+  }
+
+  try {
+    (dependencias.iniciarDownload ?? iniciarDownload)(
+      blob,
+      nomeFicheiroDocumento(documento, "docx"),
+    );
+    return { status: "sucesso" };
+  } catch {
+    return { status: "erro-geracao", etapa: "inicio-download" };
+  }
+}
+
+function prepararExportacao(
+  documento: DocumentoCriado,
+  contexto?: ContextoDocumentoInstitucional,
+):
+  | { contexto: ContextoDocumentoInstitucional }
+  | Exclude<ResultadoExportacaoDocumento, { status: "sucesso" } | { status: "erro-geracao" }> {
   const contextoFinal = contextoComSnapshot(documento, contexto);
   const contextoExportacao = resolverContextoExportacao(documento, contextoFinal);
   if (contextoExportacao.status === "UNRESOLVED") {
-    window.dispatchEvent(new CustomEvent("tribuno:contexto-institucional-obrigatorio"));
-    return false;
+    return { status: "contexto-institucional-em-falta" };
   }
   const contextoResolvido = {
     ...contextoFinal,
@@ -298,28 +332,17 @@ export function exportarDocumentoCriadoWord(
 
   const dados = obterDadosInstitucionais(contextoResolvido);
   if (dados.dataProvisoria && !contextoResolvido.permitirDataProvisoria) {
-    window.dispatchEvent(new CustomEvent("tribuno:data-institucional-provisoria"));
-    return false;
+    return { status: "data-provisoria" };
   }
 
-  if (!validarAntesDeExportar(documento, contextoResolvido)) return false;
+  const erros = validarAntesDeExportar(documento, contextoResolvido);
+  if (erros) return { status: "documento-invalido", erros };
 
   if (!perfilTemLogoInstitucional(contextoResolvido)) {
-    window.dispatchEvent(new CustomEvent("tribuno:logo-institucional-obrigatorio"));
-    return false;
+    return { status: "logo-em-falta" };
   }
 
-  void criarBlobDocumentoWord(documento, contextoResolvido).then((blob) => {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = nomeFicheiroDocumento(documento, "docx");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  });
-  return true;
+  return { contexto: contextoResolvido };
 }
 
 export async function criarBlobDocumentoWord(
@@ -430,17 +453,54 @@ function paragrafoDocx(linha: Exclude<LinhaPdf, { tipo: "espaco" }>) {
 async function gerarEDescarregarPdf(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
-) {
-  const paginas = await desenharPaginasDocumento(documento, contexto);
-  const pdf = await criarPdfComPaginasCanvas(paginas);
-  const url = URL.createObjectURL(pdf);
-  const link = document.createElement("a");
+  dependencias: DependenciasExportacao = {},
+): Promise<ResultadoExportacaoDocumento> {
+  let paginas: HTMLCanvasElement[];
+  try {
+    paginas = await (dependencias.desenharPaginasPdf ?? desenharPaginasDocumento)(
+      documento,
+      contexto,
+    );
+  } catch {
+    return { status: "erro-geracao", etapa: "criacao-canvas" };
+  }
 
-  link.href = url;
-  link.download = nomeFicheiroDocumento(documento, "pdf");
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+  let pdf: Blob;
+  try {
+    pdf = await (dependencias.criarPdf ?? criarPdfComPaginasCanvas)(paginas);
+  } catch (error) {
+    return {
+      status: "erro-geracao",
+      etapa:
+        error instanceof Error && error.message === "PDF_CANVAS_BLOB_UNAVAILABLE"
+          ? "conversao-canvas-blob"
+          : "criacao-pdf",
+    };
+  }
+
+  try {
+    (dependencias.iniciarDownload ?? iniciarDownload)(pdf, nomeFicheiroDocumento(documento, "pdf"));
+    return { status: "sucesso" };
+  } catch {
+    return { status: "erro-geracao", etapa: "inicio-download" };
+  }
+}
+
+function iniciarDownload(blob: Blob, nomeFicheiro: string) {
+  const url = URL.createObjectURL(blob);
+  let link: HTMLAnchorElement | undefined;
+  try {
+    link = document.createElement("a");
+    link.href = url;
+    link.download = nomeFicheiro;
+    document.body.appendChild(link);
+    link.click();
+  } catch (error) {
+    URL.revokeObjectURL(url);
+    throw error;
+  } finally {
+    link?.remove();
+  }
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
@@ -591,7 +651,7 @@ function desenharCabecalho(
 
 function perfilTemLogoInstitucional(contexto?: ContextoDocumentoInstitucional) {
   const { perfil } = obterAuthState();
-  return Boolean(textoSeguro(contexto?.perfil?.logoUrl) || textoSeguro(perfil?.logoUrl));
+  return Boolean(textoSeguro((contexto?.perfil ?? perfil)?.logoUrl));
 }
 
 function carregarImagem(src: string) {
@@ -622,7 +682,7 @@ async function desenharLogoPdf(
     ctx.drawImage(imagem, (larguraA4 - largura) / 2, y, largura, altura);
     return altura + 34;
   } catch {
-    return 0;
+    throw new Error("PDF_LOGO_LOAD_ERROR");
   }
 }
 

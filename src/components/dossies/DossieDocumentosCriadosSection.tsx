@@ -27,7 +27,10 @@ import {
   exportarDocumentoCriadoWord,
   mensagemContextoInstitucionalObrigatorio,
   mensagemDataInstitucionalProvisoria,
+  mensagemErroGeracaoPDF,
+  mensagemErroGeracaoWord,
   mensagemLogoObrigatorio,
+  type ResultadoExportacaoDocumento,
 } from "@/lib/documentos-criados-export";
 import { obterAssembleia } from "@/lib/assembleias-store";
 import { useAuth } from "@/lib/auth-store";
@@ -165,26 +168,41 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
     return subscreverDocumentosACriar(carregar);
   }, [dossieId]);
 
-  useEffect(() => {
-    const handler = () => setErroLogo(mensagemLogoObrigatorio);
-    window.addEventListener("tribuno:logo-institucional-obrigatorio", handler);
-    return () => window.removeEventListener("tribuno:logo-institucional-obrigatorio", handler);
-  }, []);
-
-  useEffect(() => {
-    const handler = () =>
+  function apresentarResultadoExportacao(
+    resultado: ResultadoExportacaoDocumento,
+    tipo: "pdf" | "word",
+  ) {
+    if (resultado.status === "sucesso") return;
+    if (resultado.status === "logo-em-falta") {
+      setErroLogo(mensagemLogoObrigatorio);
+      return;
+    }
+    if (resultado.status === "contexto-institucional-em-falta") {
+      setErroInstitucional(mensagemContextoInstitucionalObrigatorio);
+      return;
+    }
+    if (resultado.status === "data-provisoria") {
       setErroInstitucional(
         `${mensagemDataInstitucionalProvisoria} Abra o documento para confirmar o download ou associar uma Sessão.`,
       );
-    window.addEventListener("tribuno:data-institucional-provisoria", handler);
-    return () => window.removeEventListener("tribuno:data-institucional-provisoria", handler);
-  }, []);
+      return;
+    }
+    if (resultado.status === "documento-invalido") {
+      setErroInstitucional(resultado.erros.join(" "));
+      return;
+    }
+    setErroInstitucional(tipo === "pdf" ? mensagemErroGeracaoPDF : mensagemErroGeracaoWord);
+  }
 
-  useEffect(() => {
-    const handler = () => setErroInstitucional(mensagemContextoInstitucionalObrigatorio);
-    window.addEventListener("tribuno:contexto-institucional-obrigatorio", handler);
-    return () => window.removeEventListener("tribuno:contexto-institucional-obrigatorio", handler);
-  }, []);
+  async function exportarDaLista(documento: DocumentoCriado, tipo: "pdf" | "word") {
+    setErroLogo(undefined);
+    setErroInstitucional(undefined);
+    const resultado =
+      tipo === "pdf"
+        ? await exportarDocumentoCriadoPDF(documento, { assunto: dossie?.titulo })
+        : await exportarDocumentoCriadoWord(documento);
+    apresentarResultadoExportacao(resultado, tipo);
+  }
 
   async function gerarDocumento() {
     const tituloLimpo = titulo.trim();
@@ -485,13 +503,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                     type="button"
                     size="sm"
                     variant="secondary"
-                    onClick={() => {
-                      setErroLogo(undefined);
-                      setErroInstitucional(undefined);
-                      exportarDocumentoCriadoPDF(documento, {
-                        assunto: dossie?.titulo,
-                      });
-                    }}
+                    onClick={() => void exportarDaLista(documento, "pdf")}
                   >
                     <Download className="mr-2 h-4 w-4" />
                     Download PDF
@@ -500,7 +512,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                     type="button"
                     size="sm"
                     variant="secondary"
-                    onClick={() => exportarDocumentoCriadoWord(documento)}
+                    onClick={() => void exportarDaLista(documento, "word")}
                   >
                     <Download className="mr-2 h-4 w-4" />
                     Exportar para Word
