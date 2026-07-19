@@ -4,6 +4,21 @@ export type ContextoAjudaTribuno = {
   descricao: string;
 };
 
+export type MensagemAjuda = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type PedidoAjuda = {
+  accessToken: string;
+  pathname: string;
+  messages: MensagemAjuda[];
+};
+
+export type ResultadoAjuda =
+  | { ok: true; answer: string }
+  | { ok: false; code: string; message: string };
+
 const CONTEXTO_GERAL: ContextoAjudaTribuno = {
   pagina: "Tribuno",
   pathname: "/area",

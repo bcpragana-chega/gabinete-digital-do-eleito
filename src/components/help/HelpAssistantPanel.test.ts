@@ -11,6 +11,7 @@ const panel = readFileSync(new URL("./HelpAssistantPanel.tsx", import.meta.url),
 const sidebar = readFileSync(new URL("../layout/AppSidebar.tsx", import.meta.url), "utf8");
 const sidebarConfig = readFileSync(new URL("../layout/sidebar-config.ts", import.meta.url), "utf8");
 const sheet = readFileSync(new URL("../ui/sheet.tsx", import.meta.url), "utf8");
+const helpApi = readFileSync(new URL("../../lib/ai/product-help-api.ts", import.meta.url), "utf8");
 
 describe("painel do Assistente Tribuno", () => {
   it("coloca Ajuda no fundo da sidebar e fora da navegação principal", () => {
@@ -57,5 +58,20 @@ describe("painel do Assistente Tribuno", () => {
   it("implementa Enter, Shift+Enter e scroll automático", () => {
     assert.match(panel, /event\.key === "Enter" && !event\.shiftKey/);
     assert.match(panel, /scrollIntoView/);
+  });
+
+  it("fechado não pede sessão, não chama OpenAI e não importa código server-only", () => {
+    const enviar = panel.slice(
+      panel.indexOf("async function enviarMensagem"),
+      panel.indexOf("return ("),
+    );
+    assert.match(enviar, /getSession\(\)/);
+    assert.doesNotMatch(
+      panel.slice(0, panel.indexOf("async function enviarMensagem")),
+      /getSession/,
+    );
+    assert.doesNotMatch(panel, /product-help\.server/);
+    assert.match(panel, /product-help-api/);
+    assert.match(helpApi, /await import\("@\/lib\/ai\/product-help\.server"\)/);
   });
 });

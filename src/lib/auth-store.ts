@@ -20,6 +20,7 @@ import {
   isSupabaseConfigured,
   obterUtilizadorSupabaseValidado,
   terminarSessaoSupabase,
+  withSupabaseTimeout,
 } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
@@ -101,7 +102,20 @@ export class PerfilErro extends Error {
 const STORAGE_KEY = "tribuno.auth.v1";
 const LOGOUT_BLOCK_KEY = "tribuno.auth.logout-block.v1";
 const EVENT_NAME = "tribuno:auth";
+export const AUTH_HYDRATION_STEP_TIMEOUT_MS = 12_000;
 let logoutEmCurso: Promise<void> | undefined;
+
+export function executarOperacaoRemotaHidratacao<T>(
+  operacao: () => PromiseLike<T>,
+  etapa: "SESSION" | "PROFILE" | "ONBOARDING",
+  timeoutMs = AUTH_HYDRATION_STEP_TIMEOUT_MS,
+) {
+  return withSupabaseTimeout(
+    Promise.resolve().then(() => operacao()),
+    `AUTH_HYDRATION_${etapa}`,
+    timeoutMs,
+  );
+}
 
 export const cargosEleito: CargoEleito[] = [
   "Membro da Assembleia de Freguesia",
@@ -660,7 +674,9 @@ export function useAuth() {
 
       let perfilRemoto: PerfilEleito | undefined;
       try {
-        perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userId));
+        perfilRemoto = normalizarPerfilEleito(
+          await executarOperacaoRemotaHidratacao(() => carregarPerfilHibrido(userId), "PROFILE"),
+        );
       } catch {
         console.warn("[Tribuno Perfil] Não foi possível confirmar o perfil remoto.", {
           operacao: "PROFILE_INIT_LOAD_FALHOU",
@@ -688,7 +704,10 @@ export function useAuth() {
           setInitialized(false);
           setOnboardingResolved(false);
         }
-        const supabaseUser = await obterUtilizadorSupabaseValidado();
+        const supabaseUser = await executarOperacaoRemotaHidratacao(
+          obterUtilizadorSupabaseValidado,
+          "SESSION",
+        );
         const userIdBloqueado = lerUtilizadorBloqueadoPorLogout();
         const stateAtual = resolverEstadoComSessaoValidada(
           stateLocal,
@@ -739,7 +758,10 @@ export function useAuth() {
           setInitialized(true);
         }
         try {
-          const versaoRemota = await carregarOnboardingVersionRemoto(userId);
+          const versaoRemota = await executarOperacaoRemotaHidratacao(
+            () => carregarOnboardingVersionRemoto(userId),
+            "ONBOARDING",
+          );
           const versao = resolverVersaoOnboarding({
             versaoRemota,
             local,

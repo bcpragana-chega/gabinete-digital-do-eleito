@@ -1,5 +1,3 @@
-import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
 import { criarAiProvider } from "@/lib/ai/provider";
 import {
   BASE_CONHECIMENTO_AJUDA,
@@ -7,25 +5,10 @@ import {
   respostaParaPedidoForaDoAmbito,
   resolverContextoAjuda,
   SYSTEM_PROMPT_AJUDA,
+  type MensagemAjuda,
+  type PedidoAjuda,
+  type ResultadoAjuda,
 } from "@/lib/ai/product-help";
-
-const mensagemSchema = z.object({
-  role: z.enum(["user", "assistant"]),
-  content: z.string().trim().min(1).max(1000),
-});
-
-export const pedidoAjudaSchema = z.object({
-  accessToken: z.string().min(1).max(8192),
-  pathname: z.string().min(1).max(300),
-  messages: z.array(mensagemSchema).min(1).max(8),
-});
-
-export type MensagemAjuda = z.infer<typeof mensagemSchema>;
-export type PedidoAjuda = z.infer<typeof pedidoAjudaSchema>;
-
-export type ResultadoAjuda =
-  | { ok: true; answer: string }
-  | { ok: false; code: string; message: string };
 
 type DependenciasAjuda = {
   autenticar: (accessToken: string) => Promise<string | undefined>;
@@ -134,38 +117,36 @@ export function registarResultadoAjuda(input: {
   });
 }
 
-export const pedirAjudaTribuno = createServerFn({ method: "POST" })
-  .validator((input) => pedidoAjudaSchema.parse(input))
-  .handler(async ({ data }): Promise<ResultadoAjuda> => {
-    const inicio = Date.now();
-    try {
-      const result = await executarPedidoAjuda(data, {
-        autenticar: autenticarPedidoAjuda,
-        responder: async (input) => {
-          const provider = criarAiProvider();
-          const resposta = await provider.gerarResposta({ ...input, timeoutMs: 30_000 });
-          return resposta.texto;
-        },
-      });
-      registarResultadoAjuda({
-        status: result.ok ? "success" : "error",
-        durationMs: Date.now() - inicio,
-        messageCount: data.messages.length,
-        errorCode: result.ok ? undefined : result.code,
-      });
-      return result;
-    } catch (error) {
-      const code = error instanceof Error ? error.name : "HELP_FAILED";
-      registarResultadoAjuda({
-        status: "error",
-        durationMs: Date.now() - inicio,
-        messageCount: data.messages.length,
-        errorCode: code,
-      });
-      return {
-        ok: false,
-        code,
-        message: "Não foi possível contactar o assistente. Tente novamente.",
-      };
-    }
-  });
+export async function tratarPedidoAjudaServer(data: PedidoAjuda): Promise<ResultadoAjuda> {
+  const inicio = Date.now();
+  try {
+    const result = await executarPedidoAjuda(data, {
+      autenticar: autenticarPedidoAjuda,
+      responder: async (input) => {
+        const provider = criarAiProvider();
+        const resposta = await provider.gerarResposta({ ...input, timeoutMs: 30_000 });
+        return resposta.texto;
+      },
+    });
+    registarResultadoAjuda({
+      status: result.ok ? "success" : "error",
+      durationMs: Date.now() - inicio,
+      messageCount: data.messages.length,
+      errorCode: result.ok ? undefined : result.code,
+    });
+    return result;
+  } catch (error) {
+    const code = error instanceof Error ? error.name : "HELP_FAILED";
+    registarResultadoAjuda({
+      status: "error",
+      durationMs: Date.now() - inicio,
+      messageCount: data.messages.length,
+      errorCode: code,
+    });
+    return {
+      ok: false,
+      code,
+      message: "Não foi possível contactar o assistente. Tente novamente.",
+    };
+  }
+}

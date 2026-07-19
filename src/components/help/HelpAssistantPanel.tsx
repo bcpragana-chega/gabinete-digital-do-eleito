@@ -10,7 +10,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { pedirAjudaTribuno, type MensagemAjuda } from "@/lib/ai/product-help.server";
+import { pedirAjudaTribuno } from "@/lib/ai/product-help-api";
+import type { MensagemAjuda } from "@/lib/ai/product-help";
 import { getSupabaseClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 

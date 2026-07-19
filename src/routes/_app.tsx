@@ -1,5 +1,5 @@
 import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { Button } from "@/components/ui/button";
 import { logout, resolverDestinoAcesso, useAuth } from "@/lib/auth-store";
@@ -9,8 +9,11 @@ export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
+export const AUTH_LOADING_FAILSAFE_MS = 15_000;
+
 function AppLayout() {
   const navigate = useNavigate();
+  const [loadingDemorado, setLoadingDemorado] = useState(false);
   const {
     initialized,
     isAuthenticated,
@@ -28,6 +31,15 @@ function AppLayout() {
     onboardingResolved,
     onboardingRequired,
   });
+
+  useEffect(() => {
+    if (destino !== "loading") {
+      setLoadingDemorado(false);
+      return;
+    }
+    const timeout = window.setTimeout(() => setLoadingDemorado(true), AUTH_LOADING_FAILSAFE_MS);
+    return () => window.clearTimeout(timeout);
+  }, [destino]);
 
   useEffect(() => {
     if (destino === "loading" || destino === "app") return;
@@ -58,6 +70,37 @@ function AppLayout() {
   ]);
 
   if (destino === "loading") {
+    if (loadingDemorado) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background px-4">
+          <div className="w-full max-w-sm rounded-2xl border bg-card p-5 text-center">
+            <h1 className="font-semibold">A preparação está a demorar mais do que o esperado</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Pode tentar novamente ou terminar a sessão em segurança. Os seus dados não serão
+              apagados.
+            </p>
+            <div className="mt-5 flex flex-col gap-2">
+              <Button
+                onClick={() => {
+                  setLoadingDemorado(false);
+                  window.dispatchEvent(new Event("tribuno:auth"));
+                }}
+              >
+                Tentar novamente
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  void logout().then(() => navigate({ to: "/login", replace: true }));
+                }}
+              >
+                Terminar sessão
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="text-sm text-muted-foreground">A preparar o Tribuno...</div>

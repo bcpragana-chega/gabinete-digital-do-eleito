@@ -4,13 +4,13 @@ import {
   construirPromptAjuda,
   executarPedidoAjuda,
   registarResultadoAjuda,
-  type PedidoAjuda,
 } from "./product-help.server";
 import {
   pedidoForaDoAmbito,
   respostaParaPedidoForaDoAmbito,
   resolverContextoAjuda,
   SYSTEM_PROMPT_AJUDA,
+  type PedidoAjuda,
 } from "./product-help";
 
 const pedido = {
