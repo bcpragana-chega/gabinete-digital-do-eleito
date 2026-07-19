@@ -4,6 +4,7 @@ import { CalendarDays, ChevronLeft, FileText, X } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { DocumentoEstadoBadge } from "@/components/documentos/DocumentoEstadoBadge";
 import { DocumentoPreview } from "@/components/documentos/DocumentoPreview";
+import { ImpactoMandatoResumo } from "@/components/documentos/ImpactoMandatoResumo";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/feedback";
 import {
@@ -14,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatarData } from "@/lib/mock-data";
+import { analiseGeralPodeMostrarImpacto } from "@/lib/institutional-document-impact";
 import { useAssembleia } from "@/lib/assembleias-store";
 import { useDocumentos } from "@/lib/documentos-store";
 import {
@@ -235,6 +237,12 @@ export function DocumentoRecebidoDetalhe({
                 </div>
               </div>
             </section>
+
+            {analiseGeralPodeMostrarImpacto(documento.analiseInstitucional) && (
+              <div className="mb-5">
+                <ImpactoMandatoResumo impacto={documento.analiseInstitucional?.impactoMandato} />
+              </div>
+            )}
 
             <section className="rounded-2xl border border-border bg-card p-6 shadow-card mb-5">
               <div className="flex items-center gap-3 mb-4">

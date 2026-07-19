@@ -109,6 +109,27 @@ export type TipoDocumentoInstitucional =
   | "outro"
   | "desconhecido";
 
+export interface ConclusaoImpactoMandato {
+  descricao: string;
+  referenciaDocumento?: string;
+  confianca: number;
+}
+
+export interface AcaoImpactoMandato extends ConclusaoImpactoMandato {
+  tipo: "exigida" | "recomendada" | "informativa";
+  prazo?: string;
+}
+
+export interface ImpactoMandatoDocumento {
+  relevancia: "alta" | "media" | "baixa" | "indeterminada";
+  justificacaoRelevancia: string;
+  referenciaDocumento?: string;
+  confianca: number;
+  alteracoesDecisoes: ConclusaoImpactoMandato[];
+  acoes: AcaoImpactoMandato[];
+  proximaAcao?: ConclusaoImpactoMandato;
+}
+
 export interface AnaliseDocumentoInstitucional {
   tipoDocumento: TipoDocumentoInstitucional;
   confiancaGlobal: number;
@@ -133,6 +154,7 @@ export interface AnaliseDocumentoInstitucional {
   }>;
   camposIncertos: Array<{ campo: string; motivo: string }>;
   resumoCompreensao: string;
+  impactoMandato?: ImpactoMandatoDocumento;
 }
 
 export interface DocumentoCriado {

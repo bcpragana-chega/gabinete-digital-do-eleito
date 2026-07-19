@@ -122,6 +122,7 @@ export const INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT = {
       "informacaoRelevante",
       "camposIncertos",
       "resumoCompreensao",
+      "impactoMandato",
     ],
     properties: {
       tipoDocumento: {
@@ -199,6 +200,81 @@ export const INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT = {
         maxItems: 50,
       },
       resumoCompreensao: { type: "string", maxLength: 4000 },
+      impactoMandato: {
+        anyOf: [
+          {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "relevancia",
+              "justificacaoRelevancia",
+              "referenciaDocumento",
+              "confianca",
+              "alteracoesDecisoes",
+              "acoes",
+              "proximaAcao",
+            ],
+            properties: {
+              relevancia: {
+                type: "string",
+                enum: ["alta", "media", "baixa", "indeterminada"],
+              },
+              justificacaoRelevancia: { type: "string", minLength: 1, maxLength: 2000 },
+              referenciaDocumento: { type: ["string", "null"], maxLength: 500 },
+              confianca: { type: "number", minimum: 0, maximum: 1 },
+              alteracoesDecisoes: {
+                type: "array",
+                maxItems: 20,
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["descricao", "referenciaDocumento", "confianca"],
+                  properties: {
+                    descricao: { type: "string", minLength: 1, maxLength: 2000 },
+                    referenciaDocumento: { type: ["string", "null"], maxLength: 500 },
+                    confianca: { type: "number", minimum: 0, maximum: 1 },
+                  },
+                },
+              },
+              acoes: {
+                type: "array",
+                maxItems: 20,
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["tipo", "descricao", "prazo", "referenciaDocumento", "confianca"],
+                  properties: {
+                    tipo: {
+                      type: "string",
+                      enum: ["exigida", "recomendada", "informativa"],
+                    },
+                    descricao: { type: "string", minLength: 1, maxLength: 2000 },
+                    prazo: { type: ["string", "null"], maxLength: 500 },
+                    referenciaDocumento: { type: ["string", "null"], maxLength: 500 },
+                    confianca: { type: "number", minimum: 0, maximum: 1 },
+                  },
+                },
+              },
+              proximaAcao: {
+                anyOf: [
+                  {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["descricao", "referenciaDocumento", "confianca"],
+                    properties: {
+                      descricao: { type: "string", minLength: 1, maxLength: 2000 },
+                      referenciaDocumento: { type: ["string", "null"], maxLength: 500 },
+                      confianca: { type: "number", minimum: 0, maximum: 1 },
+                    },
+                  },
+                  { type: "null" },
+                ],
+              },
+            },
+          },
+          { type: "null" },
+        ],
+      },
     },
   },
 };
@@ -268,7 +344,14 @@ Identifica apenas informação presente no documento. Não completes dados por c
 Distingue convocatória, ordem de trabalhos, ata, proposta, regulamento e documento financeiro.
 Extrai órgão, entidade, tipo de sessão, data, hora e local.
 Não transformes parágrafos informativos em pontos. Não inventes campos ilegíveis; marca qualquer campo visualmente ambíguo como incerto.
-Usa português europeu e devolve apenas JSON válido com: tipoDocumento, confiancaGlobal, sessao, pontosOrdemTrabalhos, informacaoRelevante, camposIncertos e resumoCompreensao.
+Para documentos gerais, explica também o impacto prático no mandato: relevância, decisões ou alterações importantes, ações exigidas, recomendadas ou meramente informativas e uma única próxima ação segura.
+Só identifica uma ação quando ela resulte diretamente do documento. Não inventes ações nem transformes possibilidades vagas em obrigações.
+Só inclui prazo quando estiver explicitamente escrito no documento. Preserva-o como texto; não calcules nem convertas datas.
+Não executes ações, não cries Assuntos e não associes automaticamente o documento a uma Sessão.
+Cada conclusão de impacto deve indicar a referência documental que a sustenta e uma confiança entre 0 e 1.
+Se não existir base segura para impacto prático, usa relevância indeterminada, explica a insuficiência, devolve listas vazias e usa null na próxima ação.
+Para convocatórias e ordens de trabalhos, devolve impactoMandato como null e preserva o fluxo de Sessão existente.
+Usa português europeu e devolve apenas JSON válido com: tipoDocumento, confiancaGlobal, sessao, pontosOrdemTrabalhos, informacaoRelevante, camposIncertos, resumoCompreensao e impactoMandato.
 Usa confiança entre 0 e 1. Campos ausentes devem ser omitidos, nunca inventados.`;
 
 export const INSTITUTIONAL_ANALYSIS_USER_PROMPT =
@@ -323,6 +406,37 @@ const horaOpcional = z.preprocess(
     .optional(),
 );
 const confianca = z.number().finite().min(0).max(1);
+const conclusaoImpactoMandatoSchema = z.object({
+  descricao: z.string().trim().min(1).max(2000),
+  referenciaDocumento: textoOpcional,
+  confianca,
+});
+
+const impactoMandatoSchema = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z
+    .object({
+      relevancia: z.enum(["alta", "media", "baixa", "indeterminada"]),
+      justificacaoRelevancia: z.string().trim().min(1).max(2000),
+      referenciaDocumento: textoOpcional,
+      confianca,
+      alteracoesDecisoes: z.array(conclusaoImpactoMandatoSchema).max(20).default([]),
+      acoes: z
+        .array(
+          conclusaoImpactoMandatoSchema.extend({
+            tipo: z.enum(["exigida", "recomendada", "informativa"]),
+            prazo: textoOpcional,
+          }),
+        )
+        .max(20)
+        .default([]),
+      proximaAcao: z.preprocess(
+        (value) => (value === null ? undefined : value),
+        conclusaoImpactoMandatoSchema.optional(),
+      ),
+    })
+    .optional(),
+);
 
 export const analiseDocumentoInstitucionalSchema = z.object({
   tipoDocumento: z
@@ -385,6 +499,7 @@ export const analiseDocumentoInstitucionalSchema = z.object({
     .max(50)
     .default([]),
   resumoCompreensao: z.string().trim().max(4000).default(""),
+  impactoMandato: impactoMandatoSchema,
 });
 
 export function normalizarAnaliseDocumentoInstitucional(
@@ -417,8 +532,11 @@ export function criarDiagnosticoIssuesZod(issues: z.ZodIssue[]) {
 
 export function analiseTemTextoSuficiente(analise: AnaliseDocumentoInstitucional) {
   return Boolean(
-    analise.resumoCompreensao || analise.sessao?.orgao || analise.pontosOrdemTrabalhos.length,
+    analise.resumoCompreensao ||
+    analise.sessao?.orgao ||
+    analise.pontosOrdemTrabalhos.length ||
+    analise.impactoMandato,
   );
 }
 
-export const INSTITUTIONAL_DOCUMENT_ANALYSIS_VERSION = 1;
+export const INSTITUTIONAL_DOCUMENT_ANALYSIS_VERSION = 2;

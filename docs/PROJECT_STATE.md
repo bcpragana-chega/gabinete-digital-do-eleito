@@ -376,7 +376,7 @@ trabalho exigirá desenho próprio e não foi antecipado nesta missão.
 
 ## ⏳ Problema n.º 6 — A Biblioteca exige demasiado trabalho manual de classificação
 
-Estado: EM CURSO — correção final automatizada da Fase 6A concluída; validação manual pendente; Fase 6B pendente
+Estado: EM CURSO — Fases 6A e 6B implementadas; validação manual real pendente
 Avaliação da Fase 6A: PENDENTE DE NOVO TESTE MANUAL
 
 ### Diagnóstico
@@ -448,12 +448,36 @@ Repetir com sucesso o teste manual da convocatória real, confirmando o ano corr
 principais com os subpontos preservados, o destaque dos campos incertos, o local completo, o modal
 mais curto e a criação da Sessão pela RPC depois da correção humana. A
 avaliação de 9,3/10 foi retirada até existir essa confirmação. O Problema n.º 6 continua em curso
-porque a Fase 6B permanece deliberadamente pendente.
+até existir validação manual real das duas fases.
 
-### Fase 6B pendente
+### Fase 6B implementada — impacto prático no mandato
 
-Continuam deliberadamente adiados a relevância política avançada, alterações importantes, ações,
-prazos, criação ou associação automática de Assuntos, notificações e acompanhamento político.
+- A mesma análise institucional passou a incluir, sem nova chamada de IA, um bloco opcional
+  `impactoMandato` dentro do JSON já guardado em `analiseInstitucional`.
+- O bloco distingue relevância alta, média, baixa ou indeterminada, justificação, decisões ou
+  alterações importantes, ações exigidas, recomendadas ou informativas e uma única próxima ação.
+- Cada conclusão conserva referência documental e confiança; prazos são apenas texto explícito do
+  documento, sem cálculo, conversão ou inferência de datas.
+- O JSON Schema estrito e o schema Zod validam limites, tipos de ação, confiança e campos nullable.
+  A versão da análise institucional passou para 2; análises antigas sem o bloco continuam válidas.
+- A revisão de documentos gerais e a página canónica do Documento partilham uma apresentação
+  compacta com “Porque importa”, “O que mudou ou foi decidido”, “O que exige atenção” e “Próxima
+  ação sugerida”. Secções vazias não aparecem.
+- Quando não existe base segura, a interface declara que não foi identificado impacto prático
+  seguro, sem inventar ações ou prazos.
+- Convocatórias e ordens de trabalhos devolvem `impactoMandato` nulo e mantêm o fluxo da Fase 6A,
+  sem alterações à revisão, duplicados, Sessões ou pontos.
+- A análise não executa ações, não cria Assuntos, não associa automaticamente Sessões e não cria
+  tarefas, notificações, lembretes ou Agenda.
+- Não foram criadas tabelas, migrações, novas chamadas à OpenAI ou alterações de RLS.
+- Validação automatizada da Fase 6B: 396 testes aprovados, typecheck aprovado, lint com 0 erros e
+  20 avisos antigos não relacionados, build aprovado e `git diff --check` aprovado.
+
+### Condição para fechar o Problema n.º 6
+
+Repetir o teste manual da convocatória real da Fase 6A e validar documentos gerais reais com
+impacto alto, impacto indeterminado, ação explícita e prazo explícito. Só depois dessa confirmação
+o problema pode receber avaliação final e ser marcado como fechado.
 
 ---
 

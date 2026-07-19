@@ -11,6 +11,7 @@ import {
   INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT,
   INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT,
   INSTITUTIONAL_ANALYSIS_USER_PROMPT,
+  INSTITUTIONAL_DOCUMENT_ANALYSIS_VERSION,
   InstitutionalAnalysisError,
   normalizarAnaliseDocumentoInstitucional,
   validarModeloAnaliseVisual,
@@ -33,6 +34,89 @@ describe("análise institucional de documentos", () => {
     });
     assert.equal(result.sessao?.orgao, "Assembleia Municipal");
     assert.equal(result.confiancaGlobal, 0.91);
+  });
+
+  it("normaliza impacto no mandato com confiança e referências por conclusão", () => {
+    const result = normalizarAnaliseDocumentoInstitucional({
+      ...base,
+      tipoDocumento: "regulamento",
+      impactoMandato: {
+        relevancia: "alta",
+        justificacaoRelevancia: " Altera as regras aplicáveis aos apoios municipais. ",
+        referenciaDocumento: "Artigo 4.º",
+        confianca: 0.93,
+        alteracoesDecisoes: [
+          {
+            descricao: " O limite máximo foi alterado. ",
+            referenciaDocumento: "Artigo 7.º",
+            confianca: 0.91,
+          },
+        ],
+        acoes: [
+          {
+            tipo: "exigida",
+            descricao: "Apresentar os elementos em falta.",
+            prazo: "no prazo de 10 dias úteis",
+            referenciaDocumento: "Artigo 12.º, n.º 2",
+            confianca: 0.96,
+          },
+        ],
+        proximaAcao: {
+          descricao: "Rever os processos abrangidos pela alteração.",
+          referenciaDocumento: "Artigos 4.º e 7.º",
+          confianca: 0.82,
+        },
+      },
+    });
+    assert.equal(result.impactoMandato?.relevancia, "alta");
+    assert.equal(
+      result.impactoMandato?.justificacaoRelevancia,
+      "Altera as regras aplicáveis aos apoios municipais.",
+    );
+    assert.equal(
+      result.impactoMandato?.alteracoesDecisoes[0].descricao,
+      "O limite máximo foi alterado.",
+    );
+    assert.equal(result.impactoMandato?.acoes[0].prazo, "no prazo de 10 dias úteis");
+    assert.equal(result.impactoMandato?.proximaAcao?.confianca, 0.82);
+  });
+
+  it("mantém análises antigas e impacto null compatíveis", () => {
+    assert.equal(INSTITUTIONAL_DOCUMENT_ANALYSIS_VERSION, 2);
+    assert.equal(normalizarAnaliseDocumentoInstitucional(base).impactoMandato, undefined);
+    assert.equal(
+      normalizarAnaliseDocumentoInstitucional({ ...base, impactoMandato: null }).impactoMandato,
+      undefined,
+    );
+  });
+
+  it("rejeita ações, prazos e confiança fora do contrato", () => {
+    const impacto = {
+      relevancia: "media",
+      justificacaoRelevancia: "Pode exigir acompanhamento.",
+      referenciaDocumento: null,
+      confianca: 0.8,
+      alteracoesDecisoes: [],
+      acoes: [],
+      proximaAcao: null,
+    };
+    assert.throws(() =>
+      normalizarAnaliseDocumentoInstitucional({
+        ...base,
+        impactoMandato: {
+          ...impacto,
+          acoes: [
+            {
+              tipo: "automatica",
+              descricao: "Executar sem confirmação.",
+              prazo: "amanhã",
+              referenciaDocumento: null,
+              confianca: 1.2,
+            },
+          ],
+        },
+      }),
+    );
   });
 
   it("não inventa campos ausentes", () => {
@@ -98,6 +182,16 @@ describe("análise institucional de documentos", () => {
     assert.match(prompt, /digitaliza[çc][aã]o/i);
     assert.match(prompt, /visualmente/i);
     assert.match(prompt, /todas as páginas/i);
+  });
+
+  it("limita o impacto a conclusões documentadas sem inventar ações ou prazos", () => {
+    assert.match(INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT, /Não inventes ações/i);
+    assert.match(INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT, /prazo quando estiver explicitamente/i);
+    assert.match(INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT, /não calcules nem convertas datas/i);
+    assert.match(INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT, /uma única próxima ação segura/i);
+    assert.match(INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT, /impactoMandato como null/i);
+    assert.match(INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT, /não cries Assuntos/i);
+    assert.match(INSTITUTIONAL_ANALYSIS_SYSTEM_PROMPT, /não associes automaticamente/i);
   });
 
   it("normaliza uma convocatória digitalizada com seis pontos", () => {
@@ -275,6 +369,8 @@ describe("análise institucional de documentos", () => {
     assert.equal(INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT.type, "json_schema");
     assert.equal(INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT.strict, true);
     assert.equal(INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT.schema.additionalProperties, false);
+    assert.ok(INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT.schema.required.includes("impactoMandato"));
+    assert.ok("impactoMandato" in INSTITUTIONAL_ANALYSIS_RESPONSE_FORMAT.schema.properties);
   });
 
   it("aceita descricao null do Structured Output e preserva a convocatória", () => {

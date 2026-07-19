@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, FileSearch, Plus, Trash2 } from "lucide-react";
 import { Button, type ButtonProps } from "@/components/ui/button";
+import { ImpactoMandatoResumo } from "@/components/documentos/ImpactoMandatoResumo";
 import {
   Dialog,
   DialogContent,
@@ -490,6 +491,7 @@ function DocumentReviewForm({
           </ul>
         </div>
       )}
+      <ImpactoMandatoResumo impacto={analise.impactoMandato} />
       {analise.camposIncertos.length > 0 && (
         <div className="rounded-xl border border-status-alerta/30 p-4">
           <p className="text-sm font-medium">Dados que precisam de confirmação</p>

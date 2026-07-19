@@ -402,7 +402,18 @@ describe("confirmação institucional", () => {
     let alteracoes: Partial<Documento> | undefined;
     const guardado = await confirmarDocumentoNaBibliotecaComDependencias({
       documento,
-      analise: analiseTipo("ata", { resumoCompreensao: "Resumo da ata." }),
+      analise: analiseTipo("ata", {
+        resumoCompreensao: "Resumo da ata.",
+        impactoMandato: {
+          relevancia: "media",
+          justificacaoRelevancia: "A ata regista uma decisão com impacto local.",
+          referenciaDocumento: "Ponto 4",
+          confianca: 0.9,
+          alteracoesDecisoes: [],
+          acoes: [],
+          proximaAcao: undefined,
+        },
+      }),
       titulo: "Ata de julho",
       tipo: "Ata",
       guardar: async (id, input) => {
@@ -415,6 +426,7 @@ describe("confirmação institucional", () => {
     assert.equal(guardado.id, documento.id);
     assert.equal(alteracoes?.resumo, "Resumo da ata.");
     assert.equal(alteracoes?.estadoAnalise, "confirmado");
+    assert.equal(alteracoes?.analiseInstitucional?.impactoMandato?.relevancia, "media");
   });
 
   it("guarda baixa confiança por rever e a interface abre a rota canónica da Biblioteca", async () => {
