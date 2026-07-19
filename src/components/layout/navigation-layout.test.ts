@@ -23,6 +23,7 @@ describe("cabeçalhos canónicos e navegação", () => {
   const biblioteca = fonte("src/routes/_app.biblioteca.tsx");
   const agenda = fonte("src/routes/_app.agenda.tsx");
   const hoje = fonte("src/components/dashboard/DashboardPage.tsx");
+  const todayDecision = fonte("src/lib/today-decision.ts");
   const definicoes = fonte("src/routes/_app.definicoes.tsx");
   const workspacePage = fonte("src/components/ui/workspace/WorkspacePage.tsx");
   const intake = fonte("src/components/documentos/InstitutionalDocumentIntake.tsx");
@@ -63,9 +64,9 @@ describe("cabeçalhos canónicos e navegação", () => {
 
   it("destaca a próxima ação e usa linguagem orientada à ação", () => {
     const dashboard = entre(hoje, "<WorkspacePage>", "</WorkspacePage>");
-    assert.ok(dashboard.indexOf("<MissionCard") < dashboard.indexOf("<TasksCard"));
-    assert.match(dashboard, /lg:grid-cols-2/);
-    assert.match(hoje, /Rever documento/);
+    assert.ok(dashboard.indexOf("<PrimaryActionCard") < dashboard.indexOf("<AlertsSection"));
+    assert.match(dashboard, /<PendingSection/);
+    assert.match(todayDecision, /Rever documento/);
     assert.doesNotMatch(hoje, /Incoerência detetada/);
 
     assert.match(biblioteca, /triggerLabel="Analisar e organizar PDF"/);

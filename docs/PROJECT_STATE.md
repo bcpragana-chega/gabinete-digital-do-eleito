@@ -43,7 +43,7 @@ Um problema não é considerado fechado abaixo de 9,0/10.
 
 ## ✅ Problema n.º 1 — Demasiados conceitos para trabalho que deveria parecer simples
 
-Estado: FECHADO  
+Estado: FECHADO
 Avaliação: 9,5/10
 
 ### Problema original
@@ -207,38 +207,83 @@ A avaliação de 9,4/10 é sustentada por uma única identidade URL, uma única 
 
 ---
 
-## ⏳ Problema n.º 3 — A página Hoje está demasiado carregada
+## ✅ Problema n.º 3 — A página Hoje está demasiado carregada
 
-Estado: PENDENTE
+Estado: FECHADO
+Avaliação: 9,5/10
 
-### Diagnóstico
+### Diagnóstico confirmado
 
-O dashboard tenta apresentar simultaneamente:
+O dashboard misturava missão prioritária, progresso conceptual, checklist, tarefas, alertas,
+métricas, atividade, documentos recentes, acessos rápidos e onboarding. As mesmas necessidades
+eram repetidas em vários blocos e condições meramente existentes eram apresentadas como urgentes.
 
-- missão prioritária;
-- passos da preparação;
-- tarefas;
-- alertas;
-- métricas;
-- atividade;
-- documentos recentes;
-- acessos rápidos;
-- onboarding;
-- carregamento de convocatória;
-- criação manual de sessão.
+### Decisão arquitetural
 
-### Risco
+- A página Hoje descreve exclusivamente aquilo que o eleito deve fazer a seguir.
+- A decisão é produzida por uma única função pura e testável, `decideToday`.
+- O resultado tem quatro estados: `onboarding`, `active`, `critical` e `clear`.
+- Só pode existir uma ação principal, até dois alertas reais e até três pendências secundárias.
+- Cada necessidade tem uma chave estável e só pode ocupar um dos três níveis da decisão.
+- A data atual é fornecida ao motor como entrada, mantendo a lógica determinística.
+- Assuntos ativos, documentos, rascunhos, sessões ou atividade não geram urgência apenas por
+  existirem.
 
-A missão prioritária perde autoridade por estar rodeada de demasiada informação.
+### Implementação concluída
 
-### Objetivo futuro
+- O antigo `MissionCard` foi substituído por um cartão simples com título, explicação, contexto
+  essencial, ação e destino existente.
+- Foram removidos da página o anel e percentagem de progresso, checklist permanente, métricas,
+  atividade recente, documentos recentes e acessos rápidos.
+- O onboarding passou a ser a própria ação principal e preserva, sem duplicação, o carregamento de
+  convocatória e a criação manual de sessão.
+- Alertas e pendências só são renderizados quando existem e respeitam os limites definidos.
+- O estado tranquilo é exclusivo e apresenta “Não tens nada urgente neste momento” e “O mandato
+  está em dia”.
+- Os links mantêm as rotas funcionais de preparação e a rota canónica de Documento.
+- `TopBar`, comportamento responsivo e integração de ajuda foram preservados.
+- `useProductHelpPageState` passou a refletir diretamente a decisão central, sem métricas ou listas
+  antigas.
 
-Transformar a página Hoje num mecanismo de decisão:
+### Regras finais de prioridade
 
-- uma ação principal inequívoca;
-- dois alertas reais;
-- uma lista curta de pendências;
-- restante informação escondida até ser necessária.
+1. Sessão nos três dias seguintes com preparação explicitamente não concluída.
+2. Documento da próxima sessão em estado `Por rever` ou `Importante`.
+3. Próxima sessão cujo estado de preparação ainda não é `pronta`.
+4. Ponto da próxima sessão ainda não preparado.
+5. Documento produzido em `rascunho` ou `em revisão`.
+6. Recomendação ou requerimento já apresentado e disponível para acompanhamento.
+7. Onboarding ainda necessário, quando não existe próxima sessão.
+8. Estado tranquilo.
+
+Não foi criado um sinal artificial para assuntos ativos: sem uma condição concreta adicional já
+persistida, não entram na decisão.
+
+### Testes e validações executados
+
+- `npm test`: 349 testes aprovados, 0 falhas;
+- `npm run typecheck`: aprovado;
+- `npm run lint`: aprovado com 0 erros e 19 avisos antigos não relacionados;
+- `npm run build`: aprovado.
+
+Foram adicionados testes unitários para onboarding, prioridades, sessão crítica, documento em
+curso, estado tranquilo, limites, não duplicação e exclusividade. Os contratos de composição
+confirmam a remoção dos blocos antigos, onboarding único, renderização condicionada, destinos
+funcionais e rota documental canónica.
+
+### Justificação da avaliação
+
+A avaliação de 9,5/10 resulta da centralização integral da decisão, redução profunda da página,
+ausência de urgências baseadas apenas em contagens, exclusividade dos estados, preservação dos
+fluxos existentes e aprovação de toda a validação obrigatória sem erros novos.
+
+### Riscos residuais
+
+- A prontidão depende do campo existente `preparacaoEstado`; o cálculo conceptual detalhado do
+  progresso continua deliberadamente reservado ao Problema n.º 8.
+- O runner de testes emite no sandbox um aviso `EPERM` ao tentar abrir o WebSocket de HMR do Vite,
+  mas termina normalmente com os 349 testes aprovados.
+- O lint conserva 19 avisos preexistentes fora do âmbito desta missão.
 
 ---
 

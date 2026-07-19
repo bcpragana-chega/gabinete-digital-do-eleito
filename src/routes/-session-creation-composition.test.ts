@@ -12,6 +12,7 @@ describe("criação e preparação de sessões", () => {
   const intake = fonte("src/components/documentos/InstitutionalDocumentIntake.tsx");
   const workspace = fonte("src/routes/_app.sessoes.$id.tsx");
   const dashboard = fonte("src/components/dashboard/DashboardPage.tsx");
+  const todayDecision = fonte("src/lib/today-decision.ts");
 
   it("apresenta convocatória opcional e formulário manual numa única vista", () => {
     assert.match(wizard, /<DialogTitle>Preparar próxima sessão<\/DialogTitle>/);
@@ -67,8 +68,8 @@ describe("criação e preparação de sessões", () => {
   });
 
   it("o dashboard recomenda a convocatória sem a tornar obrigatória", () => {
-    assert.match(dashboard, /Preparar a próxima sessão/);
-    assert.match(dashboard, /Carregue a convocatória[\s\S]*ou crie a[\s\S]*sessão manualmente/);
+    assert.match(todayDecision, /Preparar a primeira sessão/);
+    assert.match(todayDecision, /Carrega a convocatória[\s\S]*ou cria a sessão manualmente/);
     assert.match(dashboard, /triggerLabel="Carregar convocatória"/);
     assert.match(dashboard, /triggerLabel="Criar manualmente"/);
     assert.doesNotMatch(dashboard, /Adicionar a convocatória da próxima sessão/);
