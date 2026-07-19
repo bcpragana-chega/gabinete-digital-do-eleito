@@ -204,7 +204,8 @@ export function PreparationGuidancePanel({
 
             {state.isComplete ? (
               <p className="text-[11px] leading-relaxed text-foreground">
-                A sessão está preparada. Pode continuar a editar os seus elementos até ao início.
+                Confirmaste a preparação desta sessão. Qualquer alteração material exige nova
+                confirmação.
               </p>
             ) : state.missingItems.length > 0 ? (
               <>
@@ -334,20 +335,20 @@ export function criarEstadoDoFluxoPreparacao({
   }));
   const isComplete = preparacaoEstado === "pronta";
   const readinessLabel = isComplete
-    ? "Pronta para a sessão"
+    ? "Preparação confirmada"
     : missingEssential.length > 0
       ? "Preparação incompleta"
-      : "Pronta para revisão";
+      : "Pronta para confirmação";
   const statusDescription = isComplete
-    ? "A preparação foi confirmada pelo eleito. Os elementos da sessão continuam editáveis."
+    ? "Confirmaste a preparação desta sessão."
     : missingEssential.length > 0
       ? "Resolva as pendências essenciais antes de confirmar a preparação."
-      : "A preparação essencial está concluída. O eleito pode rever e confirmar a sessão.";
+      : "O Tribuno verificou os requisitos operacionais. A decisão final continua a ser tua.";
 
   const nextAction: NextAction = isComplete
     ? {
         title: "Preparação confirmada",
-        description: "A sessão está pronta; pode continuar a rever ou editar os seus elementos.",
+        description: "Confirmaste a preparação. Podes continuar a rever ou editar os elementos.",
         button: "Continuar a editar",
         href: `/sessoes/${assembleiaId}`,
       }
@@ -536,11 +537,11 @@ export function criarEstadoPreparacao({
   );
   const isComplete = false;
   const readinessLabel =
-    missingEssential.length > 0 ? "Preparação incompleta" : "Pronta para revisão";
+    missingEssential.length > 0 ? "Preparação incompleta" : "Pronta para confirmação";
   const statusDescription =
     missingEssential.length > 0
       ? "Resolva as pendências essenciais antes de confirmar a preparação."
-      : "A preparação essencial está concluída. O eleito pode rever e confirmar a sessão.";
+      : "O Tribuno verificou os requisitos operacionais. A decisão final continua a ser tua.";
 
   const nextAction = escolherProximaAcao({
     assembleiaId,
@@ -637,8 +638,8 @@ function escolherProximaAcao({
   }
 
   return {
-    title: "Preparação da sessão concluída",
-    description: "Tudo o que é necessário está pronto. Faça apenas a revisão final.",
+    title: "Confirmar preparação",
+    description: "Os requisitos operacionais estão verificados. Faz a revisão final.",
     button: "Rever sessão",
     href: `/sessoes/${assembleiaId}`,
   };

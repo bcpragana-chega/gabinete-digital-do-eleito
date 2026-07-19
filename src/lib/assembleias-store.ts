@@ -208,10 +208,12 @@ export async function confirmarRevisaoFinalAssembleia(id: string) {
 }
 
 export async function marcarAssembleiaPronta(id: string) {
+  const agora = new Date().toISOString();
   return persistirPreparacaoIsolada(() =>
     atualizarPreparacaoAssembleiaRemota(id, {
       preparacao_estado: "pronta",
-      pronta_em: new Date().toISOString(),
+      revisao_final_confirmada_at: agora,
+      pronta_em: agora,
     }),
   );
 }

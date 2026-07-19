@@ -23,7 +23,6 @@ import { formatarData } from "@/lib/mock-data";
 import { arquivarAssembleia, useAssembleia } from "@/lib/assembleias-store";
 import {
   confirmarDadosAssembleia,
-  confirmarRevisaoFinalAssembleia,
   marcarAssembleiaPronta,
   reabrirPreparacaoAssembleia,
 } from "@/lib/assembleias-store";
@@ -62,7 +61,7 @@ import {
   removerPontoConfirmado,
   reordenarPontosConfirmado,
 } from "@/lib/pontos-store";
-import { obterEstrategiaDaAssembleia } from "@/lib/estrategia-store";
+import { obterEstrategiaDaAssembleia, subscreverEstrategias } from "@/lib/estrategia-store";
 import { useDossies } from "@/lib/dossies-store";
 import {
   associarAssembleiaAoDossie,
@@ -70,6 +69,7 @@ import {
   useDossiesAssociadosAAssembleia,
 } from "@/lib/dossie-assembleias-store";
 import { calcularFluxoSessao } from "@/lib/session-flow";
+import { criarAssinaturaMaterialPreparacao } from "@/lib/session-preparation-signature";
 import { useAuth } from "@/lib/auth-store";
 import { chaveTransitoriaPorUtilizador } from "@/lib/session-transient-state";
 import type { Dossie, EstadoAssembleia } from "@/lib/types";
@@ -110,11 +110,12 @@ function AssembleiaDetailPage() {
   const [versaoPontos, setVersaoPontos] = useState(0);
   const pontos = useMemo(() => obterPontosDaAssembleia(id), [id, versaoPontos]);
   const [versaoRascunhos, setVersaoRascunhos] = useState(0);
+  const [versaoEstrategia, setVersaoEstrategia] = useState(0);
   const documentosACriarDiretos = useMemo(
     () => listarDocumentosACriarDaAssembleia(id),
     [id, versaoRascunhos],
   );
-  const estrategia = useMemo(() => obterEstrategiaDaAssembleia(id), [id]);
+  const estrategia = useMemo(() => obterEstrategiaDaAssembleia(id), [id, versaoEstrategia]);
   const dossies = useDossies();
   const relacoesAssuntos = useDossiesAssociadosAAssembleia(id);
   const [confirmarArquivo, setConfirmarArquivo] = useState(false);
@@ -127,7 +128,32 @@ function AssembleiaDetailPage() {
     data?: string;
     pontos: number;
   }>();
-  const criticalSignature = `${documentos.map((documento) => `${documento.id}:${documento.estado}:${documento.updatedAt ?? ""}`).join("|")}::${pontos.map((ponto) => `${ponto.id}:${ponto.numero}:${ponto.updatedAt ?? ""}`).join("|")}`;
+  const documentosPoliticosMateriais = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          [
+            ...documentosACriarDiretos,
+            ...relacoesAssuntos.flatMap((relacao) =>
+              listarDocumentosACriarDoAssunto(relacao.dossieId),
+            ),
+          ].map((documento) => [documento.id, documento]),
+        ).values(),
+      ),
+    [documentosACriarDiretos, relacoesAssuntos, versaoRascunhos],
+  );
+  const criticalSignature = assembleia
+    ? criarAssinaturaMaterialPreparacao({
+        sessao: assembleia,
+        documentos,
+        pontos,
+        estrategia,
+        assuntos: relacoesAssuntos
+          .map((relacao) => dossies.find((dossie) => dossie.id === relacao.dossieId))
+          .filter((dossie): dossie is Dossie => Boolean(dossie)),
+        documentosPoliticos: documentosPoliticosMateriais,
+      })
+    : "";
   const previousCriticalSignature = useRef<string | undefined>(undefined);
   const arquivoEmCurso = useRef(false);
 
@@ -137,6 +163,7 @@ function AssembleiaDetailPage() {
     });
   }, []);
   useEffect(() => subscreverDocumentosACriar(() => setVersaoRascunhos((v) => v + 1)), []);
+  useEffect(() => subscreverEstrategias(() => setVersaoEstrategia((v) => v + 1)), []);
   useEffect(() => {
     void carregarDocumentosCriadosRemotosSeDisponivel();
   }, []);
@@ -299,14 +326,7 @@ function AssembleiaDetailPage() {
     }
   }
 
-  const documentosPoliticos = Array.from(
-    new Map(
-      [
-        ...documentosACriarDiretos,
-        ...assuntosDaSessao.flatMap((assunto) => listarDocumentosACriarDoAssunto(assunto.id)),
-      ].map((documento) => [documento.id, documento]),
-    ).values(),
-  );
+  const documentosPoliticos = documentosPoliticosMateriais;
   const flow = calcularFluxoSessao({
     sessao: assembleia,
     documentos,
@@ -500,12 +520,6 @@ function AssembleiaDetailPage() {
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Passo {flow.currentStep} de {flow.steps.length}
                   </p>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${flow.progress}%` }}
-                    />
-                  </div>
                   <p className="mt-2 text-sm text-muted-foreground">
                     Próxima ação:{" "}
                     <span className="font-medium text-foreground">{flow.nextAction.action}</span>
@@ -916,53 +930,55 @@ function AssembleiaDetailPage() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-                  {!assembleia.revisaoFinalConfirmadaEm && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={
-                        flowSaving || flow.missingRequired.some((step) => step.id !== "revisao")
-                      }
-                      onClick={() =>
-                        executarFluxo(
-                          () => confirmarRevisaoFinalAssembleia(id),
-                          "Não foi possível confirmar a revisão final.",
-                        )
-                      }
-                    >
-                      Confirmar revisão final
-                    </Button>
-                  )}
-                  {assembleia.preparacaoEstado === "pronta" ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={flowSaving}
-                      onClick={() =>
-                        executarFluxo(
-                          () => reabrirPreparacaoAssembleia(id),
-                          "Não foi possível voltar à preparação.",
-                        )
-                      }
-                    >
-                      Voltar à preparação
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      disabled={flowSaving || !flow.canMarkReady}
-                      onClick={() =>
-                        executarFluxo(
-                          () => marcarAssembleiaPronta(id),
-                          "Não foi possível marcar a sessão como pronta.",
-                        )
-                      }
-                    >
-                      Marcar sessão como pronta
-                    </Button>
-                  )}
-                </div>
+                {assembleia.preparacaoEstado === "pronta" ? (
+                  <p className="mt-5 text-sm font-medium text-foreground">
+                    Preparação confirmada. Confirmaste a preparação desta sessão.
+                  </p>
+                ) : flow.canMarkReady ? (
+                  <div className="mt-5 grid gap-5 lg:grid-cols-2">
+                    <div className="space-y-2 text-sm">
+                      <p className="font-semibold text-foreground">O Tribuno verificou:</p>
+                      <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                        <li>dados da sessão confirmados;</li>
+                        <li>
+                          {documentos.some((documento) => !documento.archivedAt)
+                            ? "documentos da sessão revistos;"
+                            : "não existem documentos da sessão por rever;"}
+                        </li>
+                        <li>pontos da ordem de trabalhos preparados.</li>
+                      </ul>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <p className="font-semibold text-foreground">
+                        A decisão final continua a ser tua:
+                      </p>
+                      <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                        <li>confirmar os factos;</li>
+                        <li>confirmar o enquadramento jurídico;</li>
+                        <li>validar a posição política;</li>
+                        <li>confirmar que tens os elementos necessários para a sessão.</li>
+                      </ul>
+                    </div>
+                    <div className="space-y-3 lg:col-span-2 lg:justify-self-end lg:max-w-2xl">
+                      <p className="text-sm text-muted-foreground">
+                        Ao confirmar, declaras que revistes os factos, o enquadramento jurídico, a
+                        posição política e os elementos necessários para esta sessão.
+                      </p>
+                      <Button
+                        type="button"
+                        disabled={flowSaving}
+                        onClick={() =>
+                          executarFluxo(
+                            () => marcarAssembleiaPronta(id),
+                            "Não foi possível confirmar a preparação.",
+                          )
+                        }
+                      >
+                        Confirmar preparação
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </WorkspaceSection>
             </div>
 

@@ -12,6 +12,10 @@ const panelSource = readFileSync(
   new URL("./PreparationGuidancePanel.tsx", import.meta.url),
   "utf8",
 );
+const sessionSource = readFileSync(
+  new URL("../../routes/_app.sessoes.$id.tsx", import.meta.url),
+  "utf8",
+);
 
 const estrategiaVazia = {
   objetivoPolitico: "",
@@ -74,17 +78,21 @@ describe("estado de preparação da sessão", () => {
     });
 
     assert.equal(incompleta.readinessLabel, "Preparação incompleta");
-    assert.equal(paraRevisao.readinessLabel, "Pronta para revisão");
+    assert.equal(paraRevisao.readinessLabel, "Pronta para confirmação");
     assert.equal(paraRevisao.canConfirm, true);
-    assert.equal(pronta.readinessLabel, "Pronta para a sessão");
+    assert.equal(paraRevisao.isComplete, false);
+    assert.equal(pronta.readinessLabel, "Preparação confirmada");
     assert.equal(pronta.isComplete, true);
+    assert.doesNotMatch(panelSource, /Pronta para a sessão|A sessão está preparada/);
+    assert.match(sessionSource, />\s*Confirmar preparação\s*</);
+    assert.match(sessionSource, /Ao confirmar, declaras que revistes os factos/);
   });
 
   it("não deixa pendências recomendadas bloquear a revisão", () => {
     const estado = criarEstado({ ...sessao, dadosConfirmadosEm: "agora" });
     assert.equal(estado.missingEssential.length, 0);
     assert.ok(estado.missingItems.some((item) => item.classification === "recommended"));
-    assert.equal(estado.readinessLabel, "Pronta para revisão");
+    assert.equal(estado.readinessLabel, "Pronta para confirmação");
   });
 
   it("classifica a checklist e ordena pendências essenciais primeiro", () => {

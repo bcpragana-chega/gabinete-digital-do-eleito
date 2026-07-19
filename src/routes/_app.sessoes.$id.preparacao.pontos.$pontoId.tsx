@@ -494,7 +494,6 @@ function PreparacaoPontoDetalhePage() {
               documentosCriados={dashboard.documentosCriados}
               tarefasConcluidas={dashboard.tarefasConcluidas}
               tarefasPendentes={dashboard.tarefasPendentes}
-              progresso={dashboard.progresso}
             />
 
             <div className="-mt-1">
@@ -571,21 +570,12 @@ function criarDashboardDoPonto(
   const tarefasPendentes =
     acoesDoPonto.length > 0 ? acoesDoPonto.length - tarefasConcluidas : (ponto?.acoes.length ?? 0);
 
-  const indicadoresPreparados = [
-    ponto?.estado === "Preparado" || ponto?.estado === "Concluído",
-    notas >= 3,
-    documentosAssociados > 0,
-    rascunhos.length > 0,
-    tarefasPendentes === 0 && (tarefasConcluidas > 0 || (ponto?.acoes.length ?? 0) === 0),
-  ].filter(Boolean).length;
-
   return {
     documentosAssociados,
     notas,
     documentosCriados: rascunhos.length,
     tarefasConcluidas,
     tarefasPendentes,
-    progresso: Math.round((indicadoresPreparados / 5) * 100),
   };
 }
 
