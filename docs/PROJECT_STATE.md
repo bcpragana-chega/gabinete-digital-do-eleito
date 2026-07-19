@@ -708,7 +708,7 @@ nova store terá de usar deliberadamente a fronteira institucional.
 
 ---
 
-## ⏳ Problema n.º 11 — Falta um verdadeiro sistema de acompanhamento político
+## ✅ Problema n.º 11 — Falta um verdadeiro sistema de acompanhamento político
 
 Estado: PENDENTE
 
