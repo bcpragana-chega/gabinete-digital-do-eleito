@@ -19,7 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
-import { formatarData } from "@/lib/mock-data";
+import { formatarData } from "@/lib/civil-date";
 import { arquivarAssembleia, useAssembleia } from "@/lib/assembleias-store";
 import {
   confirmarDadosAssembleia,

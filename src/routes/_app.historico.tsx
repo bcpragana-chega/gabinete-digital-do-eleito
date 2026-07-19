@@ -3,7 +3,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/feedback";
-import { formatarData } from "@/lib/mock-data";
+import { formatarData } from "@/lib/civil-date";
 import { useDocumentosDaAssembleia } from "@/lib/documentos-store";
 import { useAssembleias } from "@/lib/assembleias-store";
 

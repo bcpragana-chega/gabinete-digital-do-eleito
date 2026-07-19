@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { FileText, ChevronRight, Star } from "lucide-react";
 import type { Documento } from "@/lib/types";
-import { formatarDataCurta } from "@/lib/mock-data";
+import { formatarDataCurta } from "@/lib/civil-date";
 import { DocumentoEstadoBadge } from "./DocumentoEstadoBadge";
 
 export function DocumentoCard({ documento }: { documento: Documento }) {

@@ -11,7 +11,7 @@ import { ds } from "@/components/ui/design-system";
 import { WorkspacePage } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import { listarDocumentosLocais } from "@/lib/documentos-store";
-import { formatarData } from "@/lib/mock-data";
+import { formatarData } from "@/lib/civil-date";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
 import type { Assembleia, EstadoAssembleia } from "@/lib/types";
 

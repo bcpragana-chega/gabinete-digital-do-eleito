@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { formatarDataCivilPt, validarDataCivilIso } from "./civil-date";
+import {
+  formatarData,
+  formatarDataCivilPt,
+  formatarDataCurta,
+  validarDataCivilIso,
+} from "./civil-date";
 
 describe("data civil canónica", () => {
   it("preserva ISO e apresenta 2026 corretamente em pt-PT", () => {
@@ -12,6 +17,11 @@ describe("data civil canónica", () => {
       dia: 30,
     });
     assert.equal(formatarDataCivilPt("2026-06-30"), "30/06/2026");
+  });
+
+  it("preserva os formatos longo e curto usados na interface", () => {
+    assert.equal(formatarData("2026-07-14"), "14 de julho de 2026");
+    assert.equal(formatarDataCurta("2026-07-14"), "14/07/2026");
   });
 
   it("rejeita datas inexistentes sem conversões UTC ou de locale", () => {

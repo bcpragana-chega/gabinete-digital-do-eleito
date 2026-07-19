@@ -4,7 +4,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
-import { formatarData } from "@/lib/mock-data";
+import { formatarData } from "@/lib/civil-date";
 import { useAssembleia } from "@/lib/assembleias-store";
 import { PreparacaoAreaCard } from "@/components/preparacao/PreparacaoAreaCard";
 import { PreparationGuidancePanel } from "@/components/preparacao/PreparationGuidancePanel";

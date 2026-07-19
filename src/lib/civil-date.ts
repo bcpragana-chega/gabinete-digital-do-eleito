@@ -34,3 +34,21 @@ export function formatarDataCivilPt(value: string) {
   if (!resultado.ok) return undefined;
   return `${String(resultado.dia).padStart(2, "0")}/${String(resultado.mes).padStart(2, "0")}/${resultado.ano}`;
 }
+
+export function formatarData(iso: string): string {
+  const data = new Date(`${iso}T00:00:00`);
+  return data.toLocaleDateString("pt-PT", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export function formatarDataCurta(iso: string): string {
+  const data = new Date(`${iso}T00:00:00`);
+  return data.toLocaleDateString("pt-PT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}

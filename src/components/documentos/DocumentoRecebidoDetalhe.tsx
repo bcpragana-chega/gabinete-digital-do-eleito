@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatarData } from "@/lib/mock-data";
+import { formatarData } from "@/lib/civil-date";
 import { analiseGeralPodeMostrarImpacto } from "@/lib/institutional-document-impact";
 import { useAssembleia } from "@/lib/assembleias-store";
 import { editarDocumento, useDocumentos } from "@/lib/documentos-store";

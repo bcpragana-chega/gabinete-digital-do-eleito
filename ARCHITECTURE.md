@@ -15,7 +15,7 @@ Este documento descreve a arquitetura atual do projeto e as regras a seguir nas 
 - Lucide React para ícones
 - Local storage como persistência local atual
 - ESLint e Prettier
-- Lovable / `@lovable.dev/vite-tanstack-config`
+- Configuração Vite/TanStack nativa
 
 ## 2. Estrutura atual de pastas
 
@@ -80,12 +80,6 @@ src/
 - `src/lib/documentos-a-criar-store.ts`
   - Rascunhos locais de documentos a criar.
   - Guarda tipo, título, conteúdo, ponto associado, assembleia associada e estado.
-
-- `src/lib/mock-data.ts`
-  - Dados mock de assembleias e documentos.
-
-- `src/lib/mock-preparacao.ts`
-  - Dados mock de preparação.
 
 ## 5. Fluxo atual da área Preparação
 
