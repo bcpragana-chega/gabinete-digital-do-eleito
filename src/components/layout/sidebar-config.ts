@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, Home, Landmark, NotebookText } from "lucide-react";
+import { BookOpen, Home, Landmark, NotebookText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const sidebarItems = [
@@ -12,7 +12,6 @@ export const sidebarItems = [
     exact: false,
     aliases: ["/caixa-de-entrada"],
   },
-  { to: "/agenda" as const, label: "Agenda", icon: CalendarDays, exact: false },
 ];
 
 export type SidebarItem = (typeof sidebarItems)[number];

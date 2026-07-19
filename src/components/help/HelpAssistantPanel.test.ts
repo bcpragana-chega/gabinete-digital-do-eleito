@@ -19,7 +19,6 @@ const pageStateConsumers = [
   "../../routes/_app.sessoes.index.tsx",
   "../preparacao/PreparationGuidancePanel.tsx",
   "../../routes/_app.biblioteca.tsx",
-  "../../routes/_app.agenda.tsx",
 ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
 
 describe("painel do Assistente Tribuno", () => {

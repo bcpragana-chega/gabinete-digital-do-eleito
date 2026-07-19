@@ -83,13 +83,6 @@ export function resolverContextoAjuda(pathname: string): ContextoAjudaTribuno {
       pathname: "/documentos/:documentoId",
       descricao: "Permite consultar e rever um documento já existente.",
     };
-  if (path === "/agenda")
-    return {
-      pagina: "Agenda",
-      pathname: "/agenda",
-      descricao: "Apresenta datas e acontecimentos do mandato.",
-    };
-
   return CONTEXTO_GERAL;
 }
 
@@ -114,9 +107,6 @@ BIBLIOTECA
 - “Adicionar documento” guarda um ficheiro.
 - “Analisar e organizar PDF” tenta compreender e estruturar um PDF.
 - Os documentos podem ser associados a assuntos ou sessões.
-
-AGENDA
-- Apresenta datas e acontecimentos do mandato.
 
 FLUXO PRINCIPAL
 - Convocatória; sessão; ponto da ordem de trabalhos; preparação; documento ou intervenção.

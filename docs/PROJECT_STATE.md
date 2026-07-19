@@ -78,7 +78,6 @@ O produto obrigava o eleito a compreender a ontologia interna criada ao longo do
 - Assuntos
 - Sessões
 - Biblioteca
-- Agenda
 
 ### Implementação concluída
 
@@ -314,30 +313,64 @@ Métricas como número de documentos, assuntos ou rascunhos medem atividade dent
 
 ---
 
-## ⏳ Problema n.º 5 — A Agenda não é uma agenda
+## ✅ Problema n.º 5 — A Agenda não é uma agenda
 
-Estado: PENDENTE
+Estado: FECHADO
+Avaliação: 9,4/10
 
-### Diagnóstico
+### Diagnóstico confirmado
 
-A página Agenda apresenta essencialmente próximas sessões registadas.
+A área Agenda apresentava essencialmente as próximas Sessões já registadas, duplicando parte da
+área canónica de Sessões sem constituir uma agenda do mandato.
 
-### Elementos em falta para uma verdadeira agenda
+### Decisão arquitetural
 
-- prazos;
-- reuniões;
-- visitas;
-- eventos;
-- datas prometidas;
-- acompanhamentos;
-- compromissos políticos;
-- tarefas com data;
-- respostas esperadas;
-- lembretes.
+- Sessões mantém-se como a única área canónica para criar, listar, abrir, editar e preparar
+  Sessões, consultar pontos e aceder aos respetivos fluxos.
+- Agenda deixa de ser um conceito e um destino da experiência principal durante a Beta.
+- `/agenda` existe apenas como URL antiga de compatibilidade e redireciona diretamente para
+  `/sessoes`, sem página intermédia nem conteúdo duplicado.
+- Uma verdadeira Agenda do mandato fica deliberadamente adiada para depois da Beta, evitando
+  novas entidades, modelos de dados e fluxos nesta fase.
 
-### Decisão futura necessária
+### Implementação concluída
 
-Ou passa a chamar-se Calendário de Sessões, ou torna-se numa verdadeira agenda do mandato.
+- Agenda foi removida da configuração partilhada pela sidebar e navegação móvel.
+- Foram removidas as referências exclusivas da TopBar e da ajuda contextual.
+- A antiga página funcional foi substituída por um redirect fino através do padrão
+  `LegacyRedirect` já adotado no projeto.
+- O componente exclusivo e sem utilização `AgendaCard` foi removido.
+- Não foram alterados componentes, hooks, stores, permissões ou utilitários usados por Sessões.
+- Testes de contrato confirmam a ausência de Agenda na navegação oficial, o redirect para
+  Sessões, a preservação da rota canónica e a inexistência de links internos ativos para a URL
+  antiga.
+
+### Testes e validações executados
+
+- `npm test`: 359 testes aprovados, 0 falhas;
+- `npm run typecheck`: aprovado;
+- `npm run lint`: aprovado com 0 erros e 20 avisos antigos não relacionados;
+- `npm run build`: aprovado.
+
+### Justificação da avaliação
+
+A avaliação de 9,4/10 resulta da eliminação da duplicação conceptual e funcional, manutenção
+direta da compatibilidade com URLs antigas, preservação integral da área canónica de Sessões,
+cobertura focada dos contratos de navegação e aprovação de toda a validação obrigatória sem
+erros novos.
+
+### Riscos residuais
+
+- A compatibilidade de `/agenda` depende do redirect client-side partilhado com as restantes
+  rotas legadas; query string e hash são preservados pelo helper existente.
+- O nome técnico da rota antiga permanece apenas para manter URLs já distribuídos.
+- O lint conserva 20 avisos preexistentes fora do âmbito desta missão.
+
+### Trabalho deliberadamente adiado para depois da Beta
+
+Uma verdadeira Agenda do mandato poderá vir a contemplar reuniões, prazos, visitas, eventos,
+acompanhamentos, compromissos políticos, tarefas datadas, respostas esperadas e lembretes. Esse
+trabalho exigirá desenho próprio e não foi antecipado nesta missão.
 
 ---
 
@@ -571,11 +604,9 @@ Eliminar definitivamente modelos antigos, em vez de apenas os esconder.
 
 # Próxima ação
 
-Atacar exclusivamente:
+Selecionar explicitamente o próximo problema Beta numa missão futura.
 
-## Problema n.º 3 — A página Hoje está demasiado carregada
-
-Não iniciar trabalho nos problemas n.º 4 a 14 antes de o problema n.º 3 ser validado e fechado com pelo menos 9,0/10.
+Não iniciar automaticamente outro problema após o fecho do Problema n.º 5.
 
 ---
 

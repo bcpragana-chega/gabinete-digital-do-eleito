@@ -21,7 +21,6 @@ describe("cabeçalhos canónicos e navegação", () => {
   const assuntos = fonte("src/routes/_app.assuntos.index.tsx");
   const sessoes = fonte("src/routes/_app.sessoes.index.tsx");
   const biblioteca = fonte("src/routes/_app.biblioteca.tsx");
-  const agenda = fonte("src/routes/_app.agenda.tsx");
   const hoje = fonte("src/components/dashboard/DashboardPage.tsx");
   const todayDecision = fonte("src/lib/today-decision.ts");
   const definicoes = fonte("src/routes/_app.definicoes.tsx");
@@ -46,9 +45,6 @@ describe("cabeçalhos canónicos e navegação", () => {
 
     assert.match(biblioteca, /<TopBar[\s\S]*actions=\{/);
     assert.doesNotMatch(biblioteca, /WorkspaceHeader/);
-
-    assert.match(agenda, /<TopBar breadcrumb="Agenda" \/>/);
-    assert.doesNotMatch(agenda, /WorkspaceHeader/);
   });
 
   it("páginas principais partilham o mesmo contentor exterior", () => {
@@ -56,7 +52,7 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.match(workspacePage, /mx-auto flex w-full max-w-\[1504px\]/);
     assert.match(workspacePage, /px-4 py-6 sm:px-6 lg:px-8 lg:py-10/);
 
-    for (const pagina of [hoje, assuntos, sessoes, biblioteca, agenda]) {
+    for (const pagina of [hoje, assuntos, sessoes, biblioteca]) {
       assert.match(pagina, /<WorkspacePage>/);
       assert.doesNotMatch(pagina, /bg-\[#fbfcfe\]|bg-transparent|max-w-7xl|max-w-\[1504px\]/);
     }

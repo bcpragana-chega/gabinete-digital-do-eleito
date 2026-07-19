@@ -42,7 +42,7 @@ describe("Assistente de Ajuda do Tribuno", () => {
       resolverContextoAjuda("/biblioteca/documentos/abc").pagina,
       "Detalhe de documento",
     );
-    assert.equal(resolverContextoAjuda("/agenda").pagina, "Agenda");
+    assert.equal(resolverContextoAjuda("/agenda").pagina, "Tribuno");
     assert.equal(resolverContextoAjuda("/definicoes").pagina, "Tribuno");
   });
 
@@ -114,13 +114,13 @@ describe("Assistente de Ajuda do Tribuno", () => {
   it("funciona sem campos de estado adicionais", () => {
     const parsed = pedidoAjudaSchema.parse({
       accessToken: "token-seguro",
-      pathname: "/agenda",
+      pathname: "/sessoes",
       messages: [{ role: "user", content: "E agora?" }],
     });
     const prompt = construirPromptAjuda(parsed.pathname, parsed.messages, parsed.pageState);
 
     assert.match(prompt, /Estado adicional: não fornecido por esta página/);
-    assert.match(prompt, /Página: Agenda/);
+    assert.match(prompt, /Página: Sessões/);
   });
 
   it("aceita apenas o resumo tipado e rejeita IDs ou objetos completos", () => {

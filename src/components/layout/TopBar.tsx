@@ -45,7 +45,6 @@ const descricoesPorTitulo: Record<string, string> = {
   Documento: "Edite, reveja e finalize o documento institucional.",
   "Documento do assunto": "Edite, reveja e finalize o documento institucional.",
   Biblioteca: "Consulte e organize os documentos do mandato.",
-  Agenda: "Acompanhe as próximas sessões e compromissos.",
   Definições: "Gira o perfil institucional e as preferências do Tribuno.",
 };
 
@@ -63,7 +62,6 @@ function tituloPorPathname(pathname: string) {
   if (pathname === "/assuntos") return "Assuntos";
   if (pathname === "/biblioteca") return "Biblioteca";
   if (pathname === "/caixa-de-entrada") return "Biblioteca";
-  if (pathname === "/agenda") return "Agenda";
   if (pathname === "/historico") return "Histórico";
   if (pathname === "/definicoes") return "Definições";
   return undefined;

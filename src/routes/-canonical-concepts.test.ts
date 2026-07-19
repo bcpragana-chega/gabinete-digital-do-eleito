@@ -25,21 +25,24 @@ describe("conceitos e rotas canónicas", () => {
   const dossies = fonte("src/routes/_app.dossies.index.tsx");
   const dossie = fonte("src/routes/_app.dossies.$dossieId.tsx");
   const assembleias = fonte("src/routes/_app.assembleias.index.tsx");
+  const agenda = fonte("src/routes/_app.agenda.tsx");
   const assembleia = fonte("src/routes/_app.assembleias.$id.tsx");
   const preparacaoPonto = fonte("src/routes/_app.assembleias.$id.preparacao.pontos.$pontoId.tsx");
 
-  it("a navegação principal mostra apenas os cinco mundos oficiais", () => {
+  it("a navegação principal não apresenta a antiga Agenda", () => {
     const labels = [...sidebar.matchAll(/label: "([^"]+)"/g)].map((match) => match[1]);
     const destinos = [...sidebar.matchAll(/to: "([^"]+)"/g)].map((match) => match[1]);
-    assert.deepEqual(labels, ["Hoje", "Assuntos", "Sessões", "Biblioteca", "Agenda"]);
-    assert.deepEqual(destinos, ["/", "/assuntos", "/sessoes", "/biblioteca", "/agenda"]);
+    assert.deepEqual(labels, ["Hoje", "Assuntos", "Sessões", "Biblioteca"]);
+    assert.deepEqual(destinos, ["/", "/assuntos", "/sessoes", "/biblioteca"]);
   });
 
   it("redireciona as coleções antigas para as rotas canónicas", () => {
     assert.match(dossies, /<LegacyRedirect to="\/assuntos"/);
     assert.match(assembleias, /<LegacyRedirect to="\/sessoes"/);
     assert.match(caixaEntrada, /<LegacyRedirect to="\/biblioteca"/);
+    assert.match(agenda, /<LegacyRedirect to="\/sessoes"/);
     assert.doesNotMatch(caixaEntrada, /useDocumentos|WorkspaceHeader|CaixaDeEntradaPage/);
+    assert.doesNotMatch(agenda, /useAssembleias|WorkspacePage|AgendaPage/);
   });
 
   it("preserva IDs, parâmetros codificados, query e hash", () => {
@@ -77,6 +80,14 @@ describe("conceitos e rotas canónicas", () => {
       assert.match(source, /component:/);
       assert.doesNotMatch(source, /<LegacyRedirect/);
     }
+  });
+
+  it("não mantém links internos ativos para a antiga Agenda", () => {
+    const interfaceVisivel = fontesVisiveis("src/components")
+      .concat(fontesVisiveis("src/routes"))
+      .join("\n");
+
+    assert.doesNotMatch(interfaceVisivel, /(?:to|href)=["'{`]\/agenda(?:\/|["'}`?])/);
   });
 
   it("mantém os fluxos Assunto → Documento e Sessão → Preparação nas rotas canónicas", () => {
