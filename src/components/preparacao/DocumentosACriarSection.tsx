@@ -171,7 +171,11 @@ export function DocumentosACriarSection({
               meta={`${rascunho.tipo} · ${rascunho.estado}`}
               action={
                 <Button asChild size="sm" variant="secondary">
-                  <Link to="/documentos/$documentoId" params={{ documentoId: rascunho.id }}>
+                  <Link
+                    to="/documentos/$documentoId"
+                    params={{ documentoId: rascunho.id }}
+                    search={{ origem: "sessao", sessaoId: assembleiaId }}
+                  >
                     Abrir
                   </Link>
                 </Button>

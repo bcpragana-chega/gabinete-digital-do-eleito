@@ -667,7 +667,11 @@ function WizardStepDocumentosCriar({
               description={rascunho.estado}
               actions={
                 <Button asChild variant="secondary" size="sm">
-                  <Link to="/documentos/$documentoId" params={{ documentoId: rascunho.id }}>
+                  <Link
+                    to="/documentos/$documentoId"
+                    params={{ documentoId: rascunho.id }}
+                    search={{ origem: "sessao", sessaoId: assembleiaId }}
+                  >
                     Abrir
                   </Link>
                 </Button>

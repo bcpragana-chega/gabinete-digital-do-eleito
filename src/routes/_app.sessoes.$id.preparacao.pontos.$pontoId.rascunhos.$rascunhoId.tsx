@@ -6,6 +6,11 @@ export const Route = createFileRoute(
 )({ component: DocumentoCriadoDoPontoRedirect });
 
 function DocumentoCriadoDoPontoRedirect() {
-  const { rascunhoId } = Route.useParams();
-  return <LegacyRedirect to="/documentos/$documentoId" params={{ documentoId: rascunhoId }} />;
+  const { id, rascunhoId } = Route.useParams();
+  return (
+    <LegacyRedirect
+      to="/documentos/$documentoId?origem=sessao&sessaoId=$id"
+      params={{ documentoId: rascunhoId, id }}
+    />
+  );
 }

@@ -587,8 +587,9 @@ function AssembleiaDetailPage() {
                         action={
                           <Button asChild variant="secondary" size="sm">
                             <Link
-                              to="/sessoes/$id/documentos/$docId"
-                              params={{ id, docId: documento.id }}
+                              to="/documentos/$documentoId"
+                              params={{ documentoId: documento.id }}
+                              search={{ origem: "sessao", sessaoId: id }}
                             >
                               Abrir
                             </Link>
@@ -772,6 +773,7 @@ function AssembleiaDetailPage() {
                             <Link
                               to="/documentos/$documentoId"
                               params={{ documentoId: documento.id }}
+                              search={{ origem: "sessao", sessaoId: id }}
                             >
                               Abrir
                             </Link>

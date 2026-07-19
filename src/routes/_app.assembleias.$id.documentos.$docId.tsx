@@ -8,5 +8,7 @@ export const Route = createFileRoute("/_app/assembleias/$id/documentos/$docId")(
 function AssembleiaDocumentoRedirect() {
   const { id, docId } = Route.useParams();
 
-  return <LegacyRedirect to="/sessoes/$id/documentos/$docId" params={{ id, docId }} />;
+  return (
+    <LegacyRedirect to="/documentos/$docId?origem=sessao&sessaoId=$id" params={{ id, docId }} />
+  );
 }

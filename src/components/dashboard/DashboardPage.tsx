@@ -633,8 +633,9 @@ function RecentDocumentsCard({ documentos }: { documentos: Documento[] }) {
           documentos.map((documento) => (
             <Link
               key={documento.id}
-              to="/biblioteca/documentos/$docId"
-              params={{ docId: documento.id }}
+              to="/documentos/$documentoId"
+              params={{ documentoId: documento.id }}
+              search={{ origem: "biblioteca" }}
               className="flex min-h-[42px] min-w-0 items-center gap-3 rounded-lg transition-colors hover:bg-[#f8fbff]"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#fff1f1] text-[#ef2f2f]">
@@ -925,8 +926,8 @@ function criarMissaoPrioritaria({
       title: "Rever ata",
       text: "Existe documentação recente que merece revisão.",
       button: "Rever ata",
-      to: "/biblioteca/documentos/$docId",
-      params: { docId: documentoRecente.id },
+      to: "/documentos/$documentoId?origem=biblioteca",
+      params: { documentoId: documentoRecente.id },
       indicator: "now",
       progress: 50,
       meta: [

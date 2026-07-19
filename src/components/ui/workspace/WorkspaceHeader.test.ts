@@ -9,7 +9,7 @@ function fonte(caminho: string) {
 
 describe("composição responsiva do WorkspaceHeader", () => {
   const header = fonte("src/components/ui/workspace/WorkspaceHeader.tsx");
-  const documento = fonte("src/routes/_app.documentos.$documentoId.tsx");
+  const documento = fonte("src/components/documentos/DocumentoCriadoDetalhe.tsx");
 
   it("mantém informação e ações em linhas próprias até haver largura confortável", () => {
     assert.match(header, /flex flex-col items-stretch[^"]*2xl:flex-row/);
@@ -28,7 +28,7 @@ describe("composição responsiva do WorkspaceHeader", () => {
   it("é usado pelos quatro workspaces que precisam de cabeçalho detalhado", () => {
     const consumidores = [
       "src/routes/_app.assuntos.$dossieId.index.tsx",
-      "src/routes/_app.documentos.$documentoId.tsx",
+      "src/components/documentos/DocumentoCriadoDetalhe.tsx",
       "src/routes/_app.sessoes.$id.tsx",
       "src/routes/_app.sessoes.$id.preparacao.pontos.$pontoId.tsx",
     ];

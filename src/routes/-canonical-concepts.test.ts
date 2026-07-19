@@ -54,6 +54,14 @@ describe("conceitos e rotas canónicas", () => {
       ),
       "/sessoes/sess%C3%A3o%201/preparacao/pontos/ponto%2F2?origem=agenda#notas",
     );
+    assert.equal(
+      construirDestinoLegado(
+        "/documentos/$docId?origem=sessao&sessaoId=$id",
+        { id: "sessão 1", docId: "doc/2" },
+        "?filtro=novo&origem=invalida#pagina-2",
+      ),
+      "/documentos/doc%2F2?origem=sessao&sessaoId=sess%C3%A3o+1&filtro=novo#pagina-2",
+    );
   });
 
   it("mantém as páginas canónicas funcionais e sem implementações paralelas", () => {

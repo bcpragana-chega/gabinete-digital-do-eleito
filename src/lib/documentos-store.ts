@@ -122,7 +122,10 @@ export async function carregarDocumentosRemotosSeDisponivel() {
 }
 
 function hrefDocumento(documento: Documento) {
-  return `/sessoes/${documento.assembleiaId}/documentos/${documento.id}`;
+  const documentoId = encodeURIComponent(documento.id);
+  return documento.assembleiaId === "biblioteca"
+    ? `/documentos/${documentoId}?origem=biblioteca`
+    : `/documentos/${documentoId}?origem=sessao&sessaoId=${encodeURIComponent(documento.assembleiaId)}`;
 }
 
 function registarDocumentoCriadoNaTimeline(documento: Documento) {

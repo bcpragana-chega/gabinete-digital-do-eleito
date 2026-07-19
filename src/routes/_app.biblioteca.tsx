@@ -297,8 +297,9 @@ function BibliotecaPage() {
                       className="group relative min-w-0 rounded-2xl border border-border bg-card p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
                     >
                       <Link
-                        to="/biblioteca/documentos/$docId"
-                        params={{ docId: documento.id }}
+                        to="/documentos/$documentoId"
+                        params={{ documentoId: documento.id }}
+                        search={{ origem: "biblioteca" }}
                         aria-label={`Abrir documento: ${documento.titulo}`}
                         className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2"
                       />

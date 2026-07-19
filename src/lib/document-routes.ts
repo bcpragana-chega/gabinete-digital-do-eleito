@@ -3,9 +3,10 @@ import type { Documento, DocumentoCriado } from "@/lib/types";
 export function rotaDocumentoInstitucional(
   documento: Pick<Documento, "id"> & Partial<Pick<Documento, "assembleiaId">>,
 ) {
-  return documento.assembleiaId
-    ? `/sessoes/${encodeURIComponent(documento.assembleiaId)}/documentos/${encodeURIComponent(documento.id)}`
-    : `/biblioteca/documentos/${encodeURIComponent(documento.id)}`;
+  const documentoId = encodeURIComponent(documento.id);
+  return documento.assembleiaId && documento.assembleiaId !== "biblioteca"
+    ? `/documentos/${documentoId}?origem=sessao&sessaoId=${encodeURIComponent(documento.assembleiaId)}`
+    : `/documentos/${documentoId}?origem=biblioteca`;
 }
 
 export function rotaDocumentoCriado(documento: Pick<DocumentoCriado, "id">) {

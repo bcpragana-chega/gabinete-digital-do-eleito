@@ -80,7 +80,7 @@ export function resolverContextoAjuda(pathname: string): ContextoAjudaTribuno {
   if (path.startsWith("/biblioteca/") || path.startsWith("/documentos/"))
     return {
       pagina: "Detalhe de documento",
-      pathname: "/biblioteca/documentos/:documentoId",
+      pathname: "/documentos/:documentoId",
       descricao: "Permite consultar e rever um documento já existente.",
     };
   if (path === "/agenda")

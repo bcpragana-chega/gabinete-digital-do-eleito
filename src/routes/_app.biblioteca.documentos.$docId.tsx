@@ -1,20 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DocumentoDetalhePage } from "./_app.sessoes.$id.documentos.$docId";
+import { LegacyRedirect } from "./-legacy-redirect";
 
 export const Route = createFileRoute("/_app/biblioteca/documentos/$docId")({
-  head: () => ({
-    meta: [
-      { title: "Documento — Biblioteca — Tribuno" },
-      {
-        name: "description",
-        content: "Detalhe de documento da Biblioteca.",
-      },
-    ],
-  }),
-  component: BibliotecaDocumentoPage,
+  component: BibliotecaDocumentoRedirect,
 });
 
-function BibliotecaDocumentoPage() {
+function BibliotecaDocumentoRedirect() {
   const { docId } = Route.useParams();
-  return <DocumentoDetalhePage contextoId="biblioteca" docId={docId} />;
+  return <LegacyRedirect to="/documentos/$docId?origem=biblioteca" params={{ docId }} />;
 }

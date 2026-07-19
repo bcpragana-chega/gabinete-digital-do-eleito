@@ -258,6 +258,7 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
       void navigate({
         to: "/documentos/$documentoId",
         params: { documentoId: response.documento.id },
+        search: { origem: "assunto", assuntoId: dossieId },
       });
     } catch {
       setErroGeracao(mensagemErroGeracao("AI_GENERATION_ERROR"));
@@ -467,7 +468,11 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
                   {documento.assuntoId ? (
                     <Button asChild type="button" size="sm">
-                      <Link to="/documentos/$documentoId" params={{ documentoId: documento.id }}>
+                      <Link
+                        to="/documentos/$documentoId"
+                        params={{ documentoId: documento.id }}
+                        search={{ origem: "assunto", assuntoId: dossieId }}
+                      >
                         Abrir e rever
                       </Link>
                     </Button>

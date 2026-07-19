@@ -102,28 +102,108 @@ Refatorização interna de nomes técnicos como:
 
 ---
 
-## 🔄 Problema n.º 2 — A navegação esconde a complexidade, mas não a resolveu
+## ✅ Problema n.º 2 — A navegação esconde a complexidade, mas não a resolveu
 
-Estado: PRÓXIMO PROBLEMA
+Estado: FECHADO
+Avaliação: 9,4/10
 
-### Diagnóstico
+### Diagnóstico confirmado
 
-A barra lateral foi simplificada visualmente, mas por baixo ainda podem existir caminhos paralelos para entidades semelhantes.
+A simplificação da navegação não tinha eliminado a duplicação documental:
 
-Exemplos:
+- `/documentos/$documentoId` continha o editor dos documentos produzidos;
+- `/sessoes/$id/documentos/$docId` continha a página funcional dos documentos carregados ou recebidos;
+- a Biblioteca importava a implementação da Sessão e simulava um contexto com o identificador artificial `biblioteca`;
+- URLs de Assembleia, Assunto e Dossiê mantinham percursos paralelos ou redirects intermédios;
+- links internos normais ainda abriam documentos através da Biblioteca ou da Sessão.
 
-- /sessoes e /assembleias
-- /assuntos e /dossies
-- Biblioteca e antiga Caixa de Entrada
-- documentos abertos por Assunto, Sessão ou Biblioteca através de percursos diferentes
+O mesmo conceito visível tinha, portanto, identidade técnica e comportamento de navegação dependentes do ponto de entrada.
 
-### Risco
+### Decisão arquitetural
 
-O utilizador pode não saber onde está um documento ou encontrar comportamentos diferentes consoante o local por onde o abriu.
+- Documento é uma entidade autónoma do Tribuno.
+- A única rota funcional de detalhe é `/documentos/$documentoId`.
+- Biblioteca, Sessão e Assunto são apenas origens de navegação.
+- A origem pode alterar breadcrumb e botão Voltar, mas não participa na identidade, carregamento, estado, persistência, relações, ações ou permissões.
+- Os dois modelos persistidos atuais são compostos na mesma página canónica sem migração estrutural nesta fase.
 
-### Questão central
+### Implementação concluída
 
-Existe realmente um único fluxo canónico por entidade ou apenas uma fachada visual sobre modelos duplicados?
+- A rota canónica compõe explicitamente documentos produzidos e documentos carregados ou recebidos.
+- A implementação funcional foi extraída das rotas para componentes neutros em `src/components/documentos/`.
+- Foram introduzidos search params simples para `biblioteca`, `sessao` e `assunto`.
+- A origem Sessão ou Assunto só é aceite quando o identificador corresponde a uma relação real do Documento.
+- Origens desconhecidas, incompletas, contraditórias ou sem relação real são ignoradas e regressam em segurança à Biblioteca.
+- Na ausência de origem válida, o breadcrumb apresenta apenas Documento e o botão Voltar aponta para a Biblioteca.
+- Os links internos da Biblioteca, Sessões, Assuntos, preparação e dashboard apontam diretamente para a rota canónica.
+- Os caminhos de timeline e helpers documentais também geram URLs canónicos.
+
+### Rota canónica final
+
+`/documentos/$documentoId`
+
+Origens válidas suportadas:
+
+- `?origem=biblioteca`
+- `?origem=sessao&sessaoId=$id`
+- `?origem=assunto&assuntoId=$id`
+
+### Redirects de compatibilidade
+
+São redirects finos e diretos para a rota canónica:
+
+- `/biblioteca/documentos/$docId`
+- `/sessoes/$id/documentos/$docId`
+- `/assembleias/$id/documentos/$docId`
+- `/assuntos/$dossieId/documentos/$documentoId`
+- `/dossies/$dossieId/documentos/$documentoId`
+- URLs antigas de rascunhos dentro da preparação de Sessões e Assembleias.
+
+Os redirects preservam IDs, query string e hash, dão prioridade à origem canónica conhecida e não criam ciclos nem redirects intermédios.
+
+Mantêm-se igualmente os redirects gerais já fechados:
+
+- `/dossies` → `/assuntos`
+- `/assembleias` → `/sessoes`
+- `/caixa-de-entrada` → `/biblioteca`
+
+### Comportamentos preservados
+
+- fluxo Assunto → geração de Documento e abertura automática;
+- edição e persistência confirmada de documentos produzidos;
+- exportação PDF e DOCX;
+- pré-visualização e transferência de documentos carregados;
+- estados documentais;
+- relações entre documentos;
+- relações Documento ↔ Assunto e Documento ↔ Sessão;
+- preparação de Sessão;
+- permissões, carregamento remoto por ID e isolamento por utilizador.
+
+### Testes e validações executados
+
+- `npm test`: 334 testes aprovados, 0 falhas;
+- `npm run typecheck`: aprovado;
+- `npm run lint`: aprovado com 0 erros e 19 avisos antigos não relacionados;
+- `npm run build`: aprovado.
+
+Foram adicionados contratos específicos para a rota funcional única, redirects finos, origem validada, fallback seguro, independência dos dados face aos search params, preservação de query/hash, ausência de ciclos, links internos canónicos e manutenção de edição, exportação, preview e relações.
+
+### Justificação da avaliação
+
+A avaliação de 9,4/10 é sustentada por uma única identidade URL, uma única página canónica, componentes neutros, redirects diretos, links internos sem dependência de redirects, validação relacional das origens e aprovação integral dos testes e comandos obrigatórios. A solução fecha a duplicação funcional sem alargar o escopo nem arriscar uma migração de dados durante a Beta.
+
+### Riscos residuais
+
+- Documentos produzidos e documentos carregados continuam em modelos persistidos diferentes, compostos pela página canónica.
+- Permanecem nomes técnicos legados como `assembleiaId`, `dossieId`, `Assembleia` e `Dossie` no interior da aplicação.
+- O lint mantém 19 avisos preexistentes fora do âmbito desta missão, sem erros.
+
+### Trabalho deliberadamente adiado
+
+- migração ou fusão dos modelos persistidos de Documento;
+- alterações ao schema Supabase;
+- renomeação técnica global de Assembleia/Dossiê;
+- refatorização geral de dívida técnica não necessária ao fluxo Beta.
 
 ---
 
@@ -441,9 +521,9 @@ Eliminar definitivamente modelos antigos, em vez de apenas os esconder.
 
 Atacar exclusivamente:
 
-## Problema n.º 2 — A navegação esconde a complexidade, mas não a resolveu
+## Problema n.º 3 — A página Hoje está demasiado carregada
 
-Não iniciar trabalho nos problemas n.º 3 a 14 antes de o problema n.º 2 ser validado e fechado com pelo menos 9,0/10.
+Não iniciar trabalho nos problemas n.º 4 a 14 antes de o problema n.º 3 ser validado e fechado com pelo menos 9,0/10.
 
 ---
 

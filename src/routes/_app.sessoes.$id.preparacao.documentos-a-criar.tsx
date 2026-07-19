@@ -200,7 +200,12 @@ function DocumentoACriarCentralCard({
   );
 
   return (
-    <Link to="/documentos/$documentoId" params={{ documentoId: rascunho.id }} className="block">
+    <Link
+      to="/documentos/$documentoId"
+      params={{ documentoId: rascunho.id }}
+      search={{ origem: "sessao", sessaoId: rascunho.assembleiaId }}
+      className="block"
+    >
       {content}
     </Link>
   );

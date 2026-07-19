@@ -11,6 +11,10 @@ describe("composição das rotas de Assunto", () => {
   const layout = fonte("_app.assuntos.$dossieId.tsx");
   const index = fonte("_app.assuntos.$dossieId.index.tsx");
   const editor = fonte("_app.documentos.$documentoId.tsx");
+  const editorCriado = readFileSync(
+    resolve(process.cwd(), "src/components/documentos/DocumentoCriadoDetalhe.tsx"),
+    "utf8",
+  );
   const documentosAssunto = readFileSync(
     resolve(process.cwd(), "src/components/dossies/DossieDocumentosCriadosSection.tsx"),
     "utf8",
@@ -39,12 +43,14 @@ describe("composição das rotas de Assunto", () => {
     assert.match(index, /<DossieDocumentosCriadosSection dossieId=\{dossie\.id\}/);
   });
 
-  it("rota canónica monta apenas o editor documental e a antiga redireciona", () => {
+  it("rota canónica compõe o detalhe documental e as antigas redirecionam", () => {
     assert.match(editor, /createFileRoute\("\/_app\/documentos\/\$documentoId"\)/);
     assert.doesNotMatch(editor, /DossieDocumentosCriadosSection|function DossieDetalhePage/);
-    assert.match(legado, /to="\/documentos\/\$documentoId"/);
-    assert.match(legadoDossie, /to="\/documentos\/\$documentoId"/);
-    assert.match(legadoSessao, /to="\/documentos\/\$documentoId"/);
+    assert.match(editor, /DocumentoCriadoDetalhe/);
+    assert.match(editor, /DocumentoRecebidoDetalhe/);
+    assert.match(legado, /to="\/documentos\/\$documentoId\?origem=assunto/);
+    assert.match(legadoDossie, /to="\/documentos\/\$documentoId\?origem=assunto/);
+    assert.match(legadoSessao, /to="\/documentos\/\$documentoId\?origem=sessao/);
   });
 
   it("criação confirmada abre o editor canónico e bloqueia cliques repetidos", () => {
@@ -68,10 +74,10 @@ describe("composição das rotas de Assunto", () => {
   });
 
   it("editor apresenta loading e estados recuperáveis em vez de página vazia", () => {
-    assert.match(editor, /A carregar documento\.\.\./);
-    assert.match(editor, /Tentar novamente/);
-    assert.match(editor, /O documento não foi encontrado\./);
-    assert.doesNotMatch(editor, /if \(!documento\) \{\s+return null;/);
+    assert.match(editorCriado, /A carregar documento\.\.\./);
+    assert.match(editorCriado, /Tentar novamente/);
+    assert.match(editorCriado, /O documento não foi encontrado\./);
+    assert.doesNotMatch(editorCriado, /if \(!documento\) \{\s+return null;/);
   });
 
   it("permite navegar Sessão → Assunto → Sessão e criar um Assunto já associado", () => {

@@ -8,7 +8,12 @@ export const Route = createFileRoute(
 });
 
 function PreparacaoDocumentoRedirect() {
-  const { rascunhoId } = Route.useParams();
+  const { id, rascunhoId } = Route.useParams();
 
-  return <LegacyRedirect to="/documentos/$documentoId" params={{ documentoId: rascunhoId }} />;
+  return (
+    <LegacyRedirect
+      to="/documentos/$documentoId?origem=sessao&sessaoId=$id"
+      params={{ documentoId: rascunhoId, id }}
+    />
+  );
 }
