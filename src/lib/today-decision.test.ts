@@ -314,6 +314,60 @@ describe("motor de decisão da página Hoje", () => {
     }
   });
 
+  it("volta a sinalizar em Hoje quando um novo acontecimento reabre o acompanhamento", () => {
+    const fechado = decideToday(
+      input({
+        nextSession: undefined,
+        politicalFollowUps: [
+          {
+            id: "resolucao",
+            subjectId: "s1",
+            subjectTitle: "Mobilidade",
+            state: "resolvido",
+            nextActionAt: "2026-08-01",
+          },
+        ],
+      }),
+    );
+    const reaberto = decideToday(
+      input({
+        nextSession: undefined,
+        politicalFollowUps: [
+          {
+            id: "nova-insistencia",
+            subjectId: "s1",
+            subjectTitle: "Mobilidade",
+            state: "a_aguardar",
+            nextActionAt: "2026-08-01",
+          },
+        ],
+      }),
+    );
+
+    assert.equal(fechado.state, "clear");
+    assert.equal(reaberto.primaryAction?.id, "due-next-action-nova-insistencia");
+  });
+
+  it("reflete em Hoje a correção de prazo ou próxima ação do acontecimento atual", () => {
+    for (const detalhes of [{ deadline: "2026-07-31" }, { nextActionAt: "2026-08-01" }]) {
+      const decision = decideToday(
+        input({
+          nextSession: undefined,
+          politicalFollowUps: [
+            {
+              id: "a-editado",
+              subjectId: "s1",
+              subjectTitle: "Mobilidade",
+              state: "a_aguardar",
+              ...detalhes,
+            },
+          ],
+        }),
+      );
+      assert.notEqual(decision.state, "clear");
+    }
+  });
+
   it("não duplica um acompanhamento com prazo e próxima ação vencidos", () => {
     const decision = decideToday(
       input({

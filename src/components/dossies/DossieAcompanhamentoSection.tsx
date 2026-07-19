@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { CheckCircle2, Clock3, Plus, Save, X, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3, Pencil, Plus, Save, X, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InfoCard } from "@/components/ui/cards";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { WorkspaceSection } from "@/components/ui/workspace";
 import {
   documentosAssociaveisAoAcompanhamento,
+  editarDetalhesAcontecimento,
   encerrarAcompanhamento,
   registarAcontecimento,
   resolverAcompanhamento,
@@ -25,7 +26,11 @@ import {
   acompanhamentoEncerrado,
   obterEstadoAtualAcompanhamento,
 } from "@/lib/acompanhamento-politico";
-import type { TipoAcompanhamentoPolitico } from "@/lib/types";
+import type {
+  AcompanhamentoPolitico,
+  DocumentoCriado,
+  TipoAcompanhamentoPolitico,
+} from "@/lib/types";
 
 const tipos: Array<{ value: TipoAcompanhamentoPolitico; label: string }> = [
   { value: "entrega", label: "Entrega" },
@@ -106,7 +111,7 @@ export function DossieAcompanhamentoSection({ dossieId }: { dossieId: string }) 
       id="acompanhamento"
       className="scroll-mt-24"
       actions={
-        !aberto && !fechado ? (
+        !aberto ? (
           <Button type="button" variant="secondary" size="sm" onClick={() => setAberto(true)}>
             <Plus className="mr-2 h-4 w-4" /> Registar acontecimento
           </Button>
@@ -325,34 +330,184 @@ export function DossieAcompanhamentoSection({ dossieId }: { dossieId: string }) 
           </p>
         ) : (
           eventos.map((evento) => (
-            <TimelineItem
-              key={evento.id}
-              icon={evento.tipo === "resolucao" ? CheckCircle2 : Clock3}
-              title={tipos.find((item) => item.value === evento.tipo)?.label ?? "Resolução"}
-              description={evento.descricao}
-              meta={`${formatarData(evento.data)} · ${labelsEstado[evento.estado]}`}
-            >
-              <div className="mt-2 flex flex-wrap gap-2">
-                {evento.destinatario && (
-                  <StatusBadge tone="muted" dot={false}>
-                    {evento.destinatario}
-                  </StatusBadge>
-                )}
-                {evento.prazo && (
-                  <StatusBadge tone="warning" dot={false}>
-                    Prazo: {formatarData(evento.prazo)}
-                  </StatusBadge>
-                )}
-                {evento.proximaAcaoEm && (
-                  <StatusBadge tone="info" dot={false}>
-                    Próxima ação: {formatarData(evento.proximaAcaoEm)}
-                  </StatusBadge>
-                )}
-              </div>
-            </TimelineItem>
+            <AcontecimentoTimelineItem key={evento.id} evento={evento} documentos={documentos} />
           ))
         )}
       </Timeline>
     </WorkspaceSection>
+  );
+}
+
+function AcontecimentoTimelineItem({
+  evento,
+  documentos,
+}: {
+  evento: AcompanhamentoPolitico;
+  documentos: DocumentoCriado[];
+}) {
+  const [aEditar, setAEditar] = useState(false);
+  const [descricao, setDescricao] = useState(evento.descricao);
+  const [destinatario, setDestinatario] = useState(evento.destinatario ?? "");
+  const [prazo, setPrazo] = useState(evento.prazo ?? "");
+  const [proximaAcaoEm, setProximaAcaoEm] = useState(evento.proximaAcaoEm ?? "");
+  const [documentoId, setDocumentoId] = useState(evento.documentoCriadoId ?? "sem-documento");
+  const [aGuardar, setAGuardar] = useState(false);
+  const [erro, setErro] = useState("");
+
+  function cancelar() {
+    setDescricao(evento.descricao);
+    setDestinatario(evento.destinatario ?? "");
+    setPrazo(evento.prazo ?? "");
+    setProximaAcaoEm(evento.proximaAcaoEm ?? "");
+    setDocumentoId(evento.documentoCriadoId ?? "sem-documento");
+    setErro("");
+    setAEditar(false);
+  }
+
+  async function guardar() {
+    if (aGuardar || !descricao.trim()) return;
+    setAGuardar(true);
+    setErro("");
+    try {
+      await editarDetalhesAcontecimento(evento.id, {
+        descricao,
+        destinatario,
+        prazo,
+        proximaAcaoEm,
+        documentoCriadoId: documentoId === "sem-documento" ? undefined : documentoId,
+      });
+      setAEditar(false);
+    } catch {
+      setErro("Não foi possível guardar as alterações. Tenta novamente.");
+    } finally {
+      setAGuardar(false);
+    }
+  }
+
+  return (
+    <TimelineItem
+      icon={evento.tipo === "resolucao" ? CheckCircle2 : Clock3}
+      title={tipos.find((item) => item.value === evento.tipo)?.label ?? "Resolução"}
+      description={evento.descricao}
+      meta={`${formatarData(evento.data)} · ${labelsEstado[evento.estado]}`}
+    >
+      {!aEditar ? (
+        <>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {evento.destinatario && (
+              <StatusBadge tone="muted" dot={false}>
+                {evento.destinatario}
+              </StatusBadge>
+            )}
+            {evento.prazo && (
+              <StatusBadge tone="warning" dot={false}>
+                Prazo: {formatarData(evento.prazo)}
+              </StatusBadge>
+            )}
+            {evento.proximaAcaoEm && (
+              <StatusBadge tone="info" dot={false}>
+                Próxima ação: {formatarData(evento.proximaAcaoEm)}
+              </StatusBadge>
+            )}
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="mt-1 h-7 px-2 text-xs text-muted-foreground"
+            onClick={() => setAEditar(true)}
+          >
+            <Pencil className="mr-1.5 h-3 w-3" />
+            Editar detalhes
+          </Button>
+        </>
+      ) : (
+        <div className="mt-3 rounded-lg border border-border/70 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">
+            O tipo, a data e o estado deste acontecimento não podem ser alterados.
+          </p>
+          <div className="mt-3 space-y-2">
+            <label htmlFor={`descricao-${evento.id}`} className="text-xs font-medium">
+              Descrição
+            </label>
+            <Textarea
+              id={`descricao-${evento.id}`}
+              value={descricao}
+              onChange={(item) => setDescricao(item.target.value)}
+              className="min-h-20"
+            />
+          </div>
+          <div className="mt-3 space-y-2">
+            <label htmlFor={`destinatario-${evento.id}`} className="text-xs font-medium">
+              Destinatário (opcional)
+            </label>
+            <Input
+              id={`destinatario-${evento.id}`}
+              value={destinatario}
+              onChange={(item) => setDestinatario(item.target.value)}
+            />
+          </div>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+              <label htmlFor={`prazo-${evento.id}`} className="text-xs font-medium">
+                Prazo (opcional)
+              </label>
+              <Input
+                id={`prazo-${evento.id}`}
+                type="date"
+                value={prazo}
+                onChange={(item) => setPrazo(item.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor={`proxima-${evento.id}`} className="text-xs font-medium">
+                Próxima ação (opcional)
+              </label>
+              <Input
+                id={`proxima-${evento.id}`}
+                type="date"
+                value={proximaAcaoEm}
+                onChange={(item) => setProximaAcaoEm(item.target.value)}
+              />
+            </div>
+          </div>
+          <div className="mt-3 space-y-2">
+            <label className="text-xs font-medium">Documento associado (opcional)</label>
+            <Select value={documentoId} onValueChange={setDocumentoId}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sem-documento">Sem documento associado</SelectItem>
+                {documentos.map((documento) => (
+                  <SelectItem key={documento.id} value={documento.id}>
+                    {documento.titulo}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {erro && (
+            <p role="alert" className="mt-3 text-sm text-destructive">
+              {erro}
+            </p>
+          )}
+          <div className="mt-3 flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={cancelar}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!descricao.trim() || aGuardar}
+              onClick={() => void guardar()}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {aGuardar ? "A guardar…" : "Guardar alterações"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </TimelineItem>
   );
 }

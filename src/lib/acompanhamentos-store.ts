@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import {
+  aplicarDetalhesAcompanhamento,
   estadoAposAcontecimento,
   obterEstadoAtualAcompanhamento,
   ordenarAcompanhamentos,
   type AcompanhamentoPoliticoInput,
+  type DetalhesAcompanhamentoPoliticoInput,
 } from "@/lib/acompanhamento-politico";
 import {
+  atualizarDetalhesAcompanhamentoRemoto,
   guardarAcompanhamentoRemoto,
   listarAcompanhamentosRemotos,
   persistenciaLocalAcompanhamentosPermitida,
@@ -108,6 +111,45 @@ export async function registarAcontecimento(assuntoId: string, input: Acompanham
       cachePorUtilizador.set(ownerId, [...atuais.filter((item) => item.id !== evento.id), evento]);
       emitir();
       return evento;
+    },
+  });
+}
+
+export async function editarDetalhesAcontecimento(
+  eventoId: string,
+  input: DetalhesAcompanhamentoPoliticoInput,
+) {
+  const ownerId = await userId();
+  const atuais = cachePorUtilizador.get(ownerId) ?? [];
+  const existente = atuais.find((item) => item.id === eventoId);
+  if (!existente) throw new Error("ACOMPANHAMENTO_NOT_FOUND_OR_FORBIDDEN");
+
+  const atualizado = aplicarDetalhesAcompanhamento(existente, input, new Date().toISOString());
+  if (persistenciaLocalAcompanhamentosPermitida()) {
+    const atualizados = atuais.map((item) => (item.id === eventoId ? atualizado : item));
+    guardarJSONParaUtilizador(STORAGE_KEY, ownerId, atualizados);
+    cachePorUtilizador.set(ownerId, atualizados);
+    emitir();
+    return atualizado;
+  }
+
+  let confirmado: AcompanhamentoPolitico | undefined;
+  return executarMutacaoIsolada({
+    userId: ownerId,
+    persistirRemoto: async (id) => {
+      confirmado = await atualizarDetalhesAcompanhamentoRemoto(id, eventoId, input);
+    },
+    obterUserIdAtivo: async () => (await obterUtilizadorSupabaseValidado())?.id,
+    confirmarLocal: () => {
+      const eventoConfirmado = confirmado;
+      if (!eventoConfirmado) throw new Error("ACOMPANHAMENTO_UPDATE_NOT_CONFIRMED");
+      const atuaisDoOwner = cachePorUtilizador.get(ownerId) ?? [];
+      cachePorUtilizador.set(
+        ownerId,
+        atuaisDoOwner.map((item) => (item.id === eventoId ? eventoConfirmado : item)),
+      );
+      emitir();
+      return eventoConfirmado;
     },
   });
 }

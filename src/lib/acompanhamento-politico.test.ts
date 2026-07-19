@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  aplicarDetalhesAcompanhamento,
   estadoAposAcontecimento,
   obterEstadoAtualAcompanhamento,
   ordenarAcompanhamentos,
 } from "./acompanhamento-politico";
-import { mapearAcompanhamento, type AcompanhamentoRow } from "./acompanhamentos-repository";
+import {
+  mapearAcompanhamento,
+  paraDetalhesAcompanhamentoRow,
+  type AcompanhamentoRow,
+} from "./acompanhamentos-repository";
 import { executarMutacaoConfirmada } from "./confirmed-mutation";
 import type { AcompanhamentoPolitico } from "./types";
 
@@ -103,6 +108,62 @@ describe("acompanhamento político", () => {
     );
   });
 
+  it("reabre um acompanhamento resolvido com uma nova insistência sem planeamento", () => {
+    const historico = [evento({ tipo: "resolucao", estado: "resolvido" })];
+    const novo = evento({
+      id: "a2",
+      tipo: "insistencia",
+      data: "2026-07-02",
+      createdAt: "2026-07-02T10:00:00Z",
+      estado: estadoAposAcontecimento(
+        { tipo: "insistencia", data: "2026-07-02", descricao: "Nova insistência" },
+        obterEstadoAtualAcompanhamento(historico),
+      ),
+    });
+    const reaberto = [...historico, novo];
+
+    assert.equal(obterEstadoAtualAcompanhamento(reaberto), "exige_acao");
+    assert.equal(reaberto.length, 2);
+    assert.equal(reaberto[0].estado, "resolvido");
+  });
+
+  it("reabre um acompanhamento resolvido com insistência planeada", () => {
+    assert.equal(
+      estadoAposAcontecimento(
+        {
+          tipo: "insistencia",
+          data: "2026-07-02",
+          descricao: "Insistir novamente",
+          proximaAcaoEm: "2026-07-10",
+        },
+        "resolvido",
+      ),
+      "a_aguardar",
+    );
+  });
+
+  it("reabre um encerramento sem resolução quando chega nova resposta", () => {
+    assert.equal(
+      estadoAposAcontecimento(
+        { tipo: "resposta", data: "2026-07-02", descricao: "Resposta recebida" },
+        "encerrado_sem_resolucao",
+      ),
+      "resposta_recebida",
+    );
+  });
+
+  it("preserva resolução e encerramento quando o novo acontecimento é apenas uma nota", () => {
+    for (const terminal of ["resolvido", "encerrado_sem_resolucao"] as const) {
+      assert.equal(
+        estadoAposAcontecimento(
+          { tipo: "nota", data: "2026-07-02", descricao: "Contexto adicional" },
+          terminal,
+        ),
+        terminal,
+      );
+    }
+  });
+
   it("marca resolução e encerramento sem apagar a cronologia", () => {
     const historico = [
       evento(),
@@ -147,5 +208,90 @@ describe("acompanhamento político", () => {
       }),
     );
     assert.equal(confirmou, false);
+  });
+
+  it("edita apenas detalhes e preserva tipo, data, estado, criação e identidade", () => {
+    const original = evento({
+      documentoCriadoId: "d1",
+      destinatario: "Executivo",
+      prazo: "2026-07-08",
+      proximaAcaoEm: "2026-07-09",
+    });
+    const atualizado = aplicarDetalhesAcompanhamento(
+      original,
+      {
+        descricao: "  Descrição corrigida  ",
+        destinatario: "  Assembleia  ",
+        prazo: "2026-07-12",
+        proximaAcaoEm: "2026-07-13",
+        documentoCriadoId: "d2",
+      },
+      "2026-07-03T10:00:00Z",
+    );
+
+    assert.deepEqual(
+      {
+        descricao: atualizado.descricao,
+        destinatario: atualizado.destinatario,
+        prazo: atualizado.prazo,
+        proximaAcaoEm: atualizado.proximaAcaoEm,
+        documentoCriadoId: atualizado.documentoCriadoId,
+        updatedAt: atualizado.updatedAt,
+      },
+      {
+        descricao: "Descrição corrigida",
+        destinatario: "Assembleia",
+        prazo: "2026-07-12",
+        proximaAcaoEm: "2026-07-13",
+        documentoCriadoId: "d2",
+        updatedAt: "2026-07-03T10:00:00Z",
+      },
+    );
+    assert.deepEqual(
+      {
+        id: atualizado.id,
+        assuntoId: atualizado.assuntoId,
+        tipo: atualizado.tipo,
+        data: atualizado.data,
+        estado: atualizado.estado,
+        createdAt: atualizado.createdAt,
+      },
+      {
+        id: original.id,
+        assuntoId: original.assuntoId,
+        tipo: original.tipo,
+        data: original.data,
+        estado: original.estado,
+        createdAt: original.createdAt,
+      },
+    );
+  });
+
+  it("envia para persistência apenas os cinco campos editáveis", () => {
+    const row = paraDetalhesAcompanhamentoRow({
+      descricao: "Correção",
+      destinatario: "Executivo",
+      prazo: "2026-07-12",
+      proximaAcaoEm: "2026-07-13",
+      documentoCriadoId: "d2",
+    });
+    assert.deepEqual(Object.keys(row).sort(), [
+      "descricao",
+      "destinatario",
+      "documento_criado_id",
+      "prazo",
+      "proxima_acao_em",
+    ]);
+    assert.ok(!("tipo" in row));
+    assert.ok(!("data" in row));
+    assert.ok(!("estado" in row));
+    assert.ok(!("created_at" in row));
+  });
+
+  it("rejeita uma correção com descrição vazia", () => {
+    assert.throws(
+      () => aplicarDetalhesAcompanhamento(evento(), { descricao: "   " }, "2026-07-03T10:00:00Z"),
+      /ACOMPANHAMENTO_DESCRICAO_REQUIRED/,
+    );
   });
 });

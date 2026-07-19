@@ -1,6 +1,7 @@
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
 import { obterStorageStatus } from "@/lib/storage-provider";
 import type { AcompanhamentoPolitico } from "@/lib/types";
+import type { DetalhesAcompanhamentoPoliticoInput } from "@/lib/acompanhamento-politico";
 
 export type AcompanhamentoRow = {
   id: string;
@@ -106,6 +107,39 @@ export async function guardarAcompanhamentoRemoto(userId: string, evento: Acompa
   if (error) throw error;
   if (!data || data.user_id !== contexto.userId || data.id !== evento.id) {
     throw new Error("ACOMPANHAMENTO_SAVE_NOT_CONFIRMED");
+  }
+  return mapearAcompanhamento(data as AcompanhamentoRow);
+}
+
+export function paraDetalhesAcompanhamentoRow(input: DetalhesAcompanhamentoPoliticoInput) {
+  return {
+    descricao: input.descricao.trim(),
+    destinatario: input.destinatario?.trim() || null,
+    prazo: input.prazo || null,
+    proxima_acao_em: input.proximaAcaoEm || null,
+    documento_criado_id: input.documentoCriadoId || null,
+  };
+}
+
+export async function atualizarDetalhesAcompanhamentoRemoto(
+  userId: string,
+  eventoId: string,
+  input: DetalhesAcompanhamentoPoliticoInput,
+) {
+  const contexto = await contextoRemoto(userId);
+  const { data, error } = await withSupabaseTimeout(
+    contexto.supabase
+      .from("acompanhamentos_politicos")
+      .update(paraDetalhesAcompanhamentoRow(input))
+      .eq("id", eventoId)
+      .eq("user_id", contexto.userId)
+      .select("*")
+      .single(),
+    "ACOMPANHAMENTOS_UPDATE_DETAILS",
+  );
+  if (error) throw error;
+  if (!data || data.user_id !== contexto.userId || data.id !== eventoId) {
+    throw new Error("ACOMPANHAMENTO_UPDATE_NOT_CONFIRMED");
   }
   return mapearAcompanhamento(data as AcompanhamentoRow);
 }

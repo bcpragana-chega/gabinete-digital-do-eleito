@@ -15,6 +15,11 @@ export type AcompanhamentoPoliticoInput = {
   estado?: EstadoAcompanhamentoPolitico;
 };
 
+export type DetalhesAcompanhamentoPoliticoInput = Pick<
+  AcompanhamentoPoliticoInput,
+  "descricao" | "documentoCriadoId" | "destinatario" | "prazo" | "proximaAcaoEm"
+>;
+
 export function ordenarAcompanhamentos(
   eventos: AcompanhamentoPolitico[],
 ): AcompanhamentoPolitico[] {
@@ -50,4 +55,23 @@ export function estadoAposAcontecimento(
 
 export function acompanhamentoEncerrado(estado: EstadoAcompanhamentoPolitico) {
   return estado === "resolvido" || estado === "encerrado_sem_resolucao";
+}
+
+export function aplicarDetalhesAcompanhamento(
+  evento: AcompanhamentoPolitico,
+  input: DetalhesAcompanhamentoPoliticoInput,
+  updatedAt: string,
+): AcompanhamentoPolitico {
+  const descricao = input.descricao.trim();
+  if (!descricao) throw new Error("ACOMPANHAMENTO_DESCRICAO_REQUIRED");
+
+  return {
+    ...evento,
+    descricao,
+    documentoCriadoId: input.documentoCriadoId || undefined,
+    destinatario: input.destinatario?.trim() || undefined,
+    prazo: input.prazo || undefined,
+    proximaAcaoEm: input.proximaAcaoEm || undefined,
+    updatedAt,
+  };
 }
