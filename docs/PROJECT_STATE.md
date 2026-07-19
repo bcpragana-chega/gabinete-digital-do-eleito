@@ -584,7 +584,7 @@ importância continua temporariamente dependente do codec reservado em `tags`.
 
 ---
 
-## ⏳ Problema n.º 8 — O progresso da preparação pode transmitir falsa segurança
+## ✅ Problema n.º 8 — O progresso da preparação pode transmitir falsa segurança
 
 Estado: PENDENTE
 
