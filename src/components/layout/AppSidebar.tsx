@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { isSidebarItemActive, sidebarItems } from "@/components/layout/sidebar-config";
+import { HelpAssistantPanel } from "@/components/help/HelpAssistantPanel";
 import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
@@ -42,6 +43,10 @@ export function AppSidebar() {
           );
         })}
       </nav>
+
+      <div className="border-t border-border/60 pt-3">
+        <HelpAssistantPanel pathname={pathname} />
+      </div>
     </aside>
   );
 }

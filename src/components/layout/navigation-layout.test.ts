@@ -83,6 +83,8 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.doesNotMatch(sidebarConfig, /sidebarFooterItems|\/definicoes|Settings/);
     assert.doesNotMatch(sidebar, /Definições|Terminar sessão|LogoutConfirmDialog|LogOut/);
     assert.match(sidebar, /sidebarItems\.map/);
+    assert.match(sidebar, /border-t[\s\S]*HelpAssistantPanel/);
+    assert.doesNotMatch(sidebarConfig, /Ajuda|HelpAssistantPanel/);
   });
 
   it("menu móvel não repete definições nem logout", () => {

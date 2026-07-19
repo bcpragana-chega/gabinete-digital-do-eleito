@@ -125,6 +125,7 @@ export type RespostaGeracaoAi = {
 export interface AiProvider {
   readonly name: string;
   gerarDocumento(input: PedidoGeracaoAi): Promise<RespostaGeracaoAi>;
+  gerarResposta(input: PedidoGeracaoAi): Promise<RespostaGeracaoAi>;
 }
 
 export type ResultadoGeracaoDocumento =

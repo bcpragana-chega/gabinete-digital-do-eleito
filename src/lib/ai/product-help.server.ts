@@ -1,0 +1,171 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { criarAiProvider } from "@/lib/ai/provider";
+import {
+  BASE_CONHECIMENTO_AJUDA,
+  pedidoForaDoAmbito,
+  respostaParaPedidoForaDoAmbito,
+  resolverContextoAjuda,
+  SYSTEM_PROMPT_AJUDA,
+} from "@/lib/ai/product-help";
+
+const mensagemSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().trim().min(1).max(1000),
+});
+
+export const pedidoAjudaSchema = z.object({
+  accessToken: z.string().min(1).max(8192),
+  pathname: z.string().min(1).max(300),
+  messages: z.array(mensagemSchema).min(1).max(8),
+});
+
+export type MensagemAjuda = z.infer<typeof mensagemSchema>;
+export type PedidoAjuda = z.infer<typeof pedidoAjudaSchema>;
+
+export type ResultadoAjuda =
+  | { ok: true; answer: string }
+  | { ok: false; code: string; message: string };
+
+type DependenciasAjuda = {
+  autenticar: (accessToken: string) => Promise<string | undefined>;
+  responder: (input: {
+    systemPrompt: string;
+    userPrompt: string;
+    maxOutputTokens: number;
+  }) => Promise<string>;
+};
+
+function env(name: string) {
+  return process.env[name]?.trim();
+}
+
+async function autenticarPedidoAjuda(accessToken: string) {
+  const supabaseUrl = env("SUPABASE_URL") ?? env("VITE_SUPABASE_URL");
+  const serviceRole = env("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRole) throw new Error("SUPABASE_SERVER_CONFIG_MISSING");
+
+  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/user`, {
+    headers: {
+      apikey: serviceRole,
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+  if (!response.ok) return undefined;
+  const user = (await response.json()) as { id?: unknown };
+  return typeof user.id === "string" && user.id.trim() ? user.id : undefined;
+}
+
+export function construirPromptAjuda(pathname: string, messages: MensagemAjuda[]) {
+  const contexto = resolverContextoAjuda(pathname);
+  const historico = messages
+    .slice(-8)
+    .map(
+      (message) => `${message.role === "user" ? "UTILIZADOR" : "ASSISTENTE"}: ${message.content}`,
+    )
+    .join("\n");
+
+  return [
+    "CONTEXTO CONTROLADO DA PÁGINA",
+    `Página: ${contexto.pagina}`,
+    `Pathname normalizado: ${contexto.pathname}`,
+    `Funções disponíveis: ${contexto.descricao}`,
+    "",
+    "BASE DE CONHECIMENTO CONTROLADA",
+    BASE_CONHECIMENTO_AJUDA,
+    "",
+    "CONVERSA LIMITADA",
+    historico,
+  ].join("\n");
+}
+
+export async function executarPedidoAjuda(
+  input: PedidoAjuda,
+  deps: DependenciasAjuda,
+): Promise<ResultadoAjuda> {
+  const userId = await deps.autenticar(input.accessToken);
+  if (!userId)
+    return {
+      ok: false,
+      code: "AUTH_REQUIRED",
+      message: "A sua sessão expirou. Inicie sessão novamente.",
+    };
+
+  const ultimaPergunta = [...input.messages].reverse().find((message) => message.role === "user");
+  if (!ultimaPergunta)
+    return { ok: false, code: "INVALID_INPUT", message: "Escreva uma pergunta sobre o Tribuno." };
+
+  if (pedidoForaDoAmbito(ultimaPergunta.content)) {
+    return { ok: true, answer: respostaParaPedidoForaDoAmbito(ultimaPergunta.content) };
+  }
+
+  const answer = (
+    await deps.responder({
+      systemPrompt: SYSTEM_PROMPT_AJUDA,
+      userPrompt: construirPromptAjuda(input.pathname, input.messages),
+      maxOutputTokens: 500,
+    })
+  )
+    .trim()
+    .slice(0, 1200);
+
+  if (!answer)
+    return {
+      ok: false,
+      code: "EMPTY_RESPONSE",
+      message: "Não foi possível obter uma resposta. Tente novamente.",
+    };
+  return { ok: true, answer };
+}
+
+export function registarResultadoAjuda(input: {
+  status: "success" | "error";
+  durationMs: number;
+  messageCount: number;
+  errorCode?: string;
+}) {
+  console.info("[Tribuno Ajuda] Pedido concluído", {
+    operation: "product_help",
+    status: input.status,
+    durationMs: input.durationMs,
+    messageCount: input.messageCount,
+    errorCode: input.errorCode,
+  });
+}
+
+export const pedirAjudaTribuno = createServerFn({ method: "POST" })
+  .validator((input) => pedidoAjudaSchema.parse(input))
+  .handler(async ({ data }): Promise<ResultadoAjuda> => {
+    const inicio = Date.now();
+    try {
+      const result = await executarPedidoAjuda(data, {
+        autenticar: autenticarPedidoAjuda,
+        responder: async (input) => {
+          const provider = criarAiProvider();
+          const resposta = await provider.gerarResposta({ ...input, timeoutMs: 30_000 });
+          return resposta.texto;
+        },
+      });
+      registarResultadoAjuda({
+        status: result.ok ? "success" : "error",
+        durationMs: Date.now() - inicio,
+        messageCount: data.messages.length,
+        errorCode: result.ok ? undefined : result.code,
+      });
+      return result;
+    } catch (error) {
+      const code = error instanceof Error ? error.name : "HELP_FAILED";
+      registarResultadoAjuda({
+        status: "error",
+        durationMs: Date.now() - inicio,
+        messageCount: data.messages.length,
+        errorCode: code,
+      });
+      return {
+        ok: false,
+        code,
+        message: "Não foi possível contactar o assistente. Tente novamente.",
+      };
+    }
+  });

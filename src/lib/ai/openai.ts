@@ -198,6 +198,27 @@ export class OpenAiProvider implements AiProvider {
   }
 
   async gerarDocumento(input: PedidoGeracaoAi): Promise<RespostaGeracaoAi> {
+    return this.executarResposta(
+      {
+        ...input,
+        systemPrompt: construirInstructionsParaDocumento(input.systemPrompt),
+        maxOutputTokens: this.resolverMaxOutputTokens(
+          input.maxOutputTokens ?? this.maxOutputTokens,
+        ),
+      },
+      "generate_document",
+    );
+  }
+
+  async gerarResposta(input: PedidoGeracaoAi): Promise<RespostaGeracaoAi> {
+    const maxOutputTokens = Math.max(128, Math.min(1024, input.maxOutputTokens ?? 500));
+    return this.executarResposta({ ...input, maxOutputTokens }, "product_help");
+  }
+
+  private async executarResposta(
+    input: PedidoGeracaoAi,
+    operation: "generate_document" | "product_help",
+  ): Promise<RespostaGeracaoAi> {
     if (!this.apiKey) {
       throw erroComCodigo(
         "AI_CONFIG_MISSING",
@@ -216,12 +237,10 @@ export class OpenAiProvider implements AiProvider {
     const timeout = globalThis.setTimeout(() => controller.abort(), input.timeoutMs ?? 60_000);
 
     try {
-      const maxOutputTokens = this.resolverMaxOutputTokens(
-        input.maxOutputTokens ?? this.maxOutputTokens,
-      );
+      const maxOutputTokens = input.maxOutputTokens ?? this.maxOutputTokens;
       const payload: OpenAiResponsesPayload = {
         model: this.model,
-        instructions: construirInstructionsParaDocumento(input.systemPrompt),
+        instructions: input.systemPrompt,
         input: [
           {
             role: "user",
@@ -269,7 +288,7 @@ export class OpenAiProvider implements AiProvider {
           responseId: diagnostico.responseId,
           provider: this.name,
           model: this.model,
-          operation: "generate_document",
+          operation,
         });
       }
 
@@ -281,7 +300,7 @@ export class OpenAiProvider implements AiProvider {
           incompleteReason: diagnostico.incompleteReason,
           model: this.model,
           provider: this.name,
-          operation: "generate_document",
+          operation,
           maxOutputTokens,
         });
       }
@@ -290,13 +309,13 @@ export class OpenAiProvider implements AiProvider {
       if (!texto) {
         throw erroComCodigo(
           "AI_EMPTY_RESPONSE",
-          `A IA não devolveu conteúdo textual para o documento. Diagnóstico: responseId=${diagnostico.responseId ?? "n/a"}, status=${diagnostico.status ?? "n/a"}, hasOutputText=${diagnostico.hasOutputText}, outputTextLength=${diagnostico.outputTextLength}, outputItemTypes=${diagnostico.outputItemTypes.join(",") || "none"}${diagnostico.incompleteReason ? `, incompleteReason=${diagnostico.incompleteReason}` : ""}.`,
+          `A IA não devolveu conteúdo textual. Diagnóstico: responseId=${diagnostico.responseId ?? "n/a"}, status=${diagnostico.status ?? "n/a"}, hasOutputText=${diagnostico.hasOutputText}, outputTextLength=${diagnostico.outputTextLength}, outputItemTypes=${diagnostico.outputItemTypes.join(",") || "none"}${diagnostico.incompleteReason ? `, incompleteReason=${diagnostico.incompleteReason}` : ""}.`,
           {
             status: response.status,
             responseId: diagnostico.responseId,
             provider: this.name,
             model: this.model,
-            operation: "generate_document",
+            operation,
           },
         );
       }
@@ -344,7 +363,7 @@ export class OpenAiProvider implements AiProvider {
         throw erroComCodigo("AI_TIMEOUT", "A geração excedeu o tempo limite configurado.", {
           provider: this.name,
           model: this.model,
-          operation: "generate_document",
+          operation,
         });
       }
 

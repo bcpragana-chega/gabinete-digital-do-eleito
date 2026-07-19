@@ -1,0 +1,61 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { describe, it } from "node:test";
+import {
+  MENSAGEM_ERRO_AJUDA,
+  podeEnviarMensagemAjuda,
+  SUGESTOES_AJUDA,
+} from "./HelpAssistantPanel";
+
+const panel = readFileSync(new URL("./HelpAssistantPanel.tsx", import.meta.url), "utf8");
+const sidebar = readFileSync(new URL("../layout/AppSidebar.tsx", import.meta.url), "utf8");
+const sidebarConfig = readFileSync(new URL("../layout/sidebar-config.ts", import.meta.url), "utf8");
+const sheet = readFileSync(new URL("../ui/sheet.tsx", import.meta.url), "utf8");
+
+describe("painel do Assistente Tribuno", () => {
+  it("coloca Ajuda no fundo da sidebar e fora da navegação principal", () => {
+    assert.match(sidebar, /border-t[\s\S]*<HelpAssistantPanel pathname=\{pathname\}/);
+    assert.doesNotMatch(sidebarConfig, /Ajuda|CircleHelp|HelpAssistantPanel/);
+  });
+
+  it("abre e fecha com Sheet, overlay e Escape acessíveis", () => {
+    assert.match(panel, /<Sheet open=\{open\} onOpenChange=\{alterarAbertura\}>/);
+    assert.match(panel, /aria-label="Abrir Assistente Tribuno"/);
+    assert.match(panel, /overlayClassName="bg-black\/25"/);
+    assert.match(panel, /closeLabel="Fechar Assistente Tribuno"/);
+    assert.match(sheet, /@radix-ui\/react-dialog/);
+    assert.doesNotMatch(panel, /onEscapeKeyDown/);
+  });
+
+  it("apresenta e envia as sugestões como mensagens normais", () => {
+    assert.deepEqual(SUGESTOES_AJUDA, [
+      "O que posso fazer aqui?",
+      "Qual é o próximo passo?",
+      "Como funciona o Tribuno?",
+    ]);
+    assert.match(panel, /onClick=\{\(\) => void enviarMensagem\(suggestion\)\}/);
+  });
+
+  it("bloqueia mensagens vazias e envios concorrentes", () => {
+    assert.equal(podeEnviarMensagemAjuda("   ", false), false);
+    assert.equal(podeEnviarMensagemAjuda("Ajuda", true), false);
+    assert.equal(podeEnviarMensagemAjuda("Ajuda", false), true);
+    assert.match(panel, /envioEmCurso\.current = true/);
+    assert.match(panel, /envioEmCurso\.current = false/);
+  });
+
+  it("apresenta erro seguro e permite tentar novamente", () => {
+    assert.equal(
+      MENSAGEM_ERRO_AJUDA,
+      "Não foi possível obter uma resposta do assistente. Tente novamente.",
+    );
+    assert.match(panel, /role="alert"/);
+    assert.match(panel, /Tentar novamente/);
+    assert.doesNotMatch(MENSAGEM_ERRO_AJUDA, /stack|OpenAI|Supabase|token/i);
+  });
+
+  it("implementa Enter, Shift+Enter e scroll automático", () => {
+    assert.match(panel, /event\.key === "Enter" && !event\.shiftKey/);
+    assert.match(panel, /scrollIntoView/);
+  });
+});

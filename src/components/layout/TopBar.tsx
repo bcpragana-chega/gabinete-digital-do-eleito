@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { UserAvatar } from "@/components/auth/UserAvatar";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
+import { HelpAssistantPanel } from "@/components/help/HelpAssistantPanel";
 import { isSidebarItemActive, sidebarItems } from "@/components/layout/sidebar-config";
 import { UniversalSearch } from "@/components/search/UniversalSearch";
 import { primeiroNome, saudacaoPorHora, useAuth } from "@/lib/auth-store";
@@ -148,6 +149,10 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
                     );
                   })}
                 </nav>
+
+                <div className="border-t border-border/60 px-3 py-3 md:hidden">
+                  <HelpAssistantPanel pathname={pathname} />
+                </div>
               </div>
             </SheetContent>
           </Sheet>
