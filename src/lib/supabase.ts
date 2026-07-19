@@ -122,6 +122,24 @@ export async function obterUtilizadorSupabaseValidado(): Promise<User | undefine
   return data.user;
 }
 
+export async function registarUltimoAcesso(userId: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  try {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ last_login_at: new Date().toISOString() })
+      .eq("user_id", userId);
+
+    if (error) throw error;
+  } catch {
+    console.warn("[Tribuno Auth] Não foi possível registar o último acesso.", {
+      operacao: "AUTH_LAST_LOGIN_UPDATE_FALHOU",
+    });
+  }
+}
+
 export async function terminarSessaoSupabaseComDependencias(input: {
   terminarGlobal: () => Promise<{ error: unknown }>;
   terminarLocal: () => Promise<{ error: unknown }>;

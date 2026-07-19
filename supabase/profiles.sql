@@ -10,13 +10,15 @@ create table if not exists public.profiles (
   assinatura_institucional text,
   logo_url text,
   onboarding_version integer not null default 0,
+  last_login_at timestamptz,
   updated_at timestamptz not null default now()
 );
 
 alter table public.profiles
   add column if not exists logo_url text,
   add column if not exists municipio text,
-  add column if not exists freguesia text;
+  add column if not exists freguesia text,
+  add column if not exists last_login_at timestamptz;
 
 alter table public.profiles enable row level security;
 

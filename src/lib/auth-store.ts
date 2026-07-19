@@ -19,6 +19,7 @@ import {
   iniciarSessaoSupabaseComGoogleCredential,
   isSupabaseConfigured,
   obterUtilizadorSupabaseValidado,
+  registarUltimoAcesso,
   terminarSessaoSupabase,
   withSupabaseTimeout,
 } from "@/lib/supabase";
@@ -349,12 +350,42 @@ export function resolverEstadoComPerfilRemoto(
   };
 }
 
+type RegistarUltimoAcesso = (userId: string) => Promise<unknown> | unknown;
+
+function iniciarRegistoUltimoAcessoSemBloquear(userId: string, registar: RegistarUltimoAcesso) {
+  try {
+    void Promise.resolve(registar(userId)).catch(() => {
+      console.warn("[Tribuno Auth] Não foi possível registar o último acesso.", {
+        operacao: "AUTH_LAST_LOGIN_UPDATE_FALHOU",
+      });
+    });
+  } catch {
+    console.warn("[Tribuno Auth] Não foi possível registar o último acesso.", {
+      operacao: "AUTH_LAST_LOGIN_UPDATE_FALHOU",
+    });
+  }
+}
+
+export async function restaurarSessaoSupabaseComRegisto(input: {
+  validar: () => Promise<User | undefined>;
+  registar?: RegistarUltimoAcesso;
+  userIdBloqueado?: string;
+}) {
+  const user = await input.validar();
+  if (user?.id && user.id !== input.userIdBloqueado) {
+    iniciarRegistoUltimoAcessoSemBloquear(user.id, input.registar ?? registarUltimoAcesso);
+  }
+  return user;
+}
+
 export async function executarLoginSupabaseConfirmado<T>(input: {
   iniciar: () => Promise<User | undefined>;
   confirmar: (user: User) => Promise<T> | T;
+  registar?: RegistarUltimoAcesso;
 }) {
   const user = await input.iniciar();
   if (!user?.id) throw new Error("AUTH_REQUIRED");
+  iniciarRegistoUltimoAcessoSemBloquear(user.id, input.registar ?? registarUltimoAcesso);
   return input.confirmar(user);
 }
 
@@ -704,11 +735,15 @@ export function useAuth() {
           setInitialized(false);
           setOnboardingResolved(false);
         }
+        const userIdBloqueado = lerUtilizadorBloqueadoPorLogout();
         const supabaseUser = await executarOperacaoRemotaHidratacao(
-          obterUtilizadorSupabaseValidado,
+          () =>
+            restaurarSessaoSupabaseComRegisto({
+              validar: obterUtilizadorSupabaseValidado,
+              userIdBloqueado,
+            }),
           "SESSION",
         );
-        const userIdBloqueado = lerUtilizadorBloqueadoPorLogout();
         const stateAtual = resolverEstadoComSessaoValidada(
           stateLocal,
           supabaseUser,
