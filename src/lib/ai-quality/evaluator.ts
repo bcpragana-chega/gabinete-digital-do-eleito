@@ -236,12 +236,15 @@ export function evaluateCase(
 ): CaseEvaluation {
   const deterministic = evaluateDeterministically(evaluationCase, response);
   const totalScore = totalHumanScore(scores);
+  const allDeterministicChecksPassed = deterministic.checks.every((item) => item.passed);
   const decision =
     deterministic.criticalFailures.length > 0
       ? "failed_critical"
-      : totalScore >= 90
-        ? "approved"
-        : "failed_score";
+      : !allDeterministicChecksPassed
+        ? "failed_deterministic"
+        : totalScore < 90
+          ? "failed_score"
+          : "approved";
   return {
     ...deterministic,
     documentType: evaluationCase.documentType,

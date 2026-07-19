@@ -151,7 +151,7 @@ export type DeterministicEvaluation = {
   criticalFailures: CriticalFailure[];
 };
 
-export type CaseDecision = "approved" | "failed_score" | "failed_critical";
+export type CaseDecision = "approved" | "failed_score" | "failed_deterministic" | "failed_critical";
 
 export type CaseEvaluation = DeterministicEvaluation & {
   documentType: QualityDocumentType;
@@ -161,17 +161,34 @@ export type CaseEvaluation = DeterministicEvaluation & {
   decision: CaseDecision;
 };
 
+export type CorpusIntegrity = {
+  complete: boolean;
+  missingCaseIds: string[];
+  duplicateCaseIds: string[];
+  unknownCaseIds: string[];
+  documentTypeMismatches: Array<{
+    caseId: string;
+    expected: QualityDocumentType;
+    received: QualityDocumentType;
+  }>;
+  missingCategories: EvaluationCategory[];
+  missingDocumentTypes: QualityDocumentType[];
+};
+
 export type GlobalEvaluationReport = {
   cases: CaseEvaluation[];
+  corpusIntegrity: CorpusIntegrity;
   averageByDocumentType: Partial<Record<QualityDocumentType, number>>;
   globalAverage: number;
   usablePercentage: number;
   criticalFailureCount: number;
   rules: {
+    completeCorpus: boolean;
     everyCaseAtLeast90: boolean;
     globalAverageAtLeast92: boolean;
     everyDocumentTypeAtLeast90: boolean;
     noCriticalFailures: boolean;
+    allDeterministicChecksPassed: boolean;
     usableAtLeast80Percent: boolean;
   };
   approved: boolean;

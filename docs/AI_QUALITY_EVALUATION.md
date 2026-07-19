@@ -103,7 +103,18 @@ O Problema n.º 12 só pode fechar se todas as condições forem verdadeiras sim
 - zero falhas críticas;
 - pelo menos 80% dos casos são `utilizável sem alterações` ou `utilizável com alterações mínimas`.
 
-`buildGlobalReport` codifica estas cinco regras. O objeto devolvido é diretamente serializável como JSON. `renderReportMarkdown` inclui decisão e nota por caso, dimensões, falhas críticas, verificações determinísticas falhadas, nível de revisão, médias por tipo, média global e percentagem utilizável.
+`buildGlobalReport` codifica estas regras e valida ainda a integridade do corpus contra `AI_QUALITY_CASES`. Só aceita exatamente os 18 IDs versionados, uma vez cada, com o tipo documental original e cobertura integral das categorias e tipos previstos. IDs em falta, duplicados, desconhecidos e tipos adulterados ficam discriminados em `corpusIntegrity`; qualquer inconsistência torna `completeCorpus` falso e impede a aprovação global.
+
+A decisão de cada caso respeita esta precedência:
+
+1. `failed_critical`: existe pelo menos uma falha crítica;
+2. `failed_deterministic`: não há falha crítica, mas pelo menos uma verificação determinística falhou;
+3. `failed_score`: as verificações passaram, mas a pontuação é inferior a 90;
+4. `approved`: zero falhas críticas, todas as verificações aprovadas e pelo menos 90 pontos.
+
+Assim, placeholders, linguagem conversacional, raciocínio interno, elementos obrigatórios ausentes ou elementos proibidos presentes nunca são compatíveis com `approved`, mesmo perante 100/100 na avaliação humana. A regra global `allDeterministicChecksPassed` impede igualmente que um relatório agregado aprove resultados manipulados com checks falhados.
+
+O objeto devolvido é diretamente serializável como JSON. `renderReportMarkdown` inclui integridade do corpus, decisão e nota por caso, dimensões, falhas críticas, verificações determinísticas falhadas, nível de revisão, médias por tipo, média global e percentagem utilizável.
 
 ## Limite desta missão
 

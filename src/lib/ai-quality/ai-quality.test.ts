@@ -27,6 +27,17 @@ function withScores(overrides: Partial<HumanScores>): HumanScores {
   return { ...HIGH_QUALITY_HUMAN_SCORES, ...overrides };
 }
 
+const PERFECT_HUMAN_SCORES: HumanScores = {
+  factualFidelity: 20,
+  institutionalCorrectness: 20,
+  legalSafety: 15,
+  documentTypeFit: 15,
+  politicalUtility: 10,
+  structureCoherence: 10,
+  europeanPortugueseTone: 5,
+  revisionEffort: 5,
+};
+
 function compliantEvaluation(item: AiQualityCase) {
   return evaluateCase(
     item,
@@ -266,6 +277,84 @@ describe("pontuação humana e decisão por caso", () => {
     assert.equal(result.totalScore, 95);
     assert.equal(result.decision, "failed_critical");
   });
+
+  it("reprova deterministicamente placeholders, conversa e raciocínio exposto com 100 pontos", () => {
+    const item = getCase("mocao-01-iluminacao");
+    const base = buildCompliantFixture(item);
+    const responses = [
+      `${base}\n[DATA]`,
+      `${base}\nOlá, espero ter ajudado.`,
+      `${base}\nFactos considerados:`,
+    ];
+
+    responses.forEach((response) => {
+      const result = evaluateCase(
+        item,
+        response,
+        PERFECT_HUMAN_SCORES,
+        "utilizável sem alterações",
+      );
+      assert.equal(result.totalScore, 100);
+      assert.equal(result.decision, "failed_deterministic");
+      assert.deepEqual(result.criticalFailures, []);
+      assert.ok(result.checks.some((check) => !check.passed));
+    });
+  });
+
+  it("reprova deterministicamente elemento obrigatório ausente com 100 pontos", () => {
+    const item = getCase("mocao-01-iluminacao");
+    const response = buildCompliantFixture(item).replaceAll("Rua do Mercado", "zona indicada");
+    const result = evaluateCase(item, response, PERFECT_HUMAN_SCORES, "utilizável sem alterações");
+
+    assert.equal(result.decision, "failed_deterministic");
+    assert.deepEqual(result.criticalFailures, []);
+    assert.equal(result.checks.find((check) => check.code === "required_elements")?.passed, false);
+  });
+
+  it("reprova deterministicamente elemento proibido presente com 100 pontos", () => {
+    const original = getCase("mocao-01-iluminacao");
+    const item: AiQualityCase = {
+      ...original,
+      deterministic: {
+        ...original.deterministic,
+        forbiddenPatterns: ["ELEMENTO EXTERNO PROIBIDO"],
+      },
+    };
+    const result = evaluateCase(
+      item,
+      `${buildCompliantFixture(original)}\nELEMENTO EXTERNO PROIBIDO`,
+      PERFECT_HUMAN_SCORES,
+      "utilizável sem alterações",
+    );
+
+    assert.equal(result.decision, "failed_deterministic");
+    assert.deepEqual(result.criticalFailures, []);
+    assert.equal(result.checks.find((check) => check.code === "forbidden_elements")?.passed, false);
+  });
+
+  it("preserva a precedência crítica, determinística, pontuação e aprovação", () => {
+    const item = getCase("mocao-01-iluminacao");
+    const base = buildCompliantFixture(item);
+    const critical = evaluateCase(item, "", withScores({ factualFidelity: 0 }), "inutilizável");
+    const deterministic = evaluateCase(
+      item,
+      `${base}\n[DATA]`,
+      withScores({ factualFidelity: 0 }),
+      "exige revisão relevante",
+    );
+    const score = evaluateCase(
+      item,
+      base,
+      withScores({ factualFidelity: 0 }),
+      "exige revisão relevante",
+    );
+    const approved = evaluateCase(item, base, PERFECT_HUMAN_SCORES, "utilizável sem alterações");
+
+    assert.equal(critical.decision, "failed_critical");
+    assert.equal(deterministic.decision, "failed_deterministic");
+    assert.equal(score.decision, "failed_score");
+    assert.equal(approved.decision, "approved");
+  });
 });
 
 describe("regras globais 90/92/90/80", () => {
@@ -277,6 +366,67 @@ describe("regras globais 90/92/90/80", () => {
     assert.equal(report.globalAverage, 95);
     assert.equal(report.usablePercentage, 100);
     assert.ok(Object.values(report.rules).every(Boolean));
+  });
+
+  it("um único caso com 100 pontos não aprova globalmente", () => {
+    const item = getCase("mocao-01-iluminacao");
+    const result = evaluateCase(
+      item,
+      buildCompliantFixture(item),
+      PERFECT_HUMAN_SCORES,
+      "utilizável sem alterações",
+    );
+    const report = buildGlobalReport([result]);
+
+    assert.equal(report.approved, false);
+    assert.equal(report.rules.completeCorpus, false);
+    assert.equal(report.corpusIntegrity.missingCaseIds.length, 17);
+  });
+
+  it("17 casos não aprovam e identificam o caso em falta", () => {
+    const results = approvedCases().slice(0, 17);
+    const report = buildGlobalReport(results);
+
+    assert.equal(report.approved, false);
+    assert.equal(report.rules.completeCorpus, false);
+    assert.deepEqual(report.corpusIntegrity.missingCaseIds, [AI_QUALITY_CASES[17].id]);
+  });
+
+  it("um caso duplicado não aprova", () => {
+    const results = approvedCases();
+    results.push({ ...results[0] });
+    const report = buildGlobalReport(results);
+
+    assert.equal(report.approved, false);
+    assert.equal(report.rules.completeCorpus, false);
+    assert.deepEqual(report.corpusIntegrity.duplicateCaseIds, [results[0].caseId]);
+  });
+
+  it("um ID desconhecido não aprova", () => {
+    const results = approvedCases();
+    const replacedId = results[0].caseId;
+    results[0] = { ...results[0], caseId: "caso-desconhecido" };
+    const report = buildGlobalReport(results);
+
+    assert.equal(report.approved, false);
+    assert.deepEqual(report.corpusIntegrity.unknownCaseIds, ["caso-desconhecido"]);
+    assert.deepEqual(report.corpusIntegrity.missingCaseIds, [replacedId]);
+  });
+
+  it("um tipo documental adulterado não aprova", () => {
+    const results = approvedCases();
+    results[0] = { ...results[0], documentType: "Requerimento" };
+    const report = buildGlobalReport(results);
+
+    assert.equal(report.approved, false);
+    assert.equal(report.rules.completeCorpus, false);
+    assert.deepEqual(report.corpusIntegrity.documentTypeMismatches, [
+      {
+        caseId: results[0].caseId,
+        expected: "Moção",
+        received: "Requerimento",
+      },
+    ]);
   });
 
   it("reprova quando um caso fica abaixo de 90", () => {
@@ -322,9 +472,26 @@ describe("regras globais 90/92/90/80", () => {
     assert.equal(report.approved, false);
   });
 
+  it("reprova globalmente quando uma verificação determinística falha", () => {
+    const results = approvedCases();
+    results[0] = {
+      ...results[0],
+      decision: "failed_deterministic",
+      checks: results[0].checks.map((check, index) =>
+        index === 0 ? { ...check, passed: false, details: ["Falha simulada."] } : check,
+      ),
+    };
+    const report = buildGlobalReport(results);
+
+    assert.equal(report.rules.allDeterministicChecksPassed, false);
+    assert.equal(report.approved, false);
+  });
+
   it("gera relatório Markdown legível com dimensões, checks e agregados", () => {
     const markdown = renderReportMarkdown(buildGlobalReport(approvedCases()));
     assert.match(markdown, /Resultado por caso/);
+    assert.match(markdown, /Integridade do corpus/);
+    assert.match(markdown, /Corpus completo: sim/);
     assert.match(markdown, /Pontuação por dimensão/);
     assert.match(markdown, /Média por tipo documental/);
     assert.match(markdown, /Resultados utilizáveis:\*\* 100%/);
