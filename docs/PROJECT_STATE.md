@@ -708,32 +708,84 @@ nova store terá de usar deliberadamente a fronteira institucional.
 
 ---
 
-## ✅ Problema n.º 11 — Falta um verdadeiro sistema de acompanhamento político
+## ✅ Problema n.º 11 — Acompanhamento político contínuo
 
-Estado: PENDENTE
+Estado: FECHADO (9,5/10)
 
-### Diagnóstico
+### Problema resolvido
 
-O Tribuno está mais forte antes da sessão do que depois da sessão.
+O fluxo político do Tribuno deixou de terminar com a apresentação de um documento.
 
-### Fluxo de acompanhamento necessário
+Cada Assunto pode agora preservar uma cronologia contínua de acontecimentos políticos, incluindo:
 
-Após entregar uma iniciativa, acompanhar:
+- entrega;
+- resposta recebida;
+- insistência;
+- regresso à sessão;
+- comunicação pública;
+- resolução;
+- encerramento sem resolução;
+- notas.
 
-- quando foi entregue;
-- a quem;
-- prazo de resposta;
-- existência de resposta;
-- qualidade da resposta;
-- necessidade de insistência;
-- necessidade de regressar à sessão;
-- necessidade de comunicação pública;
-- estado de resolução;
-- responsável.
+### Continuidade do acompanhamento
 
-### Princípio
+O acompanhamento não fica bloqueado após resolução ou encerramento.
 
-Produzir ação não chega. O Tribuno deve ajudar a garantir consequência.
+É sempre possível registar um novo acontecimento, preservando integralmente o histórico anterior e recalculando o estado atual.
+
+Uma nota isolada não reabre um acompanhamento terminal.
+
+### Edição limitada
+
+É possível corrigir apenas:
+
+- descrição;
+- destinatário;
+- prazo;
+- próxima ação;
+- documento associado.
+
+Permanecem imutáveis:
+
+- tipo;
+- data;
+- estado estrutural;
+- Assunto;
+- utilizador;
+- created_at.
+
+### Integração com Hoje
+
+A página Hoje reage ao estado atual do acompanhamento.
+
+Acompanhamentos resolvidos ou encerrados deixam de aparecer enquanto o estado terminal for o mais recente.
+
+Quando um novo acontecimento reabre o ciclo político, os sinais relevantes voltam a surgir em Hoje.
+
+### Segurança e persistência
+
+- persistência real no Supabase;
+- confirmação da linha atualizada antes de alterar a cache;
+- RLS e isolamento por utilizador;
+- nenhuma alteração destrutiva à migration aplicada;
+- cronologia anterior preservada.
+
+### Validação
+
+- migration aplicada no Supabase;
+- reabertura após resolução validada manualmente;
+- edição limitada validada manualmente;
+- persistência após atualização da página validada;
+- integração com Hoje validada;
+- 469 testes aprovados;
+- typecheck aprovado;
+- lint sem erros novos;
+- build aprovado;
+- git diff --check aprovado.
+
+### Commit principal
+
+`6726bdb` — `feat: implementar acompanhamento político contínuo`
 
 ---
 
