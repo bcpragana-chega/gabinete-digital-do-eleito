@@ -606,44 +606,105 @@ Uma sessão marcada como 85% ou 100% preparada pode continuar mal preparada pol�
 
 ---
 
-## ⏳ Problema n.º 9 — Vestígios claros de protótipo
+## ✅ Problema n.º 9 — Vestígios claros de protótipo
 
-Estado: PENDENTE
+Estado: FECHADO
+Avaliação: 9,6/10
+Commit: `05140c93c3ab0ea3997d062f43694cb6134eccb6`
 
-### Vestígios identificados
+### Implementação concluída
 
-- package.json com nome genérico tanstack_start_ts;
-- dependência @lovable.dev/vite-tanstack-config;
-- componentes centrais a importar formatarData de mock-data;
-- nomenclatura interna de protótipo.
+- O pacote principal foi renomeado para `tribuno`.
+- A dependência `@lovable.dev/vite-tanstack-config` foi removida.
+- A configuração Vite, TanStack Start e Nitro passou a ser nativa.
+- Os utilitários de datas foram centralizados em `civil-date.ts`.
+- `mock-data.ts` e `mock-preparacao.ts` foram removidos.
+- Os vestígios técnicos de Lovable foram removidos sem impacto funcional.
+- Foi adicionado um teste contratual específico.
+- As referências históricas e a pasta `.lovable` foram preservadas apenas onde não têm impacto no runtime.
 
-### Risco
+### Testes e validações executados
 
-Um produto institucional que trabalha com legislação, documentos políticos e dados sensíveis não deve parecer internamente um protótipo prolongado.
+- `npm test`: 429 testes aprovados, 0 falhas;
+- `npm run typecheck`: aprovado;
+- `npm run lint`: aprovado;
+- `npm run build`: aprovado;
+- `git diff --check`: aprovado.
 
 ---
 
-## ⏳ Problema n.º 10 — Persistência local como fallback silencioso
+## ✅ Problema n.º 10 — Persistência local como fallback silencioso
 
-Estado: PENDENTE
+Estado: FECHADO
+Avaliação: 9,5/10
 
-### Diagnóstico
+### Diagnóstico confirmado
 
-Sem configuração remota, o Tribuno pode guardar dados no localStorage do navegador.
+A resolução do provider convertia a ausência de configuração remota em modo `local`, considerava
+esse modo configurado e fazia `usarPersistenciaLocal()` aceitar qualquer estado não remoto. A
+aplicação apresentava apenas um aviso e as fronteiras locais continuavam disponíveis para escritas
+institucionais, permitindo sucesso aparente apenas no navegador.
 
-### Riscos
+### Decisão arquitetural
 
-- dados presos a um navegador;
-- perda ao limpar dados;
-- ausência noutros computadores;
-- risco em equipamentos partilhados;
-- inexistência de histórico remoto;
-- confiança reduzida em backups;
-- potencial exposição local.
+- A seleção do provider é uma decisão pura, tipada e centralizada.
+- Em produção, só uma configuração Supabase completa pode tornar a Beta operacional; a deteção
+  automática de Supabase completo foi preservada para compatibilidade com o deploy atual.
+- Provider ausente sem Supabase, provider inválido, Supabase incompleto, `local` explícito em
+  produção e Firestore não implementado resultam num estado não configurado, sem fallback local.
+- Em desenvolvimento e testes, o modo local permanece disponível e isolado por utilizador.
+- Caches locais posteriores a confirmação remota continuam permitidas; não são tratadas como fonte
+  institucional autónoma.
 
-### Objetivo futuro
+### Implementação concluída
 
-Em produção, operações institucionais sérias não devem continuar normalmente sem persistência remota.
+- `StorageProviderName` passou a incluir `unconfigured`, com estado explícito para configuração,
+  permissão local, mensagem institucional e detalhe técnico opcional.
+- `usarPersistenciaLocal()` só aceita agora o provider `local` quando este está efetivamente
+  permitido e configurado.
+- Foi criada uma fronteira de escrita institucional que lança `StorageConfigurationError` antes de
+  tocar em `localStorage` quando o armazenamento seguro está indisponível.
+- Todas as stores por utilizador, o perfil e o onboarding usam essa fronteira; ficam assim cobertos
+  Sessões, Assuntos, Documentos, Biblioteca, preparação, pontos, relações, notas, estratégia,
+  histórico e tentativas de criação.
+- A autenticação e a hidratação local mantêm o helper genérico, por serem cache de sessão e não uma
+  alternativa silenciosa à persistência institucional.
+- O layout protegido deixa de apresentar a aplicação como operacional e mostra uma mensagem clara
+  quando o armazenamento seguro não está configurado.
+- A regra de produção fica documentada como `VITE_TRIBUNO_STORAGE_PROVIDER=supabase`; não existia
+  um ficheiro de exemplo de ambiente versionado e nenhum ficheiro real ou segredo foi alterado.
+- Foi acrescentada uma compatibilidade mínima de tipos no `vite.config.ts` para a versão instalada
+  do Vite 8.1, sem alterar a configuração ou o runtime.
+
+### Testes e validações executados
+
+- `npm test`: 440 testes aprovados, 0 falhas;
+- `npm run typecheck`: aprovado;
+- `npm run lint`: aprovado com 0 erros e 22 avisos preexistentes não relacionados;
+- `npm run build`: aprovado;
+- `git diff --check`: aprovado.
+
+Os 11 novos testes contratuais cobrem produção sem provider, Supabase e Firestore incompletos,
+Firestore ainda não implementado, provider inválido, `local` explícito em produção, modo local em
+desenvolvimento e testes, coerência da mensagem, bloqueio real da escrita e isolamento entre
+utilizadores.
+
+### Riscos residuais
+
+- `localStorage` continua a servir caches institucionais depois de confirmação remota e a hidratação
+  da autenticação; a segurança depende da fronteira central permanecer obrigatória para novas stores.
+- Firestore permanece reconhecido apenas para devolver um erro de configuração claro; não é um
+  provider implementado nesta Beta.
+- Não foi criada migração ou sincronização automática de dados locais antigos, conforme definido
+  fora do escopo.
+- Os 22 avisos de lint preexistentes permanecem fora do âmbito desta missão.
+
+### Justificação da avaliação
+
+A avaliação de 9,5/10 resulta da eliminação do fallback implícito em produção, bloqueio central de
+escritas institucionais, erro visível, preservação de desenvolvimento, testes, SSR e caches remotas,
+e validação integral. Não atinge nota superior por continuarem a existir caches locais e porque uma
+nova store terá de usar deliberadamente a fronteira institucional.
 
 ---
 
@@ -761,9 +822,10 @@ Eliminar definitivamente modelos antigos, em vez de apenas os esconder.
 
 # Próxima ação
 
-Selecionar explicitamente o próximo problema Beta numa missão futura.
+Resolver o Problema n.º 8 — o progresso da preparação pode transmitir falsa segurança — numa missão
+futura e fechada.
 
-Não iniciar automaticamente outro problema após o fecho do Problema n.º 5.
+Não iniciar automaticamente outro problema após o fecho do Problema n.º 10.
 
 ---
 

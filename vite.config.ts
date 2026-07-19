@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 
+// @ts-expect-error Vite 8.1 deixou de tipar keepNames, ainda aceite pelo build atual.
 export default defineConfig(({ command, mode }) => ({
   server: { host: "::", port: 8080 },
   css: { transformer: "lightningcss" },

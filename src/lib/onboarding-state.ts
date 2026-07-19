@@ -1,4 +1,9 @@
-import { readJSON, removeItem, userScopedKey, writeJSON } from "@/lib/storage-provider";
+import {
+  readJSON,
+  removeInstitutionalItem,
+  userScopedKey,
+  writeInstitutionalJSON,
+} from "@/lib/storage-provider";
 
 export const ONBOARDING_VERSION = 1;
 
@@ -40,7 +45,7 @@ export function guardarOnboardingLocal(userId: string, patch: Partial<Onboarding
   const storageKey = key(userId);
   if (!storageKey) return;
   const atual = carregarOnboardingLocal(userId);
-  writeJSON(storageKey, {
+  writeInstitutionalJSON(storageKey, {
     version: ONBOARDING_VERSION,
     passo: "identidade",
     concluido: false,
@@ -68,5 +73,5 @@ export function resolverVersaoOnboarding(input: {
 
 export function limparOnboardingLocal(userId?: string) {
   const storageKey = key(userId);
-  if (storageKey) removeItem(storageKey);
+  if (storageKey) removeInstitutionalItem(storageKey);
 }

@@ -34,15 +34,17 @@ function AppLayout() {
   });
 
   useEffect(() => {
+    if (!storageStatus.isConfigured) return;
     if (destino !== "loading") {
       setLoadingDemorado(false);
       return;
     }
     const timeout = window.setTimeout(() => setLoadingDemorado(true), AUTH_LOADING_FAILSAFE_MS);
     return () => window.clearTimeout(timeout);
-  }, [destino]);
+  }, [destino, storageStatus.isConfigured]);
 
   useEffect(() => {
+    if (!storageStatus.isConfigured) return;
     if (destino === "loading" || destino === "app") return;
     if (destino === "login") {
       console.warn("[Tribuno Auth] Rota protegida sem autenticação, a enviar para login.");
@@ -67,8 +69,34 @@ function AppLayout() {
     onboardingRequired,
     onboardingResolved,
     perfil,
+    storageStatus.isConfigured,
     user?.id,
   ]);
+
+  if (!storageStatus.isConfigured) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-lg rounded-2xl border border-destructive/30 bg-card p-6 text-center shadow-sm">
+          <h1 className="font-semibold">Armazenamento seguro indisponível</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{storageStatus.message}</p>
+          {storageStatus.technicalDetail && (
+            <p className="mt-3 text-xs text-muted-foreground">{storageStatus.technicalDetail}</p>
+          )}
+          {isAuthenticated && (
+            <Button
+              className="mt-5"
+              variant="secondary"
+              onClick={() => {
+                void logout().then(() => navigate({ to: "/login", replace: true }));
+              }}
+            >
+              Terminar sessão
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (destino === "loading") {
     if (loadingDemorado) {
@@ -148,7 +176,7 @@ function AppLayout() {
       <div className="min-h-screen overflow-x-hidden bg-background">
         <AppSidebar />
         <div className="min-w-0 md:pl-60">
-          {!storageStatus.isRemote && (
+          {storageStatus.localAllowed && (
             <div className="border-b border-amber-200/70 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900 md:px-6">
               {storageStatus.message}
             </div>

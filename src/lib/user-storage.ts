@@ -1,5 +1,10 @@
 import { obterAuthState } from "@/lib/auth-store";
-import { readJSON, removeItem, userScopedKey, writeJSON } from "@/lib/storage-provider";
+import {
+  readJSON,
+  removeInstitutionalItem,
+  userScopedKey,
+  writeInstitutionalJSON,
+} from "@/lib/storage-provider";
 
 function normalizarUserId(value: string) {
   return value
@@ -34,7 +39,7 @@ export function guardarJSONPorUtilizador<T>(baseKey: string, value: T) {
   const key = chavePorUtilizador(baseKey);
   if (!key) return;
 
-  writeJSON(key, value);
+  writeInstitutionalJSON(key, value);
 }
 
 export function lerJSONParaUtilizador<T>(baseKey: string, userId: string, fallback: T): T {
@@ -42,11 +47,11 @@ export function lerJSONParaUtilizador<T>(baseKey: string, userId: string, fallba
 }
 
 export function guardarJSONParaUtilizador<T>(baseKey: string, userId: string, value: T) {
-  writeJSON(chaveParaUtilizador(baseKey, userId), value);
+  writeInstitutionalJSON(chaveParaUtilizador(baseKey, userId), value);
 }
 
 export function removerJSONParaUtilizador(baseKey: string, userId: string) {
-  removeItem(chaveParaUtilizador(baseKey, userId));
+  removeInstitutionalItem(chaveParaUtilizador(baseKey, userId));
 }
 
 export function chavePerfilPorUtilizador(userId: string) {

@@ -1,5 +1,5 @@
 import type { PerfilEleito } from "@/lib/auth-store";
-import { readJSON, userScopedKey, writeJSON } from "@/lib/storage-provider";
+import { readJSON, userScopedKey, writeInstitutionalJSON } from "@/lib/storage-provider";
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
 
 export type ProfileRow = {
@@ -169,7 +169,7 @@ export function guardarPerfilLocal(userId: string, perfil: PerfilEleito) {
   const key = profileKey(userId);
   if (!key) return;
 
-  writeJSON(key, perfil);
+  writeInstitutionalJSON(key, perfil);
 }
 
 export async function carregarPerfilRemoto(userId?: string) {
