@@ -376,8 +376,8 @@ trabalho exigirá desenho próprio e não foi antecipado nesta missão.
 
 ## ⏳ Problema n.º 6 — A Biblioteca exige demasiado trabalho manual de classificação
 
-Estado: EM CURSO — Fase 6A concluída; Fase 6B pendente
-Avaliação da Fase 6A: 9,3/10
+Estado: EM CURSO — Fase 6A corrigida; validação manual pendente; Fase 6B pendente
+Avaliação da Fase 6A: PENDENTE DE NOVO TESTE MANUAL
 
 ### Diagnóstico
 
@@ -400,14 +400,16 @@ O eleito deve conseguir carregar um PDF e receber automaticamente:
 
 O utilizador não deve ter de alimentar a Biblioteca. A Biblioteca deve organizar o trabalho do utilizador.
 
-### Fase 6A concluída — entrada documental única para PDFs
+### Fase 6A corrigida — entrada documental única para PDFs
 
 - “Adicionar e analisar PDF” é a ação principal da Biblioteca.
 - A adição manual continua disponível como alternativa secundária para casos excecionais.
-- Uma função pura decide entre `preparar_sessao`, `guardar_biblioteca` e
-  `necessita_confirmacao`, com limiar de confiança único de 0,75.
+- Uma função pura distingue `preparar_sessao`, `confirmar_dados_sessao`,
+  `guardar_biblioteca` e `confirmar_dados_documento`, com limiar de confiança único de 0,75.
 - Convocatórias e ordens de trabalhos suficientemente identificadas preservam o fluxo validado
   de revisão, duplicados, criação ou atualização de Sessão, pontos, onboarding e navegação.
+- Convocatórias reconhecidas com órgão, data ou hora incertos permanecem na revisão de Sessão;
+  a incerteza exige correção humana, mas não altera o destino institucional reconhecido.
 - Atas, propostas, regulamentos e restantes documentos reconhecidos são confirmados e organizados
   na Biblioteca sem criar Sessão nem chamar a RPC de confirmação de Sessão.
 - Documentos desconhecidos, de baixa confiança, com campos essenciais incertos ou sem dados essenciais ficam
@@ -417,15 +419,17 @@ O utilizador não deve ter de alimentar a Biblioteca. A Biblioteca deve organiza
 - O mapeamento entre tipos institucionais e tipos persistidos é explícito e testado; tipos sem
   granularidade segura usam `Outro`.
 - Não foram criadas tabelas, migrações ou alterações ao schema Supabase.
-- Validação: 367 testes aprovados, typecheck aprovado, lint com 0 erros e 20 avisos antigos não
-  relacionados, build aprovado e `git diff --check` aprovado.
+- A regressão encontrada no teste manual foi corrigida no motor determinístico e aguarda repetição
+  desse teste antes de a Fase 6A receber avaliação final.
+- Validação automatizada da correção: 370 testes aprovados, typecheck aprovado, lint com 0 erros e
+  20 avisos antigos não relacionados, build aprovado e `git diff --check` aprovado.
 
-### Justificação da avaliação da Fase 6A
+### Condição para fechar a Fase 6A
 
-A avaliação de 9,3/10 resulta da entrada recomendada única, decisão determinística centralizada,
-persistência confirmada sobre o Documento existente, revisão adaptada ao destino, preservação do
-fluxo de convocatória e aprovação integral da validação obrigatória. O Problema n.º 6 não fica
-fechado porque a visão avançada de organização e acompanhamento pertence à Fase 6B.
+Repetir com sucesso o teste manual da convocatória real, confirmando que uma incerteza no órgão
+abre a revisão de Sessão e termina na RPC existente depois da correção humana. A avaliação de
+9,3/10 foi retirada até existir essa confirmação. O Problema n.º 6 continua em curso porque a
+Fase 6B permanece deliberadamente pendente.
 
 ### Fase 6B pendente
 

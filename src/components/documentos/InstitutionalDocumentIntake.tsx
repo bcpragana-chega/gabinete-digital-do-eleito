@@ -26,6 +26,8 @@ import {
   confirmarAnaliseDocumento,
   confirmarDocumentoNaBiblioteca,
   decidirDestinoAnalise,
+  destinoPreparaSessao,
+  destinoRequerConfirmacao,
   executarConfirmacaoAnaliseComDependencias,
   mapearTipoDocumentoInstitucional,
   validarDadosConfirmacaoAnalise,
@@ -120,7 +122,7 @@ export function InstitutionalDocumentIntake({
       setAnalise(result.analise);
       setTituloDocumento(uploaded.titulo);
       setTipoDocumento(mapearTipoDocumentoInstitucional(result.analise.tipoDocumento));
-      if (decidirDestinoAnalise(result.analise) === "necessita_confirmacao")
+      if (destinoRequerConfirmacao(decidirDestinoAnalise(result.analise)))
         setAnalysisNotice(
           "A análise identificou apenas parte do documento. Confirme os detalhes em falta.",
         );
@@ -150,7 +152,7 @@ export function InstitutionalDocumentIntake({
           sessao: result.analise.sessao,
         }),
       );
-      if (decidirDestinoAnalise(result.analise) === "necessita_confirmacao")
+      if (destinoRequerConfirmacao(decidirDestinoAnalise(result.analise)))
         setAnalysisNotice(
           "A análise identificou apenas parte do documento. Confirme os detalhes em falta.",
         );
@@ -243,7 +245,7 @@ export function InstitutionalDocumentIntake({
   }
 
   const destino = analise ? decidirDestinoAnalise(analise) : undefined;
-  const preparaSessao = destino === "preparar_sessao";
+  const preparaSessao = destino ? destinoPreparaSessao(destino) : false;
 
   return (
     <Dialog open={open} onOpenChange={changeOpen}>

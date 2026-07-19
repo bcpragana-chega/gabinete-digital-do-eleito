@@ -19,7 +19,16 @@ export const LIMIAR_CONFIANCA_DESTINO_DOCUMENTAL = 0.75;
 export type DestinoAnaliseInstitucional =
   | "preparar_sessao"
   | "guardar_biblioteca"
-  | "necessita_confirmacao";
+  | "confirmar_dados_sessao"
+  | "confirmar_dados_documento";
+
+export function destinoPreparaSessao(destino: DestinoAnaliseInstitucional) {
+  return destino === "preparar_sessao" || destino === "confirmar_dados_sessao";
+}
+
+export function destinoRequerConfirmacao(destino: DestinoAnaliseInstitucional) {
+  return destino === "confirmar_dados_sessao" || destino === "confirmar_dados_documento";
+}
 
 const TIPOS_SESSAO = new Set<TipoDocumentoInstitucional>(["convocatoria", "ordem_trabalhos"]);
 
@@ -58,15 +67,16 @@ export function decidirDestinoAnalise(
 ): DestinoAnaliseInstitucional {
   if (
     analise.tipoDocumento === "desconhecido" ||
-    analise.confiancaGlobal < LIMIAR_CONFIANCA_DESTINO_DOCUMENTAL ||
-    temCamposEssenciaisIncertos(analise)
+    analise.confiancaGlobal < LIMIAR_CONFIANCA_DESTINO_DOCUMENTAL
   ) {
-    return "necessita_confirmacao";
+    return "confirmar_dados_documento";
   }
   if (TIPOS_SESSAO.has(analise.tipoDocumento)) {
-    return validarDadosConfirmacaoAnalise(analise) ? "necessita_confirmacao" : "preparar_sessao";
+    return temCamposEssenciaisIncertos(analise) || validarDadosConfirmacaoAnalise(analise)
+      ? "confirmar_dados_sessao"
+      : "preparar_sessao";
   }
-  return "guardar_biblioteca";
+  return temCamposEssenciaisIncertos(analise) ? "confirmar_dados_documento" : "guardar_biblioteca";
 }
 
 export async function confirmarDocumentoNaBibliotecaComDependencias(input: {
@@ -78,7 +88,7 @@ export async function confirmarDocumentoNaBibliotecaComDependencias(input: {
 }) {
   const titulo = input.titulo.trim();
   if (!titulo) throw new Error("DOCUMENTO_TITLE_REQUIRED");
-  const necessitaConfirmacao = decidirDestinoAnalise(input.analise) === "necessita_confirmacao";
+  const necessitaConfirmacao = decidirDestinoAnalise(input.analise) === "confirmar_dados_documento";
   return input.guardar(input.documento.id, {
     titulo,
     tipo: input.tipo,

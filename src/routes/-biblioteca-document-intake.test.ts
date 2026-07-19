@@ -32,4 +32,12 @@ describe("entrada documental principal da Biblioteca", () => {
     assert.doesNotMatch(formularioDocumental, /preparar sessão|Título da sessão|Órgão|Hora/);
     assert.match(intake, /Confirmar e guardar documento/);
   });
+
+  it("convocatórias em confirmação continuam ligadas à revisão e confirmação de Sessão", () => {
+    assert.match(intake, /destinoPreparaSessao\(destino\)/);
+    assert.match(intake, /preparaSessao \? \(/);
+    assert.match(intake, /<ReviewForm/);
+    assert.match(intake, /preparaSessao[\s\S]*Confirmar e preparar sessão/);
+    assert.match(intake, /preparaSessao[\s\S]*confirm\(\)/);
+  });
 });

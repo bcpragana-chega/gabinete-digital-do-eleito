@@ -6,6 +6,7 @@ import {
   confirmarAnaliseDocumentoComDependencias,
   confirmarDocumentoNaBibliotecaComDependencias,
   decidirDestinoAnalise,
+  destinoPreparaSessao,
   executarConfirmacaoAnaliseComDependencias,
   LIMIAR_CONFIANCA_DESTINO_DOCUMENTAL,
   mapearTipoDocumentoInstitucional,
@@ -66,28 +67,35 @@ describe("confirmação institucional", () => {
     for (const tipo of ["ata", "regulamento", "proposta"] as const) {
       assert.equal(decidirDestinoAnalise(analiseTipo(tipo)), "guardar_biblioteca");
     }
-    assert.equal(decidirDestinoAnalise(analiseTipo("desconhecido")), "necessita_confirmacao");
+    assert.equal(decidirDestinoAnalise(analiseTipo("desconhecido")), "confirmar_dados_documento");
     assert.equal(
       decidirDestinoAnalise(
         analiseTipo("ata", { confiancaGlobal: LIMIAR_CONFIANCA_DESTINO_DOCUMENTAL - 0.01 }),
       ),
-      "necessita_confirmacao",
+      "confirmar_dados_documento",
     );
   });
 
-  it("campos incertos ou dados essenciais em falta nunca preparam sessão", () => {
-    assert.equal(
-      decidirDestinoAnalise(
-        analiseTipo("convocatoria", {
-          camposIncertos: [{ campo: "data", motivo: "ilegível" }],
-        }),
-      ),
-      "necessita_confirmacao",
+  it("convocatória reconhecida com órgão incerto mantém o destino Sessão", () => {
+    const destino = decidirDestinoAnalise(
+      analiseTipo("convocatoria", {
+        camposIncertos: [{ campo: "órgão", motivo: "designação parcialmente ilegível" }],
+      }),
     );
-    assert.equal(
-      decidirDestinoAnalise(analiseTipo("ordem_trabalhos", { sessao: { orgao: "Câmara" } })),
-      "necessita_confirmacao",
-    );
+    assert.equal(destino, "confirmar_dados_sessao");
+    assert.equal(destinoPreparaSessao(destino), true);
+  });
+
+  it("data ou hora em falta pede confirmação de Sessão e campos opcionais não bloqueiam", () => {
+    for (const sessao of [
+      { orgao: "Câmara", hora: "21:00" },
+      { orgao: "Câmara", data: "2026-07-29" },
+    ]) {
+      assert.equal(
+        decidirDestinoAnalise(analiseTipo("convocatoria", { sessao })),
+        "confirmar_dados_sessao",
+      );
+    }
     assert.equal(
       decidirDestinoAnalise(
         analiseTipo("convocatoria", {
@@ -105,6 +113,34 @@ describe("confirmação institucional", () => {
       "guardar_biblioteca",
     );
     assert.equal(temCamposEssenciaisIncertos(analiseTipo("ata")), false);
+  });
+
+  it("depois da correção dos campos usa a confirmação RPC de Sessão", async () => {
+    const incompleta = analiseTipo("convocatoria", {
+      sessao: { orgao: "", data: "2026-06-30", hora: "" },
+      camposIncertos: [{ campo: "órgão", motivo: "ilegível" }],
+    });
+    assert.equal(decidirDestinoAnalise(incompleta), "confirmar_dados_sessao");
+
+    const corrigida: AnaliseDocumentoInstitucional = {
+      ...incompleta,
+      sessao: {
+        ...incompleta.sessao,
+        orgao: "Assembleia Municipal de Lagoa",
+        hora: "21:00",
+      },
+    };
+    assert.equal(validarDadosConfirmacaoAnalise(corrigida), undefined);
+    let chamadasRpc = 0;
+    await executarConfirmacaoAnaliseComDependencias({
+      confirmar: async () => {
+        chamadasRpc += 1;
+        return { status: "confirmado", sessaoId: "sessao-1", pontosCriados: 2 };
+      },
+      onDuplicado: () => undefined,
+      onConfirmado: () => undefined,
+    });
+    assert.equal(chamadasRpc, 1);
   });
 
   it("mapeia todos os tipos institucionais sem inventar granularidade", () => {
