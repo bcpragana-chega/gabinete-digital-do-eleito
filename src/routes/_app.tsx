@@ -175,13 +175,15 @@ function AppLayout() {
     <ProductHelpPageStateProvider>
       <div className="min-h-screen overflow-x-hidden bg-background">
         <AppSidebar />
-        <div className="min-w-0 md:pl-60">
-          {storageStatus.localAllowed && (
-            <div className="border-b border-amber-200/70 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900 md:px-6">
-              {storageStatus.message}
-            </div>
-          )}
-          <Outlet />
+        <div className="min-w-0 md:ml-60 md:p-2 md:pl-0">
+          <div className="min-h-screen min-w-0 overflow-hidden bg-card md:min-h-[calc(100vh-1rem)] md:rounded-lg md:border md:border-border/80 [--background:var(--card)]">
+            {storageStatus.localAllowed && (
+              <div className="border-b border-amber-200/70 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900 md:px-6">
+                {storageStatus.message}
+              </div>
+            )}
+            <Outlet />
+          </div>
         </div>
       </div>
     </ProductHelpPageStateProvider>

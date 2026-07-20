@@ -1,4 +1,22 @@
-import { BookOpen, Home, Landmark, NotebookText } from "lucide-react";
+import {
+  BarChart3,
+  BookOpen,
+  CalendarClock,
+  CalendarDays,
+  FileClock,
+  Files,
+  Home,
+  Landmark,
+  LayoutDashboard,
+  LayoutTemplate,
+  NotebookText,
+  Plug,
+  Scale,
+  Settings2,
+  Trash2,
+  UserRound,
+  UsersRound,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const sidebarItems = [
@@ -12,23 +30,83 @@ export const sidebarItems = [
     exact: false,
     aliases: ["/caixa-de-entrada"],
   },
-];
+  { to: "/agenda" as const, label: "Agenda", icon: CalendarDays, exact: false },
+] as const;
 
-export type SidebarItem = (typeof sidebarItems)[number];
+export const favoriteSidebarItems = [
+  {
+    to: "/sessoes" as const,
+    label: "Próxima sessão",
+    icon: CalendarClock,
+    exact: false,
+    highlight: false,
+  },
+  {
+    to: "/assuntos" as const,
+    label: "Assuntos pendentes",
+    icon: FileClock,
+    exact: false,
+    highlight: false,
+  },
+  {
+    to: "/biblioteca" as const,
+    label: "Documentos recentes",
+    icon: Files,
+    exact: false,
+    highlight: false,
+  },
+] as const;
+
+export const workspaceSidebarItems = [
+  { to: "/" as const, label: "Painel", icon: LayoutDashboard, exact: true, highlight: false },
+  { to: "/relatorios" as const, label: "Relatórios", icon: BarChart3, exact: false },
+  { to: "/base-juridica" as const, label: "Base Jurídica", icon: Scale, exact: false },
+  { to: "/modelos" as const, label: "Modelos", icon: LayoutTemplate, exact: false },
+] as const;
+
+export const settingsSidebarItems = [
+  {
+    to: "/definicoes" as const,
+    label: "Perfil institucional",
+    icon: UserRound,
+    exact: true,
+  },
+  { to: "/equipa" as const, label: "Equipa", icon: UsersRound, exact: false },
+  {
+    to: "/definicoes-gerais" as const,
+    label: "Definições gerais",
+    icon: Settings2,
+    exact: false,
+  },
+  { to: "/integracoes" as const, label: "Integrações", icon: Plug, exact: false },
+  { to: "/lixeira" as const, label: "Lixeira", icon: Trash2, exact: false },
+] as const;
+
+export const sidebarSections = [
+  { id: "favorites", label: "Favoritos", items: favoriteSidebarItems },
+  { id: "workspace", label: "Workspace", items: workspaceSidebarItems },
+  { id: "settings", label: "Definições", items: settingsSidebarItems },
+] as const;
+
+export type SidebarItem =
+  | (typeof sidebarItems)[number]
+  | (typeof favoriteSidebarItems)[number]
+  | (typeof workspaceSidebarItems)[number]
+  | (typeof settingsSidebarItems)[number];
 export type SidebarItemVariant = "desktop" | "mobile";
 
 export function sidebarItemClassName(active: boolean, variant: SidebarItemVariant = "desktop") {
   return cn(
-    "group relative flex w-full cursor-pointer items-center gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
+    "group relative flex w-full cursor-pointer items-center gap-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
     variant === "desktop"
-      ? "rounded-xl px-3 py-2.5 text-sm transition-colors"
-      : "min-h-11 rounded-2xl px-3.5 py-3 text-[15px] transition-all",
+      ? "min-h-8 rounded-md px-2 py-1 text-[12px] transition-colors"
+      : "min-h-11 rounded-lg px-3.5 py-3 text-[15px] transition-colors",
     active
       ? variant === "desktop"
-        ? "bg-muted/70 font-medium text-foreground before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-foreground/70"
+        ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
         : "bg-muted font-medium text-foreground"
       : variant === "desktop"
-        ? "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+        ? "text-sidebar-muted hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
         : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
   );
 }
@@ -47,6 +125,8 @@ function pathAtivo(pathname: string, path: string, exact?: boolean) {
 }
 
 export function isSidebarItemActive(pathname: string, item: SidebarItem) {
+  if ("highlight" in item && item.highlight === false) return false;
+
   const activeMain = pathAtivo(pathname, item.to, item.exact);
   const activeAlias =
     "aliases" in item && item.aliases?.some((alias) => pathAtivo(pathname, alias, false));

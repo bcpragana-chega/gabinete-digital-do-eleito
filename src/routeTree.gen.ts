@@ -13,10 +13,17 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as CompletarPerfilRouteImport } from './routes/completar-perfil'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppRelatoriosRouteImport } from './routes/_app.relatorios'
+import { Route as AppModelosRouteImport } from './routes/_app.modelos'
+import { Route as AppLixeiraRouteImport } from './routes/_app.lixeira'
+import { Route as AppIntegracoesRouteImport } from './routes/_app.integracoes'
 import { Route as AppHistoricoRouteImport } from './routes/_app.historico'
+import { Route as AppEquipaRouteImport } from './routes/_app.equipa'
+import { Route as AppDefinicoesGeraisRouteImport } from './routes/_app.definicoes-gerais'
 import { Route as AppDefinicoesRouteImport } from './routes/_app.definicoes'
 import { Route as AppCaixaDeEntradaRouteImport } from './routes/_app.caixa-de-entrada'
 import { Route as AppBibliotecaRouteImport } from './routes/_app.biblioteca'
+import { Route as AppBaseJuridicaRouteImport } from './routes/_app.base-juridica'
 import { Route as AppAgendaRouteImport } from './routes/_app.agenda'
 import { Route as AppSessoesIndexRouteImport } from './routes/_app.sessoes.index'
 import { Route as AppDossiesIndexRouteImport } from './routes/_app.dossies.index'
@@ -69,9 +76,39 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppModelosRoute = AppModelosRouteImport.update({
+  id: '/modelos',
+  path: '/modelos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLixeiraRoute = AppLixeiraRouteImport.update({
+  id: '/lixeira',
+  path: '/lixeira',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppIntegracoesRoute = AppIntegracoesRouteImport.update({
+  id: '/integracoes',
+  path: '/integracoes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppHistoricoRoute = AppHistoricoRouteImport.update({
   id: '/historico',
   path: '/historico',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEquipaRoute = AppEquipaRouteImport.update({
+  id: '/equipa',
+  path: '/equipa',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDefinicoesGeraisRoute = AppDefinicoesGeraisRouteImport.update({
+  id: '/definicoes-gerais',
+  path: '/definicoes-gerais',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDefinicoesRoute = AppDefinicoesRouteImport.update({
@@ -87,6 +124,11 @@ const AppCaixaDeEntradaRoute = AppCaixaDeEntradaRouteImport.update({
 const AppBibliotecaRoute = AppBibliotecaRouteImport.update({
   id: '/biblioteca',
   path: '/biblioteca',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBaseJuridicaRoute = AppBaseJuridicaRouteImport.update({
+  id: '/base-juridica',
+  path: '/base-juridica',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAgendaRoute = AppAgendaRouteImport.update({
@@ -277,10 +319,17 @@ export interface FileRoutesByFullPath {
   '/completar-perfil': typeof CompletarPerfilRoute
   '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
+  '/base-juridica': typeof AppBaseJuridicaRoute
   '/biblioteca': typeof AppBibliotecaRouteWithChildren
   '/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/definicoes': typeof AppDefinicoesRoute
+  '/definicoes-gerais': typeof AppDefinicoesGeraisRoute
+  '/equipa': typeof AppEquipaRoute
   '/historico': typeof AppHistoricoRoute
+  '/integracoes': typeof AppIntegracoesRoute
+  '/lixeira': typeof AppLixeiraRoute
+  '/modelos': typeof AppModelosRoute
+  '/relatorios': typeof AppRelatoriosRoute
   '/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
   '/assuntos/$dossieId': typeof AppAssuntosDossieIdRouteWithChildren
   '/documentos/$documentoId': typeof AppDocumentosDocumentoIdRoute
@@ -317,10 +366,17 @@ export interface FileRoutesByTo {
   '/completar-perfil': typeof CompletarPerfilRoute
   '/login': typeof LoginRoute
   '/agenda': typeof AppAgendaRoute
+  '/base-juridica': typeof AppBaseJuridicaRoute
   '/biblioteca': typeof AppBibliotecaRouteWithChildren
   '/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/definicoes': typeof AppDefinicoesRoute
+  '/definicoes-gerais': typeof AppDefinicoesGeraisRoute
+  '/equipa': typeof AppEquipaRoute
   '/historico': typeof AppHistoricoRoute
+  '/integracoes': typeof AppIntegracoesRoute
+  '/lixeira': typeof AppLixeiraRoute
+  '/modelos': typeof AppModelosRoute
+  '/relatorios': typeof AppRelatoriosRoute
   '/': typeof AppIndexRoute
   '/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
   '/documentos/$documentoId': typeof AppDocumentosDocumentoIdRoute
@@ -359,10 +415,17 @@ export interface FileRoutesById {
   '/completar-perfil': typeof CompletarPerfilRoute
   '/login': typeof LoginRoute
   '/_app/agenda': typeof AppAgendaRoute
+  '/_app/base-juridica': typeof AppBaseJuridicaRoute
   '/_app/biblioteca': typeof AppBibliotecaRouteWithChildren
   '/_app/caixa-de-entrada': typeof AppCaixaDeEntradaRoute
   '/_app/definicoes': typeof AppDefinicoesRoute
+  '/_app/definicoes-gerais': typeof AppDefinicoesGeraisRoute
+  '/_app/equipa': typeof AppEquipaRoute
   '/_app/historico': typeof AppHistoricoRoute
+  '/_app/integracoes': typeof AppIntegracoesRoute
+  '/_app/lixeira': typeof AppLixeiraRoute
+  '/_app/modelos': typeof AppModelosRoute
+  '/_app/relatorios': typeof AppRelatoriosRoute
   '/_app/': typeof AppIndexRoute
   '/_app/assembleias/$id': typeof AppAssembleiasIdRouteWithChildren
   '/_app/assuntos/$dossieId': typeof AppAssuntosDossieIdRouteWithChildren
@@ -403,10 +466,17 @@ export interface FileRouteTypes {
     | '/completar-perfil'
     | '/login'
     | '/agenda'
+    | '/base-juridica'
     | '/biblioteca'
     | '/caixa-de-entrada'
     | '/definicoes'
+    | '/definicoes-gerais'
+    | '/equipa'
     | '/historico'
+    | '/integracoes'
+    | '/lixeira'
+    | '/modelos'
+    | '/relatorios'
     | '/assembleias/$id'
     | '/assuntos/$dossieId'
     | '/documentos/$documentoId'
@@ -443,10 +513,17 @@ export interface FileRouteTypes {
     | '/completar-perfil'
     | '/login'
     | '/agenda'
+    | '/base-juridica'
     | '/biblioteca'
     | '/caixa-de-entrada'
     | '/definicoes'
+    | '/definicoes-gerais'
+    | '/equipa'
     | '/historico'
+    | '/integracoes'
+    | '/lixeira'
+    | '/modelos'
+    | '/relatorios'
     | '/'
     | '/assembleias/$id'
     | '/documentos/$documentoId'
@@ -484,10 +561,17 @@ export interface FileRouteTypes {
     | '/completar-perfil'
     | '/login'
     | '/_app/agenda'
+    | '/_app/base-juridica'
     | '/_app/biblioteca'
     | '/_app/caixa-de-entrada'
     | '/_app/definicoes'
+    | '/_app/definicoes-gerais'
+    | '/_app/equipa'
     | '/_app/historico'
+    | '/_app/integracoes'
+    | '/_app/lixeira'
+    | '/_app/modelos'
+    | '/_app/relatorios'
     | '/_app/'
     | '/_app/assembleias/$id'
     | '/_app/assuntos/$dossieId'
@@ -558,11 +642,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/relatorios': {
+      id: '/_app/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof AppRelatoriosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/modelos': {
+      id: '/_app/modelos'
+      path: '/modelos'
+      fullPath: '/modelos'
+      preLoaderRoute: typeof AppModelosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/lixeira': {
+      id: '/_app/lixeira'
+      path: '/lixeira'
+      fullPath: '/lixeira'
+      preLoaderRoute: typeof AppLixeiraRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/integracoes': {
+      id: '/_app/integracoes'
+      path: '/integracoes'
+      fullPath: '/integracoes'
+      preLoaderRoute: typeof AppIntegracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/historico': {
       id: '/_app/historico'
       path: '/historico'
       fullPath: '/historico'
       preLoaderRoute: typeof AppHistoricoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/equipa': {
+      id: '/_app/equipa'
+      path: '/equipa'
+      fullPath: '/equipa'
+      preLoaderRoute: typeof AppEquipaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/definicoes-gerais': {
+      id: '/_app/definicoes-gerais'
+      path: '/definicoes-gerais'
+      fullPath: '/definicoes-gerais'
+      preLoaderRoute: typeof AppDefinicoesGeraisRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/definicoes': {
@@ -584,6 +710,13 @@ declare module '@tanstack/react-router' {
       path: '/biblioteca'
       fullPath: '/biblioteca'
       preLoaderRoute: typeof AppBibliotecaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/base-juridica': {
+      id: '/_app/base-juridica'
+      path: '/base-juridica'
+      fullPath: '/base-juridica'
+      preLoaderRoute: typeof AppBaseJuridicaRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/agenda': {
@@ -1018,10 +1151,17 @@ const AppSessoesIdRouteWithChildren = AppSessoesIdRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
+  AppBaseJuridicaRoute: typeof AppBaseJuridicaRoute
   AppBibliotecaRoute: typeof AppBibliotecaRouteWithChildren
   AppCaixaDeEntradaRoute: typeof AppCaixaDeEntradaRoute
   AppDefinicoesRoute: typeof AppDefinicoesRoute
+  AppDefinicoesGeraisRoute: typeof AppDefinicoesGeraisRoute
+  AppEquipaRoute: typeof AppEquipaRoute
   AppHistoricoRoute: typeof AppHistoricoRoute
+  AppIntegracoesRoute: typeof AppIntegracoesRoute
+  AppLixeiraRoute: typeof AppLixeiraRoute
+  AppModelosRoute: typeof AppModelosRoute
+  AppRelatoriosRoute: typeof AppRelatoriosRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAssembleiasIdRoute: typeof AppAssembleiasIdRouteWithChildren
   AppAssuntosDossieIdRoute: typeof AppAssuntosDossieIdRouteWithChildren
@@ -1036,10 +1176,17 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
+  AppBaseJuridicaRoute: AppBaseJuridicaRoute,
   AppBibliotecaRoute: AppBibliotecaRouteWithChildren,
   AppCaixaDeEntradaRoute: AppCaixaDeEntradaRoute,
   AppDefinicoesRoute: AppDefinicoesRoute,
+  AppDefinicoesGeraisRoute: AppDefinicoesGeraisRoute,
+  AppEquipaRoute: AppEquipaRoute,
   AppHistoricoRoute: AppHistoricoRoute,
+  AppIntegracoesRoute: AppIntegracoesRoute,
+  AppLixeiraRoute: AppLixeiraRoute,
+  AppModelosRoute: AppModelosRoute,
+  AppRelatoriosRoute: AppRelatoriosRoute,
   AppIndexRoute: AppIndexRoute,
   AppAssembleiasIdRoute: AppAssembleiasIdRouteWithChildren,
   AppAssuntosDossieIdRoute: AppAssuntosDossieIdRouteWithChildren,

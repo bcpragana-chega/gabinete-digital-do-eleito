@@ -76,18 +76,41 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.doesNotMatch(intake, />Compreender<|Adicionar e compreender|A compreender o documento/);
   });
 
-  it("sidebar desktop contém apenas a navegação principal", () => {
-    assert.doesNotMatch(sidebarConfig, /sidebarFooterItems|\/definicoes|Settings/);
-    assert.doesNotMatch(sidebar, /Definições|Terminar sessão|LogoutConfirmDialog|LogOut/);
+  it("sidebar desktop contém a navegação completa e grupos recolhíveis", () => {
     assert.match(sidebar, /sidebarItems\.map/);
+    assert.match(sidebar, /sidebarSections\.map/);
+    assert.match(sidebar, /toggleSection/);
+    assert.match(sidebar, /aria-expanded=\{expanded\}/);
+    assert.match(sidebar, /TRIBUNO/);
+    assert.match(sidebar, /Criação rápida/);
+    assert.match(sidebar, /UserAvatar/);
+    assert.match(sidebar, /LogoutConfirmDialog/);
     assert.match(sidebar, /border-t[\s\S]*HelpAssistantPanel/);
     assert.doesNotMatch(sidebarConfig, /Ajuda|HelpAssistantPanel/);
+
+    for (const label of [
+      "Hoje",
+      "Assuntos",
+      "Sessões",
+      "Biblioteca",
+      "Agenda",
+      "Favoritos",
+      "Workspace",
+      "Definições",
+      "Perfil institucional",
+      "Integrações",
+      "Lixeira",
+    ]) {
+      assert.match(sidebarConfig, new RegExp(label));
+    }
   });
 
-  it("menu móvel não repete definições nem logout", () => {
+  it("menu móvel expõe a navegação completa sem duplicar o logout", () => {
     const menuMovel = entre(topBar, "<SheetContent", "</SheetContent>");
-    assert.doesNotMatch(menuMovel, /Definições|Terminar sessão|LogoutConfirmDialog/);
     assert.match(menuMovel, /sidebarItems\.map/);
+    assert.match(menuMovel, /sidebarSections\.map/);
+    assert.match(menuMovel, /section\.label/);
+    assert.doesNotMatch(menuMovel, /Terminar sessão|LogoutConfirmDialog/);
   });
 
   it("menu do avatar mantém perfil, logout e acesso direto a definições", () => {

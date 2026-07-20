@@ -9,6 +9,7 @@ import {
   isSidebarItemActive,
   sidebarItemClassName,
   sidebarItems,
+  sidebarSections,
 } from "@/components/layout/sidebar-config";
 import { UniversalSearch } from "@/components/search/UniversalSearch";
 import { primeiroNome, saudacaoPorHora, useAuth } from "@/lib/auth-store";
@@ -144,6 +145,32 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
                       </Link>
                     );
                   })}
+
+                  {sidebarSections.map((section) => (
+                    <section key={section.id} className="pt-3">
+                      <div className="px-3 pb-2 text-[10.5px] font-medium text-muted-foreground">
+                        {section.label}
+                      </div>
+                      <div className="space-y-1">
+                        {section.items.map((item) => {
+                          const Icon = item.icon;
+                          const active = isSidebarItemActive(pathname, item);
+
+                          return (
+                            <Link
+                              key={`${section.id}-${item.to}`}
+                              to={item.to}
+                              onClick={() => setMenuAberto(false)}
+                              className={sidebarItemClassName(active, "mobile")}
+                            >
+                              <Icon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
+                              <span>{item.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
                 </nav>
 
                 <div className="border-t border-border/60 px-3 py-3 md:hidden">
