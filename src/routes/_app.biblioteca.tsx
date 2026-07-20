@@ -8,6 +8,13 @@ import { TopBar } from "@/components/layout/TopBar";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { WorkspacePage } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import {
@@ -22,6 +29,7 @@ import { listarDossiesAssociadosAoDocumento } from "@/lib/dossie-documentos-stor
 import { useDossies } from "@/lib/dossies-store";
 import { useDocumentos } from "@/lib/documentos-store";
 import { obterInboxDocumento, useInboxDocumentos } from "@/lib/inbox-store";
+import { formatarDataBibliotecaMobile } from "@/lib/library-list-presentation";
 import type { Documento } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -224,7 +232,26 @@ function BibliotecaPage() {
             {pesquisaAtiva ? `${documentosVisiveis.length} de ${documentos.length}` : ""}
           </p>
 
-          <div className="order-3 -mx-1 flex min-w-0 flex-1 basis-full items-center gap-0.5 overflow-x-auto px-1">
+          <Select
+            value={separadorAtivo}
+            onValueChange={(value) => setSeparadorAtivo(value as SeparadorId)}
+          >
+            <SelectTrigger
+              className="order-3 h-9 w-full min-w-0 border-border/70 bg-background/0 text-xs md:hidden"
+              aria-label="Filtrar Biblioteca"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start">
+              {separadores.map((separador) => (
+                <SelectItem key={separador.id} value={separador.id} className="text-xs">
+                  {separador.label} ({contagemSeparador(separador.id)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="order-3 -mx-1 hidden min-w-0 flex-1 basis-full items-center gap-0.5 px-1 md:flex">
             {separadores.map((separador) => (
               <button
                 key={separador.id}
@@ -248,7 +275,7 @@ function BibliotecaPage() {
         </div>
       </div>
 
-      <WorkspacePage>
+      <WorkspacePage contentClassName="overflow-x-hidden">
         <section aria-label="Lista de documentos">
           {documentosVisiveis.length === 0 ? (
             <EmptyState title={estadoVazio.title} description={estadoVazio.description} />
@@ -268,7 +295,10 @@ const listGrid =
 
 function DocumentosList({ itens }: { itens: ItemBiblioteca[] }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border/70 bg-card">
+    <div
+      className="min-w-0 overflow-hidden rounded-lg border border-border/70 bg-card"
+      data-biblioteca-list
+    >
       <div
         className={cn(
           listGrid,
@@ -298,6 +328,7 @@ function DocumentoRow({ item }: { item: ItemBiblioteca }) {
   const podeAnalisar =
     documento.ficheiroTipo === "application/pdf" && documento.estadoAnalise !== "confirmado";
   const associacoes = [assunto, sessao].filter(Boolean).join(" · ") || "Sem associação";
+  const temAssociacoes = Boolean(assunto || sessao);
 
   return (
     <article
@@ -314,7 +345,43 @@ function DocumentoRow({ item }: { item: ItemBiblioteca }) {
         className="absolute inset-0 z-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30"
       />
 
-      <div className="pointer-events-none relative min-w-0">
+      <div
+        className="pointer-events-none relative col-span-2 min-w-0 md:hidden"
+        data-documento-mobile
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 className="min-w-0 flex-1 truncate text-sm font-semibold leading-5 text-foreground">
+            {documento.titulo}
+          </h2>
+          <StatusBadge
+            tone="muted"
+            dot={false}
+            className="h-5 max-w-[42%] shrink-0 truncate border-transparent bg-background/0 px-1.5 py-0 text-[10px]"
+          >
+            {documento.tipo}
+          </StatusBadge>
+        </div>
+
+        {temAssociacoes && (
+          <p className="truncate text-[10px] leading-4 text-muted-foreground">{associacoes}</p>
+        )}
+
+        <div className="flex min-w-0 items-center gap-1.5 text-[10px] leading-4 text-muted-foreground">
+          <time dateTime={documento.data || undefined} className="shrink-0 tabular-nums">
+            {formatarDataBibliotecaMobile(documento.data)}
+          </time>
+          <span aria-hidden="true">·</span>
+          <span className="min-w-0 shrink truncate font-medium text-foreground/80">{estado}</span>
+          <span aria-hidden="true">·</span>
+          <span className="min-w-0 truncate font-semibold text-foreground">{acaoAbrir}</span>
+          <ChevronRight
+            className="h-3 w-3 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
+            aria-hidden="true"
+          />
+        </div>
+      </div>
+
+      <div className="pointer-events-none relative hidden min-w-0 md:block">
         <div className="flex min-w-0 items-center gap-1.5">
           <h2 className="truncate text-sm font-semibold leading-5 text-foreground">
             {documento.titulo}
@@ -334,17 +401,7 @@ function DocumentoRow({ item }: { item: ItemBiblioteca }) {
             </StatusBadge>
           )}
         </div>
-        <p className="truncate text-[11px] text-muted-foreground md:hidden">
-          {categoria} · {documento.tipo}
-        </p>
       </div>
-
-      <StatusBadge
-        tone={estadoTone(estado)}
-        className="pointer-events-none relative h-5 max-w-32 justify-self-end truncate border-transparent bg-background/0 px-1.5 py-0 text-[10px] md:hidden"
-      >
-        {estado}
-      </StatusBadge>
 
       <div className="pointer-events-none relative hidden min-w-0 md:block">
         <span className="block truncate text-xs text-foreground/80">{categoria}</span>
@@ -368,7 +425,7 @@ function DocumentoRow({ item }: { item: ItemBiblioteca }) {
             <InstitutionalDocumentIntake documentoInicial={documento} />
           </div>
         )}
-        <span className="pointer-events-none ml-auto inline-flex min-w-0 items-center gap-1 text-xs font-semibold text-foreground">
+        <span className="pointer-events-none ml-auto hidden min-w-0 items-center gap-1 text-xs font-semibold text-foreground md:inline-flex">
           <span className="truncate">{acaoAbrir}</span>
           <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
         </span>

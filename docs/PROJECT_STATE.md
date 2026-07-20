@@ -1306,11 +1306,77 @@ relações, pesquisa, dados e desktop fora dessa futura alteração.
 
 ---
 
+## ✅ Missão mobile — Adaptar exclusivamente a lista da Biblioteca
+
+Estado: CONCLUÍDA
+
+### Diagnóstico anterior
+
+A rota canónica `/biblioteca` já concentrava corretamente a pesquisa local, os sete filtros, a
+deduplicação, os estados, as associações a Assunto e Sessão e a ordenação determinística: documentos
+por rever primeiro e, dentro de cada grupo, data descendente, título e ID. Cada linha abria o
+Documento canónico e conservava a ação opcional de análise de PDF. No mobile, contudo, os filtros
+dependiam de uma faixa horizontal e a composição escondia associação e data, enquanto categoria e
+tipo competiam entre si numa linha secundária.
+
+### Composição mobile final
+
+- Linha 1: título truncado e tipo documental existente numa badge discreta e imediatamente legível.
+- Linha 2: Assunto e/ou Sessão apenas quando existe uma relação já resolvida pela aplicação.
+- Linha 3: data civil curta (Hoje, Ontem, `24 jul.` ou Sem data), estado existente e ação
+  Abrir/Rever já determinada pela lista.
+- A linha integral continua a abrir `/documentos/$documentoId` com origem Biblioteca. A ação
+  opcional Analisar documento continua acessível nos PDFs elegíveis sem alterar o respetivo fluxo.
+- Títulos e metadata extensos usam `min-width: 0`, truncation e limites de largura; a página bloqueia
+  overflow horizontal.
+- Os sete filtros passaram a um seletor compacto abaixo de 768 px. A pesquisa local, incluindo
+  limpeza, contagem e campos pesquisados, permanece exatamente igual.
+
+### Preservação explícita
+
+- Mantiveram-se `useDocumentos`, `useAssembleias`, `useDossies`, inbox, relações, deduplicação,
+  categorias, estados, pesquisa, filtros, contagens, ordenação, ações e estados vazios.
+- A data mobile continua a apresentar `documento.data`, a mesma origem usada pela tabela e pela
+  ordenação; não foi introduzida uma nova regra baseada em criação ou atualização.
+- A partir de 768 px permanecem a faixa original de filtros, a tabela com cinco colunas, grelha,
+  densidade, categoria/tipo, associações, data e ações anteriores.
+- Não foram alterados detalhe documental, editor, análise ou geração por IA, exportação, upload,
+  Supabase, queries, stores, pesquisa global, shell, autenticação ou as restantes áreas mobile.
+
+### Testes e validações
+
+Foram adicionados contratos funcionais para Hoje, Ontem, data curta, ausência/invalidade de data e
+timestamp civil. Os contratos estruturais cobrem rota e origem canónicas, sete filtros, pesquisa,
+ordenação completa, tipos existentes, relações condicionais, estados, ações, quatro estados vazios,
+composição compacta, títulos extensos, ausência de scroll horizontal e preservação desktop no
+breakpoint de 768 px.
+
+A composição foi validada estruturalmente para 320, 375, 390 e 430 px, para a transição em 768 px e
+para desktop. `npm test` aprovou 578 testes sem falhas, mantendo apenas o aviso não bloqueante do
+sandbox relativo à porta WebSocket 24678 do Vite; `npm run typecheck` foi aprovado; `npm run lint`
+foi aprovado com 0 erros e 22 avisos preexistentes fora do âmbito; `npm run build` foi aprovado; e
+`git diff --check` foi aprovado. Não foi produzido screenshot de browser nesta execução.
+
+### Riscos residuais
+
+- Continua recomendada uma passagem em dispositivos físicos para confirmar a densidade quando a
+  ação opcional Analisar documento está presente e quando são usadas fontes ampliadas.
+- Documentos com Assunto e Sessão apresentam ambas as relações truncadas numa única linha; os nomes
+  completos continuam disponíveis no detalhe.
+- A data mostrada conserva deliberadamente o contrato documental anterior, mesmo quando difere de
+  `createdAt` ou `updatedAt`.
+
+### Próxima missão recomendada
+
+Auditar e adaptar exclusivamente o detalhe de Assunto à experiência mobile, numa missão própria,
+sem misturar o detalhe documental ou a preparação de Sessão.
+
+---
+
 # Próxima ação
 
-Executar uma missão fechada para adaptar exclusivamente a lista da Biblioteca à consulta mobile,
-sem alterar o detalhe documental, análise, relações, dados, rotas ou desktop e sem misturar
-trabalho do Problema n.º 14.
+Executar uma missão fechada para auditar e adaptar exclusivamente o detalhe de Assunto à experiência
+mobile, sem alterar regras, relações, dados, pesquisa, restante navegação ou desktop.
 
 Não iniciar automaticamente outro problema após o fecho do Problema n.º 13.
 
