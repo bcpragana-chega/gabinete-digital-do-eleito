@@ -903,12 +903,47 @@ Existem ou existiram estruturas paralelas completas para Sessões e Assembleias:
 
 Eliminar definitivamente modelos antigos, em vez de apenas os esconder.
 
+### Missão 14.A concluída — remoção exclusiva de código morto de UI
+
+O inventário de `docs/PROBLEMA_14_INVENTARIO.md` confirmou uma ilha de componentes sem imports de
+produção, testes ativos, barrels consumidos, rotas, lazy imports, imports dinâmicos ou referências
+por nome em testes de composição. Foram removidos exclusivamente:
+
+- `src/components/cards/AssembleiaCard.tsx`;
+- `src/components/preparacao/AcaoCard.tsx`;
+- `src/components/preparacao/AdicionarAcaoDialog.tsx`;
+- `src/components/preparacao/AdicionarPrioridadeDialog.tsx`;
+- `src/components/preparacao/AdicionarPerguntaDialog.tsx`;
+- `src/components/preparacao/DocumentoACriarCard.tsx`;
+- `src/components/preparacao/PerguntaCard.tsx`;
+- `src/components/preparacao/PrioridadeCard.tsx`;
+- `src/components/preparacao/SecaoPreparacao.tsx`;
+- `src/components/preparacao/badges.tsx`.
+
+Não foi necessário ajustar barrels. `AdicionarItemPreparacao.tsx` permanece ativo e preservado.
+Não foram alterados comportamento, nomenclatura ativa, rotas, compatibilidade, stores, tipos,
+localStorage, repositories ou Supabase.
+
+### Validações da Missão 14.A
+
+- pesquisa global antes e depois da remoção: sem consumidores executáveis; permanecem apenas
+  referências históricas em `TECHNICAL_AUDIT.md`;
+- `npm test`: 510 testes aprovados, 0 falhas; o sandbox emitiu o aviso não bloqueante já conhecido
+  ao impedir a abertura da porta WebSocket 24678 do Vite;
+- `npm run typecheck`: aprovado;
+- `npm run lint`: aprovado com 0 erros e 22 avisos preexistentes fora do âmbito;
+- `npm run build`: aprovado;
+- `git diff --check`: aprovado.
+
+O Problema n.º 14 continua **PENDENTE**. A Missão 14.A removeu apenas código morto de UI; não
+resolveu ainda as APIs mortas, nomes técnicos antigos nem contratos de persistência inventariados.
+
 ---
 
 # Próxima ação
 
-Resolver o Problema n.º 14 — duplicação aumenta o custo de cada correção futura — numa missão
-futura e fechada.
+Continuar o Problema n.º 14 com a próxima missão fechada: reduzir APIs mortas nos stores, sem
+iniciar ainda a renomeação Assembleia → Sessão nem alterar dados, rotas ou persistência.
 
 Não iniciar automaticamente outro problema após o fecho do Problema n.º 13.
 
