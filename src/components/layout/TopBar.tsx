@@ -199,7 +199,7 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
                 )}
               </div>
               <div className="truncate text-xs leading-4 text-muted-foreground sm:text-[13px]">
-                Vamos preparar a próxima sessão.
+              O trabalho não para. Vamos à próxima sessão.
               </div>
             </div>
           ) : (
