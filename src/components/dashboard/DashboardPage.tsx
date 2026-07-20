@@ -155,7 +155,9 @@ export function DashboardPage() {
   return (
     <>
       <TopBar showUtilities={false} />
-      <WorkspacePage>
+      <WorkspacePage contentClassName="overflow-x-hidden">
+        {decision.state !== "clear" && <MobileTodayContext decision={decision} />}
+
         <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.85fr)]">
           <div className="min-w-0 space-y-4">
             {decision.state === "clear" ? (
@@ -165,12 +167,17 @@ export function DashboardPage() {
                 <PrimaryActionCard
                   action={decision.primaryAction}
                   documentToAnalyze={documentosParaOrganizar[0]}
+                  critical={decision.state === "critical"}
                 />
               )
             )}
           </div>
 
-          {proxima && <NextSessionPanel session={proxima} />}
+          {proxima && (
+            <div className="hidden min-w-0 md:block">
+              <NextSessionPanel session={proxima} />
+            </div>
+          )}
         </div>
 
         <div className="mt-4 grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.85fr)]">
@@ -182,7 +189,7 @@ export function DashboardPage() {
           </div>
 
           {(assuntosAtivos.length > 0 || documentosRecentes.length > 0) && (
-            <aside className="min-w-0 space-y-4">
+            <aside className="hidden min-w-0 space-y-4 md:block">
               {assuntosAtivos.length > 0 && <SubjectsPanel subjects={assuntosAtivos.slice(0, 4)} />}
               {documentosRecentes.length > 0 && (
                 <RecentDocumentsPanel documents={documentosRecentes} />
@@ -195,37 +202,75 @@ export function DashboardPage() {
   );
 }
 
+function MobileTodayContext({ decision }: { decision: TodayDecision }) {
+  const context =
+    decision.primaryAction?.context ??
+    (decision.state === "critical"
+      ? "Há trabalho prioritário que precisa da tua atenção."
+      : decision.state === "onboarding"
+        ? "Vamos preparar o essencial para começares."
+        : "Há uma próxima ação pronta para avançar.");
+
+  return (
+    <p
+      className="max-w-prose text-sm leading-5 text-muted-foreground md:hidden"
+      data-mobile-today-context
+    >
+      {context}
+    </p>
+  );
+}
+
 function PrimaryActionCard({
   action,
   documentToAnalyze,
+  critical,
 }: {
   action: TodayAction;
   documentToAnalyze?: Documento;
+  critical: boolean;
 }) {
   return (
-    <Card className="overflow-hidden border-primary/35 bg-primary/[0.025] p-0 shadow-md">
-      <div className="flex items-center gap-2 border-b border-primary/15 bg-primary/[0.06] px-5 py-3">
-        <span className="h-2 w-2 rounded-full bg-primary" />
+    <Card
+      className={`overflow-hidden p-0 shadow-sm md:border-primary/35 md:bg-primary/[0.025] md:shadow-md ${
+        critical
+          ? "border-l-4 border-l-status-alerta-foreground/70 bg-status-alerta/15"
+          : "border-border/80 bg-card"
+      }`}
+      data-today-primary-action
+      data-state={critical ? "critical" : "standard"}
+      aria-labelledby="today-primary-action-title"
+    >
+      <div className="flex items-center gap-2 border-b border-border/70 px-4 py-2.5 md:border-primary/15 md:bg-primary/[0.06] md:px-5 md:py-3">
+        <span
+          className={`h-2 w-2 rounded-full ${
+            critical ? "bg-status-alerta-foreground" : "bg-primary"
+          }`}
+          aria-hidden="true"
+        />
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Próxima ação
+          {critical ? "Ação prioritária" : "Próxima ação"}
         </p>
       </div>
-      <div className="p-5 sm:p-6">
-        <h2 className="text-xl font-semibold leading-7 text-foreground sm:text-2xl">
+      <div className="p-4 md:p-6">
+        <h2
+          id="today-primary-action-title"
+          className="text-xl font-semibold leading-7 text-foreground md:text-2xl"
+        >
           {action.title}
         </h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           {action.explanation}
         </p>
         {action.context && (
-          <p className="mt-3 inline-flex items-center gap-2 text-xs text-muted-foreground">
+          <p className="mt-3 hidden items-center gap-2 text-xs text-muted-foreground md:inline-flex">
             <Clock3 className="h-3.5 w-3.5" strokeWidth={1.75} />
             {action.context}
           </p>
         )}
 
         {action.id === "onboarding-subject" ? (
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-4 flex w-full flex-col gap-2 sm:flex-row [&_button]:min-h-11 [&_button]:w-full sm:[&_button]:w-auto">
             <NovoDossieDialog />
             <InstitutionalDocumentIntake
               triggerLabel="Analisar documentos"
@@ -233,19 +278,19 @@ function PrimaryActionCard({
             />
           </div>
         ) : action.id === "onboarding-session" ? (
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-4 flex w-full flex-col gap-2 sm:flex-row [&_button]:min-h-11 [&_button]:w-full sm:[&_button]:w-auto">
             <InstitutionalDocumentIntake triggerLabel="Carregar convocatória" />
             <NovaSessaoWizard triggerLabel="Criar manualmente" />
           </div>
         ) : action.id.startsWith("organize-document-") && documentToAnalyze ? (
-          <div className="mt-4 flex">
+          <div className="mt-4 flex w-full [&_button]:min-h-11 [&_button]:w-full sm:[&_button]:w-auto">
             <InstitutionalDocumentIntake
               documentoInicial={documentToAnalyze}
               triggerLabel="Analisar documentos"
             />
           </div>
         ) : (
-          <Button asChild className="mt-4">
+          <Button asChild className="mt-4 min-h-11 w-full sm:w-auto">
             <a href={action.href}>
               {action.label}
               <ArrowRight className="h-4 w-4" strokeWidth={1.85} />
@@ -259,13 +304,18 @@ function PrimaryActionCard({
 
 function AlertsSection({ alerts }: { alerts: TodayDecision["alerts"] }) {
   return (
-    <OperationalPanel title="Atenção" count={alerts.length} ariaId="today-alerts-title">
+    <OperationalPanel
+      title="Atenção"
+      count={alerts.length}
+      ariaId="today-alerts-title"
+      dataAttribute="today-alerts"
+    >
       <div className="divide-y divide-border/70">
         {alerts.map((alert) => (
           <a
             key={alert.id}
             href={alert.href}
-            className="flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-muted/40"
+            className="flex min-h-11 items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30"
           >
             <AlertTriangle
               className="h-4 w-4 shrink-0 text-status-alerta-foreground"
@@ -289,13 +339,18 @@ function AlertsSection({ alerts }: { alerts: TodayDecision["alerts"] }) {
 
 function PendingSection({ pendingItems }: { pendingItems: TodayDecision["pendingItems"] }) {
   return (
-    <OperationalPanel title="Depois" count={pendingItems.length} ariaId="today-pending-title">
+    <OperationalPanel
+      title="Depois"
+      count={pendingItems.length}
+      ariaId="today-pending-title"
+      dataAttribute="today-pending"
+    >
       <div className="divide-y divide-border/70">
         {pendingItems.map((item) => (
           <a
             key={item.id}
             href={item.href}
-            className="flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-muted/40"
+            className="flex min-h-11 items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30"
           >
             <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
             <div className="min-w-0 flex-1">
@@ -315,19 +370,22 @@ function PendingSection({ pendingItems }: { pendingItems: TodayDecision["pending
 
 function ClearState() {
   return (
-    <Card className="flex items-start gap-3 border-status-concluida-foreground/15 bg-status-concluida/35 p-4">
+    <Card
+      className="flex items-start gap-3 border-status-concluida-foreground/15 bg-status-concluida/35 p-4 shadow-none md:shadow-card"
+      data-today-clear
+    >
       <CheckCircle2
         className="mt-0.5 h-4 w-4 shrink-0 text-status-concluida-foreground"
         strokeWidth={1.75}
       />
       <div className="min-w-0">
         <h2 className="text-sm font-semibold text-foreground">
-          Não tens nada urgente neste momento.
+          Não tens nada urgente neste momento
         </h2>
         <p className="mt-0.5 text-xs text-muted-foreground">O mandato está em dia.</p>
         <Link
           to="/assuntos"
-          className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline"
+          className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-md text-xs font-medium text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
         >
           Consultar assuntos ativos
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -341,15 +399,21 @@ function OperationalPanel({
   title,
   count,
   ariaId,
+  dataAttribute,
   children,
 }: {
   title: string;
   count?: number;
   ariaId?: string;
+  dataAttribute?: "today-alerts" | "today-pending";
   children: React.ReactNode;
 }) {
   return (
-    <Card className="overflow-hidden p-0">
+    <Card
+      className="overflow-hidden p-0 shadow-none md:shadow-card"
+      data-section={dataAttribute}
+      aria-labelledby={ariaId}
+    >
       <div className="flex h-10 items-center justify-between border-b border-border/80 px-4">
         <h2 id={ariaId} className="text-xs font-semibold text-foreground">
           {title}

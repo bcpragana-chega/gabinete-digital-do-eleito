@@ -1016,11 +1016,103 @@ Problema n.º 14.
 
 ---
 
+## ✅ Missão mobile — Adaptar exclusivamente a página Hoje
+
+Estado: CONCLUÍDA
+
+### Decisão mobile
+
+No mobile, Hoje responde diretamente a “O que tenho de fazer agora?” através de uma sequência única:
+
+1. uma frase curta de contexto atual;
+2. uma única ação principal;
+3. até dois alertas reais, apenas quando existem;
+4. até três pendências secundárias, apenas quando existem;
+5. estado tranquilo exclusivo quando não existe trabalho relevante.
+
+O motor `decideToday` continua a ser a única fonte de decisão. Não foram introduzidas regras de
+urgência, prioridades, métricas ou dados derivados adicionais.
+
+### Diagnóstico anterior
+
+A página já tinha uma ação principal correta e limites determinísticos para alertas e pendências,
+mas a mesma composição era apresentada em todas as larguras. No mobile, Próxima sessão, Assuntos
+pendentes e Documentos recentes competiam com a resposta principal e prolongavam a página com
+módulos úteis no desktop, mas secundários num assistente de bolso.
+
+### Implementação realizada
+
+- Inserida uma única frase curta de contexto antes da ação, exclusiva de mobile e baseada apenas no
+  contexto ou estado já devolvido pela decisão.
+- A ação principal passou a usar toda a largura disponível no mobile, com título, explicação,
+  contexto essencial e controlos com pelo menos 44 px de altura.
+- O estado crítico é identificado pelo texto “Ação prioritária”, estrutura e marcador lateral, sem
+  depender apenas da cor nem recorrer a vermelho excessivo.
+- O contexto da ação permanece dentro do cartão no desktop e aparece antes do cartão no mobile,
+  evitando repetição.
+- Alertas e pendências mantêm os dados e destinos existentes, mas usam linhas compactas, divisores
+  subtis, foco visível, headings associados e alvos táteis adequados.
+- O onboarding permanece dentro da única ação principal. Novo Assunto, análise documental,
+  carregamento de convocatória e criação manual de Sessão continuam a reutilizar exatamente os
+  fluxos existentes; os botões empilham sem scroll lateral no mobile.
+- O estado `clear` apresenta exclusivamente “Não tens nada urgente neste momento”, “O mandato está
+  em dia” e a consulta discreta de Assuntos já existente.
+- Próxima sessão, Assuntos pendentes e Documentos recentes ficam ocultos abaixo de 768 px e mantêm a
+  composição anterior a partir do breakpoint desktop.
+- O contentor da página bloqueia overflow horizontal e continua protegido pelo espaço inferior e
+  safe-area definidos no shell mobile.
+- Não foram alterados `decideToday`, rotas, contratos de dados, Supabase, autenticação, Ajuda,
+  pesquisa, navegação, preparação de Sessão ou fluxos documentais.
+
+### Comportamento dos quatro estados
+
+- `onboarding`: o onboarding é a ação principal e apresenta apenas as escolhas funcionais atuais.
+- `active`: mostra contexto curto, ação recomendada e apenas alertas ou pendências realmente
+  devolvidos pelo motor.
+- `critical`: mantém a mesma prioridade do motor e acrescenta identificação textual e visual calma.
+- `clear`: não mostra ação, alertas, pendências ou trabalho artificial; apresenta apenas o estado em
+  dia e a consulta discreta de Assuntos.
+
+### Testes e validações
+
+- `npm test`: 536 testes aprovados, 0 falhas; o sandbox mantém o aviso não bloqueante conhecido ao
+  impedir a abertura da porta WebSocket 24678 do Vite;
+- `npm run typecheck`: aprovado;
+- `npm run lint`: aprovado com 0 erros e 22 avisos preexistentes fora do âmbito;
+- `npm run build`: aprovado;
+- `git diff --check`: aprovado.
+
+Os novos contratos provam a existência de uma única ação principal, renderização condicional e
+limites de alertas e pendências, exclusividade de `clear`, ausência de duplicação no onboarding,
+destinos existentes, preservação do motor, módulos desktop, ausência de conteúdo concorrente e de
+scroll horizontal no mobile e reserva inferior da navegação.
+
+A composição foi validada estruturalmente para 320, 375, 390 e 430 px, para a transição em 768 px,
+e para 1024 px e desktop habitual. Foram cobertos títulos longos, criticidade, os dois onboardings,
+estado tranquilo, dois alertas e três pendências. Não foi produzido screenshot de browser nesta
+execução.
+
+### Riscos residuais
+
+- Continua recomendada uma passagem em dispositivos físicos para confirmar altura inicial da ação
+  em ecrãs pequenos, teclado virtual e diferentes safe-areas.
+- O desktop mantém os módulos informativos anteriores; futuras alterações móveis não devem remover
+  essa composição sem uma decisão de produto própria.
+- Assuntos, Sessões e Biblioteca continuam com o conteúdo mobile atual e não foram redesenhados.
+
+### Próxima missão recomendada
+
+Adaptar exclusivamente a lista de Assuntos à consulta mobile, tornando estado, próximo passo e
+destino rapidamente percorríveis, sem alterar o detalhe, o motor de próxima ação, os dados ou o
+desktop.
+
+---
+
 # Próxima ação
 
-Executar uma missão fechada para validar e adaptar apenas a página Hoje à experiência mobile de
-consulta e decisão, sem redesenhar Assuntos, Sessões ou Biblioteca e sem misturar trabalho do
-Problema n.º 14.
+Executar uma missão fechada para adaptar exclusivamente a lista de Assuntos à consulta mobile, sem
+alterar o detalhe, a lógica de próxima ação, os dados, as rotas ou o desktop e sem misturar trabalho
+do Problema n.º 14.
 
 Não iniciar automaticamente outro problema após o fecho do Problema n.º 13.
 

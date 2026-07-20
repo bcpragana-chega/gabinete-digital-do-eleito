@@ -137,13 +137,13 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.match(workspacePage, /px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6/);
 
     for (const pagina of [hoje, assuntos, sessoes, biblioteca]) {
-      assert.match(pagina, /<WorkspacePage>/);
+      assert.match(pagina, /<WorkspacePage(?:>|\s)/);
       assert.doesNotMatch(pagina, /bg-\[#fbfcfe\]|bg-transparent|max-w-7xl|max-w-\[1504px\]/);
     }
   });
 
   it("destaca a próxima ação e usa linguagem orientada à ação", () => {
-    const dashboard = entre(hoje, "<WorkspacePage>", "</WorkspacePage>");
+    const dashboard = entre(hoje, "<WorkspacePage", "</WorkspacePage>");
     assert.ok(dashboard.indexOf("<PrimaryActionCard") < dashboard.indexOf("<AlertsSection"));
     assert.match(dashboard, /<PendingSection/);
     assert.match(todayDecision, /Rever documento/);
