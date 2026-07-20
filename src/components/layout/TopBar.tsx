@@ -1,22 +1,12 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, LogOut, Menu, Settings } from "lucide-react";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { ArrowLeft, Ellipsis, LogOut, Menu, Settings } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { UserAvatar } from "@/components/auth/UserAvatar";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
-import { NovoAssuntoWizard } from "@/components/dossies/NovoAssuntoWizard";
-import { HelpAssistantPanel } from "@/components/help/HelpAssistantPanel";
-import { QuickCreateMenu } from "@/components/layout/QuickCreateMenu";
-import {
-  isSidebarItemActive,
-  sidebarItemClassName,
-  sidebarItems,
-  sidebarSections,
-} from "@/components/layout/sidebar-config";
+import { UserAvatar } from "@/components/auth/UserAvatar";
+import { MobileSecondaryMenu } from "@/components/layout/MobileSecondaryMenu";
+import { getMobileBackDestination } from "@/components/layout/mobile-navigation";
 import { GlobalSearchTrigger } from "@/components/search/GlobalSearchTrigger";
-import { primeiroNome, saudacaoPorHora, useAuth } from "@/lib/auth-store";
-import { cn } from "@/lib/utils";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +15,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { primeiroNome, saudacaoPorHora, useAuth } from "@/lib/auth-store";
 
 type TopBarProps = {
   title?: string;
@@ -64,8 +56,7 @@ function tituloPorPathname(pathname: string) {
   if (/^\/assuntos\/[^/]+$/.test(pathname)) return "Assunto";
   if (pathname === "/sessoes") return "Sessões";
   if (pathname === "/assuntos") return "Assuntos";
-  if (pathname === "/biblioteca") return "Biblioteca";
-  if (pathname === "/caixa-de-entrada") return "Biblioteca";
+  if (pathname === "/biblioteca" || pathname === "/caixa-de-entrada") return "Biblioteca";
   if (pathname === "/historico") return "Histórico";
   if (pathname === "/definicoes") return "Definições";
   return undefined;
@@ -78,12 +69,10 @@ export function TopBar({
   actions,
   showUtilities = true,
 }: TopBarProps) {
-  const [menuAberto, setMenuAberto] = useState(false);
-  const [novoAssuntoAberto, setNovoAssuntoAberto] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    settings: false,
-  });
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [menuOpen, setMenuOpen] = useState(false);
+  const router = useRouter();
+  const location = useRouterState({ select: (state) => state.location });
+  const pathname = location.pathname;
   const { user, perfil, displayName, localDisplayName, initialized } = useAuth();
   const greetingName = nomeTopBar(
     initialized ? displayName : localDisplayName,
@@ -92,6 +81,7 @@ export function TopBar({
   );
   const mostrarSaudacao = initialized || Boolean(localDisplayName);
   const dashboard = pathname === "/";
+  const mobileBackDestination = getMobileBackDestination(pathname, location.searchStr);
   const tituloContextual =
     title ?? (typeof breadcrumb === "string" ? breadcrumb : tituloPorPathname(pathname));
   const descricaoContextual =
@@ -99,149 +89,31 @@ export function TopBar({
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-lg">
-      <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 md:min-h-16 md:flex-nowrap md:px-5 md:py-0">
-        <div className="order-1 flex min-w-0 flex-1 items-center gap-3">
-          <Sheet open={menuAberto} onOpenChange={setMenuAberto}>
-            <SheetTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground md:hidden"
-                aria-label="Abrir menu"
-              >
-                <Menu className="h-4 w-4" strokeWidth={1.75} />
-              </button>
-            </SheetTrigger>
-
-            <SheetContent
-              side="left"
-              className="w-[88vw] max-w-80 border-border/70 bg-background p-0 text-foreground"
+      <div className="flex h-14 min-w-0 items-center gap-2 px-3 md:h-16 md:gap-3 md:px-5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
+          {mobileBackDestination ? (
+            <button
+              type="button"
+              onClick={() => router.history.push(mobileBackDestination)}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 md:hidden"
+              aria-label="Voltar"
             >
-              <SheetHeader className="sr-only">
-                <SheetTitle>Menu de navegação</SheetTitle>
-              </SheetHeader>
-
-              <div className="flex h-full flex-col">
-                <div className="border-b border-border/60 px-5 py-5">
-                  <div className="flex items-center gap-2.5">
-                    <img
-                      src="/logo.png"
-                      alt="Tribuno"
-                      className="h-12 w-12 shrink-0 object-contain"
-                    />
-                    <div className="leading-tight">
-                      <div className="font-display text-base font-semibold">Tribuno</div>
-                      <div className="text-[11px] uppercase text-muted-foreground">
-                        Gabinete Digital do Eleito
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
-                  <div className="px-3 pb-2 text-[10.5px] font-medium uppercase text-muted-foreground">
-                    Navegação
-                  </div>
-
-                  <GlobalSearchTrigger variant="mobile" onOpen={() => setMenuAberto(false)} />
-
-                  <QuickCreateMenu
-                    variant="mobile"
-                    onNewSubject={() => {
-                      setMenuAberto(false);
-                      setNovoAssuntoAberto(true);
-                    }}
-                    onSecondarySelect={() => setMenuAberto(false)}
-                  />
-
-                  {sidebarItems.map((item) => {
-                    const Icon = item.icon;
-                    const active = isSidebarItemActive(pathname, item);
-
-                    return (
-                      <Link
-                        key={item.to}
-                        to={item.to}
-                        onClick={() => setMenuAberto(false)}
-                        className={sidebarItemClassName(active, "mobile")}
-                      >
-                        <Icon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
-                        <span>{item.label}</span>
-                      </Link>
-                    );
-                  })}
-
-                  {sidebarSections.map((section) => {
-                    const expanded = expandedSections[section.id] ?? false;
-
-                    return (
-                      <section key={section.id} className="pt-3">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setExpandedSections((current) => ({
-                              ...current,
-                              [section.id]: !current[section.id],
-                            }))
-                          }
-                          className="flex min-h-11 w-full items-center gap-1.5 rounded-lg px-3 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
-                          aria-expanded={expanded}
-                          aria-controls={`mobile-sidebar-section-${section.id}`}
-                        >
-                          {expanded ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                          <span>{section.label}</span>
-                        </button>
-
-                        {expanded && (
-                          <div id={`mobile-sidebar-section-${section.id}`} className="space-y-1">
-                            {section.items.map((item) => {
-                              const Icon = item.icon;
-                              const active = isSidebarItemActive(pathname, item);
-
-                              return (
-                                <Link
-                                  key={`${section.id}-${item.to}`}
-                                  to={item.to}
-                                  onClick={() => setMenuAberto(false)}
-                                  className={sidebarItemClassName(active, "mobile")}
-                                >
-                                  <Icon
-                                    className="h-4 w-4 shrink-0 opacity-90"
-                                    strokeWidth={1.75}
-                                  />
-                                  <span>{item.label}</span>
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </section>
-                    );
-                  })}
-                </nav>
-
-                <div className="border-t border-border/60 px-3 py-3 md:hidden">
-                  <HelpAssistantPanel
-                    pathname={pathname}
-                    triggerClassName={sidebarItemClassName(false, "mobile")}
-                  />
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          <NovoAssuntoWizard
-            open={novoAssuntoAberto}
-            onOpenChange={setNovoAssuntoAberto}
-            hideTrigger
-          />
+              <ArrowLeft className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 md:hidden"
+              aria-label="Abrir menu"
+            >
+              <Menu className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
+            </button>
+          )}
 
           {dashboard ? (
             <div className="min-w-0 leading-tight">
-              <div className="truncate font-display text-lg font-semibold leading-6 text-foreground sm:text-xl">
+              <div className="truncate font-display text-base font-semibold leading-5 text-foreground sm:text-lg md:text-xl md:leading-6">
                 {mostrarSaudacao ? (
                   <>
                     {saudacaoPorHora()}, {greetingName}{" "}
@@ -254,20 +126,22 @@ export function TopBar({
                   </span>
                 )}
               </div>
-              <div className="truncate text-xs leading-4 text-muted-foreground sm:text-[13px]">
+              <div className="hidden truncate text-[13px] leading-4 text-muted-foreground sm:block">
                 O trabalho não para. Vamos à próxima sessão.
               </div>
             </div>
           ) : (
             <div className="min-w-0 leading-tight">
               {breadcrumb && breadcrumb !== tituloContextual && (
-                <div className="mb-0.5 truncate text-xs text-muted-foreground">{breadcrumb}</div>
+                <div className="mb-0.5 hidden truncate text-xs text-muted-foreground md:block">
+                  {breadcrumb}
+                </div>
               )}
-              <div className="truncate font-display text-base font-semibold leading-5 text-foreground sm:text-lg">
+              <div className="truncate font-display text-base font-semibold leading-5 text-foreground md:text-lg">
                 {tituloContextual ?? "Tribuno"}
               </div>
               {descricaoContextual && (
-                <div className="mt-0.5 hidden truncate text-xs leading-4 text-muted-foreground sm:block">
+                <div className="mt-0.5 hidden truncate text-xs leading-4 text-muted-foreground md:block">
                   {descricaoContextual}
                 </div>
               )}
@@ -276,11 +150,14 @@ export function TopBar({
         </div>
 
         {actions && (
-          <div className="order-3 w-full md:order-2 md:w-auto md:shrink-0">{actions}</div>
+          <>
+            <div className="hidden shrink-0 md:block">{actions}</div>
+            <MobileContextActions>{actions}</MobileContextActions>
+          </>
         )}
 
         {showUtilities && (
-          <div className="order-2 ml-auto flex min-w-0 shrink-0 items-center gap-1.5 md:order-3 md:ml-0 md:gap-2">
+          <div className="hidden min-w-0 shrink-0 items-center gap-2 md:flex">
             <GlobalSearchTrigger variant="topbar" />
 
             <DropdownMenu>
@@ -321,8 +198,47 @@ export function TopBar({
             </DropdownMenu>
           </div>
         )}
+
+        {mobileBackDestination && (
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 md:hidden"
+            aria-label="Abrir menu"
+          >
+            <Ellipsis className="h-5 w-5" aria-hidden="true" />
+          </button>
+        )}
       </div>
+
+      <MobileSecondaryMenu open={menuOpen} onOpenChange={setMenuOpen} />
     </header>
+  );
+}
+
+function MobileContextActions({ children }: { children: ReactNode }) {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 md:hidden"
+          aria-label="Mais ações"
+        >
+          <Ellipsis className="h-5 w-5" aria-hidden="true" />
+        </button>
+      </SheetTrigger>
+      <SheetContent
+        side="bottom"
+        closeLabel="Fechar ações"
+        className="max-h-[85dvh] overflow-y-auto rounded-t-2xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-5 md:hidden"
+      >
+        <SheetHeader className="pr-10 text-left">
+          <SheetTitle>Ações</SheetTitle>
+        </SheetHeader>
+        <div className="mt-4 [&_button]:min-h-11">{children}</div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

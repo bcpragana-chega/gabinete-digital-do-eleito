@@ -10,6 +10,10 @@ import {
 const panel = readFileSync(new URL("./HelpAssistantPanel.tsx", import.meta.url), "utf8");
 const sidebar = readFileSync(new URL("../layout/AppSidebar.tsx", import.meta.url), "utf8");
 const topBar = readFileSync(new URL("../layout/TopBar.tsx", import.meta.url), "utf8");
+const mobileMenu = readFileSync(
+  new URL("../layout/MobileSecondaryMenu.tsx", import.meta.url),
+  "utf8",
+);
 const sidebarConfig = readFileSync(new URL("../layout/sidebar-config.ts", import.meta.url), "utf8");
 const sheet = readFileSync(new URL("../ui/sheet.tsx", import.meta.url), "utf8");
 const helpApi = readFileSync(new URL("../../lib/ai/product-help-api.ts", import.meta.url), "utf8");
@@ -42,8 +46,7 @@ describe("painel do Assistente Tribuno", () => {
     const trigger = panel.slice(panel.indexOf("<SheetTrigger"), panel.indexOf("</SheetTrigger>"));
     assert.match(sidebar, /className=\{sidebarItemClassName\(active, "desktop"\)\}/);
     assert.match(sidebar, /triggerClassName=\{sidebarItemClassName\(false, "desktop"\)\}/);
-    assert.match(topBar, /className=\{sidebarItemClassName\(active, "mobile"\)\}/);
-    assert.match(topBar, /triggerClassName=\{sidebarItemClassName\(false, "mobile"\)\}/);
+    assert.match(mobileMenu, /triggerClassName=\{mobileMenuItemClassName\}/);
     assert.match(trigger, /className=\{triggerClassName\}/);
     assert.doesNotMatch(trigger, /hover:bg-muted|rounded-xl px-3 py-2\.5/);
   });

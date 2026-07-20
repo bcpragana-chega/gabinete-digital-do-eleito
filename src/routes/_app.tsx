@@ -1,6 +1,7 @@
 import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { MobileBottomNavigation } from "@/components/layout/MobileBottomNavigation";
 import { ProductHelpPageStateProvider } from "@/components/help/ProductHelpPageState";
 import { GlobalSearchProvider } from "@/components/search/GlobalSearchProvider";
 import { Button } from "@/components/ui/button";
@@ -177,7 +178,7 @@ function AppLayout() {
       <GlobalSearchProvider>
         <div className="min-h-screen overflow-x-hidden bg-background">
           <AppSidebar />
-          <div className="min-w-0 md:ml-56 md:p-2 md:pl-0">
+          <div className="min-w-0 pb-[calc(4rem+env(safe-area-inset-bottom))] md:ml-56 md:p-2 md:pl-0">
             <div className="min-h-screen min-w-0 overflow-hidden bg-card md:min-h-[calc(100vh-1rem)] md:rounded-lg md:border md:border-border/80 [--background:var(--card)]">
               {storageStatus.localAllowed && (
                 <div className="border-b border-amber-200/70 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-900 md:px-6">
@@ -187,6 +188,7 @@ function AppLayout() {
               <Outlet />
             </div>
           </div>
+          <MobileBottomNavigation />
         </div>
       </GlobalSearchProvider>
     </ProductHelpPageStateProvider>

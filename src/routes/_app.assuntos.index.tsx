@@ -163,7 +163,7 @@ function DossiesPage() {
         showUtilities={false}
       />
 
-      <div className="sticky top-24 z-30 border-b border-border/60 bg-background/95 backdrop-blur-lg md:top-16">
+      <div className="sticky top-14 z-30 border-b border-border/60 bg-background/95 backdrop-blur-lg md:top-16">
         <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-2 px-4 py-2 sm:px-5 lg:px-6">
           <div className="order-2 -mx-1 flex min-w-0 flex-1 basis-full items-center gap-0.5 overflow-x-auto px-1 sm:order-1 sm:basis-auto">
             {filtros.map((filtro) => (

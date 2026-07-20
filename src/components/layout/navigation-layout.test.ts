@@ -22,6 +22,7 @@ function entre(source: string, inicio: string, fim: string) {
 
 describe("cabeçalhos canónicos e navegação", () => {
   const topBar = fonte("src/components/layout/TopBar.tsx");
+  const mobileMenu = fonte("src/components/layout/MobileSecondaryMenu.tsx");
   const sidebar = fonte("src/components/layout/AppSidebar.tsx");
   const appLayout = fonte("src/routes/_app.tsx");
   const searchProvider = fonte("src/components/search/GlobalSearchProvider.tsx");
@@ -39,10 +40,12 @@ describe("cabeçalhos canónicos e navegação", () => {
   const workspacePage = fonte("src/components/ui/workspace/WorkspacePage.tsx");
   const intake = fonte("src/components/documentos/InstitutionalDocumentIntake.tsx");
 
-  it("TopBar aceita ações e coloca-as numa segunda linha em mobile", () => {
+  it("TopBar preserva ações no desktop e concentra-as num único menu em mobile", () => {
     assert.match(topBar, /actions\?: ReactNode/);
-    assert.match(topBar, /order-3 w-full md:order-2 md:w-auto md:shrink-0/);
-    assert.match(topBar, /order-2 ml-auto[\s\S]*md:order-3 md:ml-0/);
+    assert.match(topBar, /hidden shrink-0 md:block/);
+    assert.match(topBar, /<MobileContextActions>\{actions\}<\/MobileContextActions>/);
+    assert.match(topBar, /aria-label="Mais ações"/);
+    assert.doesNotMatch(topBar, /order-3 w-full/);
   });
 
   it("utilitários visuais podem ser ocultados sem desmontar a pesquisa global", () => {
@@ -94,10 +97,7 @@ describe("cabeçalhos canónicos e navegação", () => {
 
   it("desktop e mobile abrem a mesma pesquisa e o menu móvel fecha primeiro", () => {
     assert.match(sidebar, /<GlobalSearchTrigger variant="sidebar" \/>/);
-    assert.match(
-      topBar,
-      /<GlobalSearchTrigger[\s\S]*variant="mobile"[\s\S]*onOpen=\{\(\) => setMenuAberto\(false\)\}/,
-    );
+    assert.match(mobileMenu, /<GlobalSearchTrigger variant="mobile" onOpen=\{closeMenu\} \/>/);
     assert.match(topBar, /<GlobalSearchTrigger variant="topbar" \/>/);
     assert.match(searchTrigger, /variant: "sidebar" \| "mobile" \| "topbar"/);
     assert.match(searchTrigger, /min-h-11/);
@@ -194,33 +194,15 @@ describe("cabeçalhos canónicos e navegação", () => {
     }
   });
 
-  it("menu móvel mantém apenas Definições, colapsada por defeito e expansível", () => {
-    const menuMovel = entre(topBar, "<SheetContent", "</SheetContent>");
-    assert.match(menuMovel, /sidebarItems\.map/);
-    assert.match(menuMovel, /sidebarSections\.map/);
-    assert.match(menuMovel, /section\.label/);
-    assert.match(menuMovel, /aria-expanded=\{expanded\}/);
-    assert.match(menuMovel, /expanded && \(/);
-    assert.match(topBar, /settings: false/);
-    assert.doesNotMatch(menuMovel, /Terminar sessão|LogoutConfirmDialog/);
-    assert.doesNotMatch(
-      sidebarConfig,
-      /Favoritos|Workspace|Próxima sessão|Assuntos pendentes|Documentos recentes|Painel|Relatórios|Base Jurídica|Modelos/,
-    );
-    assert.deepEqual(
-      sidebarItems.map((item) => item.label),
-      ["Hoje", "Assuntos", "Sessões", "Biblioteca"],
-    );
-    assert.deepEqual(
-      settingsSidebarItems.map(({ to, label }) => ({ to, label })),
-      [
-        { to: "/definicoes", label: "Perfil institucional" },
-        { to: "/equipa", label: "Equipa" },
-        { to: "/definicoes-gerais", label: "Definições gerais" },
-        { to: "/integracoes", label: "Integrações" },
-        { to: "/lixeira", label: "Lixeira" },
-      ],
-    );
+  it("menu móvel contém apenas funções secundárias e não repete os quatro destinos", () => {
+    assert.match(mobileMenu, /GlobalSearchTrigger/);
+    assert.match(mobileMenu, /QuickCreateMenu/);
+    assert.match(mobileMenu, /Definições e perfil/);
+    assert.match(mobileMenu, /HelpAssistantPanel/);
+    assert.match(mobileMenu, /LogoutConfirmDialog/);
+    assert.match(mobileMenu, /Terminar sessão/);
+    assert.doesNotMatch(mobileMenu, /sidebarItems|Hoje|Assuntos|Sessões|Biblioteca/);
+    assert.doesNotMatch(mobileMenu, /Collapsible|aria-expanded/);
   });
 
   it("remove o menu dos três pontos sem perder o acesso por Definições", () => {
@@ -265,13 +247,13 @@ describe("cabeçalhos canónicos e navegação", () => {
 
   it("desktop e mobile reutilizam o mesmo menu sem listas divergentes", () => {
     assert.equal((sidebar.match(/<QuickCreateMenu/g) ?? []).length, 1);
-    assert.equal((topBar.match(/<QuickCreateMenu/g) ?? []).length, 1);
+    assert.equal((mobileMenu.match(/<QuickCreateMenu/g) ?? []).length, 1);
     assert.match(sidebar, /variant="desktop"/);
-    assert.match(topBar, /variant="mobile"/);
+    assert.match(mobileMenu, /variant="mobile"/);
     assert.equal((quickCreate.match(/const secondaryQuickCreateItems/g) ?? []).length, 1);
     assert.equal((quickCreate.match(/Preparar sessão/g) ?? []).length, 1);
     assert.doesNotMatch(sidebar, /Preparar sessão|Criar assunto/);
-    assert.doesNotMatch(topBar, /Preparar sessão|Criar assunto/);
+    assert.doesNotMatch(mobileMenu, /Preparar sessão|Criar assunto/);
   });
 
   it("não duplica destinos entre a navegação principal, Definições e + Novo", () => {
@@ -297,8 +279,8 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.doesNotMatch(quickCreate, /preventDefault/);
     assert.match(quickCreate, /focus-visible:ring-2/);
     assert.match(quickCreate, /min-h-11/);
-    assert.match(topBar, /setMenuAberto\(false\);[\s\S]*setNovoAssuntoAberto\(true\)/);
-    assert.match(topBar, /onSecondarySelect=\{\(\) => setMenuAberto\(false\)\}/);
+    assert.match(mobileMenu, /closeMenu\(\);[\s\S]*setNewSubjectOpen\(true\)/);
+    assert.match(mobileMenu, /onSecondarySelect=\{closeMenu\}/);
   });
 
   it("mantém Sessões ativa na rota canónica e nas suas subrotas", () => {

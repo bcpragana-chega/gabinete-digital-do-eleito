@@ -40,10 +40,10 @@ export function QuickCreateMenu({
               ? "h-8 shrink-0 rounded-md border-sidebar-border/80 bg-card/55 px-2 text-[12px] font-medium text-sidebar-muted hover:bg-sidebar-accent/55 hover:text-sidebar-foreground"
               : "mb-3 min-h-11 w-full rounded-lg border-border/70 bg-card px-3.5 text-sm font-medium text-foreground hover:bg-muted/70",
           )}
-          aria-label="Novo"
+          aria-label={variant === "mobile" ? "Criar novo" : "Novo"}
         >
           <Plus className="h-3.5 w-3.5 shrink-0" />
-          <span>Novo</span>
+          <span>{variant === "mobile" ? "Criar novo" : "Novo"}</span>
         </button>
       </DropdownMenuTrigger>
 
