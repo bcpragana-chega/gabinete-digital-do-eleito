@@ -16,9 +16,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-export function NovoAssuntoWizard({ assembleiaId }: { assembleiaId?: string } = {}) {
+type NovoAssuntoWizardProps = {
+  assembleiaId?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+};
+
+export function NovoAssuntoWizard({
+  assembleiaId,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
+}: NovoAssuntoWizardProps = {}) {
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [titulo, setTitulo] = useState("");
   const [resumo, setResumo] = useState("");
   const [objetivoPolitico, setObjetivoPolitico] = useState("");
@@ -26,6 +38,7 @@ export function NovoAssuntoWizard({ assembleiaId }: { assembleiaId?: string } = 
   const [erroGuardar, setErroGuardar] = useState("");
   const guardarEmCurso = useRef(false);
   const tentativaId = useRef<string | undefined>(undefined);
+  const open = controlledOpen ?? internalOpen;
 
   const dadosValidos = titulo.trim().length > 0;
 
@@ -35,6 +48,11 @@ export function NovoAssuntoWizard({ assembleiaId }: { assembleiaId?: string } = 
     setObjetivoPolitico("");
     setErroGuardar("");
     tentativaId.current = undefined;
+  }
+
+  function setOpen(value: boolean) {
+    if (controlledOpen === undefined) setInternalOpen(value);
+    onOpenChange?.(value);
   }
 
   async function criarAssunto() {
@@ -77,12 +95,14 @@ export function NovoAssuntoWizard({ assembleiaId }: { assembleiaId?: string } = 
         if (!value && !aGuardar) reset();
       }}
     >
-      <DialogTrigger asChild>
-        <Button className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Novo assunto
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Novo assunto
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent className="flex max-h-[100dvh] w-full max-w-none flex-col gap-0 rounded-none border-border bg-background p-0 sm:max-h-[88dvh] sm:w-[min(680px,calc(100vw-2rem))] sm:rounded-3xl">
         <DialogHeader className="shrink-0 border-b border-border/70 px-5 py-4 text-left sm:px-7">

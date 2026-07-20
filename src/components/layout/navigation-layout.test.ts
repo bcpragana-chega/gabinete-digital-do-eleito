@@ -23,6 +23,8 @@ function entre(source: string, inicio: string, fim: string) {
 describe("cabeçalhos canónicos e navegação", () => {
   const topBar = fonte("src/components/layout/TopBar.tsx");
   const sidebar = fonte("src/components/layout/AppSidebar.tsx");
+  const quickCreate = fonte("src/components/layout/QuickCreateMenu.tsx");
+  const novoAssunto = fonte("src/components/dossies/NovoAssuntoWizard.tsx");
   const sidebarConfig = fonte("src/components/layout/sidebar-config.ts");
   const assuntos = fonte("src/routes/_app.assuntos.index.tsx");
   const sessoes = fonte("src/routes/_app.sessoes.index.tsx");
@@ -112,7 +114,7 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.match(sidebar, /settings: false/);
     assert.match(sidebar, /expandedSections\[section\.id\] \?\? false/);
     assert.match(sidebar, /TRIBUNO/);
-    assert.match(sidebar, /Criação rápida/);
+    assert.match(sidebar, /<QuickCreateMenu variant="desktop"/);
     assert.match(sidebar, /UserAvatar/);
     assert.match(sidebar, /LogoutConfirmDialog/);
     assert.match(sidebar, /border-t[\s\S]*HelpAssistantPanel/);
@@ -167,13 +169,82 @@ describe("cabeçalhos canónicos e navegação", () => {
     );
   });
 
-  it("mantém pesquisa, criação rápida, ajuda, conta e menu dos três pontos", () => {
-    assert.match(sidebar, /aria-label="Abrir menu do Tribuno"/);
-    assert.match(sidebar, /Abrir definições/);
+  it("remove o menu dos três pontos sem perder o acesso por Definições", () => {
+    assert.doesNotMatch(
+      sidebar,
+      /Ellipsis|Abrir menu do Tribuno|Abrir definições|Gabinete digital/,
+    );
     assert.match(sidebar, /onClick=\{abrirPesquisa\}/);
-    assert.match(sidebar, /aria-label="Criação rápida"/);
+    assert.match(sidebar, /<QuickCreateMenu variant="desktop"/);
     assert.match(sidebar, /HelpAssistantPanel/);
     assert.match(sidebar, /aria-label="Abrir menu da conta"/);
+    assert.deepEqual(
+      settingsSidebarItems.map(({ to, label }) => ({ to, label })),
+      [
+        { to: "/definicoes", label: "Perfil institucional" },
+        { to: "/equipa", label: "Equipa" },
+        { to: "/definicoes-gerais", label: "Definições gerais" },
+        { to: "/integracoes", label: "Integrações" },
+        { to: "/lixeira", label: "Lixeira" },
+      ],
+    );
+  });
+
+  it("+ Novo abre diretamente o fluxo canónico de Novo Assunto", () => {
+    const posicaoPrincipal = quickCreate.indexOf("Novo Assunto");
+    const posicaoSeparador = quickCreate.indexOf("<DropdownMenuSeparator />");
+    const posicaoSecundaria = quickCreate.indexOf("{secondaryQuickCreateItems.map");
+
+    assert.ok(posicaoPrincipal >= 0 && posicaoPrincipal < posicaoSeparador);
+    assert.ok(posicaoSeparador < posicaoSecundaria);
+    assert.match(quickCreate, /onSelect=\{onNewSubject\}/);
+    assert.match(quickCreate, /bg-primary\/10 font-semibold text-primary/);
+    assert.match(quickCreate, /Mais opções/);
+    assert.match(quickCreate, /to: "\/sessoes" as const/);
+    assert.doesNotMatch(quickCreate, /documento|biblioteca/i);
+
+    assert.match(sidebar, /onNewSubject=\{\(\) => setNovoAssuntoAberto\(true\)\}/);
+    assert.match(sidebar, /<NovoAssuntoWizard[\s\S]*open=\{novoAssuntoAberto\}/);
+    assert.match(novoAssunto, /adicionarDossie/);
+    assert.match(novoAssunto, /navigate\(\{ to: "\/assuntos\/\$dossieId"/);
+  });
+
+  it("desktop e mobile reutilizam o mesmo menu sem listas divergentes", () => {
+    assert.equal((sidebar.match(/<QuickCreateMenu/g) ?? []).length, 1);
+    assert.equal((topBar.match(/<QuickCreateMenu/g) ?? []).length, 1);
+    assert.match(sidebar, /variant="desktop"/);
+    assert.match(topBar, /variant="mobile"/);
+    assert.equal((quickCreate.match(/const secondaryQuickCreateItems/g) ?? []).length, 1);
+    assert.equal((quickCreate.match(/Preparar sessão/g) ?? []).length, 1);
+    assert.doesNotMatch(sidebar, /Preparar sessão|Criar assunto/);
+    assert.doesNotMatch(topBar, /Preparar sessão|Criar assunto/);
+  });
+
+  it("não duplica destinos entre a navegação principal, Definições e + Novo", () => {
+    const destinosPrincipais = sidebarItems.map((item) => item.to);
+    const destinosDefinicoes = settingsSidebarItems.map((item) => item.to);
+    const conjuntoDefinicoes = new Set<string>(destinosDefinicoes);
+
+    assert.equal(new Set(destinosPrincipais).size, destinosPrincipais.length);
+    assert.equal(new Set(destinosDefinicoes).size, destinosDefinicoes.length);
+    assert.deepEqual(
+      destinosPrincipais.filter((destino) => conjuntoDefinicoes.has(destino)),
+      [],
+    );
+    assert.equal((quickCreate.match(/to: "\/sessoes" as const/g) ?? []).length, 1);
+    assert.equal((quickCreate.match(/Novo Assunto/g) ?? []).length, 1);
+  });
+
+  it("+ Novo preserva fecho, teclado e área de toque adequada", () => {
+    assert.match(quickCreate, /<DropdownMenu>/);
+    assert.match(quickCreate, /<DropdownMenuTrigger asChild>/);
+    assert.match(quickCreate, /<DropdownMenuContent/);
+    assert.match(quickCreate, /<DropdownMenuItem[\s\S]*onSelect=\{onNewSubject\}/);
+    assert.doesNotMatch(quickCreate, /preventDefault/);
+    assert.match(quickCreate, /focus-visible:ring-2/);
+    assert.match(quickCreate, /min-h-11/);
+    assert.match(topBar, /setMenuAberto\(false\);[\s\S]*setNovoAssuntoAberto\(true\)/);
+    assert.match(topBar, /onSecondarySelect=\{\(\) => setMenuAberto\(false\)\}/);
   });
 
   it("mantém Sessões ativa na rota canónica e nas suas subrotas", () => {

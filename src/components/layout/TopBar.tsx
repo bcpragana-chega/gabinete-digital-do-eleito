@@ -4,7 +4,9 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { UserAvatar } from "@/components/auth/UserAvatar";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
+import { NovoAssuntoWizard } from "@/components/dossies/NovoAssuntoWizard";
 import { HelpAssistantPanel } from "@/components/help/HelpAssistantPanel";
+import { QuickCreateMenu } from "@/components/layout/QuickCreateMenu";
 import {
   isSidebarItemActive,
   sidebarItemClassName,
@@ -77,6 +79,7 @@ export function TopBar({
   showUtilities = true,
 }: TopBarProps) {
   const [menuAberto, setMenuAberto] = useState(false);
+  const [novoAssuntoAberto, setNovoAssuntoAberto] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     settings: false,
   });
@@ -138,6 +141,15 @@ export function TopBar({
                   <div className="px-3 pb-2 text-[10.5px] font-medium uppercase text-muted-foreground">
                     Navegação
                   </div>
+
+                  <QuickCreateMenu
+                    variant="mobile"
+                    onNewSubject={() => {
+                      setMenuAberto(false);
+                      setNovoAssuntoAberto(true);
+                    }}
+                    onSecondarySelect={() => setMenuAberto(false)}
+                  />
 
                   {sidebarItems.map((item) => {
                     const Icon = item.icon;
@@ -218,6 +230,12 @@ export function TopBar({
               </div>
             </SheetContent>
           </Sheet>
+
+          <NovoAssuntoWizard
+            open={novoAssuntoAberto}
+            onOpenChange={setNovoAssuntoAberto}
+            hideTrigger
+          />
 
           {dashboard ? (
             <div className="min-w-0 leading-tight">

@@ -1,19 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  ChevronDown,
-  ChevronRight,
-  Ellipsis,
-  LogOut,
-  NotebookText,
-  Plus,
-  Search,
-  Settings,
-  UserRound,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, LogOut, Search, UserRound } from "lucide-react";
 import { useState } from "react";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
 import { UserAvatar } from "@/components/auth/UserAvatar";
 import { HelpAssistantPanel } from "@/components/help/HelpAssistantPanel";
+import { NovoAssuntoWizard } from "@/components/dossies/NovoAssuntoWizard";
+import { QuickCreateMenu } from "@/components/layout/QuickCreateMenu";
 import {
   isSidebarItemActive,
   sidebarItemClassName,
@@ -38,6 +30,7 @@ function abrirPesquisa() {
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, perfil, displayName } = useAuth();
+  const [novoAssuntoAberto, setNovoAssuntoAberto] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     settings: false,
   });
@@ -54,28 +47,6 @@ export function AppSidebar() {
           <span className="min-w-0 flex-1 truncate text-[12px] font-semibold tracking-[0.08em]">
             TRIBUNO
           </span>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
-                aria-label="Abrir menu do Tribuno"
-              >
-                <Ellipsis className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
-              <DropdownMenuLabel>Gabinete digital</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/definicoes">
-                  <Settings />
-                  Abrir definições
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
         <div className="mt-1.5 flex items-center gap-1.5">
@@ -89,35 +60,11 @@ export function AppSidebar() {
             <kbd className="ml-auto text-[9px] opacity-70">⌘K</kbd>
           </button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-sidebar-border/80 bg-card/55 text-sidebar-muted transition-colors hover:bg-sidebar-accent/55 hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
-                aria-label="Criação rápida"
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
-              <DropdownMenuLabel>Criação rápida</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/assuntos">
-                  <NotebookText />
-                  Criar assunto
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/sessoes">
-                  <Plus />
-                  Preparar sessão
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <QuickCreateMenu variant="desktop" onNewSubject={() => setNovoAssuntoAberto(true)} />
         </div>
       </div>
+
+      <NovoAssuntoWizard open={novoAssuntoAberto} onOpenChange={setNovoAssuntoAberto} hideTrigger />
 
       <nav className="mt-2 min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         <div className="space-y-0.5">
