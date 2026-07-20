@@ -43,13 +43,16 @@ describe("composição das rotas de Assunto", () => {
     assert.match(index, /<DossieDocumentosCriadosSection dossieId=\{dossie\.id\}/);
   });
 
-  it("apresenta estado e próxima ação como informação estrutural do Assunto", () => {
-    assert.match(index, /title="Estado e próxima ação"/);
-    assert.match(index, /title="Situação atual"/);
-    assert.match(index, /Resumo do ponto em que este assunto se encontra\./);
+  it("consolida estado, recomendações e ações num único bloco de próxima ação", () => {
+    assert.equal((index.match(/>\s*Próxima ação\s*</g) ?? []).length, 1);
+    assert.match(index, /\{estadoUx\.titulo\}/);
+    assert.match(index, /\{estadoUx\.descricao\}/);
+    assert.match(index, /Situação atual: \{estadoUx\.estadoResumido\}/);
+    assert.match(index, /estadoUx\.recomendacoes\.map/);
+    assert.match(index, /renderAcao\(estadoUx\.acaoPrincipal, true\)/);
+    assert.match(index, /estadoUx\.acoesSecundarias\.map/);
     assert.doesNotMatch(index, /title="Assistente"/);
-    assert.doesNotMatch(index, /Leitura do Tribuno/);
-    assert.doesNotMatch(index, /Síntese determinística do estado atual\./);
+    assert.doesNotMatch(index, /Seguimento do assunto|Estado e próxima ação/);
   });
 
   it("rota canónica compõe o detalhe documental e as antigas redirecionam", () => {
@@ -139,10 +142,10 @@ describe("composição das rotas de Assunto", () => {
     assert.match(documentosAssunto, /"Moção"[\s\S]*"Recomendação"[\s\S]*"Requerimento"/);
     assert.match(documentosAssunto, /"Intervenção"[\s\S]*"Outro documento"/);
 
+    const visaoGeral = index.indexOf('id="visao-geral"');
     const proximaAcao = index.indexOf('id="documentos-assunto"');
-    const contexto = index.indexOf('id="contexto-assunto"');
     const relacoes = index.indexOf('id="relacoes-assunto"');
-    assert.ok(proximaAcao >= 0 && proximaAcao < contexto);
-    assert.ok(contexto < relacoes);
+    assert.ok(visaoGeral >= 0 && visaoGeral < proximaAcao);
+    assert.ok(proximaAcao < relacoes);
   });
 });

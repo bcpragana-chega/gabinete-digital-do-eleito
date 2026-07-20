@@ -18,6 +18,7 @@ type EditarDossieDialogProps = {
   compact?: boolean;
   triggerLabel?: string;
   triggerClassName?: string;
+  triggerId?: string;
 };
 
 export function EditarDossieDialog({
@@ -25,6 +26,7 @@ export function EditarDossieDialog({
   compact = false,
   triggerLabel = "Editar",
   triggerClassName,
+  triggerId,
 }: EditarDossieDialogProps) {
   const [open, setOpen] = useState(false);
   const [aGuardar, setAGuardar] = useState(false);
@@ -51,6 +53,7 @@ export function EditarDossieDialog({
     <Dialog open={open} onOpenChange={(value) => !aGuardar && setOpen(value)}>
       <DialogTrigger asChild>
         <Button
+          id={triggerId}
           variant={compact ? "ghost" : "secondary"}
           size="sm"
           className={cn(compact ? "px-2.5" : "w-full sm:w-auto", triggerClassName)}

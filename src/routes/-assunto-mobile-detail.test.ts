@@ -31,21 +31,21 @@ describe("detalhe mobile do Assunto", () => {
     }
   });
 
-  it("coloca título, estado, próxima ação e contexto no início visual mobile", () => {
+  it("coloca título, estado, próxima ação e visão geral no início visual mobile", () => {
     assert.match(detail, /mobileCompact/);
-    assert.match(detail, /className="max-md:order-1 md:p-7"/);
+    assert.match(detail, /title=\{dossie\.titulo\}/);
     assert.match(workspaceHeader, /max-md:line-clamp-2/);
-    assert.match(detail, /max-md:order-2 max-md:border-l-2/);
+    assert.match(detail, /border-l-2 border-l-primary/);
     assert.match(detail, />\s*Próxima ação\s*</);
-    assert.match(detail, /id="contexto-assunto"[\s\S]*max-md:order-3/);
-    assert.match(detail, /max-md:order-4[\s\S]*title="Objetivo"/);
-    assert.match(detail, /max-md:order-5[\s\S]*<DossieNotasSection/);
+    assert.match(detail, /id="visao-geral"/);
+    assert.match(detail, />Resumo</);
+    assert.match(detail, />Objetivo</);
   });
 
   it("reutiliza integralmente o motor existente da próxima ação", () => {
     assert.match(detail, /const estadoUx = calcularEstadoUxAssunto\(/);
-    assert.match(detail, /title=\{estadoUx\.titulo\}/);
-    assert.match(detail, /description=\{estadoUx\.descricao\}/);
+    assert.match(detail, />\s*\{estadoUx\.titulo\}\s*</);
+    assert.match(detail, />\s*\{estadoUx\.descricao\}\s*</);
     assert.match(detail, /renderAcao\(estadoUx\.acaoPrincipal, true\)/);
     assert.match(detail, /estadoUx\.acoesSecundarias\.map/);
     assert.match(assuntoUx, /export function calcularEstadoUxAssunto/);
@@ -60,7 +60,7 @@ describe("detalhe mobile do Assunto", () => {
     assert.match(detail, /arquivado &&[\s\S]*Arquivado/);
     assert.match(detail, /dossie\.tags\.map/);
     assert.match(detail, /className="max-md:hidden"/);
-    assert.match(detail, /id="estado-assunto"[\s\S]*max-md:order-9/);
+    assert.match(detail, />Última atualização</);
   });
 
   it("torna documentos criados linhas compactas com abertura canónica e ações existentes", () => {
@@ -88,7 +88,9 @@ describe("detalhe mobile do Assunto", () => {
   });
 
   it("preserva ações e edição com os mesmos handlers, validação e persistência", () => {
-    assert.match(detail, /<EditarDossieDialog/);
+    assert.equal((detail.match(/<EditarDossieDialog\b/g) ?? []).length, 1);
+    assert.match(detail, /triggerId="editar-assunto"/);
+    assert.match(detail, /document\.getElementById\("editar-assunto"\)\?\.click\(\)/);
     assert.match(detail, /onClick=\{\(\) => void arquivar\(\)\}/);
     assert.match(detail, /await arquivarDossie\(dossie\.id\)/);
     assert.match(editor, /await editarDossie\(dossie\.id, values\)/);
@@ -106,6 +108,8 @@ describe("detalhe mobile do Assunto", () => {
     assert.match(relations, /Sem documentos reais associados\./);
     assert.match(relations, /Sem sessões ligadas\./);
     assert.match(notes, /Ainda não há notas neste assunto\./);
+    assert.match(detail, /Sem resumo registado\./);
+    assert.match(detail, /Sem objetivo político registado\./);
     assert.match(
       mobileNavigation,
       /if \(\/\^\\\/assuntos\\\/\[\^\/\]\+\$\/\.test\(pathname\)\) return "\/assuntos"/,
@@ -122,21 +126,55 @@ describe("detalhe mobile do Assunto", () => {
     assert.doesNotMatch(detail, /min-w-\[(?:320|375|390|430)px\]/);
   });
 
-  it("preserva ordem, painéis, ações e densidade desktop a partir de 768 px", () => {
-    assert.match(detail, /mb-6 hidden[\s\S]*md:flex/);
-    assert.match(detail, /md:p-7/);
-    assert.match(detail, /bodyClassName="max-md:contents"/);
-    assert.match(detail, /contentClassName="max-md:contents"/);
-    assert.match(detail, /sidebarClassName="max-md:contents"/);
+  it("usa coluna ampla no desktop e áreas expansíveis acessíveis no mobile", () => {
+    assert.match(detail, /max-w-\[1280px\]/);
+    assert.doesNotMatch(detail, /WorkspaceLayout|sidebar=/);
+    assert.match(detail, /aria-expanded=\{aberta\}/);
+    assert.match(detail, /aria-controls=\{painelId\}/);
+    assert.match(detail, /onClick=\{\(\) => setAberta\(\(atual\) => !atual\)\}/);
+    assert.match(detail, /aberta \? "" : "max-md:hidden"/);
+    assert.match(detail, /focus-visible:ring-2/);
+    for (const area of ["Trabalho", "Notas", "Relações", "Histórico"]) {
+      assert.match(detail, new RegExp(`title="${area}"`));
+    }
     assert.match(documents, /mt-5 hidden gap-3 md:grid/);
     assert.match(relations, /className="mt-4 space-y-4 md:hidden" data-relacoes-assunto-mobile/);
 
-    const documentos = detail.indexOf('id="documentos-assunto"');
-    const acompanhamento = detail.indexOf("<DossieAcompanhamentoSection");
-    const contexto = detail.indexOf('id="estado-assunto"');
-    const seguimento = detail.indexOf('title="Seguimento do assunto"');
-    const relacoes = detail.indexOf('id="relacoes-assunto"');
-    assert.ok(documentos < acompanhamento && acompanhamento < contexto);
-    assert.ok(contexto < seguimento && seguimento < relacoes);
+    for (const id of [
+      "visao-geral",
+      "trabalho-assunto",
+      "documentos-assunto",
+      "relacoes-assunto",
+      "atividade-assunto",
+    ]) {
+      assert.equal((detail.match(new RegExp(`id="${id}"`, "g")) ?? []).length, 1);
+    }
+    for (const component of [
+      "DossieDocumentosCriadosSection",
+      "DossieNotasSection",
+      "DossieAcompanhamentoSection",
+      "DossieRelacionadosSection",
+      "DossieTimelineSection",
+    ]) {
+      assert.equal((detail.match(new RegExp(`<${component}\\b`, "g")) ?? []).length, 1);
+    }
+  });
+
+  it("mantém navegação por âncoras e reúne os marcos técnicos no Histórico", () => {
+    assert.match(detail, /aria-label="Navegação nesta página"/);
+    for (const href of [
+      "#visao-geral",
+      "#trabalho-assunto",
+      "#relacoes-assunto",
+      "#atividade-assunto",
+    ]) {
+      assert.match(detail, new RegExp(`"${href}"`));
+    }
+    assert.match(detail, /id="atividade-assunto"/);
+    assert.match(detail, /title="Marcos do assunto"/);
+    assert.match(detail, /title="Assunto criado"/);
+    assert.match(detail, /title="Assunto atualizado"/);
+    assert.match(detail, /title="Assunto arquivado"/);
+    assert.doesNotMatch(detail, /title="Última atividade"/);
   });
 });
