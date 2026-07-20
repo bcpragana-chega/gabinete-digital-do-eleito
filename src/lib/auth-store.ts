@@ -441,7 +441,11 @@ export async function executarLoginSupabaseConfirmado<T>(input: {
   return input.confirmar(user);
 }
 
-export async function loginComGoogle(user: AuthUser, googleCredential?: string) {
+export async function loginComGoogle(
+  user: AuthUser,
+  googleCredential?: string,
+  diagnosticAttemptId?: string,
+) {
   const state = lerAuthState();
 
   console.info("[Tribuno Auth] loginComGoogle iniciado", {
@@ -457,7 +461,8 @@ export async function loginComGoogle(user: AuthUser, googleCredential?: string) 
   try {
     console.info("[Tribuno Auth] A iniciar autenticação Supabase com Google ID token");
     return await executarLoginSupabaseConfirmado({
-      iniciar: () => iniciarSessaoSupabaseComGoogleCredential(googleCredential),
+      iniciar: () =>
+        iniciarSessaoSupabaseComGoogleCredential(googleCredential, diagnosticAttemptId),
       confirmar: async (supabaseUser) => {
         limparBloqueioLogout();
         const userAutenticado = authUserDaSessao(supabaseUser, { ...user, googleSub: user.id });

@@ -1,21 +1,62 @@
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { logAuthDiagnostic } from "@/lib/auth-diagnostics";
 
 let client: SupabaseClient | undefined;
 const SUPABASE_TIMEOUT_MS = 12000;
+
+export class SupabaseAuthTimeoutError extends Error {
+  constructor(etapa: string) {
+    super(`TIMEOUT_SUPABASE_${etapa}`);
+    this.name = "SupabaseAuthTimeoutError";
+  }
+}
+
+export class SupabaseAuthReturnedError extends Error {
+  status?: number;
+  code?: string;
+  cause: unknown;
+
+  constructor(error: { name?: string; status?: number; code?: string }) {
+    super("SUPABASE_AUTH_ERROR_RETURNED");
+    this.name = error.name || "SupabaseAuthReturnedError";
+    this.status = error.status;
+    this.code = error.code;
+    this.cause = error;
+  }
+}
+
+export class SupabaseAuthRequestError extends Error {
+  cause: unknown;
+
+  constructor(error: unknown) {
+    super("SUPABASE_AUTH_REQUEST_FAILED");
+    this.name = "SupabaseAuthRequestError";
+    this.cause = error;
+  }
+}
+
+export class SupabaseAuthNotStartedError extends Error {
+  constructor() {
+    super("SUPABASE_AUTH_REQUEST_NOT_STARTED");
+    this.name = "SupabaseAuthNotStartedError";
+  }
+}
 
 export function withSupabaseTimeout<T>(
   promise: PromiseLike<T>,
   etapa: string,
   timeoutMs = SUPABASE_TIMEOUT_MS,
 ): Promise<T> {
-  return Promise.race<T>([
-    promise,
-    new Promise<never>((_, reject) => {
-      globalThis.setTimeout(() => {
-        reject(new Error(`TIMEOUT_SUPABASE_${etapa}`));
-      }, timeoutMs);
-    }),
-  ]);
+  let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = globalThis.setTimeout(() => {
+      reject(new SupabaseAuthTimeoutError(etapa));
+    }, timeoutMs);
+  });
+
+  return Promise.race<T>([Promise.resolve(promise), timeout]).finally(() => {
+    if (timeoutId !== undefined) globalThis.clearTimeout(timeoutId);
+  });
 }
 
 export function isSupabaseConfigured() {
@@ -43,38 +84,60 @@ export function getSupabaseClient() {
 
 export async function iniciarSessaoSupabaseComGoogleCredential(
   credential: string,
+  attemptId?: string,
 ): Promise<User | undefined> {
-  console.info("[Tribuno Auth] Login Supabase iniciado", {
-    supabaseConfigurado: isSupabaseConfigured(),
-    temCredential: Boolean(credential),
-  });
-
   const supabase = getSupabaseClient();
   if (!supabase) {
-    console.warn("[Tribuno Auth] Login Supabase ignorado: Supabase não configurado.");
-    return undefined;
-  }
-
-  const { data, error } = await withSupabaseTimeout(
-    supabase.auth.signInWithIdToken({
-      provider: "google",
-      token: credential,
-    }),
-    "SIGN_IN_WITH_ID_TOKEN",
-  );
-
-  if (error) {
-    console.error("[Tribuno Auth] Login Supabase falhou", {
-      operacao: "AUTH_LOGIN_SUPABASE_FALHOU",
+    logAuthDiagnostic("SUPABASE_REQUEST_NOT_STARTED", {
+      attemptId,
+      reason: "supabase_not_configured",
     });
-    throw error;
+    throw new SupabaseAuthNotStartedError();
   }
 
-  console.info("[Tribuno Auth] Login Supabase concluído", {
-    existeSupabaseUser: Boolean(data.user?.id),
-  });
+  logAuthDiagnostic("SUPABASE_REQUEST_STARTED", { attemptId, phase: "calling_supabase" });
 
-  return data.user ?? undefined;
+  try {
+    const { data, error } = await withSupabaseTimeout(
+      supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: credential,
+      }),
+      "SIGN_IN_WITH_ID_TOKEN",
+    );
+
+    if (error) {
+      const returnedError = new SupabaseAuthReturnedError(error);
+      logAuthDiagnostic("SUPABASE_ERROR_RETURNED", {
+        attemptId,
+        phase: "calling_supabase",
+        errorName: returnedError.name,
+        supabaseStatus: returnedError.status,
+        supabaseCode: returnedError.code,
+      });
+      throw returnedError;
+    }
+
+    logAuthDiagnostic("SUPABASE_REQUEST_COMPLETED", { attemptId, phase: "completed" });
+    return data.user ?? undefined;
+  } catch (error) {
+    if (error instanceof SupabaseAuthReturnedError) throw error;
+    if (error instanceof SupabaseAuthTimeoutError) {
+      logAuthDiagnostic("SUPABASE_REQUEST_TIMEOUT", {
+        attemptId,
+        phase: "calling_supabase",
+      });
+      throw error;
+    }
+
+    const requestError = new SupabaseAuthRequestError(error);
+    logAuthDiagnostic("BROWSER_REQUEST_ERROR", {
+      attemptId,
+      phase: "calling_supabase",
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+    throw requestError;
+  }
 }
 
 export async function diagnosticarSessaoSupabase() {

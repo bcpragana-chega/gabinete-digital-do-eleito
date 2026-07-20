@@ -1,10 +1,23 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { loginComGoogle, perfilCompleto, useAuth, type AuthUser } from "@/lib/auth-store";
-import { diagnosticarSessaoSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  createAuthAttemptId,
+  getSafeBrowserAuthContext,
+  logAuthDiagnostic,
+  type AuthDiagnosticPhase,
+} from "@/lib/auth-diagnostics";
+import {
+  isSupabaseConfigured,
+  SupabaseAuthNotStartedError,
+  SupabaseAuthRequestError,
+  SupabaseAuthReturnedError,
+  SupabaseAuthTimeoutError,
+} from "@/lib/supabase";
+
+const GOOGLE_CALLBACK_TIMEOUT_MS = 90_000;
 
 declare global {
   interface Window {
@@ -14,6 +27,8 @@ declare global {
           initialize: (config: {
             client_id: string;
             callback: (response: { credential?: string }) => void;
+            use_fedcm_for_button?: boolean;
+            button_auto_select?: boolean;
           }) => void;
           renderButton: (
             element: HTMLElement,
@@ -86,15 +101,27 @@ function userFromCredential(credential: string): AuthUser {
 
 type GoogleClientIdStatus = "missing" | "empty" | "loaded";
 type LoginErroCodigo =
+  | "ERRO_LOGIN_GOOGLE_CALLBACK"
   | "ERRO_LOGIN_GOOGLE_CREDENTIAL"
+  | "ERRO_LOGIN_BROWSER"
+  | "ERRO_LOGIN_SUPABASE_NAO_INICIADO"
+  | "ERRO_LOGIN_SUPABASE_TIMEOUT"
   | "ERRO_LOGIN_SUPABASE"
   | "ERRO_LOGIN_PERFIL"
   | "ERRO_LOGIN_NAVEGACAO"
   | "ERRO_LOGIN_DESCONHECIDO";
 
 const mensagensErroLogin: Record<LoginErroCodigo, string> = {
+  ERRO_LOGIN_GOOGLE_CALLBACK:
+    "A Google não concluiu a resposta ao botão. Reveja as permissões de privacidade e tente novamente.",
   ERRO_LOGIN_GOOGLE_CREDENTIAL:
     "A Google não devolveu uma credencial válida. Tente novamente ou use outro navegador.",
+  ERRO_LOGIN_BROWSER:
+    "O navegador bloqueou ou interrompeu o pedido. Reveja cookies, extensões de privacidade e a rede.",
+  ERRO_LOGIN_SUPABASE_NAO_INICIADO:
+    "O pedido de autenticação não chegou a ser iniciado. Recarregue a página e tente novamente.",
+  ERRO_LOGIN_SUPABASE_TIMEOUT:
+    "O pedido de autenticação excedeu o tempo limite. Verifique a ligação e tente novamente.",
   ERRO_LOGIN_SUPABASE:
     "A autenticação remota não respondeu corretamente. Tente novamente dentro de instantes.",
   ERRO_LOGIN_PERFIL: "A sessão foi criada, mas não foi possível carregar o perfil.",
@@ -114,11 +141,12 @@ function getCurrentOrigin() {
   return window.location.origin;
 }
 
-function logAuth(etapa: string, _dados: Record<string, unknown> = {}) {
-  console.info(`[Tribuno Auth] ${etapa}`);
-}
-
 function codigoLoginDoErro(error: unknown): LoginErroCodigo {
+  if (error instanceof SupabaseAuthNotStartedError) return "ERRO_LOGIN_SUPABASE_NAO_INICIADO";
+  if (error instanceof SupabaseAuthTimeoutError) return "ERRO_LOGIN_SUPABASE_TIMEOUT";
+  if (error instanceof SupabaseAuthReturnedError) return "ERRO_LOGIN_SUPABASE";
+  if (error instanceof SupabaseAuthRequestError) return "ERRO_LOGIN_BROWSER";
+
   if (error instanceof Error) {
     const mensagem = error.message.toLocaleLowerCase("pt-PT");
     if (mensagem.includes("credential") || mensagem.includes("credencial")) {
@@ -147,6 +175,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const { initialized, isAuthenticated, perfil } = useAuth();
   const buttonRef = useRef<HTMLDivElement>(null);
+  const phaseRef = useRef<AuthDiagnosticPhase>("loading_script");
   const [erro, setErro] = useState("");
   const [aEntrar, setAEntrar] = useState(false);
   const [origin, setOrigin] = useState("origem atual");
@@ -156,6 +185,28 @@ function LoginPage() {
 
   useEffect(() => {
     setOrigin(getCurrentOrigin());
+  }, []);
+
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      logAuthDiagnostic("UNEXPECTED_JAVASCRIPT_ERROR", {
+        phase: phaseRef.current,
+        errorName: event.error instanceof Error ? event.error.name : "ErrorEvent",
+      });
+    };
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      logAuthDiagnostic("UNEXPECTED_JAVASCRIPT_ERROR", {
+        phase: phaseRef.current,
+        errorName: event.reason instanceof Error ? event.reason.name : "UnhandledRejection",
+      });
+    };
+
+    window.addEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleRejection);
+    return () => {
+      window.removeEventListener("error", handleError);
+      window.removeEventListener("unhandledrejection", handleRejection);
+    };
   }, []);
 
   useEffect(() => {
@@ -173,71 +224,152 @@ function LoginPage() {
     const onboardingNecessario = !perfilCompleto(perfil);
     const destino = onboardingNecessario ? "/completar-perfil" : "/";
 
-    logAuth("Navegação automática após sessão existente", {
-      onboardingNecessario,
-      destino,
-    });
-
     navigate({ to: destino, replace: true });
   }, [initialized, isAuthenticated, navigate, perfil]);
 
   useEffect(() => {
     if (googleClientIdStatus !== "loaded" || !buttonRef.current) return;
 
+    let disposed = false;
+    let activeAttemptId: string | undefined;
+    let callbackReceived = false;
+    let callbackTimeoutId: number | undefined;
+    const buttonElement = buttonRef.current;
+
+    function clearCallbackTimeout() {
+      if (callbackTimeoutId !== undefined) window.clearTimeout(callbackTimeoutId);
+      callbackTimeoutId = undefined;
+    }
+
+    function beginGoogleAttempt() {
+      if (activeAttemptId && !callbackReceived) return activeAttemptId;
+
+      activeAttemptId = createAuthAttemptId();
+      callbackReceived = false;
+      phaseRef.current = "waiting_google_callback";
+      logAuthDiagnostic("GOOGLE_INTERACTION_INFERRED", {
+        attemptId: activeAttemptId,
+        phase: phaseRef.current,
+        ...getSafeBrowserAuthContext(),
+      });
+      clearCallbackTimeout();
+      callbackTimeoutId = window.setTimeout(() => {
+        if (callbackReceived || disposed) return;
+        logAuthDiagnostic("GOOGLE_CALLBACK_NOT_EXECUTED", {
+          attemptId: activeAttemptId,
+          phase: "waiting_google_callback",
+          reason: "callback_timeout",
+        });
+        logAuthDiagnostic("SUPABASE_REQUEST_NOT_STARTED", {
+          attemptId: activeAttemptId,
+          phase: "waiting_google_callback",
+          reason: "callback_timeout",
+        });
+        setErro(
+          `${mensagensErroLogin.ERRO_LOGIN_GOOGLE_CALLBACK} Código: ERRO_LOGIN_GOOGLE_CALLBACK`,
+        );
+      }, GOOGLE_CALLBACK_TIMEOUT_MS);
+      return activeAttemptId;
+    }
+
+    const handlePointerDown = () => beginGoogleAttempt();
+    const handleWindowBlur = () => {
+      window.setTimeout(() => {
+        if (disposed || !buttonElement.contains(document.activeElement)) return;
+        beginGoogleAttempt();
+      }, 0);
+    };
+
+    buttonElement.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("blur", handleWindowBlur);
+
     function inicializarGoogle() {
+      if (disposed) return;
       if (!window.google || !buttonRef.current) {
+        logAuthDiagnostic("GIS_SCRIPT_FAILED", {
+          phase: "loading_script",
+          reason: "script_load_failed",
+          ...getSafeBrowserAuthContext(),
+        });
+        logAuthDiagnostic("SUPABASE_REQUEST_NOT_STARTED", {
+          phase: "loading_script",
+          reason: "script_load_failed",
+        });
         setErro("O login Google não ficou disponível. Recarregue a página e tente novamente.");
         return;
       }
 
+      logAuthDiagnostic("GIS_SCRIPT_LOADED", {
+        phase: "loading_script",
+        ...getSafeBrowserAuthContext(),
+      });
       window.google.accounts.id.initialize({
         client_id: googleClientId,
+        use_fedcm_for_button: true,
+        button_auto_select: false,
         callback: async (response) => {
+          const attemptId = activeAttemptId ?? createAuthAttemptId();
+          activeAttemptId = attemptId;
+          callbackReceived = true;
+          clearCallbackTimeout();
+          phaseRef.current = "processing_google_callback";
+          logAuthDiagnostic("GOOGLE_CALLBACK_EXECUTED", {
+            attemptId,
+            phase: phaseRef.current,
+          });
+
+          let supabaseCallInvoked = false;
           try {
             setAEntrar(true);
             setErro("");
 
-            logAuth("Login Google recebido", {
-              temCredential: Boolean(response.credential),
-            });
+            if (!response.credential) {
+              logAuthDiagnostic("GOOGLE_CREDENTIAL_MISSING", {
+                attemptId,
+                phase: phaseRef.current,
+              });
+              logAuthDiagnostic("SUPABASE_REQUEST_NOT_STARTED", {
+                attemptId,
+                phase: phaseRef.current,
+                reason: "credential_missing",
+              });
+              throw new Error("A Google não devolveu credencial.");
+            }
 
-            if (!response.credential) throw new Error("A Google não devolveu credencial.");
+            logAuthDiagnostic("GOOGLE_CREDENTIAL_PRESENT", {
+              attemptId,
+              phase: phaseRef.current,
+            });
 
             const googleUser = userFromCredential(response.credential);
-            logAuth("Credencial Google lida", {
-              temNome: Boolean(googleUser.nome),
-              temEmail: Boolean(googleUser.email),
-              temAvatar: Boolean(googleUser.avatarUrl),
-            });
-
-            logAuth("Login Supabase iniciado");
-
-            const authState = await loginComGoogle(googleUser, response.credential);
-            const diagnostico = await diagnosticarSessaoSupabase();
-
-            logAuth("Login Supabase/perfil concluído", {
-              existeSessaoSupabase: diagnostico.existeSessaoSupabase,
-              perfilCarregado: Boolean(authState.perfil),
-              perfilCompleto: perfilCompleto(authState.perfil),
-            });
+            phaseRef.current = "calling_supabase";
+            supabaseCallInvoked = true;
+            const authState = await loginComGoogle(googleUser, response.credential, attemptId);
+            phaseRef.current = "completed";
 
             const onboardingNecessario = !perfilCompleto(authState.perfil);
             const destino = onboardingNecessario ? "/completar-perfil" : "/";
-
-            logAuth("Onboarding necessário?", {
-              userId: authState.user?.id,
-              onboardingNecessario,
-              destino,
-            });
 
             navigate({
               to: destino,
               replace: true,
             });
-
-            logAuth("Navegação para a aplicação", { destino });
           } catch (error) {
+            if (!supabaseCallInvoked && response.credential) {
+              logAuthDiagnostic("SUPABASE_REQUEST_NOT_STARTED", {
+                attemptId,
+                phase: phaseRef.current,
+                reason: "callback_processing_failed",
+              });
+            }
             const codigo = codigoLoginDoErro(error);
+            if (codigo === "ERRO_LOGIN_DESCONHECIDO") {
+              logAuthDiagnostic("UNEXPECTED_JAVASCRIPT_ERROR", {
+                attemptId,
+                phase: phaseRef.current,
+                errorName: error instanceof Error ? error.name : "UnknownError",
+              });
+            }
             console.error("[Tribuno Auth] Erro no fluxo de login", {
               codigo,
               supabaseConfigurado: isSupabaseConfigured(),
@@ -257,27 +389,45 @@ function LoginPage() {
         text: "continue_with",
         width: 320,
       });
+      phaseRef.current = "button_ready";
+      logAuthDiagnostic("GIS_BUTTON_INITIALIZED", {
+        phase: phaseRef.current,
+        ...getSafeBrowserAuthContext(),
+      });
     }
 
     if (window.google) {
       inicializarGoogle();
-      return;
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.onload = inicializarGoogle;
+      script.onerror = () => {
+        if (disposed) return;
+        logAuthDiagnostic("GIS_SCRIPT_FAILED", {
+          phase: "loading_script",
+          reason: "script_load_failed",
+          ...getSafeBrowserAuthContext(),
+        });
+        logAuthDiagnostic("SUPABASE_REQUEST_NOT_STARTED", {
+          phase: "loading_script",
+          reason: "script_load_failed",
+        });
+        setErro(
+          "Não foi possível carregar o login Google. Verifique a ligação à internet, bloqueadores do browser ou políticas de rede.",
+        );
+      };
+      document.head.appendChild(script);
     }
 
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = inicializarGoogle;
-    script.onerror = () => {
-      console.error("[Tribuno Auth] Erro ao carregar script Google Identity Services", {
-        operacao: "AUTH_GOOGLE_SCRIPT_FALHOU",
-      });
-      setErro(
-        "Não foi possível carregar o login Google. Verifique a ligação à internet, bloqueadores do browser ou políticas de rede.",
-      );
+    return () => {
+      disposed = true;
+      clearCallbackTimeout();
+      buttonElement.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("blur", handleWindowBlur);
     };
-    document.head.appendChild(script);
   }, [googleClientId, googleClientIdStatus, navigate]);
 
   const googleClientIdError =
