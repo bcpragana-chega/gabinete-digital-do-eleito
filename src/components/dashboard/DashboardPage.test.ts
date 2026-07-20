@@ -26,7 +26,7 @@ describe("composição da página Hoje", () => {
     assert.doesNotMatch(dashboard, /radial-gradient|linear-gradient|shadow-\[0_18px_55px/);
   });
 
-  it("impõe a hierarquia Próxima ação, Próxima sessão, alertas e conteúdo secundário", () => {
+  it("organiza a ação e pendências na coluna principal e o contexto na secundária", () => {
     const inicio = dashboard.indexOf("<WorkspacePage");
     const fim = dashboard.indexOf("</WorkspacePage>", inicio);
     const composition = dashboard.slice(inicio, fim);
@@ -38,14 +38,20 @@ describe("composição da página Hoje", () => {
     const subjects = composition.indexOf("<SubjectsPanel");
     const documents = composition.indexOf("<RecentDocumentsPanel");
 
-    assert.ok(primary >= 0 && primary < nextSession);
-    assert.ok(nextSession < alerts && alerts < pending);
-    assert.ok(pending < subjects && subjects < documents);
+    assert.ok(primary >= 0 && primary < alerts && alerts < pending);
+    assert.ok(pending < nextSession && nextSession < subjects && subjects < documents);
+    assert.equal(
+      (composition.match(/lg:grid-cols-\[minmax\(0,1\.65fr\)_minmax\(280px,0\.85fr\)\]/g) ?? [])
+        .length,
+      1,
+    );
+    assert.doesNotMatch(composition, /mt-4 grid min-w-0 items-start/);
+    assert.match(dashboard, /hasSecondaryPanels[\s\S]*\? "lg:grid-cols/);
     assert.match(dashboard, /md:border-primary\/35 md:bg-primary\/\[0\.025\][\s\S]*md:shadow-md/);
   });
 
   it("omite painéis vazios e mantém contexto acionável da próxima sessão", () => {
-    assert.match(dashboard, /\{proxima && \([\s\S]*<NextSessionPanel session=\{proxima\} \/>/);
+    assert.match(dashboard, /\{proxima && <NextSessionPanel session=\{proxima\} \/>\}/);
     assert.match(dashboard, /assuntosAtivos\.length > 0/);
     assert.match(dashboard, /documentosRecentes\.length > 0/);
     assert.doesNotMatch(dashboard, /CompactEmptyState/);
@@ -155,7 +161,10 @@ describe("composição da página Hoje", () => {
     assert.ok(context >= 0 && context < primary);
     assert.ok(primary < alerts && alerts < pending);
     assert.match(dashboard, /max-w-prose[\s\S]*md:hidden[\s\S]*data-mobile-today-context/);
-    assert.match(dashboard, /hidden min-w-0 md:block[\s\S]*<NextSessionPanel/);
+    assert.match(
+      dashboard,
+      /<aside className="hidden min-w-0 space-y-4 md:block">[\s\S]*<NextSessionPanel/,
+    );
     assert.match(dashboard, /<aside className="hidden min-w-0 space-y-4 md:block">/);
     assert.match(dashboard, /contentClassName="overflow-x-hidden"/);
   });

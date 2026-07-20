@@ -70,6 +70,8 @@ export function DashboardPage() {
     () => dossies.filter((dossie) => !dossie.archivedAt && dossie.estado !== "concluido"),
     [dossies],
   );
+  const hasSecondaryPanels =
+    Boolean(proxima) || assuntosAtivos.length > 0 || documentosRecentes.length > 0;
   const acompanhamentosAtuais = useMemo(() => {
     const porAssunto = new Map<string, (typeof acompanhamentos)[number]>();
     for (const evento of ordenarAcompanhamentos(acompanhamentos)) {
@@ -158,7 +160,11 @@ export function DashboardPage() {
       <WorkspacePage contentClassName="overflow-x-hidden">
         {decision.state !== "clear" && <MobileTodayContext decision={decision} />}
 
-        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.85fr)]">
+        <div
+          className={`grid min-w-0 items-start gap-4 ${
+            hasSecondaryPanels ? "lg:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.85fr)]" : ""
+          }`}
+        >
           <div className="min-w-0 space-y-4">
             {decision.state === "clear" ? (
               <ClearState />
@@ -171,25 +177,15 @@ export function DashboardPage() {
                 />
               )
             )}
-          </div>
-
-          {proxima && (
-            <div className="hidden min-w-0 md:block">
-              <NextSessionPanel session={proxima} />
-            </div>
-          )}
-        </div>
-
-        <div className="mt-4 grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.85fr)]">
-          <div className="min-w-0 space-y-4">
             {decision.alerts.length > 0 && <AlertsSection alerts={decision.alerts} />}
             {decision.pendingItems.length > 0 && (
               <PendingSection pendingItems={decision.pendingItems} />
             )}
           </div>
 
-          {(assuntosAtivos.length > 0 || documentosRecentes.length > 0) && (
+          {hasSecondaryPanels && (
             <aside className="hidden min-w-0 space-y-4 md:block">
+              {proxima && <NextSessionPanel session={proxima} />}
               {assuntosAtivos.length > 0 && <SubjectsPanel subjects={assuntosAtivos.slice(0, 4)} />}
               {documentosRecentes.length > 0 && (
                 <RecentDocumentsPanel documents={documentosRecentes} />
