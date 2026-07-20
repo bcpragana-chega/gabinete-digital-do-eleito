@@ -11,7 +11,7 @@ describe("composição da página Hoje", () => {
     assert.match(dashboard, /<PendingSection/);
     assert.match(dashboard, /<ClearState/);
     assert.match(dashboard, /<NextSessionPanel/);
-    assert.match(dashboard, /<AgendaPanel/);
+    assert.doesNotMatch(dashboard, /AgendaPanel|title="Agenda"/);
     assert.match(dashboard, /<SubjectsPanel/);
     assert.match(dashboard, /<RecentDocumentsPanel/);
     assert.doesNotMatch(
@@ -19,6 +19,34 @@ describe("composição da página Hoje", () => {
       /MetricsCard|ActivityCard|QuickAccessCard|O teu mandato em números|Acessos rápidos/,
     );
     assert.doesNotMatch(dashboard, /radial-gradient|linear-gradient|shadow-\[0_18px_55px/);
+  });
+
+  it("impõe a hierarquia Próxima ação, Próxima sessão, alertas e conteúdo secundário", () => {
+    const inicio = dashboard.indexOf("<WorkspacePage>");
+    const fim = dashboard.indexOf("</WorkspacePage>", inicio);
+    const composition = dashboard.slice(inicio, fim);
+
+    const primary = composition.indexOf("<PrimaryActionCard");
+    const nextSession = composition.indexOf("<NextSessionPanel");
+    const alerts = composition.indexOf("<AlertsSection");
+    const pending = composition.indexOf("<PendingSection");
+    const subjects = composition.indexOf("<SubjectsPanel");
+    const documents = composition.indexOf("<RecentDocumentsPanel");
+
+    assert.ok(primary >= 0 && primary < nextSession);
+    assert.ok(nextSession < alerts && alerts < pending);
+    assert.ok(pending < subjects && subjects < documents);
+    assert.match(dashboard, /border-primary\/35 bg-primary\/\[0\.025\][\s\S]*shadow-md/);
+  });
+
+  it("omite painéis vazios e mantém contexto acionável da próxima sessão", () => {
+    assert.match(dashboard, /\{proxima && <NextSessionPanel session=\{proxima\} \/>\}/);
+    assert.match(dashboard, /assuntosAtivos\.length > 0/);
+    assert.match(dashboard, /documentosRecentes\.length > 0/);
+    assert.doesNotMatch(dashboard, /CompactEmptyState/);
+    assert.match(dashboard, /Preparação concluída/);
+    assert.match(dashboard, /Preparação em curso/);
+    assert.match(dashboard, /to="\/sessoes\/\$id\/preparacao"/);
   });
 
   it("não duplica o onboarding de sessão e preserva as duas formas de a criar", () => {
@@ -49,6 +77,9 @@ describe("composição da página Hoje", () => {
     assert.match(dashboard, /href=\{action\.href\}/);
     assert.match(dashboard, /href=\{alert\.href\}/);
     assert.match(dashboard, /href=\{item\.href\}/);
+    assert.match(dashboard, /to="\/assuntos\/\$dossieId"/);
+    assert.match(dashboard, /to="\/documentos\/\$documentoId"/);
+    assert.match(dashboard, /search=\{\{ origem: "biblioteca" \}\}/);
     const engine = readFileSync(new URL("../../lib/today-decision.ts", import.meta.url), "utf8");
     assert.match(engine, /`\/documentos\/\$\{encodeURIComponent\(documentId\)\}\?origem=sessao/);
     assert.match(engine, /`\/sessoes\/\$\{encodeURIComponent\(sessionId\)\}\/preparacao/);

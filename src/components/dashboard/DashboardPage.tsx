@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -44,19 +45,6 @@ export function DashboardPage() {
   const documentos = useDocumentos();
   const acompanhamentos = useAcompanhamentos();
   const proxima = useMemo(() => obterProximaAssembleia(assembleias), [assembleias]);
-  const agenda = useMemo(
-    () =>
-      [...assembleias]
-        .filter(
-          (assembleia) =>
-            assembleia.estado !== "arquivada" &&
-            assembleia.estado !== "concluida" &&
-            new Date(`${assembleia.data}T${assembleia.hora || "00:00"}`) >= new Date(),
-        )
-        .sort((a, b) => `${a.data}T${a.hora}`.localeCompare(`${b.data}T${b.hora}`))
-        .slice(0, 3),
-    [assembleias],
-  );
   const documentosDaProxima = useMemo(
     () => documentos.filter((documento) => documento.assembleiaId === proxima?.id),
     [documentos, proxima?.id],
@@ -168,32 +156,39 @@ export function DashboardPage() {
     <>
       <TopBar showUtilities={false} />
       <WorkspacePage>
-        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.85fr)]">
+        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.85fr)]">
           <div className="min-w-0 space-y-4">
             {decision.state === "clear" ? (
               <ClearState />
             ) : (
-              <>
-                {decision.primaryAction && (
-                  <PrimaryActionCard
-                    action={decision.primaryAction}
-                    documentToAnalyze={documentosParaOrganizar[0]}
-                  />
-                )}
-                {decision.alerts.length > 0 && <AlertsSection alerts={decision.alerts} />}
-                {decision.pendingItems.length > 0 && (
-                  <PendingSection pendingItems={decision.pendingItems} />
-                )}
-              </>
+              decision.primaryAction && (
+                <PrimaryActionCard
+                  action={decision.primaryAction}
+                  documentToAnalyze={documentosParaOrganizar[0]}
+                />
+              )
             )}
           </div>
 
-          <aside className="min-w-0 space-y-4">
-            <NextSessionPanel session={proxima} />
-            <AgendaPanel sessions={agenda} />
-            <SubjectsPanel subjects={assuntosAtivos.slice(0, 4)} />
-            <RecentDocumentsPanel documents={documentosRecentes} />
-          </aside>
+          {proxima && <NextSessionPanel session={proxima} />}
+        </div>
+
+        <div className="mt-4 grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.85fr)]">
+          <div className="min-w-0 space-y-4">
+            {decision.alerts.length > 0 && <AlertsSection alerts={decision.alerts} />}
+            {decision.pendingItems.length > 0 && (
+              <PendingSection pendingItems={decision.pendingItems} />
+            )}
+          </div>
+
+          {(assuntosAtivos.length > 0 || documentosRecentes.length > 0) && (
+            <aside className="min-w-0 space-y-4">
+              {assuntosAtivos.length > 0 && <SubjectsPanel subjects={assuntosAtivos.slice(0, 4)} />}
+              {documentosRecentes.length > 0 && (
+                <RecentDocumentsPanel documents={documentosRecentes} />
+              )}
+            </aside>
+          )}
         </div>
       </WorkspacePage>
     </>
@@ -208,16 +203,18 @@ function PrimaryActionCard({
   documentToAnalyze?: Documento;
 }) {
   return (
-    <Card className="overflow-hidden border-primary/20 p-0">
-      <div className="flex items-center gap-2 border-b border-border/80 bg-muted/25 px-4 py-2.5">
-        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+    <Card className="overflow-hidden border-primary/35 bg-primary/[0.025] p-0 shadow-md">
+      <div className="flex items-center gap-2 border-b border-primary/15 bg-primary/[0.06] px-5 py-3">
+        <span className="h-2 w-2 rounded-full bg-primary" />
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           Próxima ação
         </p>
       </div>
-      <div className="p-4 sm:p-5">
-        <h2 className="text-lg font-semibold leading-6 text-foreground">{action.title}</h2>
-        <p className="mt-1.5 max-w-2xl text-sm leading-5 text-muted-foreground">
+      <div className="p-5 sm:p-6">
+        <h2 className="text-xl font-semibold leading-7 text-foreground sm:text-2xl">
+          {action.title}
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           {action.explanation}
         </p>
         {action.context && (
@@ -328,13 +325,13 @@ function ClearState() {
           Não tens nada urgente neste momento.
         </h2>
         <p className="mt-0.5 text-xs text-muted-foreground">O mandato está em dia.</p>
-        <a
-          href="/assuntos"
+        <Link
+          to="/assuntos"
           className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline"
         >
           Consultar assuntos ativos
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
-        </a>
+        </Link>
       </div>
     </Card>
   );
@@ -366,31 +363,38 @@ function OperationalPanel({
   );
 }
 
-function NextSessionPanel({ session }: { session?: Assembleia }) {
+function NextSessionPanel({ session }: { session: Assembleia }) {
+  const preparada = session.preparacaoEstado === "pronta";
+
   return (
     <OperationalPanel title="Próxima sessão">
-      {session ? (
-        <a
-          href={`/sessoes/${encodeURIComponent(session.id)}`}
-          className="block px-4 py-3 transition-colors duration-150 hover:bg-muted/40"
-        >
-          <p className="line-clamp-2 text-sm font-medium text-foreground">{session.nome}</p>
-          <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
-            <p className="flex items-center gap-2">
-              <CalendarDays className="h-3.5 w-3.5" />
-              {formatCompactDate(session.data)} · {session.hora}
+      <div className="px-4 py-4">
+        <p className="line-clamp-2 text-sm font-semibold text-foreground">{session.nome}</p>
+        <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+          <p className="flex items-center gap-2">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {formatCompactDate(session.data)} · {session.hora}
+          </p>
+          {session.local && (
+            <p className="flex items-center gap-2 truncate">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{session.local}</span>
             </p>
-            {session.local && (
-              <p className="flex items-center gap-2 truncate">
-                <MapPin className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{session.local}</span>
-              </p>
-            )}
-          </div>
-        </a>
-      ) : (
-        <CompactEmptyState message="Ainda não existe uma próxima sessão agendada." />
-      )}
+          )}
+          <p className="flex items-center gap-2 pt-1 font-medium text-foreground">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {preparada ? "Preparação concluída" : "Preparação em curso"}
+          </p>
+        </div>
+        <Link
+          to="/sessoes/$id/preparacao"
+          params={{ id: session.id }}
+          className="mt-4 inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+        >
+          {preparada ? "Abrir preparação" : "Continuar preparação"}
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+        </Link>
+      </div>
     </OperationalPanel>
   );
 }
@@ -398,55 +402,22 @@ function NextSessionPanel({ session }: { session?: Assembleia }) {
 function SubjectsPanel({ subjects }: { subjects: ReturnType<typeof useDossies> }) {
   return (
     <OperationalPanel title="Assuntos pendentes" count={subjects.length}>
-      {subjects.length > 0 ? (
-        <div className="divide-y divide-border/70">
-          {subjects.map((subject) => (
-            <a
-              key={subject.id}
-              href={`/assuntos/${encodeURIComponent(subject.id)}`}
-              className="flex items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-muted/40"
-            >
-              <NotebookText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-                {subject.titulo}
-              </span>
-              <span className="text-[10px] text-muted-foreground">{subject.prioridade}</span>
-            </a>
-          ))}
-        </div>
-      ) : (
-        <CompactEmptyState message="Sem assuntos pendentes." />
-      )}
-    </OperationalPanel>
-  );
-}
-
-function AgendaPanel({ sessions }: { sessions: Assembleia[] }) {
-  return (
-    <OperationalPanel title="Agenda" count={sessions.length}>
-      {sessions.length > 0 ? (
-        <div className="divide-y divide-border/70">
-          {sessions.map((session) => (
-            <a
-              key={session.id}
-              href={`/sessoes/${encodeURIComponent(session.id)}`}
-              className="flex items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-muted/40"
-            >
-              <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-medium text-foreground">
-                  {session.nome}
-                </span>
-                <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                  {formatCompactDate(session.data)} · {session.hora}
-                </span>
-              </span>
-            </a>
-          ))}
-        </div>
-      ) : (
-        <CompactEmptyState message="Sem sessões futuras na agenda." />
-      )}
+      <div className="divide-y divide-border/70">
+        {subjects.map((subject) => (
+          <Link
+            key={subject.id}
+            to="/assuntos/$dossieId"
+            params={{ dossieId: subject.id }}
+            className="flex items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-muted/40"
+          >
+            <NotebookText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
+              {subject.titulo}
+            </span>
+            <span className="text-[10px] text-muted-foreground">{subject.prioridade}</span>
+          </Link>
+        ))}
+      </div>
     </OperationalPanel>
   );
 }
@@ -454,35 +425,29 @@ function AgendaPanel({ sessions }: { sessions: Assembleia[] }) {
 function RecentDocumentsPanel({ documents }: { documents: Documento[] }) {
   return (
     <OperationalPanel title="Documentos recentes" count={documents.length}>
-      {documents.length > 0 ? (
-        <div className="divide-y divide-border/70">
-          {documents.map((document) => (
-            <a
-              key={document.id}
-              href={`/documentos/${encodeURIComponent(document.id)}?origem=biblioteca`}
-              className="flex items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-muted/40"
-            >
-              <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-medium text-foreground">
-                  {document.titulo}
-                </span>
-                <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                  {formatCompactDate(document.updatedAt ?? document.createdAt)}
-                </span>
+      <div className="divide-y divide-border/70">
+        {documents.map((document) => (
+          <Link
+            key={document.id}
+            to="/documentos/$documentoId"
+            params={{ documentoId: document.id }}
+            search={{ origem: "biblioteca" }}
+            className="flex items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-muted/40"
+          >
+            <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-medium text-foreground">
+                {document.titulo}
               </span>
-            </a>
-          ))}
-        </div>
-      ) : (
-        <CompactEmptyState message="Ainda não existem documentos na Biblioteca." />
-      )}
+              <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                {formatCompactDate(document.updatedAt ?? document.createdAt)}
+              </span>
+            </span>
+          </Link>
+        ))}
+      </div>
     </OperationalPanel>
   );
-}
-
-function CompactEmptyState({ message }: { message: string }) {
-  return <p className="px-4 py-4 text-xs leading-5 text-muted-foreground">{message}</p>;
 }
 
 function formatCompactDate(value: string) {

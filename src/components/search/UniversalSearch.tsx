@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
   pesquisarUniversal,
@@ -76,16 +76,35 @@ type PaletteItem =
       result: UniversalSearchResult;
     };
 
-export function UniversalSearch() {
+type UniversalSearchProps = {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
+};
+
+export function UniversalSearch({
+  open: controlledOpen,
+  onOpenChange,
+  showTrigger = true,
+}: UniversalSearchProps = {}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [revision, setRevision] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const paletteInputRef = useRef<HTMLInputElement>(null);
+  const paletteOpen = controlledOpen ?? internalOpen;
+
+  const setPaletteOpen = useCallback(
+    (open: boolean) => {
+      if (controlledOpen === undefined) setInternalOpen(open);
+      onOpenChange?.(open);
+    },
+    [controlledOpen, onOpenChange],
+  );
 
   useEffect(() => {
     const atualizar = () => setRevision((value) => value + 1);
@@ -123,7 +142,7 @@ export function UniversalSearch() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [setPaletteOpen]);
 
   useEffect(() => {
     if (!paletteOpen) return;
@@ -342,86 +361,90 @@ export function UniversalSearch() {
 
   return (
     <>
-      <button
-        type="button"
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors duration-150 hover:border-border/70 hover:bg-muted/60 hover:text-foreground lg:hidden"
-        aria-label="Abrir pesquisa"
-        onClick={() => {
-          setFocused(false);
-          setPaletteOpen(true);
-        }}
-      >
-        <Search className="h-4 w-4" strokeWidth={1.75} />
-      </button>
-
-      <div ref={containerRef} className="relative hidden lg:block">
-        <div
-          className={cn(
-            "flex h-8 w-64 max-w-64 items-center gap-2 rounded-md border border-border/70 bg-card px-2.5 text-muted-foreground transition-colors duration-150",
-            focused && "border-ring/40 text-foreground ring-2 ring-ring/10",
-          )}
+      {showTrigger && (
+        <button
+          type="button"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors duration-150 hover:border-border/70 hover:bg-muted/60 hover:text-foreground lg:hidden"
+          aria-label="Abrir pesquisa"
+          onClick={() => {
+            setFocused(false);
+            setPaletteOpen(true);
+          }}
         >
-          <Search className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={1.75} />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onFocus={() => setFocused(true)}
-            placeholder="Pesquisar..."
-            className="h-full min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/80"
-          />
-          <kbd className="flex h-5 shrink-0 items-center rounded-md border border-border/50 bg-background/70 px-1.5 text-[10px] font-medium leading-none text-muted-foreground">
-            ⌘K
-          </kbd>
-        </div>
+          <Search className="h-4 w-4" strokeWidth={1.75} />
+        </button>
+      )}
 
-        {showPanel && (
-          <div className="absolute right-0 top-10 z-50 w-[28rem] overflow-hidden rounded-lg border border-border/80 bg-card/95 shadow-elevated backdrop-blur">
-            {hasResults ? (
-              <div className="max-h-[28rem] overflow-y-auto p-2">
-                {groups.map((group) => {
-                  const GroupIcon = icons[group.type];
-
-                  return (
-                    <section key={group.type} className="py-2">
-                      <div className="mb-1 flex items-center gap-2 px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                        <GroupIcon className="h-3.5 w-3.5" />
-                        {group.label}
-                      </div>
-                      <div className="space-y-1">
-                        {group.results.map((result) => (
-                          <a
-                            key={`${result.type}-${result.id}`}
-                            href={result.href}
-                            onClick={() => {
-                              setFocused(false);
-                              setQuery("");
-                            }}
-                            className="flex items-start gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted/70"
-                          >
-                            {renderResultContent(result)}
-                          </a>
-                        ))}
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="p-6 text-sm">
-                <div className="font-medium text-foreground">Sem resultados</div>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Tenta pesquisar por titulo, resumo, objetivo politico, descricao ou tag.
-                </p>
-              </div>
+      {showTrigger && (
+        <div ref={containerRef} className="relative hidden lg:block">
+          <div
+            className={cn(
+              "flex h-8 w-64 max-w-64 items-center gap-2 rounded-md border border-border/70 bg-card px-2.5 text-muted-foreground transition-colors duration-150",
+              focused && "border-ring/40 text-foreground ring-2 ring-ring/10",
             )}
-
-            <div className="border-t border-border/70 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
-              Preparado para incluir pessoas, entidades e compromissos.
-            </div>
+          >
+            <Search className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={1.75} />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onFocus={() => setFocused(true)}
+              placeholder="Pesquisar..."
+              className="h-full min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/80"
+            />
+            <kbd className="flex h-5 shrink-0 items-center rounded-md border border-border/50 bg-background/70 px-1.5 text-[10px] font-medium leading-none text-muted-foreground">
+              ⌘K
+            </kbd>
           </div>
-        )}
-      </div>
+
+          {showPanel && (
+            <div className="absolute right-0 top-10 z-50 w-[28rem] overflow-hidden rounded-lg border border-border/80 bg-card/95 shadow-elevated backdrop-blur">
+              {hasResults ? (
+                <div className="max-h-[28rem] overflow-y-auto p-2">
+                  {groups.map((group) => {
+                    const GroupIcon = icons[group.type];
+
+                    return (
+                      <section key={group.type} className="py-2">
+                        <div className="mb-1 flex items-center gap-2 px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                          <GroupIcon className="h-3.5 w-3.5" />
+                          {group.label}
+                        </div>
+                        <div className="space-y-1">
+                          {group.results.map((result) => (
+                            <a
+                              key={`${result.type}-${result.id}`}
+                              href={result.href}
+                              onClick={() => {
+                                setFocused(false);
+                                setQuery("");
+                              }}
+                              className="flex items-start gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-muted/70"
+                            >
+                              {renderResultContent(result)}
+                            </a>
+                          ))}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-6 text-sm">
+                  <div className="font-medium text-foreground">Sem resultados</div>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Tenta pesquisar por titulo, resumo, objetivo politico, descricao ou tag.
+                  </p>
+                </div>
+              )}
+
+              <div className="border-t border-border/70 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
+                Preparado para incluir pessoas, entidades e compromissos.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <Dialog
         open={paletteOpen}

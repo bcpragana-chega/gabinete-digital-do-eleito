@@ -23,6 +23,10 @@ function entre(source: string, inicio: string, fim: string) {
 describe("cabeçalhos canónicos e navegação", () => {
   const topBar = fonte("src/components/layout/TopBar.tsx");
   const sidebar = fonte("src/components/layout/AppSidebar.tsx");
+  const appLayout = fonte("src/routes/_app.tsx");
+  const searchProvider = fonte("src/components/search/GlobalSearchProvider.tsx");
+  const searchTrigger = fonte("src/components/search/GlobalSearchTrigger.tsx");
+  const universalSearch = fonte("src/components/search/UniversalSearch.tsx");
   const quickCreate = fonte("src/components/layout/QuickCreateMenu.tsx");
   const novoAssunto = fonte("src/components/dossies/NovoAssuntoWizard.tsx");
   const sidebarConfig = fonte("src/components/layout/sidebar-config.ts");
@@ -41,9 +45,12 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.match(topBar, /order-2 ml-auto[\s\S]*md:order-3 md:ml-0/);
   });
 
-  it("páginas de listagem e Hoje ocultam utilitários sem estado transitório", () => {
+  it("utilitários visuais podem ser ocultados sem desmontar a pesquisa global", () => {
     assert.match(topBar, /showUtilities = true/);
-    assert.match(topBar, /\{showUtilities && \([\s\S]*<UniversalSearch \/>[\s\S]*<UserAvatar/);
+    assert.match(
+      topBar,
+      /\{showUtilities && \([\s\S]*<GlobalSearchTrigger variant="topbar" \/>[\s\S]*<UserAvatar/,
+    );
     assert.doesNotMatch(topBar, /useEffect/);
     assert.match(hoje, /<TopBar showUtilities=\{false\} \/>/);
 
@@ -54,9 +61,56 @@ describe("cabeçalhos canónicos e navegação", () => {
 
     assert.match(definicoes, /<TopBar breadcrumb="Definições" \/>/);
     assert.doesNotMatch(definicoes, /showUtilities=\{false\}/);
-    assert.match(sidebar, /onClick=\{abrirPesquisa\}/);
+    assert.match(appLayout, /<GlobalSearchProvider>[\s\S]*<AppSidebar \/>[\s\S]*<Outlet \/>/);
+    assert.match(
+      searchProvider,
+      /<UniversalSearch open=\{open\} onOpenChange=\{setOpen\} showTrigger=\{false\} \/>/,
+    );
+    assert.match(sidebar, /<GlobalSearchTrigger variant="sidebar" \/>/);
+    assert.doesNotMatch(sidebar, /KeyboardEvent|dispatchEvent|abrirPesquisa/);
     assert.match(sidebar, /<UserAvatar/);
     assert.doesNotMatch(hoje, /UniversalSearch|UserAvatar/);
+  });
+
+  it("uma única pesquisa global abre por clique, ⌘K e Ctrl+K com foco no input", () => {
+    assert.equal((appLayout.match(/<GlobalSearchProvider>/g) ?? []).length, 1);
+    assert.equal((searchProvider.match(/<UniversalSearch/g) ?? []).length, 1);
+    assert.doesNotMatch(topBar, /<UniversalSearch/);
+    assert.doesNotMatch(sidebar, /<UniversalSearch/);
+
+    assert.match(searchTrigger, /const openSearch = useGlobalSearch\(\)/);
+    assert.match(searchTrigger, /onClick=\{open\}/);
+    assert.match(universalSearch, /\(event\.metaKey \|\| event\.ctrlKey\) && key === "k"/);
+    assert.match(universalSearch, /paletteInputRef\.current\?\.focus\(\)/);
+    assert.match(universalSearch, /ref=\{paletteInputRef\}/);
+    assert.match(universalSearch, /value=\{paletteQuery\}/);
+    assert.match(
+      universalSearch,
+      /onChange=\{\(event\) => setPaletteQuery\(event\.target\.value\)\}/,
+    );
+    assert.match(universalSearch, /event\.key === "Escape"/);
+    assert.match(universalSearch, /<Dialog[\s\S]*onOpenChange/);
+  });
+
+  it("desktop e mobile abrem a mesma pesquisa e o menu móvel fecha primeiro", () => {
+    assert.match(sidebar, /<GlobalSearchTrigger variant="sidebar" \/>/);
+    assert.match(
+      topBar,
+      /<GlobalSearchTrigger[\s\S]*variant="mobile"[\s\S]*onOpen=\{\(\) => setMenuAberto\(false\)\}/,
+    );
+    assert.match(topBar, /<GlobalSearchTrigger variant="topbar" \/>/);
+    assert.match(searchTrigger, /variant: "sidebar" \| "mobile" \| "topbar"/);
+    assert.match(searchTrigger, /min-h-11/);
+  });
+
+  it("preserva resultados, ações rápidas e navegação da pesquisa existente", () => {
+    assert.match(universalSearch, /pesquisarUniversal\(paletteQuery\)/);
+    assert.match(universalSearch, /Ações rápidas/);
+    assert.match(universalSearch, /filteredQuickActions\.map/);
+    assert.match(universalSearch, /paletteGroups\.map/);
+    assert.match(universalSearch, /event\.key === "Enter"/);
+    assert.match(universalSearch, /router\.history\.push\(result\.href\)/);
+    assert.match(universalSearch, /router\.history\.push\(action\.href\)/);
   });
 
   it("páginas principais não repetem o cabeçalho canónico", () => {
@@ -174,7 +228,7 @@ describe("cabeçalhos canónicos e navegação", () => {
       sidebar,
       /Ellipsis|Abrir menu do Tribuno|Abrir definições|Gabinete digital/,
     );
-    assert.match(sidebar, /onClick=\{abrirPesquisa\}/);
+    assert.match(sidebar, /<GlobalSearchTrigger variant="sidebar" \/>/);
     assert.match(sidebar, /<QuickCreateMenu variant="desktop"/);
     assert.match(sidebar, /HelpAssistantPanel/);
     assert.match(sidebar, /aria-label="Abrir menu da conta"/);

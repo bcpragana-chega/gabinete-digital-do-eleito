@@ -1,11 +1,12 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, LogOut, Search, UserRound } from "lucide-react";
+import { ChevronDown, ChevronRight, LogOut, UserRound } from "lucide-react";
 import { useState } from "react";
 import { LogoutConfirmDialog } from "@/components/auth/LogoutConfirmDialog";
 import { UserAvatar } from "@/components/auth/UserAvatar";
 import { HelpAssistantPanel } from "@/components/help/HelpAssistantPanel";
 import { NovoAssuntoWizard } from "@/components/dossies/NovoAssuntoWizard";
 import { QuickCreateMenu } from "@/components/layout/QuickCreateMenu";
+import { GlobalSearchTrigger } from "@/components/search/GlobalSearchTrigger";
 import {
   isSidebarItemActive,
   sidebarItemClassName,
@@ -22,10 +23,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth-store";
-
-function abrirPesquisa() {
-  window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
-}
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -50,15 +47,7 @@ export function AppSidebar() {
         </div>
 
         <div className="mt-1.5 flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={abrirPesquisa}
-            className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border border-sidebar-border/80 bg-card/55 px-2 text-[12px] text-sidebar-muted transition-colors hover:bg-sidebar-accent/55 hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
-          >
-            <Search className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">Pesquisar</span>
-            <kbd className="ml-auto text-[9px] opacity-70">⌘K</kbd>
-          </button>
+          <GlobalSearchTrigger variant="sidebar" />
 
           <QuickCreateMenu variant="desktop" onNewSubject={() => setNovoAssuntoAberto(true)} />
         </div>

@@ -13,7 +13,7 @@ import {
   sidebarItems,
   sidebarSections,
 } from "@/components/layout/sidebar-config";
-import { UniversalSearch } from "@/components/search/UniversalSearch";
+import { GlobalSearchTrigger } from "@/components/search/GlobalSearchTrigger";
 import { primeiroNome, saudacaoPorHora, useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -141,6 +141,8 @@ export function TopBar({
                   <div className="px-3 pb-2 text-[10.5px] font-medium uppercase text-muted-foreground">
                     Navegação
                   </div>
+
+                  <GlobalSearchTrigger variant="mobile" onOpen={() => setMenuAberto(false)} />
 
                   <QuickCreateMenu
                     variant="mobile"
@@ -279,7 +281,7 @@ export function TopBar({
 
         {showUtilities && (
           <div className="order-2 ml-auto flex min-w-0 shrink-0 items-center gap-1.5 md:order-3 md:ml-0 md:gap-2">
-            <UniversalSearch />
+            <GlobalSearchTrigger variant="topbar" />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
