@@ -2,7 +2,6 @@ import {
   BarChart3,
   BookOpen,
   CalendarClock,
-  CalendarDays,
   FileClock,
   Files,
   Home,
@@ -30,7 +29,6 @@ export const sidebarItems = [
     exact: false,
     aliases: ["/caixa-de-entrada"],
   },
-  { to: "/agenda" as const, label: "Agenda", icon: CalendarDays, exact: false },
 ] as const;
 
 export const favoriteSidebarItems = [

@@ -29,14 +29,14 @@ describe("conceitos e rotas canónicas", () => {
   const assembleia = fonte("src/routes/_app.assembleias.$id.tsx");
   const preparacaoPonto = fonte("src/routes/_app.assembleias.$id.preparacao.pontos.$pontoId.tsx");
 
-  it("a navegação principal inclui Agenda como atalho para a rota canónica", () => {
+  it("a navegação principal expõe apenas as quatro áreas canónicas da Beta", () => {
     const inicio = sidebar.indexOf("export const sidebarItems");
     const fim = sidebar.indexOf("export const favoriteSidebarItems");
     const navegacaoPrincipal = sidebar.slice(inicio, fim);
     const labels = [...navegacaoPrincipal.matchAll(/label: "([^"]+)"/g)].map((match) => match[1]);
     const destinos = [...navegacaoPrincipal.matchAll(/to: "([^"]+)"/g)].map((match) => match[1]);
-    assert.deepEqual(labels, ["Hoje", "Assuntos", "Sessões", "Biblioteca", "Agenda"]);
-    assert.deepEqual(destinos, ["/", "/assuntos", "/sessoes", "/biblioteca", "/agenda"]);
+    assert.deepEqual(labels, ["Hoje", "Assuntos", "Sessões", "Biblioteca"]);
+    assert.deepEqual(destinos, ["/", "/assuntos", "/sessoes", "/biblioteca"]);
   });
 
   it("redireciona as coleções antigas para as rotas canónicas", () => {

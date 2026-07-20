@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
+import { isSidebarItemActive, sidebarItems } from "./sidebar-config";
 
 function fonte(caminho: string) {
   return readFileSync(resolve(process.cwd(), caminho), "utf8");
@@ -110,12 +111,13 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.match(sidebar, /border-t[\s\S]*HelpAssistantPanel/);
     assert.doesNotMatch(sidebarConfig, /Ajuda|HelpAssistantPanel/);
 
+    assert.deepEqual(
+      sidebarItems.map((item) => item.label),
+      ["Hoje", "Assuntos", "Sessões", "Biblioteca"],
+    );
+    assert.doesNotMatch(sidebarConfig, /label: "Agenda"/);
+
     for (const label of [
-      "Hoje",
-      "Assuntos",
-      "Sessões",
-      "Biblioteca",
-      "Agenda",
       "Favoritos",
       "Workspace",
       "Definições",
@@ -133,6 +135,18 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.match(menuMovel, /sidebarSections\.map/);
     assert.match(menuMovel, /section\.label/);
     assert.doesNotMatch(menuMovel, /Terminar sessão|LogoutConfirmDialog/);
+    assert.deepEqual(
+      sidebarItems.map((item) => item.label),
+      ["Hoje", "Assuntos", "Sessões", "Biblioteca"],
+    );
+  });
+
+  it("mantém Sessões ativa na rota canónica e nas suas subrotas", () => {
+    const sessoes = sidebarItems.find((item) => item.to === "/sessoes");
+    assert.ok(sessoes);
+    assert.equal(isSidebarItemActive("/sessoes", sessoes), true);
+    assert.equal(isSidebarItemActive("/sessoes/123/preparacao", sessoes), true);
+    assert.equal(isSidebarItemActive("/assuntos", sessoes), false);
   });
 
   it("menu do avatar mantém perfil, logout e acesso direto a definições", () => {
