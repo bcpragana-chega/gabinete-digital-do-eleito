@@ -33,6 +33,13 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.match(topBar, /order-2 ml-auto[\s\S]*md:order-3 md:ml-0/);
   });
 
+  it("Hoje não duplica pesquisa nem perfil e mantém ambos na sidebar", () => {
+    assert.match(topBar, /\{!dashboard && \([\s\S]*<UniversalSearch \/>[\s\S]*<UserAvatar/);
+    assert.match(sidebar, /onClick=\{abrirPesquisa\}/);
+    assert.match(sidebar, /<UserAvatar/);
+    assert.doesNotMatch(hoje, /UniversalSearch|UserAvatar/);
+  });
+
   it("páginas principais não repetem o cabeçalho canónico", () => {
     assert.match(hoje, /<TopBar \/>/);
     assert.doesNotMatch(hoje, /<h1/);
@@ -40,10 +47,14 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.match(assuntos, /<TopBar[\s\S]*actions=\{<NovoDossieDialog \/>\}/);
     assert.doesNotMatch(assuntos, /<h1/);
 
-    assert.match(sessoes, /<TopBar breadcrumb="Sessões" actions=\{<NovaAssembleiaDialog \/>\}/);
+    assert.match(sessoes, /title=\{`Sessões \(\$\{assembleiasNaoArquivadas\.length\}\)`\}/);
+    assert.match(sessoes, /actions=\{<NovaAssembleiaDialog \/>\}/);
+    assert.match(sessoes, /<SessoesList assembleias=\{assembleiasVisiveis\} \/>/);
     assert.doesNotMatch(sessoes, /<h1/);
 
     assert.match(biblioteca, /<TopBar[\s\S]*actions=\{/);
+    assert.match(biblioteca, /title=\{`Biblioteca \(\$\{documentos\.length\}\)`\}/);
+    assert.match(biblioteca, /<DocumentosList itens=\{documentosVisiveis\} \/>/);
     assert.doesNotMatch(biblioteca, /WorkspaceHeader/);
   });
 
@@ -66,7 +77,7 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.doesNotMatch(hoje, /Incoerência detetada/);
 
     assert.match(biblioteca, /triggerLabel="Adicionar e analisar PDF"/);
-    assert.match(biblioteca, /Ainda não está ligado a um assunto ou sessão/);
+    assert.match(biblioteca, /\[assunto, sessao\]\.filter\(Boolean\)\.join\(" · "\)/);
     assert.match(biblioteca, /estado === "Por rever" \? "Rever documento"/);
     assert.doesNotMatch(biblioteca, /Compreender PDF|Sem ligação institucional/);
 

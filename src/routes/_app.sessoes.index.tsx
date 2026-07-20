@@ -1,19 +1,18 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, Clock, FileText, Landmark, ListChecks, MapPin } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { useProductHelpPageState } from "@/components/help/ProductHelpPageState";
 import { NovaAssembleiaDialog } from "@/components/assembleias/NovaAssembleiaDialog";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
-import { Card } from "@/components/ui/card";
-import { ds } from "@/components/ui/design-system";
 import { WorkspacePage } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import { listarDocumentosLocais } from "@/lib/documentos-store";
 import { formatarData } from "@/lib/civil-date";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
 import type { Assembleia, EstadoAssembleia } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/sessoes/")({
   head: () => ({
@@ -100,34 +99,45 @@ function AssembleiasPage() {
 
   return (
     <>
-      <TopBar breadcrumb="Sessões" actions={<NovaAssembleiaDialog />} />
-      <WorkspacePage>
-        <section>
-          <div className="-mx-4 mb-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-            <div className="flex w-max min-w-full items-center gap-1 sm:w-auto sm:min-w-0 sm:flex-wrap">
-              {filtros.map((filtro) => (
-                <button
-                  key={filtro.id}
-                  type="button"
-                  onClick={() => setFiltroAtivo(filtro.id)}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150 ${
-                    filtroAtivo === filtro.id
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-                  }`}
-                >
-                  {filtro.label}
-                  <span className="rounded bg-background px-1.5 text-[10px] tabular-nums text-muted-foreground ring-1 ring-border/50">
-                    {filtro.id === "todas" && assembleiasNaoArquivadas.length}
-                    {filtro.id === "preparacao" && emPreparacao}
-                    {filtro.id === "analise" && emAnalise}
-                    {filtro.id === "concluida" && concluidas}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
+      <div className="[&>header>div>div:last-child]:hidden">
+        <TopBar
+          title={`Sessões (${assembleiasNaoArquivadas.length})`}
+          description=""
+          actions={<NovaAssembleiaDialog />}
+        />
+      </div>
 
+      <div className="sticky top-24 z-30 border-b border-border/60 bg-background/95 backdrop-blur-lg md:top-16">
+        <div className="mx-auto flex w-full max-w-[1440px] items-center px-4 py-2 sm:px-5 lg:px-6">
+          <div className="-mx-1 flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1">
+            {filtros.map((filtro) => (
+              <button
+                key={filtro.id}
+                type="button"
+                onClick={() => setFiltroAtivo(filtro.id)}
+                aria-pressed={filtroAtivo === filtro.id}
+                className={cn(
+                  "inline-flex h-7 shrink-0 items-center gap-1.5 rounded px-2 text-xs font-medium transition-colors",
+                  filtroAtivo === filtro.id
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                )}
+              >
+                {filtro.label}
+                <span className="text-[10px] font-normal tabular-nums text-muted-foreground">
+                  {filtro.id === "todas" && assembleiasNaoArquivadas.length}
+                  {filtro.id === "preparacao" && emPreparacao}
+                  {filtro.id === "analise" && emAnalise}
+                  {filtro.id === "concluida" && concluidas}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <WorkspacePage>
+        <section aria-label="Lista de sessões">
           {assembleiasVisiveis.length === 0 ? (
             <EmptyState
               title="Ainda não existem Sessões nesta vista"
@@ -135,11 +145,7 @@ function AssembleiasPage() {
               action={<NovaAssembleiaDialog />}
             />
           ) : (
-            <div className={ds.layout.gridCards}>
-              {assembleiasVisiveis.map((assembleia) => (
-                <AssembleiaWorkspaceCard key={assembleia.id} assembleia={assembleia} />
-              ))}
-            </div>
+            <SessoesList assembleias={assembleiasVisiveis} />
           )}
         </section>
       </WorkspacePage>
@@ -147,65 +153,82 @@ function AssembleiasPage() {
   );
 }
 
-function AssembleiaWorkspaceCard({ assembleia }: { assembleia: Assembleia }) {
+const listGrid =
+  "grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 md:grid-cols-[minmax(12rem,2fr)_minmax(8rem,1fr)_minmax(7rem,.8fr)_minmax(6rem,.65fr)_minmax(7rem,.75fr)]";
+
+function SessoesList({ assembleias }: { assembleias: Assembleia[] }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border/70 bg-card">
+      <div
+        className={cn(
+          listGrid,
+          "hidden min-h-8 items-center border-b border-border/70 bg-muted/25 px-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground md:grid",
+        )}
+        aria-hidden="true"
+      >
+        <span>Sessão</span>
+        <span>Data</span>
+        <span>Estado</span>
+        <span>Pontos</span>
+        <span>Ação</span>
+      </div>
+
+      <div className="divide-y divide-border/60">
+        {assembleias.map((assembleia) => (
+          <SessaoRow key={assembleia.id} assembleia={assembleia} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SessaoRow({ assembleia }: { assembleia: Assembleia }) {
   const documentos = listarDocumentosLocais(assembleia.id).length;
   const pontos = obterPontosDaAssembleia(assembleia.id).length;
   const acaoPrincipal = sessaoJaPassou(assembleia.data) ? "Editar" : "Preparar";
 
   return (
-    <Link to="/sessoes/$id" params={{ id: assembleia.id }} className="group block min-w-0">
-      <Card className="flex min-h-60 min-w-0 flex-col overflow-hidden p-4 transition-colors duration-150 hover:bg-muted/15">
-        <div className="flex shrink-0 items-start justify-between gap-4">
-          <div className={ds.icon.tile}>
-            <Landmark className={ds.icon.sm} strokeWidth={1.75} />
-          </div>
-          <StatusBadge tone="muted" dot={false}>
-            Sessão de trabalho
-          </StatusBadge>
-        </div>
+    <Link
+      to="/sessoes/$id"
+      params={{ id: assembleia.id }}
+      aria-label={`Abrir sessão: ${assembleia.nome}`}
+      className={cn(
+        listGrid,
+        "group min-h-14 items-center gap-y-1.5 px-3 py-2.5 outline-none transition-colors hover:bg-muted/35 focus-visible:bg-muted/45 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30 md:min-h-12 md:py-2",
+      )}
+    >
+      <div className="min-w-0">
+        <h2 className="truncate text-sm font-semibold leading-5 text-foreground">
+          {assembleia.nome}
+        </h2>
+        <p className="truncate text-[11px] text-muted-foreground md:hidden">
+          {formatarData(assembleia.data)} · {assembleia.hora}
+        </p>
+      </div>
 
-        <div className="mt-3 min-w-0 overflow-hidden">
-          <h2 className="line-clamp-2 break-words text-base font-semibold leading-6 text-foreground">
-            {assembleia.nome}
-          </h2>
-          <div className="mt-2 flex min-w-0 flex-wrap gap-2">
-            <StatusBadge tone={estadoTone(assembleia.estado)}>
-              {estadoLabel(assembleia.estado)}
-            </StatusBadge>
-          </div>
-        </div>
+      <div className="hidden min-w-0 text-xs text-muted-foreground md:block">
+        <time dateTime={assembleia.data} className="block truncate tabular-nums">
+          {formatarData(assembleia.data)} · {assembleia.hora}
+        </time>
+        <span className="block truncate text-[11px]">{assembleia.local}</span>
+      </div>
 
-        <div className="mt-3 grid shrink-0 gap-1.5 text-xs text-muted-foreground">
-          <div className="flex min-w-0 items-center gap-2">
-            <CalendarDays className={ds.icon.sm} strokeWidth={1.75} />
-            <span className="truncate">{formatarData(assembleia.data)}</span>
-          </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <Clock className={ds.icon.sm} strokeWidth={1.75} />
-            <span className="truncate">{assembleia.hora}</span>
-          </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <MapPin className={ds.icon.sm} strokeWidth={1.75} />
-            <span className="truncate">{assembleia.local}</span>
-          </div>
-        </div>
+      <StatusBadge
+        tone={estadoTone(assembleia.estado)}
+        className="h-5 max-w-40 justify-self-end truncate border-transparent bg-background/0 px-1.5 py-0 text-[10px] md:justify-self-start"
+      >
+        {estadoLabel(assembleia.estado)}
+      </StatusBadge>
 
-        <div className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-3 pt-3 text-xs">
-          <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-2 text-muted-foreground">
-            <span className="inline-flex min-w-0 items-center gap-2">
-              <FileText className={ds.icon.sm} strokeWidth={1.75} />
-              <span className="truncate">{documentos} documentos</span>
-            </span>
-            <span className="inline-flex min-w-0 items-center gap-2">
-              <ListChecks className={ds.icon.sm} strokeWidth={1.75} />
-              <span className="truncate">{pontos} pontos</span>
-            </span>
-          </div>
-          <span className="font-medium text-foreground transition-transform group-hover:translate-x-0.5">
-            {acaoPrincipal}
-          </span>
-        </div>
-      </Card>
+      <span className="hidden truncate text-xs tabular-nums text-muted-foreground md:block">
+        {pontos} {pontos === 1 ? "ponto" : "pontos"}
+        {documentos > 0 ? ` · ${documentos} doc.` : ""}
+      </span>
+
+      <div className="col-span-2 flex min-w-0 items-center gap-1.5 md:col-span-1">
+        <span className="truncate text-xs font-semibold text-foreground">{acaoPrincipal}</span>
+        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+      </div>
     </Link>
   );
 }

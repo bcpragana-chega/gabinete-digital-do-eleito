@@ -199,7 +199,7 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
                 )}
               </div>
               <div className="truncate text-xs leading-4 text-muted-foreground sm:text-[13px]">
-              O trabalho não para. Vamos à próxima sessão.
+                O trabalho não para. Vamos à próxima sessão.
               </div>
             </div>
           ) : (
@@ -223,46 +223,48 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
           <div className="order-3 w-full md:order-2 md:w-auto md:shrink-0">{actions}</div>
         )}
 
-        <div className="order-2 ml-auto flex min-w-0 shrink-0 items-center gap-1.5 md:order-3 md:ml-0 md:gap-2">
-          <UniversalSearch />
+        {!dashboard && (
+          <div className="order-2 ml-auto flex min-w-0 shrink-0 items-center gap-1.5 md:order-3 md:ml-0 md:gap-2">
+            <UniversalSearch />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                aria-label="Abrir menu do perfil"
-              >
-                <UserAvatar user={user} perfil={perfil} className="h-8 w-8" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="min-w-0">
-                <span className="block truncate">{displayName}</span>
-                {user?.email && (
-                  <span className="mt-0.5 block truncate text-xs font-normal text-muted-foreground">
-                    {user.email}
-                  </span>
-                )}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/definicoes">
-                  <Settings />
-                  Definições e perfil
-                </Link>
-              </DropdownMenuItem>
-              <LogoutConfirmDialog
-                trigger={
-                  <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
-                    <LogOut />
-                    Terminar sessão
-                  </DropdownMenuItem>
-                }
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  aria-label="Abrir menu do perfil"
+                >
+                  <UserAvatar user={user} perfil={perfil} className="h-8 w-8" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="min-w-0">
+                  <span className="block truncate">{displayName}</span>
+                  {user?.email && (
+                    <span className="mt-0.5 block truncate text-xs font-normal text-muted-foreground">
+                      {user.email}
+                    </span>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/definicoes">
+                    <Settings />
+                    Definições e perfil
+                  </Link>
+                </DropdownMenuItem>
+                <LogoutConfirmDialog
+                  trigger={
+                    <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+                      <LogOut />
+                      Terminar sessão
+                    </DropdownMenuItem>
+                  }
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
     </header>
   );
