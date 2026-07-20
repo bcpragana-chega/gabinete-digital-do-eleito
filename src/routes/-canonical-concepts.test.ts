@@ -31,7 +31,7 @@ describe("conceitos e rotas canónicas", () => {
 
   it("a navegação principal expõe apenas as quatro áreas canónicas da Beta", () => {
     const inicio = sidebar.indexOf("export const sidebarItems");
-    const fim = sidebar.indexOf("export const favoriteSidebarItems");
+    const fim = sidebar.indexOf("export const settingsSidebarItems");
     const navegacaoPrincipal = sidebar.slice(inicio, fim);
     const labels = [...navegacaoPrincipal.matchAll(/label: "([^"]+)"/g)].map((match) => match[1]);
     const destinos = [...navegacaoPrincipal.matchAll(/to: "([^"]+)"/g)].map((match) => match[1]);

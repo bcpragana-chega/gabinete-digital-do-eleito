@@ -39,9 +39,7 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, perfil, displayName } = useAuth();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    favorites: true,
-    workspace: true,
-    settings: true,
+    settings: false,
   });
 
   function toggleSection(sectionId: string) {
@@ -130,7 +128,7 @@ export function AppSidebar() {
 
         <div className="mt-3 space-y-2">
           {sidebarSections.map((section) => {
-            const expanded = expandedSections[section.id] ?? true;
+            const expanded = expandedSections[section.id] ?? false;
 
             return (
               <section key={section.id}>

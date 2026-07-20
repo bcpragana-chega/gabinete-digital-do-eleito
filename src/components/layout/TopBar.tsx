@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LogOut, Menu, Settings } from "lucide-react";
+import { ChevronDown, ChevronRight, LogOut, Menu, Settings } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { UserAvatar } from "@/components/auth/UserAvatar";
@@ -77,6 +77,9 @@ export function TopBar({
   showUtilities = true,
 }: TopBarProps) {
   const [menuAberto, setMenuAberto] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    settings: false,
+  });
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, perfil, displayName, localDisplayName, initialized } = useAuth();
   const greetingName = nomeTopBar(
@@ -153,31 +156,57 @@ export function TopBar({
                     );
                   })}
 
-                  {sidebarSections.map((section) => (
-                    <section key={section.id} className="pt-3">
-                      <div className="px-3 pb-2 text-[10.5px] font-medium text-muted-foreground">
-                        {section.label}
-                      </div>
-                      <div className="space-y-1">
-                        {section.items.map((item) => {
-                          const Icon = item.icon;
-                          const active = isSidebarItemActive(pathname, item);
+                  {sidebarSections.map((section) => {
+                    const expanded = expandedSections[section.id] ?? false;
 
-                          return (
-                            <Link
-                              key={`${section.id}-${item.to}`}
-                              to={item.to}
-                              onClick={() => setMenuAberto(false)}
-                              className={sidebarItemClassName(active, "mobile")}
-                            >
-                              <Icon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
-                              <span>{item.label}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ))}
+                    return (
+                      <section key={section.id} className="pt-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedSections((current) => ({
+                              ...current,
+                              [section.id]: !current[section.id],
+                            }))
+                          }
+                          className="flex min-h-11 w-full items-center gap-1.5 rounded-lg px-3 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+                          aria-expanded={expanded}
+                          aria-controls={`mobile-sidebar-section-${section.id}`}
+                        >
+                          {expanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                          <span>{section.label}</span>
+                        </button>
+
+                        {expanded && (
+                          <div id={`mobile-sidebar-section-${section.id}`} className="space-y-1">
+                            {section.items.map((item) => {
+                              const Icon = item.icon;
+                              const active = isSidebarItemActive(pathname, item);
+
+                              return (
+                                <Link
+                                  key={`${section.id}-${item.to}`}
+                                  to={item.to}
+                                  onClick={() => setMenuAberto(false)}
+                                  className={sidebarItemClassName(active, "mobile")}
+                                >
+                                  <Icon
+                                    className="h-4 w-4 shrink-0 opacity-90"
+                                    strokeWidth={1.75}
+                                  />
+                                  <span>{item.label}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </section>
+                    );
+                  })}
                 </nav>
 
                 <div className="border-t border-border/60 px-3 py-3 md:hidden">

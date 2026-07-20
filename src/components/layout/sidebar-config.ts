@@ -1,16 +1,9 @@
 import {
-  BarChart3,
   BookOpen,
-  CalendarClock,
-  FileClock,
-  Files,
   Home,
   Landmark,
-  LayoutDashboard,
-  LayoutTemplate,
   NotebookText,
   Plug,
-  Scale,
   Settings2,
   Trash2,
   UserRound,
@@ -29,37 +22,6 @@ export const sidebarItems = [
     exact: false,
     aliases: ["/caixa-de-entrada"],
   },
-] as const;
-
-export const favoriteSidebarItems = [
-  {
-    to: "/sessoes" as const,
-    label: "Próxima sessão",
-    icon: CalendarClock,
-    exact: false,
-    highlight: false,
-  },
-  {
-    to: "/assuntos" as const,
-    label: "Assuntos pendentes",
-    icon: FileClock,
-    exact: false,
-    highlight: false,
-  },
-  {
-    to: "/biblioteca" as const,
-    label: "Documentos recentes",
-    icon: Files,
-    exact: false,
-    highlight: false,
-  },
-] as const;
-
-export const workspaceSidebarItems = [
-  { to: "/" as const, label: "Painel", icon: LayoutDashboard, exact: true, highlight: false },
-  { to: "/relatorios" as const, label: "Relatórios", icon: BarChart3, exact: false },
-  { to: "/base-juridica" as const, label: "Base Jurídica", icon: Scale, exact: false },
-  { to: "/modelos" as const, label: "Modelos", icon: LayoutTemplate, exact: false },
 ] as const;
 
 export const settingsSidebarItems = [
@@ -81,16 +43,10 @@ export const settingsSidebarItems = [
 ] as const;
 
 export const sidebarSections = [
-  { id: "favorites", label: "Favoritos", items: favoriteSidebarItems },
-  { id: "workspace", label: "Workspace", items: workspaceSidebarItems },
   { id: "settings", label: "Definições", items: settingsSidebarItems },
 ] as const;
 
-export type SidebarItem =
-  | (typeof sidebarItems)[number]
-  | (typeof favoriteSidebarItems)[number]
-  | (typeof workspaceSidebarItems)[number]
-  | (typeof settingsSidebarItems)[number];
+export type SidebarItem = (typeof sidebarItems)[number] | (typeof settingsSidebarItems)[number];
 export type SidebarItemVariant = "desktop" | "mobile";
 
 export function sidebarItemClassName(active: boolean, variant: SidebarItemVariant = "desktop") {

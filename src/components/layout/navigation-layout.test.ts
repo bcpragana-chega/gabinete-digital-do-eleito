@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it } from "node:test";
-import { isSidebarItemActive, sidebarItems } from "./sidebar-config";
+import {
+  isSidebarItemActive,
+  settingsSidebarItems,
+  sidebarItems,
+  sidebarSections,
+} from "./sidebar-config";
 
 function fonte(caminho: string) {
   return readFileSync(resolve(process.cwd(), caminho), "utf8");
@@ -99,11 +104,13 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.doesNotMatch(intake, />Compreender<|Adicionar e compreender|A compreender o documento/);
   });
 
-  it("sidebar desktop contém a navegação completa e grupos recolhíveis", () => {
+  it("sidebar desktop contém apenas a navegação principal e Definições recolhível", () => {
     assert.match(sidebar, /sidebarItems\.map/);
     assert.match(sidebar, /sidebarSections\.map/);
     assert.match(sidebar, /toggleSection/);
     assert.match(sidebar, /aria-expanded=\{expanded\}/);
+    assert.match(sidebar, /settings: false/);
+    assert.match(sidebar, /expandedSections\[section\.id\] \?\? false/);
     assert.match(sidebar, /TRIBUNO/);
     assert.match(sidebar, /Criação rápida/);
     assert.match(sidebar, /UserAvatar/);
@@ -117,28 +124,56 @@ describe("cabeçalhos canónicos e navegação", () => {
     );
     assert.doesNotMatch(sidebarConfig, /label: "Agenda"/);
 
-    for (const label of [
-      "Favoritos",
-      "Workspace",
-      "Definições",
-      "Perfil institucional",
-      "Integrações",
-      "Lixeira",
-    ]) {
+    assert.deepEqual(
+      sidebarSections.map((section) => section.label),
+      ["Definições"],
+    );
+    assert.doesNotMatch(
+      sidebarConfig,
+      /Favoritos|Workspace|Próxima sessão|Assuntos pendentes|Documentos recentes|Painel|Relatórios|Base Jurídica|Modelos/,
+    );
+
+    for (const label of ["Definições", "Perfil institucional", "Integrações", "Lixeira"]) {
       assert.match(sidebarConfig, new RegExp(label));
     }
   });
 
-  it("menu móvel expõe a navegação completa sem duplicar o logout", () => {
+  it("menu móvel mantém apenas Definições, colapsada por defeito e expansível", () => {
     const menuMovel = entre(topBar, "<SheetContent", "</SheetContent>");
     assert.match(menuMovel, /sidebarItems\.map/);
     assert.match(menuMovel, /sidebarSections\.map/);
     assert.match(menuMovel, /section\.label/);
+    assert.match(menuMovel, /aria-expanded=\{expanded\}/);
+    assert.match(menuMovel, /expanded && \(/);
+    assert.match(topBar, /settings: false/);
     assert.doesNotMatch(menuMovel, /Terminar sessão|LogoutConfirmDialog/);
+    assert.doesNotMatch(
+      sidebarConfig,
+      /Favoritos|Workspace|Próxima sessão|Assuntos pendentes|Documentos recentes|Painel|Relatórios|Base Jurídica|Modelos/,
+    );
     assert.deepEqual(
       sidebarItems.map((item) => item.label),
       ["Hoje", "Assuntos", "Sessões", "Biblioteca"],
     );
+    assert.deepEqual(
+      settingsSidebarItems.map(({ to, label }) => ({ to, label })),
+      [
+        { to: "/definicoes", label: "Perfil institucional" },
+        { to: "/equipa", label: "Equipa" },
+        { to: "/definicoes-gerais", label: "Definições gerais" },
+        { to: "/integracoes", label: "Integrações" },
+        { to: "/lixeira", label: "Lixeira" },
+      ],
+    );
+  });
+
+  it("mantém pesquisa, criação rápida, ajuda, conta e menu dos três pontos", () => {
+    assert.match(sidebar, /aria-label="Abrir menu do Tribuno"/);
+    assert.match(sidebar, /Abrir definições/);
+    assert.match(sidebar, /onClick=\{abrirPesquisa\}/);
+    assert.match(sidebar, /aria-label="Criação rápida"/);
+    assert.match(sidebar, /HelpAssistantPanel/);
+    assert.match(sidebar, /aria-label="Abrir menu da conta"/);
   });
 
   it("mantém Sessões ativa na rota canónica e nas suas subrotas", () => {
