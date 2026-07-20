@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Building2,
+  ChevronRight,
   FileText,
   NotebookText,
   Pencil,
@@ -745,6 +746,76 @@ export function DossieRelacionadosSection({ dossieId }: DossieRelacionadosSectio
         title="Ligado a este assunto"
         description="Informação ligada a este assunto."
       />
+
+      {(documentosAssociados.length > 0 || assembleiasAssociadas.length > 0) && (
+        <div className="mt-4 space-y-4 md:hidden" data-relacoes-assunto-mobile>
+          {documentosAssociados.length > 0 && (
+            <section className="min-w-0">
+              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Documentos associados
+              </h3>
+              <div className="divide-y divide-border/60 border-y border-border/70">
+                {documentosAssociados.map((documento) => (
+                  <Link
+                    key={documento.id}
+                    to="/documentos/$documentoId"
+                    params={{ documentoId: documento.id }}
+                    search={{ origem: "assunto", assuntoId: dossieId }}
+                    className="group flex min-w-0 items-center gap-2 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30"
+                    aria-label={`Abrir documento: ${documento.titulo}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {documento.titulo}
+                      </p>
+                      <p className="truncate text-[10px] text-muted-foreground">
+                        {documento.tipo} · {documento.estado} · {formatarData(documento.data)}
+                      </p>
+                    </div>
+                    <ChevronRight
+                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {assembleiasAssociadas.length > 0 && (
+            <section className="min-w-0">
+              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Sessões relacionadas
+              </h3>
+              <div className="divide-y divide-border/60 border-y border-border/70">
+                {assembleiasAssociadas.map((assembleia) => (
+                  <Link
+                    key={assembleia.id}
+                    to="/sessoes/$id"
+                    params={{ id: assembleia.id }}
+                    className="group flex min-w-0 items-center gap-2 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30"
+                    aria-label={`Abrir sessão: ${assembleia.nome}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {assembleia.nome}
+                      </p>
+                      <p className="truncate text-[10px] text-muted-foreground">
+                        {assembleia.estado} · {formatarData(assembleia.data)}
+                        {assembleia.hora ? ` · ${assembleia.hora}` : ""}
+                      </p>
+                    </div>
+                    <ChevronRight
+                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
 
       <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {categorias.map((config) => {

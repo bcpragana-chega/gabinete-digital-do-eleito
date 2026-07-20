@@ -1373,10 +1373,78 @@ sem misturar o detalhe documental ou a preparação de Sessão.
 
 ---
 
+## ✅ Missão mobile — Adaptar exclusivamente o detalhe de Assunto
+
+Estado: CONCLUÍDA
+
+### Diagnóstico anterior
+
+A rota canónica `/assuntos/$dossieId` já reutilizava corretamente `useDossie`, o motor de estado UX,
+as notas, a cronologia, os documentos criados e recebidos, as relações com Sessões e todas as ações
+de edição, arquivo e acompanhamento. No mobile, porém, a ordem física orientada ao desktop colocava
+a próxima ação depois de vários painéis e relegava estado e prioridade para o fim. Os cartões eram
+altos, documentos e Sessões associados exigiam entrar primeiro nos painéis de gestão e o breadcrumb
+duplicava o regresso canónico já fornecido pelo shell mobile.
+
+### Composição mobile final
+
+- Cabeçalho compacto: título em até duas linhas, estado e prioridade existentes e ações secundárias
+  compactas; as etiquetas permanecem disponíveis no desktop e deixam de competir pela primeira
+  dobra no mobile.
+- A próxima ação calculada pelo motor existente surge imediatamente depois do cabeçalho, seguida de
+  contexto, objetivo e notas, documentos, relações e só depois informação secundária.
+- Documentos criados têm linhas compactas integralmente clicáveis para a rota canónica, com tipo,
+  estado e associação existente a Sessão ou ponto. As ações PDF e Word permanecem disponíveis.
+- Documentos recebidos e Sessões relacionados têm resumos compactos e clicáveis construídos apenas
+  com as relações já carregadas; os painéis e diálogos de gestão existentes continuam intactos.
+- O conteúdo usa largura total, separadores leves, `min-width: 0`, truncation e bloqueio de overflow
+  horizontal. O regresso mobile continua a ser fornecido pelo TopBar canónico.
+
+### Preservação explícita
+
+- Mantiveram-se rota, `useDossie`, queries, stores, Supabase, motor `calcularEstadoUxAssunto`, estados,
+  prioridades, validações, edição, arquivo, notas, relações, geração, exportação e estados vazios.
+- Não foi criada uma relação Assunto–ponto: o contexto de ponto continua a aparecer somente onde já
+  existia no metadata dos documentos criados.
+- A reorganização é exclusivamente visual abaixo de 768 px. A partir desse breakpoint permanecem a
+  ordem física, cartões, densidade, conteúdos e ações anteriores; a grelha recupera as duas colunas
+  no breakpoint desktop original.
+- Não foram alterados detalhe documental, editor, IA, Biblioteca, Hoje, listas, preparação de Sessão,
+  autenticação, pesquisa global, shell mobile ou backend.
+
+### Testes e validações
+
+Foram adicionados contratos para abertura canónica do Assunto e dos documentos, carregamento pelos
+hooks existentes, hierarquia mobile, motor de próxima ação, estados, prioridade, edição, arquivo,
+validações, notas, documentos, Sessões, referências a pontos, estados vazios, regresso canónico,
+títulos extensos, ausência de scroll horizontal e preservação desktop.
+
+A composição foi validada estruturalmente para 320, 375, 390 e 430 px, para a transição em 768 px e
+para desktop. `npm test` aprovou 588 testes sem falhas, mantendo apenas o aviso não bloqueante do
+sandbox relativo à porta WebSocket 24678 do Vite; `npm run typecheck` foi aprovado; `npm run lint`
+foi aprovado com 0 erros e 22 avisos preexistentes fora do âmbito; `npm run build` foi aprovado; e
+`git diff --check` foi aprovado. Não foi produzido screenshot de browser nesta execução.
+
+### Riscos residuais
+
+- Continua recomendada uma passagem em dispositivos físicos com fontes ampliadas e safe-areas reais.
+- O formulário de geração documental conserva deliberadamente a sua extensão quando é aberto.
+- A gestão completa de relações continua nos diálogos existentes; os novos resumos mobile servem
+  apenas para consulta e abertura rápida.
+- Não existe no contrato atual um carregamento direto de pontos por Assunto; não foi acrescentada uma
+  query ou store fora do âmbito para o simular.
+
+### Próxima missão recomendada
+
+Auditar e adaptar exclusivamente o detalhe de Sessão à experiência mobile, mantendo preparação,
+pontos, documentos, regras, dados e desktop fora dessa futura alteração.
+
+---
+
 # Próxima ação
 
-Executar uma missão fechada para auditar e adaptar exclusivamente o detalhe de Assunto à experiência
-mobile, sem alterar regras, relações, dados, pesquisa, restante navegação ou desktop.
+Executar uma missão fechada para auditar e adaptar exclusivamente o detalhe de Sessão à experiência
+mobile, sem alterar preparação, pontos, documentos, regras, dados, restante navegação ou desktop.
 
 Não iniciar automaticamente outro problema após o fecho do Problema n.º 13.
 

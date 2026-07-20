@@ -101,7 +101,7 @@ function DossieDetalhePage() {
     return (
       <>
         <TopBar breadcrumb="Assunto" />
-        <main className="min-h-screen bg-transparent">
+        <main className="min-h-screen overflow-x-hidden bg-transparent">
           <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
             <Button asChild variant="ghost" size="sm" className="mb-6">
               <Link to="/assuntos">
@@ -172,9 +172,9 @@ function DossieDetalhePage() {
   return (
     <>
       <TopBar breadcrumb="Assunto" />
-      <main className="min-h-screen bg-transparent">
+      <main className="min-h-screen overflow-x-hidden bg-transparent">
         <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="mb-6 hidden flex-wrap items-center justify-between gap-4 md:flex">
             <Breadcrumb items={[{ label: "Assuntos" }, { label: dossie.titulo }]} />
             <Button asChild variant="ghost" size="sm">
               <Link to="/assuntos">
@@ -185,16 +185,26 @@ function DossieDetalhePage() {
           </div>
 
           <WorkspaceLayout
+            className="max-md:flex max-md:flex-col max-md:gap-3 max-md:space-y-0"
+            bodyClassName="max-md:contents"
+            contentClassName="max-md:contents"
+            sidebarClassName="max-md:contents"
             header={
               <WorkspaceHeader
                 icon={NotebookText}
                 eyebrow="Assunto"
                 title={dossie.titulo}
                 description="Tema acompanhado ao longo do mandato, com notas, histórico e ligações."
-                className="p-4 sm:p-7"
+                className="max-md:order-1 md:p-7"
+                mobileCompact
                 actions={
-                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
-                    {!arquivado && <EditarDossieDialog dossie={dossie} />}
+                  <div className="flex w-full flex-row flex-wrap gap-2 md:w-auto md:justify-end">
+                    {!arquivado && (
+                      <EditarDossieDialog
+                        dossie={dossie}
+                        triggerClassName="max-md:w-auto max-md:flex-1"
+                      />
+                    )}
                     {!arquivado && (
                       <Button
                         type="button"
@@ -202,7 +212,7 @@ function DossieDetalhePage() {
                         size="sm"
                         disabled={aArquivar}
                         onClick={() => void arquivar()}
-                        className="w-full sm:w-auto"
+                        className="max-md:flex-1 md:w-auto"
                       >
                         <Archive className="mr-2 h-4 w-4" />
                         {aArquivar ? "A guardar…" : "Arquivar"}
@@ -224,7 +234,7 @@ function DossieDetalhePage() {
                       {dossie.prioridade}
                     </StatusBadge>
                     {dossie.tags.map((tag) => (
-                      <StatusBadge key={tag} tone="muted" dot={false}>
+                      <StatusBadge key={tag} tone="muted" dot={false} className="max-md:hidden">
                         {tag}
                       </StatusBadge>
                     ))}
@@ -234,7 +244,7 @@ function DossieDetalhePage() {
             }
             sidebar={
               <>
-                <WorkspaceSection>
+                <WorkspaceSection className="max-md:order-[20] max-md:rounded-none max-md:border-x-0 max-md:p-3 max-md:shadow-none">
                   <SectionTitle
                     icon={Bot}
                     title="Estado e próxima ação"
@@ -255,7 +265,7 @@ function DossieDetalhePage() {
                   </div>
                 </WorkspaceSection>
 
-                <WorkspaceSection>
+                <WorkspaceSection className="max-md:order-[21] max-md:rounded-none max-md:border-x-0 max-md:p-3 max-md:shadow-none">
                   <SectionTitle icon={Clock3} title="Estado do assunto" />
                   <div className="mt-5 space-y-3">
                     <InfoCard title="Última atualização" description={ultimaAtualizacao} />
@@ -269,18 +279,23 @@ function DossieDetalhePage() {
             }
           >
             {erroArquivo && (
-              <p role="alert" className="mt-4 text-sm text-destructive">
+              <p role="alert" className="text-sm text-destructive max-md:order-2 md:mt-4">
                 {erroArquivo}
               </p>
             )}
 
-            <div id="documentos-assunto" className="scroll-mt-24">
+            <div id="documentos-assunto" className="scroll-mt-24 max-md:order-6">
               <DossieDocumentosCriadosSection dossieId={dossie.id} />
             </div>
 
-            <DossieAcompanhamentoSection dossieId={dossie.id} />
+            <div className="max-md:order-[10]">
+              <DossieAcompanhamentoSection dossieId={dossie.id} />
+            </div>
 
-            <WorkspaceSection id="contexto-assunto" className="scroll-mt-24">
+            <WorkspaceSection
+              id="estado-assunto"
+              className="scroll-mt-24 max-md:order-9 max-md:rounded-none max-md:border-x-0 max-md:p-3 max-md:shadow-none"
+            >
               <SectionTitle
                 icon={Activity}
                 title="Estado do assunto"
@@ -293,7 +308,10 @@ function DossieDetalhePage() {
               </div>
             </WorkspaceSection>
 
-            <WorkspaceSection>
+            <WorkspaceSection
+              id="contexto-assunto"
+              className="scroll-mt-24 max-md:order-3 max-md:rounded-none max-md:border-x-0 max-md:p-3 max-md:shadow-none"
+            >
               <SectionTitle
                 icon={FileText}
                 title="Resumo"
@@ -304,7 +322,7 @@ function DossieDetalhePage() {
               </p>
             </WorkspaceSection>
 
-            <WorkspaceSection>
+            <WorkspaceSection className="max-md:order-4 max-md:rounded-none max-md:border-x-0 max-md:p-3 max-md:shadow-none">
               <SectionTitle
                 icon={CheckCircle2}
                 title="Objetivo"
@@ -315,17 +333,22 @@ function DossieDetalhePage() {
               </p>
             </WorkspaceSection>
 
-            <WorkspaceSection>
+            <WorkspaceSection className="max-md:order-2 max-md:border-l-2 max-md:border-l-primary max-md:p-3 max-md:shadow-none">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary md:hidden">
+                Próxima ação
+              </p>
               <SectionTitle
                 icon={Clock3}
                 title="Seguimento do assunto"
                 description="Outras formas de manter este tema atualizado."
+                className="max-md:hidden"
               />
-              <div className="mt-5">
+              <div className="md:mt-5">
                 <ActionCard
                   icon={Clock3}
                   title={estadoUx.titulo}
                   description={estadoUx.descricao}
+                  className="max-md:border-0 max-md:bg-background/0 max-md:p-0"
                   action={
                     <div className="flex flex-col gap-2 sm:flex-row">
                       {renderAcao(estadoUx.acaoPrincipal, true)}
@@ -338,17 +361,19 @@ function DossieDetalhePage() {
               </div>
             </WorkspaceSection>
 
-            <div id="relacoes-assunto" className="scroll-mt-24">
+            <div id="relacoes-assunto" className="scroll-mt-24 max-md:order-7">
               <DossieRelacionadosSection dossieId={dossie.id} />
             </div>
 
-            <DossieNotasSection dossieId={dossie.id} />
+            <div className="max-md:order-5">
+              <DossieNotasSection dossieId={dossie.id} />
+            </div>
 
-            <div id="atividade-assunto" className="scroll-mt-24">
+            <div id="atividade-assunto" className="scroll-mt-24 max-md:order-[11]">
               <DossieTimelineSection dossieId={dossie.id} />
             </div>
 
-            <WorkspaceSection>
+            <WorkspaceSection className="max-md:order-[12] max-md:rounded-none max-md:border-x-0 max-md:p-3 max-md:shadow-none">
               <SectionTitle
                 icon={Activity}
                 title="Última atividade"

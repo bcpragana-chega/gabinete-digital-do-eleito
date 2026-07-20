@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { AlertCircle, Download, FilePlus2, FileText, Loader2 } from "lucide-react";
+import { AlertCircle, ChevronRight, Download, FilePlus2, FileText, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ActionCard } from "@/components/ui/cards";
 import { SectionTitle, StatusBadge } from "@/components/ui/common";
@@ -473,69 +473,137 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
           description="Crie o primeiro rascunho quando este tema precisar de uma proposta, moção ou requerimento."
         />
       ) : (
-        <div className="mt-5 grid gap-3">
-          {documentos.map((documento) => (
-            <ActionCard
-              key={documento.id}
-              className={documento.id === documentoCriadoId ? "ring-2 ring-primary/40" : undefined}
-              icon={FileText}
-              title={documento.titulo}
-              description={metaAssociacao(documento)}
-              meta={documento.tipo}
-              action={
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-                  {documento.assuntoId ? (
-                    <Button asChild type="button" size="sm">
-                      <Link
-                        to="/documentos/$documentoId"
-                        params={{ documentoId: documento.id }}
-                        search={{ origem: "assunto", assuntoId: dossieId }}
-                      >
-                        Abrir e rever
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Button type="button" size="sm" disabled>
-                      Sem assunto associado
-                    </Button>
-                  )}
+        <>
+          <div className="mt-4 divide-y divide-border/60 border-y border-border/70 md:hidden">
+            {documentos.map((documento) => (
+              <article
+                key={documento.id}
+                className="group relative min-w-0 px-1 py-2.5"
+                data-documento-assunto-mobile
+              >
+                {documento.assuntoId && (
+                  <Link
+                    to="/documentos/$documentoId"
+                    params={{ documentoId: documento.id }}
+                    search={{ origem: "assunto", assuntoId: dossieId }}
+                    aria-label={`Abrir documento: ${documento.titulo}`}
+                    className="absolute inset-0 z-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30"
+                  />
+                )}
+                <div className="pointer-events-none relative min-w-0 pr-20">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+                      {documento.titulo}
+                    </h3>
+                    <span className="max-w-[38%] shrink-0 truncate text-[10px] text-muted-foreground">
+                      {documento.tipo}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                    {estadoLabel(documento.estado)} · {metaAssociacao(documento)}
+                  </p>
+                  <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-semibold text-foreground">
+                    {documento.assuntoId ? "Abrir e rever" : "Sem assunto associado"}
+                    {documento.assuntoId && (
+                      <ChevronRight
+                        className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </span>
+                </div>
+                <div className="absolute right-0 top-1/2 z-10 flex -translate-y-1/2 gap-1">
                   <Button
                     type="button"
                     size="sm"
-                    variant="secondary"
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    aria-label={`Download PDF: ${documento.titulo}`}
                     onClick={() => void exportarDaLista(documento, "pdf")}
                   >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download PDF
+                    <Download className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     type="button"
                     size="sm"
-                    variant="secondary"
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    aria-label={`Exportar para Word: ${documento.titulo}`}
                     onClick={() => void exportarDaLista(documento, "word")}
                   >
-                    <Download className="mr-2 h-4 w-4" />
-                    Exportar para Word
+                    <FileText className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-              }
-            >
-              <div className="flex flex-wrap gap-2">
-                <StatusBadge tone="muted">{estadoLabel(documento.estado)}</StatusBadge>
-                {documento.assembleiaId && (
-                  <StatusBadge tone="info" dot={false}>
-                    Associado à sessão
-                  </StatusBadge>
-                )}
-                {documento.pontoId && (
-                  <StatusBadge tone="info" dot={false}>
-                    Associado ao ponto
-                  </StatusBadge>
-                )}
-              </div>
-            </ActionCard>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-5 hidden gap-3 md:grid">
+            {documentos.map((documento) => (
+              <ActionCard
+                key={documento.id}
+                className={
+                  documento.id === documentoCriadoId ? "ring-2 ring-primary/40" : undefined
+                }
+                icon={FileText}
+                title={documento.titulo}
+                description={metaAssociacao(documento)}
+                meta={documento.tipo}
+                action={
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                    {documento.assuntoId ? (
+                      <Button asChild type="button" size="sm">
+                        <Link
+                          to="/documentos/$documentoId"
+                          params={{ documentoId: documento.id }}
+                          search={{ origem: "assunto", assuntoId: dossieId }}
+                        >
+                          Abrir e rever
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button type="button" size="sm" disabled>
+                        Sem assunto associado
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => void exportarDaLista(documento, "pdf")}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download PDF
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => void exportarDaLista(documento, "word")}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar para Word
+                    </Button>
+                  </div>
+                }
+              >
+                <div className="flex flex-wrap gap-2">
+                  <StatusBadge tone="muted">{estadoLabel(documento.estado)}</StatusBadge>
+                  {documento.assembleiaId && (
+                    <StatusBadge tone="info" dot={false}>
+                      Associado à sessão
+                    </StatusBadge>
+                  )}
+                  {documento.pontoId && (
+                    <StatusBadge tone="info" dot={false}>
+                      Associado ao ponto
+                    </StatusBadge>
+                  )}
+                </div>
+              </ActionCard>
+            ))}
+          </div>
+        </>
       )}
     </WorkspaceSection>
   );
