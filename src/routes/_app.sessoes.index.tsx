@@ -6,11 +6,19 @@ import { useProductHelpPageState } from "@/components/help/ProductHelpPageState"
 import { NovaAssembleiaDialog } from "@/components/assembleias/NovaAssembleiaDialog";
 import { StatusBadge } from "@/components/ui/common";
 import { EmptyState } from "@/components/ui/feedback";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { WorkspacePage } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import { listarDocumentosLocais } from "@/lib/documentos-store";
 import { formatarData } from "@/lib/civil-date";
 import { obterPontosDaAssembleia } from "@/lib/pontos-store";
+import { formatarDataSessaoMobile, sessaoJaPassou } from "@/lib/session-list-presentation";
 import type { Assembleia, EstadoAssembleia } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -108,7 +116,31 @@ function AssembleiasPage() {
 
       <div className="sticky top-14 z-30 border-b border-border/60 bg-background/95 backdrop-blur-lg md:top-16">
         <div className="mx-auto flex w-full max-w-[1440px] items-center px-4 py-2 sm:px-5 lg:px-6">
-          <div className="-mx-1 flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1">
+          <Select value={filtroAtivo} onValueChange={(value) => setFiltroAtivo(value as FiltroId)}>
+            <SelectTrigger
+              className="h-9 w-full min-w-0 border-border/70 bg-background/0 text-xs md:hidden"
+              aria-label="Filtrar sessões"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start">
+              {filtros.map((filtro) => (
+                <SelectItem key={filtro.id} value={filtro.id} className="text-xs">
+                  {filtro.label} (
+                  {filtro.id === "todas"
+                    ? assembleiasNaoArquivadas.length
+                    : filtro.id === "preparacao"
+                      ? emPreparacao
+                      : filtro.id === "analise"
+                        ? emAnalise
+                        : concluidas}
+                  )
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="hidden min-w-0 flex-1 items-center gap-0.5 md:flex">
             {filtros.map((filtro) => (
               <button
                 key={filtro.id}
@@ -135,7 +167,7 @@ function AssembleiasPage() {
         </div>
       </div>
 
-      <WorkspacePage>
+      <WorkspacePage contentClassName="overflow-x-hidden">
         <section aria-label="Lista de sessões">
           {assembleiasVisiveis.length === 0 ? (
             <EmptyState
@@ -157,7 +189,10 @@ const listGrid =
 
 function SessoesList({ assembleias }: { assembleias: Assembleia[] }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border/70 bg-card">
+    <div
+      className="min-w-0 overflow-hidden rounded-lg border border-border/70 bg-card"
+      data-sessoes-list
+    >
       <div
         className={cn(
           listGrid,
@@ -184,7 +219,15 @@ function SessoesList({ assembleias }: { assembleias: Assembleia[] }) {
 function SessaoRow({ assembleia }: { assembleia: Assembleia }) {
   const documentos = listarDocumentosLocais(assembleia.id).length;
   const pontos = obterPontosDaAssembleia(assembleia.id).length;
-  const acaoPrincipal = sessaoJaPassou(assembleia.data) ? "Editar" : "Preparar";
+  const passada = sessaoJaPassou(assembleia.data);
+  const acaoPrincipal = passada ? "Editar" : "Preparar";
+  const preparacaoLabel =
+    assembleia.preparacaoEstado === "pronta"
+      ? "Preparada"
+      : assembleia.preparacaoEstado === "em_preparacao" && assembleia.estado !== "preparacao"
+        ? "Em preparação"
+        : undefined;
+  const orgaoOuTerritorio = assembleia.orgao?.trim() || assembleia.local?.trim();
 
   return (
     <Link
@@ -193,16 +236,64 @@ function SessaoRow({ assembleia }: { assembleia: Assembleia }) {
       aria-label={`Abrir sessão: ${assembleia.nome}`}
       className={cn(
         listGrid,
-        "group min-h-14 items-center gap-y-1.5 px-3 py-2.5 outline-none transition-colors hover:bg-muted/35 focus-visible:bg-muted/45 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30 md:min-h-12 md:py-2",
+        "group min-h-14 items-center gap-y-1.5 px-3 py-2 outline-none transition-colors hover:bg-muted/35 focus-visible:bg-muted/45 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30 md:min-h-12 md:py-2",
+        passada ? "max-md:bg-muted/10" : "max-md:bg-primary/[0.025]",
       )}
     >
-      <div className="min-w-0">
+      <div className="col-span-2 min-w-0 md:hidden" data-sessao-mobile>
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <time
+            dateTime={assembleia.data || undefined}
+            className={cn(
+              "min-w-0 truncate text-sm font-bold leading-5 tabular-nums",
+              passada ? "text-muted-foreground" : "text-foreground",
+            )}
+          >
+            {formatarDataSessaoMobile(assembleia.data, assembleia.hora)}
+          </time>
+          <StatusBadge
+            tone={estadoTone(assembleia.estado)}
+            dot={false}
+            className="h-5 max-w-[42%] shrink-0 truncate border-transparent bg-background/0 px-1.5 py-0 text-[10px]"
+          >
+            {estadoLabel(assembleia.estado)}
+          </StatusBadge>
+        </div>
+
+        <div className="flex min-w-0 items-baseline gap-1.5">
+          <h2 className="min-w-0 flex-1 truncate text-sm font-semibold leading-4 text-foreground">
+            {assembleia.nome}
+          </h2>
+          {orgaoOuTerritorio && (
+            <span className="max-w-[38%] shrink truncate text-[10px] text-muted-foreground">
+              {orgaoOuTerritorio}
+            </span>
+          )}
+        </div>
+
+        <div className="flex min-w-0 items-center gap-1.5 text-[10px] leading-4 text-muted-foreground">
+          {preparacaoLabel && (
+            <span className="shrink-0 font-medium text-foreground/80">{preparacaoLabel}</span>
+          )}
+          {preparacaoLabel && pontos > 0 && <span aria-hidden="true">·</span>}
+          {pontos > 0 && (
+            <span className="shrink-0 tabular-nums">
+              {pontos} {pontos === 1 ? "ponto" : "pontos"}
+            </span>
+          )}
+          {(preparacaoLabel || pontos > 0) && <span aria-hidden="true">·</span>}
+          <span className="min-w-0 truncate font-semibold text-foreground">{acaoPrincipal}</span>
+          <ArrowRight
+            className="h-3 w-3 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
+            aria-hidden="true"
+          />
+        </div>
+      </div>
+
+      <div className="hidden min-w-0 md:block">
         <h2 className="truncate text-sm font-semibold leading-5 text-foreground">
           {assembleia.nome}
         </h2>
-        <p className="truncate text-[11px] text-muted-foreground md:hidden">
-          {formatarData(assembleia.data)} · {assembleia.hora}
-        </p>
       </div>
 
       <div className="hidden min-w-0 text-xs text-muted-foreground md:block">
@@ -214,7 +305,7 @@ function SessaoRow({ assembleia }: { assembleia: Assembleia }) {
 
       <StatusBadge
         tone={estadoTone(assembleia.estado)}
-        className="h-5 max-w-40 justify-self-end truncate border-transparent bg-background/0 px-1.5 py-0 text-[10px] md:justify-self-start"
+        className="hidden h-5 max-w-40 truncate border-transparent bg-background/0 px-1.5 py-0 text-[10px] md:inline-flex md:justify-self-start"
       >
         {estadoLabel(assembleia.estado)}
       </StatusBadge>
@@ -224,22 +315,10 @@ function SessaoRow({ assembleia }: { assembleia: Assembleia }) {
         {documentos > 0 ? ` · ${documentos} doc.` : ""}
       </span>
 
-      <div className="col-span-2 flex min-w-0 items-center gap-1.5 md:col-span-1">
+      <div className="hidden min-w-0 items-center gap-1.5 md:flex">
         <span className="truncate text-xs font-semibold text-foreground">{acaoPrincipal}</span>
         <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
       </div>
     </Link>
   );
-}
-
-function sessaoJaPassou(data: string) {
-  const [ano, mes, dia] = data.split("-").map(Number);
-
-  if (!ano || !mes || !dia) return false;
-
-  const dataSessao = new Date(ano, mes - 1, dia);
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-
-  return dataSessao.getTime() < hoje.getTime();
 }

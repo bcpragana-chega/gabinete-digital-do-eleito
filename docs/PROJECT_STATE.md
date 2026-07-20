@@ -1238,11 +1238,79 @@ estabilidade do failsafe e retry sem duplicação de listeners.
 
 ---
 
+## ✅ Missão mobile — Adaptar exclusivamente a lista de Sessões
+
+Estado: CONCLUÍDA
+
+### Diagnóstico anterior
+
+A rota canónica já preservava corretamente a ordem recebida de `listarAssembleias` (data e hora
+descendentes), os quatro filtros de estado, a criação, o estado vazio e a abertura integral da linha
+para `/sessoes/$id`. No mobile, porém, a data aparecia sob o título, órgão/local e pontos ficavam
+ocultos, a preparação não era identificada e os filtros dependiam de uma faixa com scroll
+horizontal. A composição dava a mesma relevância visual a Sessões futuras e passadas.
+
+### Composição mobile final
+
+- Linha 1: data civil curta em pt-PT, com Hoje/Amanhã e hora quando existe, seguida do estado
+  existente em badge discreta.
+- Linha 2: título truncado e órgão ou território já disponível, sem duplicação.
+- Linha 3: estado de preparação quando explicitamente persistido, número de pontos quando existe e
+  a ação já existente Preparar/Editar.
+- Sessões sem data apresentam “Sem data”; títulos e metadata extensos usam `min-width: 0` e
+  truncation, e a página bloqueia overflow horizontal.
+- Sessões não passadas recebem apenas uma ênfase visual muito ligeira; a ordem e a classificação
+  temporal não foram alteradas.
+- O filtro mobile passou a seletor compacto com as mesmas quatro opções e contagens. A pesquisa
+  continua no menu secundário global, sem duplicação local.
+
+### Preservação explícita
+
+- Mantiveram-se rota, parâmetros, `Link` de linha inteira, queries, stores, Supabase, estados,
+  contagens, filtros, ordenação, cálculo de pontos/documentos, regra Preparar/Editar, criação e
+  estado vazio.
+- `preparacaoEstado` continua a ser a única origem de “Preparada”/“Em preparação”; não foi criado
+  qualquer cálculo de prontidão.
+- A partir de 768 px permanecem os botões de filtro, a grelha, as cinco colunas, a densidade, o
+  conteúdo e as ações desktop anteriores.
+- Não foram alterados detalhe, preparação, pontos, documentos, convocatória, criação/edição,
+  autenticação ou navegação inferior.
+
+### Testes e validações
+
+Foram adicionados contratos funcionais para a formatação civil Hoje/Amanhã/data curta, hora
+opcional, ausência/invalidade de data e distinção entre data passada e não passada. Os contratos
+estruturais cobrem destino canónico, estados, preparação, filtros, ordenação do store, ações,
+estado vazio, três linhas compactas, prioridade apenas visual, ausência de scroll horizontal,
+títulos extensos, pesquisa global e preservação desktop no breakpoint de 768 px.
+
+A composição foi validada estruturalmente para 320, 375, 390 e 430 px, para a transição em 768 px
+e para desktop. `npm test` aprovou 566 testes sem falhas, mantendo apenas o aviso não bloqueante do
+sandbox relativo à porta WebSocket 24678 do Vite; `npm run typecheck` foi aprovado; `npm run lint`
+foi aprovado com 0 erros e 22 avisos preexistentes fora do âmbito; `npm run build` foi aprovado; e
+`git diff --check` foi aprovado. Não foi produzido screenshot de browser nesta execução.
+
+### Riscos residuais
+
+- Continua recomendada uma passagem num dispositivo físico para confirmar densidade com fontes
+  ampliadas e safe-areas reais.
+- “Sem data” é tolerado na composição mobile, embora a criação normal continue a exigir o contrato
+  civil existente.
+- A tabela desktop conserva deliberadamente a formatação longa anterior, inclusive para dados
+  históricos incompletos.
+
+### Próxima missão recomendada
+
+Adaptar exclusivamente a lista da Biblioteca à consulta mobile, mantendo detalhe, análise,
+relações, pesquisa, dados e desktop fora dessa futura alteração.
+
+---
+
 # Próxima ação
 
-Executar uma missão fechada para adaptar exclusivamente a lista de Sessões à consulta mobile, sem
-alterar o detalhe, a preparação, os dados, as rotas ou o desktop e sem misturar trabalho do
-Problema n.º 14.
+Executar uma missão fechada para adaptar exclusivamente a lista da Biblioteca à consulta mobile,
+sem alterar o detalhe documental, análise, relações, dados, rotas ou desktop e sem misturar
+trabalho do Problema n.º 14.
 
 Não iniciar automaticamente outro problema após o fecho do Problema n.º 13.
 
