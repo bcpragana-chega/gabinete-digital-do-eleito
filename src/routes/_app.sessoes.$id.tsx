@@ -245,7 +245,7 @@ function AssembleiaDetailPage() {
       <>
         <TopBar breadcrumb="Sessões" />
         <main className="min-h-screen bg-transparent">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+          <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
             <Button asChild variant="ghost" size="sm" className="mb-6">
               <Link to="/sessoes">Voltar às sessões</Link>
             </Button>
@@ -374,7 +374,7 @@ function AssembleiaDetailPage() {
     <>
       <TopBar breadcrumb="Sessão" />
       <main className="min-h-screen bg-transparent">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <Breadcrumb items={[{ label: "Sessões" }, { label: assembleia.nome }]} />
             <Button asChild variant="ghost" size="sm">

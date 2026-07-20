@@ -5,7 +5,7 @@ import { UserAvatar } from "@/components/auth/UserAvatar";
 import { TopBar } from "@/components/layout/TopBar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { WorkspaceSection } from "@/components/ui/workspace";
+import { WorkspacePage, WorkspaceSection } from "@/components/ui/workspace";
 import { logout, useAuth } from "@/lib/auth-store";
 import { obterContextoInstitucional } from "@/lib/perfil-contexto";
 
@@ -29,47 +29,34 @@ function DefinicoesPage() {
   return (
     <>
       <TopBar breadcrumb="Definições" />
-      <main className="min-h-screen bg-background">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-          <div className="mb-8">
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
-              Definições
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Edite o perfil institucional usado para personalizar o Tribuno.
-            </p>
-          </div>
-
-          <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <Card className="h-fit p-5 shadow-none">
-              <div className="flex items-center gap-3">
-                <UserAvatar user={user} perfil={perfil} className="h-12 w-12" />
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-foreground">
-                    {displayName}
-                  </div>
-                  <div className="truncate text-sm text-muted-foreground">{user?.email}</div>
-                </div>
+      <WorkspacePage contentClassName="max-w-5xl">
+        <div className="grid gap-4 lg:grid-cols-[256px_minmax(0,1fr)]">
+          <Card className="h-fit p-4 shadow-none">
+            <div className="flex items-center gap-3">
+              <UserAvatar user={user} perfil={perfil} className="h-12 w-12" />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-foreground">{displayName}</div>
+                <div className="truncate text-sm text-muted-foreground">{user?.email}</div>
               </div>
+            </div>
 
-              <dl className="mt-5 space-y-3 text-sm">
-                <PerfilInfo label="Cargo" value={contexto.designacaoCargo} />
-                <PerfilInfo label="Órgão" value={contexto.nomeOrgao} />
-                <PerfilInfo label="Sessões" value={contexto.tipoSessaoPlural} />
-              </dl>
+            <dl className="mt-4 space-y-2.5 text-xs">
+              <PerfilInfo label="Cargo" value={contexto.designacaoCargo} />
+              <PerfilInfo label="Órgão" value={contexto.nomeOrgao} />
+              <PerfilInfo label="Sessões" value={contexto.tipoSessaoPlural} />
+            </dl>
 
-              <Button type="button" variant="secondary" className="mt-5 w-full" onClick={logout}>
-                <LogOut className="h-4 w-4" />
-                Terminar sessão
-              </Button>
-            </Card>
+            <Button type="button" variant="secondary" className="mt-4 w-full" onClick={logout}>
+              <LogOut className="h-4 w-4" />
+              Terminar sessão
+            </Button>
+          </Card>
 
-            <WorkspaceSection title="Perfil do Eleito">
-              <PerfilEleitoForm user={user} perfil={perfil} />
-            </WorkspaceSection>
-          </div>
+          <WorkspaceSection title="Perfil do Eleito">
+            <PerfilEleitoForm user={user} perfil={perfil} />
+          </WorkspaceSection>
         </div>
-      </main>
+      </WorkspacePage>
     </>
   );
 }

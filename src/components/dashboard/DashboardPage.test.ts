@@ -5,15 +5,20 @@ import { describe, it } from "node:test";
 const dashboard = readFileSync(new URL("./DashboardPage.tsx", import.meta.url), "utf8");
 
 describe("composição da página Hoje", () => {
-  it("renderiza apenas decisão, alertas, pendências ou estado tranquilo", () => {
+  it("combina a decisão central com módulos operacionais baseados em dados existentes", () => {
     assert.match(dashboard, /<PrimaryActionCard/);
     assert.match(dashboard, /<AlertsSection/);
     assert.match(dashboard, /<PendingSection/);
     assert.match(dashboard, /<ClearState/);
+    assert.match(dashboard, /<NextSessionPanel/);
+    assert.match(dashboard, /<AgendaPanel/);
+    assert.match(dashboard, /<SubjectsPanel/);
+    assert.match(dashboard, /<RecentDocumentsPanel/);
     assert.doesNotMatch(
       dashboard,
-      /MetricsCard|ActivityCard|RecentDocumentsCard|QuickAccessCard|O teu mandato em números|Atividade recente|Documentos recentes|Acessos rápidos/,
+      /MetricsCard|ActivityCard|QuickAccessCard|O teu mandato em números|Acessos rápidos/,
     );
+    assert.doesNotMatch(dashboard, /radial-gradient|linear-gradient|shadow-\[0_18px_55px/);
   });
 
   it("não duplica o onboarding de sessão e preserva as duas formas de a criar", () => {
@@ -49,7 +54,7 @@ describe("composição da página Hoje", () => {
     assert.match(engine, /`\/sessoes\/\$\{encodeURIComponent\(sessionId\)\}\/preparacao/);
   });
 
-  it("mantém TopBar e ajuda contextual sem métricas antigas", () => {
+  it("mantém TopBar e ajuda contextual sem métricas inventadas", () => {
     assert.match(dashboard, /<TopBar \/>/);
     assert.match(dashboard, /useProductHelpPageState\(\{/);
     assert.match(dashboard, /decision\.primaryAction/);

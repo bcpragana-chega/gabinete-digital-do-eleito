@@ -103,21 +103,21 @@ function AssembleiasPage() {
       <TopBar breadcrumb="Sessões" actions={<NovaAssembleiaDialog />} />
       <WorkspacePage>
         <section>
-          <div className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-            <div className="flex w-max min-w-full items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-wrap">
+          <div className="-mx-4 mb-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <div className="flex w-max min-w-full items-center gap-1 sm:w-auto sm:min-w-0 sm:flex-wrap">
               {filtros.map((filtro) => (
                 <button
                   key={filtro.id}
                   type="button"
                   onClick={() => setFiltroAtivo(filtro.id)}
-                  className={`inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
+                  className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150 ${
                     filtroAtivo === filtro.id
                       ? "bg-muted text-foreground"
                       : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                   }`}
                 >
                   {filtro.label}
-                  <span className="rounded-full bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-border/50">
+                  <span className="rounded bg-background px-1.5 text-[10px] tabular-nums text-muted-foreground ring-1 ring-border/50">
                     {filtro.id === "todas" && assembleiasNaoArquivadas.length}
                     {filtro.id === "preparacao" && emPreparacao}
                     {filtro.id === "analise" && emAnalise}
@@ -154,28 +154,28 @@ function AssembleiaWorkspaceCard({ assembleia }: { assembleia: Assembleia }) {
 
   return (
     <Link to="/sessoes/$id" params={{ id: assembleia.id }} className="group block min-w-0">
-      <Card className="flex min-h-72 min-w-0 flex-col overflow-hidden p-5 transition-colors hover:border-border hover:bg-card/95 md:h-72">
+      <Card className="flex min-h-60 min-w-0 flex-col overflow-hidden p-4 transition-colors duration-150 hover:bg-muted/15">
         <div className="flex shrink-0 items-start justify-between gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-            <Landmark className={ds.icon.md} strokeWidth={1.75} />
+          <div className={ds.icon.tile}>
+            <Landmark className={ds.icon.sm} strokeWidth={1.75} />
           </div>
           <StatusBadge tone="muted" dot={false}>
             Sessão de trabalho
           </StatusBadge>
         </div>
 
-        <div className="mt-5 min-w-0 overflow-hidden">
-          <h2 className="line-clamp-2 break-words text-xl font-semibold leading-7 text-foreground">
+        <div className="mt-3 min-w-0 overflow-hidden">
+          <h2 className="line-clamp-2 break-words text-base font-semibold leading-6 text-foreground">
             {assembleia.nome}
           </h2>
-          <div className="mt-3 flex min-w-0 flex-wrap gap-2">
+          <div className="mt-2 flex min-w-0 flex-wrap gap-2">
             <StatusBadge tone={estadoTone(assembleia.estado)}>
               {estadoLabel(assembleia.estado)}
             </StatusBadge>
           </div>
         </div>
 
-        <div className="mt-5 grid shrink-0 gap-2 text-sm text-muted-foreground">
+        <div className="mt-3 grid shrink-0 gap-1.5 text-xs text-muted-foreground">
           <div className="flex min-w-0 items-center gap-2">
             <CalendarDays className={ds.icon.sm} strokeWidth={1.75} />
             <span className="truncate">{formatarData(assembleia.data)}</span>
@@ -190,7 +190,7 @@ function AssembleiaWorkspaceCard({ assembleia }: { assembleia: Assembleia }) {
           </div>
         </div>
 
-        <div className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-3 pt-5 text-sm">
+        <div className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-3 pt-3 text-xs">
           <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-2 text-muted-foreground">
             <span className="inline-flex min-w-0 items-center gap-2">
               <FileText className={ds.icon.sm} strokeWidth={1.75} />

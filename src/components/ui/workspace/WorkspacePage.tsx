@@ -9,10 +9,10 @@ type WorkspacePageProps = {
 
 export function WorkspacePage({ children, className, contentClassName }: WorkspacePageProps) {
   return (
-    <main className={cn("min-h-screen bg-background", className)}>
+    <main className={cn("min-h-[calc(100vh-4rem)] bg-background", className)}>
       <div
         className={cn(
-          "mx-auto flex w-full max-w-[1504px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8 lg:py-10",
+          "mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6",
           contentClassName,
         )}
       >

@@ -253,7 +253,7 @@ function BibliotecaPage() {
             </div>
 
             <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-              <div className="mt-4 flex w-max min-w-full items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-wrap">
+              <div className="mt-3 flex w-max min-w-full items-center gap-1 sm:w-auto sm:min-w-0 sm:flex-wrap">
                 {separadores.map((separador) => (
                   <button
                     key={separador.id}
@@ -261,14 +261,14 @@ function BibliotecaPage() {
                     onClick={() => setSeparadorAtivo(separador.id)}
                     aria-pressed={separadorAtivo === separador.id}
                     className={cn(
-                      "inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors",
+                      "inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150",
                       separadorAtivo === separador.id
                         ? "bg-muted text-foreground"
                         : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
                     )}
                   >
                     {separador.label}
-                    <span className="rounded-full bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground ring-1 ring-border/50">
+                    <span className="rounded bg-background px-1.5 text-[10px] tabular-nums text-muted-foreground ring-1 ring-border/50">
                       {contagemSeparador(separador.id)}
                     </span>
                   </button>
@@ -278,12 +278,12 @@ function BibliotecaPage() {
 
             {documentosVisiveis.length === 0 ? (
               <EmptyState
-                className="mt-6"
+                className="mt-4"
                 title={estadoVazio.title}
                 description={estadoVazio.description}
               />
             ) : (
-              <div className="mt-6 grid gap-3">
+              <div className="mt-4 grid gap-2">
                 {documentosVisiveis.map(({ documento, estado, categoria, assunto, sessao }) => {
                   const CategoriaIcon = visuaisCategoria[categoria].icon;
                   const acaoAbrir = estado === "Por rever" ? "Rever documento" : "Abrir documento";
@@ -291,23 +291,23 @@ function BibliotecaPage() {
                   return (
                     <article
                       key={documento.id}
-                      className="group relative min-w-0 rounded-2xl border border-border bg-card p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
+                      className="group relative min-w-0 rounded-lg border border-border/90 bg-card p-3 shadow-card transition-colors duration-150 hover:bg-muted/15"
                     >
                       <Link
                         to="/documentos/$documentoId"
                         params={{ documentoId: documento.id }}
                         search={{ origem: "biblioteca" }}
                         aria-label={`Abrir documento: ${documento.titulo}`}
-                        className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2"
+                        className="absolute inset-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2"
                       />
 
                       <div className="pointer-events-none relative flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground">
-                            <CategoriaIcon className="h-5 w-5" strokeWidth={1.75} />
+                        <div className="flex min-w-0 items-start gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border/80 bg-muted/60 text-muted-foreground transition-colors group-hover:text-foreground">
+                            <CategoriaIcon className="h-4 w-4" strokeWidth={1.75} />
                           </div>
                           <div className="min-w-0">
-                            <h2 className="line-clamp-2 text-base font-semibold leading-6 text-foreground sm:text-[17px]">
+                            <h2 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">
                               {documento.titulo}
                             </h2>
 

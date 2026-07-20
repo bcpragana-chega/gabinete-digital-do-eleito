@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { WorkspaceHeader } from "@/components/tribuno/workspace";
+import { WorkspaceHeader } from "@/components/ui/workspace";
 
 type PageHeaderProps = {
   icon: LucideIcon;
@@ -12,5 +12,5 @@ type PageHeaderProps = {
 };
 
 export function PageHeader(props: PageHeaderProps) {
-  return <WorkspaceHeader className="mb-8" {...props} />;
+  return <WorkspaceHeader className="mb-4" {...props} />;
 }

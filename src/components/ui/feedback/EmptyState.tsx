@@ -20,7 +20,7 @@ export function EmptyState({
     return (
       <div
         className={cn(
-          "rounded-2xl border border-dashed border-border/70 bg-background px-4 py-7 text-center",
+          "rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-5 text-center",
           className,
         )}
       >
@@ -33,14 +33,13 @@ export function EmptyState({
 
   return (
     <section
-      className={cn(
-        "rounded-2xl border border-dashed border-border/70 bg-background p-8",
-        className,
-      )}
+      className={cn("rounded-lg border border-dashed border-border/80 bg-muted/20 p-6", className)}
     >
-      {title && <h2 className="font-display text-xl font-semibold text-foreground">{title}</h2>}
-      {description && <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p>}
-      {action && <div className="mt-5">{action}</div>}
+      {title && <h2 className="font-display text-base font-semibold text-foreground">{title}</h2>}
+      {description && (
+        <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">{description}</p>
+      )}
+      {action && <div className="mt-4">{action}</div>}
     </section>
   );
 }

@@ -85,17 +85,17 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
     description ?? (tituloContextual ? descricoesPorTitulo[tituloContextual] : undefined);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/45 bg-background/90 backdrop-blur-xl">
-      <div className="flex min-h-16 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 md:min-h-20 md:flex-nowrap md:gap-4 md:px-6 md:py-0">
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-lg">
+      <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 md:min-h-16 md:flex-nowrap md:px-5 md:py-0">
         <div className="order-1 flex min-w-0 flex-1 items-center gap-3">
           <Sheet open={menuAberto} onOpenChange={setMenuAberto}>
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/60 bg-card/80 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground md:hidden"
                 aria-label="Abrir menu"
               >
-                <Menu className="h-5 w-5" strokeWidth={1.75} />
+                <Menu className="h-4 w-4" strokeWidth={1.75} />
               </button>
             </SheetTrigger>
 
@@ -185,7 +185,7 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
 
           {dashboard ? (
             <div className="min-w-0 leading-tight">
-              <div className="truncate font-display text-xl font-bold leading-6 text-foreground sm:text-2xl lg:text-[1.65rem] lg:leading-8">
+              <div className="truncate font-display text-lg font-semibold leading-6 text-foreground sm:text-xl">
                 {mostrarSaudacao ? (
                   <>
                     {saudacaoPorHora()}, {greetingName}{" "}
@@ -198,7 +198,7 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
                   </span>
                 )}
               </div>
-              <div className="mt-0.5 truncate text-[13px] leading-5 text-muted-foreground sm:text-sm">
+              <div className="truncate text-xs leading-4 text-muted-foreground sm:text-[13px]">
                 Vamos preparar a próxima sessão.
               </div>
             </div>
@@ -207,11 +207,11 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
               {breadcrumb && breadcrumb !== tituloContextual && (
                 <div className="mb-0.5 truncate text-xs text-muted-foreground">{breadcrumb}</div>
               )}
-              <div className="truncate font-display text-lg font-semibold leading-6 text-foreground sm:text-xl">
+              <div className="truncate font-display text-base font-semibold leading-5 text-foreground sm:text-lg">
                 {tituloContextual ?? "Tribuno"}
               </div>
               {descricaoContextual && (
-                <div className="mt-0.5 hidden truncate text-[13px] leading-5 text-muted-foreground sm:block">
+                <div className="mt-0.5 hidden truncate text-xs leading-4 text-muted-foreground sm:block">
                   {descricaoContextual}
                 </div>
               )}
@@ -233,7 +233,7 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
                 className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 aria-label="Abrir menu do perfil"
               >
-                <UserAvatar user={user} perfil={perfil} className="h-9 w-9" />
+                <UserAvatar user={user} perfil={perfil} className="h-8 w-8" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">

@@ -11,7 +11,7 @@ type SidebarProps = {
 
 export function Sidebar({ title, description, actions, children, className }: SidebarProps) {
   return (
-    <aside className={cn("rounded-2xl border border-border bg-card p-5 shadow-card", className)}>
+    <aside className={cn("rounded-lg border border-border/90 bg-card p-4 shadow-card", className)}>
       {(title || description || actions) && (
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">

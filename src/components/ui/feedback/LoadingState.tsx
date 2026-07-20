@@ -18,7 +18,7 @@ export function LoadingState({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-xl border border-border bg-background/60 text-muted-foreground",
+        "flex items-center gap-3 rounded-lg border border-border/90 bg-muted/20 text-muted-foreground",
         compact ? "px-4 py-3" : "px-5 py-6",
         className,
       )}

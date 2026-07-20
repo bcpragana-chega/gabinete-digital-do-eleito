@@ -48,9 +48,9 @@ describe("cabeçalhos canónicos e navegação", () => {
   });
 
   it("páginas principais partilham o mesmo contentor exterior", () => {
-    assert.match(workspacePage, /min-h-screen bg-background/);
-    assert.match(workspacePage, /mx-auto flex w-full max-w-\[1504px\]/);
-    assert.match(workspacePage, /px-4 py-6 sm:px-6 lg:px-8 lg:py-10/);
+    assert.match(workspacePage, /min-h-\[calc\(100vh-4rem\)\] bg-background/);
+    assert.match(workspacePage, /mx-auto flex w-full max-w-\[1440px\]/);
+    assert.match(workspacePage, /px-4 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6/);
 
     for (const pagina of [hoje, assuntos, sessoes, biblioteca]) {
       assert.match(pagina, /<WorkspacePage>/);

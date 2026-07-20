@@ -21,7 +21,7 @@ export function SectionTitle({
     <div className={cn("flex items-start justify-between gap-4", className)}>
       <div className="flex min-w-0 items-start gap-3">
         {Icon && (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
             <Icon className="h-4 w-4" strokeWidth={1.75} />
           </div>
         )}

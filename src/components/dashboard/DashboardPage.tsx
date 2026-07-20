@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowRight, CalendarCheck2, CheckCircle2, Clock3 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  FileText,
+  MapPin,
+  NotebookText,
+} from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { useProductHelpPageState } from "@/components/help/ProductHelpPageState";
 import { NovaSessaoWizard } from "@/components/assembleias/NovaSessaoWizard";
@@ -35,6 +44,19 @@ export function DashboardPage() {
   const documentos = useDocumentos();
   const acompanhamentos = useAcompanhamentos();
   const proxima = useMemo(() => obterProximaAssembleia(assembleias), [assembleias]);
+  const agenda = useMemo(
+    () =>
+      [...assembleias]
+        .filter(
+          (assembleia) =>
+            assembleia.estado !== "arquivada" &&
+            assembleia.estado !== "concluida" &&
+            new Date(`${assembleia.data}T${assembleia.hora || "00:00"}`) >= new Date(),
+        )
+        .sort((a, b) => `${a.data}T${a.hora}`.localeCompare(`${b.data}T${b.hora}`))
+        .slice(0, 3),
+    [assembleias],
+  );
   const documentosDaProxima = useMemo(
     () => documentos.filter((documento) => documento.assembleiaId === proxima?.id),
     [documentos, proxima?.id],
@@ -46,6 +68,14 @@ export function DashboardPage() {
       documentos
         .filter(documentoGeraPendenciaHoje)
         .sort((a, b) => prioridadeDocumento(a) - prioridadeDocumento(b)),
+    [documentos],
+  );
+  const documentosRecentes = useMemo(
+    () =>
+      [...documentos]
+        .filter((documento) => !documento.archivedAt)
+        .sort((a, b) => (b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt))
+        .slice(0, 4),
     [documentos],
   );
   const assuntosAtivos = useMemo(
@@ -138,23 +168,32 @@ export function DashboardPage() {
     <>
       <TopBar />
       <WorkspacePage>
-        <div className="mx-auto w-full max-w-4xl space-y-5">
-          {decision.state === "clear" ? (
-            <ClearState />
-          ) : (
-            <>
-              {decision.primaryAction && (
-                <PrimaryActionCard
-                  action={decision.primaryAction}
-                  documentToAnalyze={documentosParaOrganizar[0]}
-                />
-              )}
-              {decision.alerts.length > 0 && <AlertsSection alerts={decision.alerts} />}
-              {decision.pendingItems.length > 0 && (
-                <PendingSection pendingItems={decision.pendingItems} />
-              )}
-            </>
-          )}
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.85fr)]">
+          <div className="min-w-0 space-y-4">
+            {decision.state === "clear" ? (
+              <ClearState />
+            ) : (
+              <>
+                {decision.primaryAction && (
+                  <PrimaryActionCard
+                    action={decision.primaryAction}
+                    documentToAnalyze={documentosParaOrganizar[0]}
+                  />
+                )}
+                {decision.alerts.length > 0 && <AlertsSection alerts={decision.alerts} />}
+                {decision.pendingItems.length > 0 && (
+                  <PendingSection pendingItems={decision.pendingItems} />
+                )}
+              </>
+            )}
+          </div>
+
+          <aside className="min-w-0 space-y-4">
+            <NextSessionPanel session={proxima} />
+            <AgendaPanel sessions={agenda} />
+            <SubjectsPanel subjects={assuntosAtivos.slice(0, 4)} />
+            <RecentDocumentsPanel documents={documentosRecentes} />
+          </aside>
         </div>
       </WorkspacePage>
     </>
@@ -169,29 +208,27 @@ function PrimaryActionCard({
   documentToAnalyze?: Documento;
 }) {
   return (
-    <Card className="relative overflow-hidden rounded-[14px] border-0 bg-[#082f49] p-6 text-white shadow-[0_18px_55px_rgba(5,31,49,0.18)] sm:p-8">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_10%,rgba(74,222,128,0.16),transparent_28%),linear-gradient(135deg,#031d2e_0%,#073754_58%,#04243a_100%)]" />
-      <CalendarCheck2
-        className="absolute -bottom-8 right-2 h-44 w-44 text-white/10"
-        strokeWidth={1}
-      />
-      <div className="relative z-10 max-w-2xl">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#48d678]">
-          O que fazer agora
+    <Card className="overflow-hidden border-primary/20 p-0">
+      <div className="flex items-center gap-2 border-b border-border/80 bg-muted/25 px-4 py-2.5">
+        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Próxima ação
         </p>
-        <h2 className="mt-3 text-2xl font-semibold leading-tight text-white sm:text-[2rem]">
-          {action.title}
-        </h2>
-        <p className="mt-3 text-sm leading-6 text-white/78">{action.explanation}</p>
+      </div>
+      <div className="p-4 sm:p-5">
+        <h2 className="text-lg font-semibold leading-6 text-foreground">{action.title}</h2>
+        <p className="mt-1.5 max-w-2xl text-sm leading-5 text-muted-foreground">
+          {action.explanation}
+        </p>
         {action.context && (
-          <p className="mt-4 inline-flex items-center gap-2 text-sm text-white/88">
-            <Clock3 className="h-4 w-4" strokeWidth={1.8} />
+          <p className="mt-3 inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <Clock3 className="h-3.5 w-3.5" strokeWidth={1.75} />
             {action.context}
           </p>
         )}
 
         {action.id === "onboarding-subject" ? (
-          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <NovoDossieDialog />
             <InstitutionalDocumentIntake
               triggerLabel="Analisar documentos"
@@ -199,23 +236,19 @@ function PrimaryActionCard({
             />
           </div>
         ) : action.id === "onboarding-session" ? (
-          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <InstitutionalDocumentIntake triggerLabel="Carregar convocatória" />
             <NovaSessaoWizard triggerLabel="Criar manualmente" />
           </div>
         ) : action.id.startsWith("organize-document-") && documentToAnalyze ? (
-          <div className="mt-6 flex">
+          <div className="mt-4 flex">
             <InstitutionalDocumentIntake
               documentoInicial={documentToAnalyze}
               triggerLabel="Analisar documentos"
             />
           </div>
         ) : (
-          <Button
-            asChild
-            size="lg"
-            className="mt-6 h-12 rounded-xl bg-white px-7 text-sm font-semibold text-[#071127] hover:bg-white/92"
-          >
+          <Button asChild className="mt-4">
             <a href={action.href}>
               {action.label}
               <ArrowRight className="h-4 w-4" strokeWidth={1.85} />
@@ -229,78 +262,232 @@ function PrimaryActionCard({
 
 function AlertsSection({ alerts }: { alerts: TodayDecision["alerts"] }) {
   return (
-    <section aria-labelledby="today-alerts-title">
-      <h2 id="today-alerts-title" className="mb-3 text-xs font-semibold uppercase text-[#173354]">
-        Atenção
-      </h2>
-      <div className="space-y-2">
+    <OperationalPanel title="Atenção" count={alerts.length} ariaId="today-alerts-title">
+      <div className="divide-y divide-border/70">
         {alerts.map((alert) => (
           <a
             key={alert.id}
             href={alert.href}
-            className="flex items-center gap-3 rounded-xl border border-[#f7e0ce] bg-[#fff8f1] p-4 transition-colors hover:bg-[#fff4e8]"
+            className="flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-muted/40"
           >
-            <AlertTriangle className="h-5 w-5 shrink-0 text-[#e76800]" strokeWidth={1.9} />
+            <AlertTriangle
+              className="h-4 w-4 shrink-0 text-status-alerta-foreground"
+              strokeWidth={1.75}
+            />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-[#071127]">{alert.title}</p>
-              <p className="mt-1 text-xs leading-5 text-[#536682]">{alert.explanation}</p>
+              <p className="text-sm font-medium text-foreground">{alert.title}</p>
+              <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                {alert.explanation}
+              </p>
             </div>
-            <span className="hidden shrink-0 text-sm font-semibold text-[#005fd6] sm:block">
+            <span className="hidden shrink-0 text-xs font-medium text-foreground sm:block">
               {alert.label}
             </span>
           </a>
         ))}
       </div>
-    </section>
+    </OperationalPanel>
   );
 }
 
 function PendingSection({ pendingItems }: { pendingItems: TodayDecision["pendingItems"] }) {
   return (
-    <section aria-labelledby="today-pending-title">
-      <h2 id="today-pending-title" className="mb-3 text-xs font-semibold uppercase text-[#173354]">
-        Depois
-      </h2>
-      <Card className="divide-y divide-[#e4ebf4] overflow-hidden rounded-[14px] border-[#dfe7f2] bg-white p-0 shadow-[0_8px_28px_rgba(15,23,42,0.035)]">
+    <OperationalPanel title="Depois" count={pendingItems.length} ariaId="today-pending-title">
+      <div className="divide-y divide-border/70">
         {pendingItems.map((item) => (
           <a
             key={item.id}
             href={item.href}
-            className="flex items-center gap-3 px-4 py-4 transition-colors hover:bg-[#f8fbff] sm:px-5"
+            className="flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-muted/40"
           >
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-[#536682]" strokeWidth={1.7} />
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-[#071127]">{item.title}</p>
-              <p className="mt-1 truncate text-xs text-[#536682]">{item.explanation}</p>
+              <p className="text-sm font-medium text-foreground">{item.title}</p>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.explanation}</p>
             </div>
-            <span className="hidden shrink-0 text-sm font-semibold text-[#005fd6] sm:block">
+            <span className="hidden shrink-0 text-xs font-medium text-foreground sm:block">
               {item.label}
             </span>
-            <ArrowRight className="h-4 w-4 shrink-0 text-[#536682]" strokeWidth={1.8} />
+            <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
           </a>
         ))}
-      </Card>
-    </section>
+      </div>
+    </OperationalPanel>
   );
 }
 
 function ClearState() {
   return (
-    <Card className="rounded-[14px] border-[#d7eadf] bg-[#f3fbf6] p-8 text-center shadow-[0_8px_28px_rgba(15,23,42,0.035)] sm:p-12">
-      <CheckCircle2 className="mx-auto h-10 w-10 text-[#16a765]" strokeWidth={1.7} />
-      <h2 className="mt-4 text-xl font-semibold text-[#071127]">
-        Não tens nada urgente neste momento.
-      </h2>
-      <p className="mt-2 text-sm text-[#536682]">O mandato está em dia.</p>
-      <a
-        href="/assuntos"
-        className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#005fd6]"
-      >
-        Consultar assuntos ativos
-        <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
-      </a>
+    <Card className="flex items-start gap-3 border-status-concluida-foreground/15 bg-status-concluida/35 p-4">
+      <CheckCircle2
+        className="mt-0.5 h-4 w-4 shrink-0 text-status-concluida-foreground"
+        strokeWidth={1.75}
+      />
+      <div className="min-w-0">
+        <h2 className="text-sm font-semibold text-foreground">
+          Não tens nada urgente neste momento.
+        </h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">O mandato está em dia.</p>
+        <a
+          href="/assuntos"
+          className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline"
+        >
+          Consultar assuntos ativos
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+        </a>
+      </div>
     </Card>
   );
+}
+
+function OperationalPanel({
+  title,
+  count,
+  ariaId,
+  children,
+}: {
+  title: string;
+  count?: number;
+  ariaId?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="overflow-hidden p-0">
+      <div className="flex h-10 items-center justify-between border-b border-border/80 px-4">
+        <h2 id={ariaId} className="text-xs font-semibold text-foreground">
+          {title}
+        </h2>
+        {typeof count === "number" && (
+          <span className="text-[11px] tabular-nums text-muted-foreground">{count}</span>
+        )}
+      </div>
+      {children}
+    </Card>
+  );
+}
+
+function NextSessionPanel({ session }: { session?: Assembleia }) {
+  return (
+    <OperationalPanel title="Próxima sessão">
+      {session ? (
+        <a
+          href={`/sessoes/${encodeURIComponent(session.id)}`}
+          className="block px-4 py-3 transition-colors duration-150 hover:bg-muted/40"
+        >
+          <p className="line-clamp-2 text-sm font-medium text-foreground">{session.nome}</p>
+          <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+            <p className="flex items-center gap-2">
+              <CalendarDays className="h-3.5 w-3.5" />
+              {formatCompactDate(session.data)} · {session.hora}
+            </p>
+            {session.local && (
+              <p className="flex items-center gap-2 truncate">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{session.local}</span>
+              </p>
+            )}
+          </div>
+        </a>
+      ) : (
+        <CompactEmptyState message="Ainda não existe uma próxima sessão agendada." />
+      )}
+    </OperationalPanel>
+  );
+}
+
+function SubjectsPanel({ subjects }: { subjects: ReturnType<typeof useDossies> }) {
+  return (
+    <OperationalPanel title="Assuntos pendentes" count={subjects.length}>
+      {subjects.length > 0 ? (
+        <div className="divide-y divide-border/70">
+          {subjects.map((subject) => (
+            <a
+              key={subject.id}
+              href={`/assuntos/${encodeURIComponent(subject.id)}`}
+              className="flex items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-muted/40"
+            >
+              <NotebookText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
+                {subject.titulo}
+              </span>
+              <span className="text-[10px] text-muted-foreground">{subject.prioridade}</span>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <CompactEmptyState message="Sem assuntos pendentes." />
+      )}
+    </OperationalPanel>
+  );
+}
+
+function AgendaPanel({ sessions }: { sessions: Assembleia[] }) {
+  return (
+    <OperationalPanel title="Agenda" count={sessions.length}>
+      {sessions.length > 0 ? (
+        <div className="divide-y divide-border/70">
+          {sessions.map((session) => (
+            <a
+              key={session.id}
+              href={`/sessoes/${encodeURIComponent(session.id)}`}
+              className="flex items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-muted/40"
+            >
+              <CalendarDays className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-medium text-foreground">
+                  {session.nome}
+                </span>
+                <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                  {formatCompactDate(session.data)} · {session.hora}
+                </span>
+              </span>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <CompactEmptyState message="Sem sessões futuras na agenda." />
+      )}
+    </OperationalPanel>
+  );
+}
+
+function RecentDocumentsPanel({ documents }: { documents: Documento[] }) {
+  return (
+    <OperationalPanel title="Documentos recentes" count={documents.length}>
+      {documents.length > 0 ? (
+        <div className="divide-y divide-border/70">
+          {documents.map((document) => (
+            <a
+              key={document.id}
+              href={`/documentos/${encodeURIComponent(document.id)}?origem=biblioteca`}
+              className="flex items-center gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-muted/40"
+            >
+              <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-medium text-foreground">
+                  {document.titulo}
+                </span>
+                <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                  {formatCompactDate(document.updatedAt ?? document.createdAt)}
+                </span>
+              </span>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <CompactEmptyState message="Ainda não existem documentos na Biblioteca." />
+      )}
+    </OperationalPanel>
+  );
+}
+
+function CompactEmptyState({ message }: { message: string }) {
+  return <p className="px-4 py-4 text-xs leading-5 text-muted-foreground">{message}</p>;
+}
+
+function formatCompactDate(value: string) {
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value);
+  return new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: "short" }).format(date);
 }
 
 function helpStatus(decision: TodayDecision) {

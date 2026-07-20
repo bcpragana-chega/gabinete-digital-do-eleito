@@ -24,20 +24,20 @@ export function WorkspaceSection({
     <section
       id={id}
       className={cn(
-        "min-w-0 rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5",
+        "min-w-0 rounded-lg border border-border/90 bg-card p-4 shadow-card",
         className,
       )}
     >
       {(title || description || actions) && (
-        <div className="mb-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="mb-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
             {title && (
-              <h2 className="break-words font-display text-base font-semibold leading-6 text-foreground">
+              <h2 className="break-words font-display text-sm font-semibold leading-5 text-foreground">
                 {title}
               </h2>
             )}
             {description && (
-              <p className="mt-1 break-words text-sm leading-6 text-muted-foreground">
+              <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
                 {description}
               </p>
             )}

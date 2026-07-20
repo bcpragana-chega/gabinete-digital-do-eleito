@@ -27,7 +27,7 @@ export function ActionCard({
       <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           {Icon && (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-card text-muted-foreground">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/80 bg-muted/40 text-muted-foreground">
               <Icon className="h-4 w-4" strokeWidth={1.75} />
             </div>
           )}

@@ -29,7 +29,7 @@ export function TimelineItem({
           <span className="h-2 w-2 rounded-full bg-current" />
         )}
       </span>
-      <div className="rounded-2xl border border-border/70 bg-card/80 p-4 shadow-sm">
+      <div className="rounded-lg border border-border/80 bg-card p-3 shadow-card">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-foreground">{title}</h3>

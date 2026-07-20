@@ -12,10 +12,10 @@ describe("composição responsiva do WorkspaceHeader", () => {
   const documento = fonte("src/components/documentos/DocumentoCriadoDetalhe.tsx");
 
   it("mantém informação e ações em linhas próprias até haver largura confortável", () => {
-    assert.match(header, /flex flex-col items-stretch[^"]*2xl:flex-row/);
+    assert.match(header, /flex flex-col items-stretch[^"]*xl:flex-row/);
     assert.doesNotMatch(header, /sm:flex-row sm:flex-wrap/);
-    assert.match(header, /flex w-full min-w-0 items-start[^"]*2xl:flex-1/);
-    assert.match(header, /w-full min-w-0 max-w-full 2xl:w-auto 2xl:max-w-\[60%\] 2xl:shrink-0/);
+    assert.match(header, /flex w-full min-w-0 items-start[^"]*xl:flex-1/);
+    assert.match(header, /w-full min-w-0 max-w-full xl:w-auto xl:max-w-\[60%\] xl:shrink-0/);
   });
 
   it("permite que as ações do documento ocupem a largura móvel e quebrem em desktop", () => {

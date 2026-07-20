@@ -49,7 +49,7 @@ export function AppSidebar() {
   }
 
   return (
-    <aside className="fixed inset-y-2 left-2 z-30 hidden w-56 flex-col rounded-lg border border-sidebar-border/70 bg-sidebar text-sidebar-foreground md:flex">
+    <aside className="fixed inset-y-2 left-2 z-30 hidden w-52 flex-col rounded-lg border border-sidebar-border/70 bg-sidebar text-sidebar-foreground md:flex">
       <div className="px-2 pt-2">
         <div className="flex h-9 items-center gap-2 px-1">
           <img src="/logo.png" alt="Tribuno" className="h-6 w-6 rounded object-contain" />
@@ -191,7 +191,7 @@ export function AppSidebar() {
               <ChevronDown className="h-3.5 w-3.5 shrink-0 text-sidebar-muted" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="right" className="w-56">
+          <DropdownMenuContent align="end" side="right" className="w-52">
             <DropdownMenuLabel className="min-w-0">
               <span className="block truncate">{displayName}</span>
               {user?.email && (

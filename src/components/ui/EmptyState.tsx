@@ -1,1 +1,1 @@
-export { EmptyState } from "@/components/tribuno/feedback";
+export { EmptyState } from "@/components/ui/feedback";

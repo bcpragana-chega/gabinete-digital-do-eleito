@@ -344,7 +344,7 @@ export function UniversalSearch() {
     <>
       <button
         type="button"
-        className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-transparent text-muted-foreground transition-colors hover:border-border/70 hover:bg-muted/60 hover:text-foreground lg:hidden"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors duration-150 hover:border-border/70 hover:bg-muted/60 hover:text-foreground lg:hidden"
         aria-label="Abrir pesquisa"
         onClick={() => {
           setFocused(false);
@@ -357,8 +357,8 @@ export function UniversalSearch() {
       <div ref={containerRef} className="relative hidden lg:block">
         <div
           className={cn(
-            "flex h-10 w-[20rem] max-w-[20rem] items-center gap-2 rounded-full border border-border/50 bg-white px-3 text-muted-foreground transition-all",
-            focused && "border-ring/30 bg-white text-foreground ring-2 ring-ring/5",
+            "flex h-8 w-64 max-w-64 items-center gap-2 rounded-md border border-border/70 bg-card px-2.5 text-muted-foreground transition-colors duration-150",
+            focused && "border-ring/40 text-foreground ring-2 ring-ring/10",
           )}
         >
           <Search className="h-3.5 w-3.5 shrink-0 opacity-70" strokeWidth={1.75} />
@@ -368,7 +368,7 @@ export function UniversalSearch() {
             onChange={(event) => setQuery(event.target.value)}
             onFocus={() => setFocused(true)}
             placeholder="Pesquisar..."
-            className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/80"
+            className="h-full min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/80"
           />
           <kbd className="flex h-5 shrink-0 items-center rounded-md border border-border/50 bg-background/70 px-1.5 text-[10px] font-medium leading-none text-muted-foreground">
             ⌘K
@@ -376,7 +376,7 @@ export function UniversalSearch() {
         </div>
 
         {showPanel && (
-          <div className="absolute right-0 top-12 z-50 w-[28rem] overflow-hidden rounded-2xl border border-border/70 bg-card/95 shadow-card backdrop-blur">
+          <div className="absolute right-0 top-10 z-50 w-[28rem] overflow-hidden rounded-lg border border-border/80 bg-card/95 shadow-elevated backdrop-blur">
             {hasResults ? (
               <div className="max-h-[28rem] overflow-y-auto p-2">
                 {groups.map((group) => {
