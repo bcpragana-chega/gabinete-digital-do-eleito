@@ -166,7 +166,7 @@ export function DashboardPage() {
 
   return (
     <>
-      <TopBar />
+      <TopBar showUtilities={false} />
       <WorkspacePage>
         <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.85fr)]">
           <div className="min-w-0 space-y-4">

@@ -173,23 +173,22 @@ function BibliotecaPage() {
 
   return (
     <>
-      <div className="[&>header>div>div:last-child]:hidden">
-        <TopBar
-          title={`Biblioteca (${documentos.length})`}
-          description=""
-          actions={
-            <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
-              <div className="[&>button]:w-full sm:[&>button]:w-auto">
-                <InstitutionalDocumentIntake
-                  triggerLabel="Adicionar e analisar PDF"
-                  triggerVariant="primary"
-                />
-              </div>
-              <AdicionarBibliotecaWizard />
+      <TopBar
+        title={`Biblioteca (${documentos.length})`}
+        description=""
+        actions={
+          <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+            <div className="[&>button]:w-full sm:[&>button]:w-auto">
+              <InstitutionalDocumentIntake
+                triggerLabel="Adicionar e analisar PDF"
+                triggerVariant="primary"
+              />
             </div>
-          }
-        />
-      </div>
+            <AdicionarBibliotecaWizard />
+          </div>
+        }
+        showUtilities={false}
+      />
 
       <div className="sticky top-24 z-30 border-b border-border/60 bg-background/95 backdrop-blur-lg md:top-16">
         <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-2 px-4 py-2 sm:px-5 lg:px-6">

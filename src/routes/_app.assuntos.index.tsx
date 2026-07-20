@@ -156,13 +156,12 @@ function DossiesPage() {
 
   return (
     <>
-      <div className="[&>header>div>div:last-child]:hidden">
-        <TopBar
-          title={`Assuntos (${dossiesNaoArquivados.length})`}
-          description=""
-          actions={<NovoDossieDialog />}
-        />
-      </div>
+      <TopBar
+        title={`Assuntos (${dossiesNaoArquivados.length})`}
+        description=""
+        actions={<NovoDossieDialog />}
+        showUtilities={false}
+      />
 
       <div className="sticky top-24 z-30 border-b border-border/60 bg-background/95 backdrop-blur-lg md:top-16">
         <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-2 px-4 py-2 sm:px-5 lg:px-6">

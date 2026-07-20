@@ -55,7 +55,7 @@ describe("composição da página Hoje", () => {
   });
 
   it("mantém TopBar e ajuda contextual sem métricas inventadas", () => {
-    assert.match(dashboard, /<TopBar \/>/);
+    assert.match(dashboard, /<TopBar showUtilities=\{false\} \/>/);
     assert.match(dashboard, /useProductHelpPageState\(\{/);
     assert.match(dashboard, /decision\.primaryAction/);
     assert.doesNotMatch(dashboard, /progress|metrics|activity|tasks/);

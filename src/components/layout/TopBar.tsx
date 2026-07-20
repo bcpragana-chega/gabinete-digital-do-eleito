@@ -29,6 +29,7 @@ type TopBarProps = {
   description?: string;
   breadcrumb?: ReactNode;
   actions?: ReactNode;
+  showUtilities?: boolean;
 };
 
 const descricoesPorTitulo: Record<string, string> = {
@@ -68,7 +69,13 @@ function tituloPorPathname(pathname: string) {
   return undefined;
 }
 
-export function TopBar({ title, description, breadcrumb, actions }: TopBarProps) {
+export function TopBar({
+  title,
+  description,
+  breadcrumb,
+  actions,
+  showUtilities = true,
+}: TopBarProps) {
   const [menuAberto, setMenuAberto] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, perfil, displayName, localDisplayName, initialized } = useAuth();
@@ -223,7 +230,7 @@ export function TopBar({ title, description, breadcrumb, actions }: TopBarProps)
           <div className="order-3 w-full md:order-2 md:w-auto md:shrink-0">{actions}</div>
         )}
 
-        {!dashboard && (
+        {showUtilities && (
           <div className="order-2 ml-auto flex min-w-0 shrink-0 items-center gap-1.5 md:order-3 md:ml-0 md:gap-2">
             <UniversalSearch />
 

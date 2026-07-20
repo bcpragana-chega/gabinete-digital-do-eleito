@@ -33,15 +33,26 @@ describe("cabeçalhos canónicos e navegação", () => {
     assert.match(topBar, /order-2 ml-auto[\s\S]*md:order-3 md:ml-0/);
   });
 
-  it("Hoje não duplica pesquisa nem perfil e mantém ambos na sidebar", () => {
-    assert.match(topBar, /\{!dashboard && \([\s\S]*<UniversalSearch \/>[\s\S]*<UserAvatar/);
+  it("páginas de listagem e Hoje ocultam utilitários sem estado transitório", () => {
+    assert.match(topBar, /showUtilities = true/);
+    assert.match(topBar, /\{showUtilities && \([\s\S]*<UniversalSearch \/>[\s\S]*<UserAvatar/);
+    assert.doesNotMatch(topBar, /useEffect/);
+    assert.match(hoje, /<TopBar showUtilities=\{false\} \/>/);
+
+    for (const pagina of [assuntos, sessoes, biblioteca]) {
+      assert.match(pagina, /<TopBar[\s\S]*showUtilities=\{false\}/);
+      assert.doesNotMatch(pagina, /\[&>header>div>div:last-child\]:hidden/);
+    }
+
+    assert.match(definicoes, /<TopBar breadcrumb="Definições" \/>/);
+    assert.doesNotMatch(definicoes, /showUtilities=\{false\}/);
     assert.match(sidebar, /onClick=\{abrirPesquisa\}/);
     assert.match(sidebar, /<UserAvatar/);
     assert.doesNotMatch(hoje, /UniversalSearch|UserAvatar/);
   });
 
   it("páginas principais não repetem o cabeçalho canónico", () => {
-    assert.match(hoje, /<TopBar \/>/);
+    assert.match(hoje, /<TopBar showUtilities=\{false\} \/>/);
     assert.doesNotMatch(hoje, /<h1/);
 
     assert.match(assuntos, /<TopBar[\s\S]*actions=\{<NovoDossieDialog \/>\}/);
