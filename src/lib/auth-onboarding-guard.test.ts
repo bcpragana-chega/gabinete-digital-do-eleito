@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   concluirOnboardingRemotoComDependencias,
-  criarCoordenadorAtualizacoes,
+  criarCoordenadorHidratacaoAuth,
   deveAvancarAposGuardarPerfil,
   resolverDestinoAcesso,
   resolverPerfilAutorizado,
@@ -70,15 +70,20 @@ describe("guard de autenticação e onboarding", () => {
     const primeira = new Promise<void>((resolve) => {
       libertarPrimeira = resolve;
     });
-    const coordenar = criarCoordenadorAtualizacoes(async () => {
+    const coordenador = criarCoordenadorHidratacaoAuth(async () => {
       execucoes += 1;
       if (execucoes === 1) await primeira;
       estado = execucoes;
     });
-    const inicial = coordenar();
-    await Promise.all([coordenar(), coordenar(), coordenar()]);
+    const inicial = coordenador.iniciar();
+    await Promise.resolve();
+    const atualizacoes = [
+      coordenador.solicitarAtualizacao(),
+      coordenador.solicitarAtualizacao(),
+      coordenador.solicitarAtualizacao(),
+    ];
     libertarPrimeira();
-    await inicial;
+    await Promise.all([inicial, ...atualizacoes]);
     assert.equal(execucoes, 2);
     assert.equal(estado, 2);
   });

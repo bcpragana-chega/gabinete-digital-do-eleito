@@ -273,24 +273,76 @@ export function resolverPerfilAutorizado(input: {
   return input.perfil;
 }
 
-export function criarCoordenadorAtualizacoes(executar: () => Promise<void>) {
-  let emCurso = false;
-  let pendente = false;
+export function criarCoordenadorHidratacaoAuth(executar: () => Promise<void>) {
+  let emCurso: Promise<void> | undefined;
+  let inicial: Promise<void> | undefined;
+  let inicialConcluida = false;
+  let repetirAposInicial = false;
 
-  return async function solicitarAtualizacao() {
-    if (emCurso) {
-      pendente = true;
-      return;
+  function executarSingleFlight() {
+    if (emCurso) return emCurso;
+
+    const operacao = Promise.resolve().then(executar);
+    const singleFlight = operacao.finally(() => {
+      if (emCurso === singleFlight) emCurso = undefined;
+    });
+    emCurso = singleFlight;
+    return emCurso;
+  }
+
+  return {
+    iniciar() {
+      if (inicial) return inicial;
+
+      inicial = (async () => {
+        try {
+          await executarSingleFlight();
+        } finally {
+          inicialConcluida = true;
+        }
+
+        // Um login, logout ou write de outra aba pode ocorrer durante o arranque.
+        // Relemos o estado uma única vez; eventos da própria hidratação não criam ciclos.
+        if (repetirAposInicial) {
+          repetirAposInicial = false;
+          await executarSingleFlight();
+        }
+      })();
+      return inicial;
+    },
+    solicitarAtualizacao() {
+      if (!inicialConcluida) {
+        repetirAposInicial = true;
+        return inicial ?? Promise.resolve();
+      }
+      return executarSingleFlight();
+    },
+  };
+}
+
+export function criarFiltroEventosSupabase(userIdInicial?: string) {
+  let userIdConhecido = userIdInicial;
+  let ultimaAtualizacaoDeUser: string | undefined;
+
+  return (evento: string, userId?: string, userUpdatedAt?: string) => {
+    if (evento === "INITIAL_SESSION" || evento === "TOKEN_REFRESHED") return false;
+
+    if (evento === "SIGNED_IN" || evento === "SIGNED_OUT") {
+      if (userId === userIdConhecido) return false;
+      userIdConhecido = userId;
+      ultimaAtualizacaoDeUser = undefined;
+      return true;
     }
-    emCurso = true;
-    try {
-      do {
-        pendente = false;
-        await executar();
-      } while (pendente);
-    } finally {
-      emCurso = false;
+
+    if (evento === "USER_UPDATED") {
+      const assinatura = `${userId ?? ""}:${userUpdatedAt ?? ""}`;
+      if (assinatura === ultimaAtualizacaoDeUser) return false;
+      ultimaAtualizacaoDeUser = assinatura;
+      userIdConhecido = userId;
+      return true;
     }
+
+    return false;
   };
 }
 
@@ -689,7 +741,9 @@ export function useAuth() {
 
   useEffect(() => {
     let cancelled = false;
-    let primeiraExecucao = true;
+    let authSubscription:
+      | ReturnType<NonNullable<ReturnType<typeof getSupabaseClient>>["auth"]["onAuthStateChange"]>
+      | undefined;
 
     async function carregarPerfilAntesDeInicializar(stateAtual: AuthState) {
       const userId = stateAtual.user?.id;
@@ -727,14 +781,8 @@ export function useAuth() {
     }
 
     async function executarAtualizacao() {
-      const inicial = primeiraExecucao;
-      primeiraExecucao = false;
       try {
         const stateLocal = lerAuthState();
-        if (inicial) {
-          setInitialized(false);
-          setOnboardingResolved(false);
-        }
         const userIdBloqueado = lerUtilizadorBloqueadoPorLogout();
         const supabaseUser = await executarOperacaoRemotaHidratacao(
           () =>
@@ -841,14 +889,24 @@ export function useAuth() {
       }
     }
 
-    const atualizar = criarCoordenadorAtualizacoes(executarAtualizacao);
+    const coordenador = criarCoordenadorHidratacaoAuth(executarAtualizacao);
+    const atualizar = () => {
+      void coordenador.solicitarAtualizacao();
+    };
 
-    void atualizar();
     window.addEventListener(EVENT_NAME, atualizar);
     window.addEventListener("storage", atualizar);
-    const authSubscription = getSupabaseClient()?.auth.onAuthStateChange(() => {
-      if (logoutEmCurso) return;
-      void atualizar();
+    void coordenador.iniciar().then(() => {
+      if (cancelled) return;
+
+      const deveAtualizarPorEvento = criarFiltroEventosSupabase(lerAuthState().user?.id);
+      authSubscription = getSupabaseClient()?.auth.onAuthStateChange((evento, sessao) => {
+        if (logoutEmCurso) return;
+        if (!deveAtualizarPorEvento(evento, sessao?.user?.id, sessao?.user?.updated_at)) {
+          return;
+        }
+        void coordenador.solicitarAtualizacao();
+      });
     });
 
     return () => {

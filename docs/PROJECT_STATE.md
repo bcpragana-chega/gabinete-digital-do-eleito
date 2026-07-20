@@ -1187,6 +1187,57 @@ regras, ordenação, filtros, dados e experiência desktop.
 
 ---
 
+## ✅ Correção P0 — Terminação determinística da hidratação de autenticação
+
+Estado: CONCLUÍDA
+
+### Causa confirmada
+
+O `useAuth` instalava o `onAuthStateChange` ao mesmo tempo que iniciava a primeira hidratação. Todos
+os eventos usavam um coordenador com `pendente` e um ciclo `do/while`: um evento recebido durante
+cada passagem voltava a marcar trabalho pendente, permitindo uma sequência sem condição terminal.
+Embora as escritas internas já evitassem emitir `tribuno:auth`, eventos Supabase redundantes podiam
+manter o coordenador ativo e impedir a rota protegida de sair de “A preparar o Tribuno...”.
+
+### Mecanismo adotado
+
+- A hidratação inicial passou a single-flight e todas as chamadas concorrentes partilham a mesma
+  promessa.
+- Eventos externos durante o arranque são reduzidos a uma única releitura posterior; eventos
+  recebidos durante essa releitura não criam outra passagem.
+- O listener Supabase só é instalado após a hidratação inicial e eventual releitura terem terminado.
+- `INITIAL_SESSION`, `TOKEN_REFRESHED`, logins e logouts repetidos e `USER_UPDATED` idênticos são
+  ignorados; login, logout, troca de conta e atualização real do utilizador continuam ativos.
+- `initialized` e `onboardingResolved` começam falsos apenas na criação do hook e deixam de ser
+  repostos a falso por atualizações posteriores.
+- Sucesso, erro ou timeout continuam a terminar no `finally` com ambos os estados resolvidos.
+- `tribuno:auth` e `storage` permanecem ativos desde o arranque, preservando login, logout, perfil,
+  onboarding, sincronização entre abas e o botão “Tentar novamente”, sem listeners adicionais.
+- Não foram alterados login Google, modelo de perfil, onboarding, Supabase, rotas ou shell mobile.
+
+### Testes e validações
+
+- `npm test`: 553 testes aprovados, 0 falhas; mantém-se o aviso não bloqueante do sandbox relativo à
+  porta WebSocket 24678 do Vite;
+- `npm run typecheck`: aprovado;
+- `npm run lint`: aprovado com 0 erros e 22 avisos preexistentes fora do âmbito;
+- `npm run build`: aprovado;
+- `git diff --check`: aprovado.
+
+Os contratos cobrem single-flight, limite de uma releitura perante 50 eventos concorrentes,
+coalescência após o arranque, eventos Supabase redundantes, login, logout, troca de conta, gravação
+de perfil, conclusão de onboarding, timeouts, falhas de perfil e onboarding, estados finais,
+estabilidade do failsafe e retry sem duplicação de listeners.
+
+### Riscos residuais
+
+- A correção foi validada por contratos determinísticos e build; continua recomendada uma passagem
+  no ambiente Supabase real com restauro de sessão, login e logout em duas abas.
+- Eventos Supabase desconhecidos são ignorados por defeito. Os eventos relevantes atuais continuam
+  explicitamente tratados e as mutações da aplicação emitem `tribuno:auth`.
+
+---
+
 # Próxima ação
 
 Executar uma missão fechada para adaptar exclusivamente a lista de Sessões à consulta mobile, sem
