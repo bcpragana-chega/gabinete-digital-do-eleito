@@ -1108,11 +1108,90 @@ desktop.
 
 ---
 
+## ✅ Missão mobile — Adaptar exclusivamente a lista de Assuntos
+
+Estado: CONCLUÍDA
+
+### Decisão mobile
+
+No mobile, cada Assunto passa a ser uma linha compacta de duas alturas de informação:
+
+1. título e prioridade discreta;
+2. estado, última atualização e próxima ação, quando existe.
+
+A linha completa continua a abrir diretamente o mesmo detalhe canónico. A lista não introduz
+ações, menus, gestos, regras ou destinos alternativos.
+
+### Diagnóstico anterior
+
+A rota já concentrava corretamente filtros, ordenação, contagens, cálculo da próxima ação e
+navegação. A lista mobile reutilizava, porém, uma grelha próxima da tabela desktop: não apresentava
+prioridade nem atualização e concedia demasiado espaço vertical à próxima ação. Os filtros eram
+botões numa faixa horizontal, o que tornava a consulta menos previsível nos ecrãs mais estreitos.
+A pesquisa já existia no shell mobile através do menu secundário e não precisava de implementação
+paralela na página.
+
+### Implementação realizada
+
+- Cada Assunto usa no mobile um bloco de duas linhas, com título truncado e badge pequena de
+  prioridade na primeira, seguido de estado, data abreviada e próxima ação truncada na segunda.
+- A próxima ação deixa de ocupar espaço quando o resultado existente é “Sem ação definida”.
+- Mantidos integralmente os mesmos cálculos de estado, prioridade, atualização e próxima ação.
+- Os cinco filtros e as quatro ordenações existentes passam a dois seletores compactos abaixo de
+  768 px, preservando valores, contagens e handlers.
+- A pesquisa global continua acessível no menu secundário mobile, sem duplicação local.
+- O contentor da lista usa divisores subtis, bloqueia overflow horizontal e mantém truncation em
+  títulos e metadata longa.
+- A partir de 768 px permanecem os botões de filtro e a mesma tabela, com as colunas Assunto,
+  Estado, Prioridade, Próxima ação e Atualizado nos breakpoints anteriores.
+- O `Link` canónico para `/assuntos/$dossieId`, o detalhe do Assunto, as rotas, os stores, Supabase,
+  pesquisa, filtros, ordenação e regras de negócio não foram alterados.
+
+### Composição final
+
+- Mobile, linha 1: título e prioridade.
+- Mobile, linha 2: estado, atualização curta e próxima ação disponível.
+- Desktop: tabela e controlos anteriores, sem mudança de conteúdo ou interação.
+- Estados vazios e criação de Assunto permanecem inalterados.
+
+### Testes e validações
+
+- `npm test`: 543 testes aprovados, 0 falhas; o sandbox mantém o aviso não bloqueante conhecido ao
+  impedir a abertura da porta WebSocket 24678 do Vite;
+- `npm run typecheck`: aprovado;
+- `npm run lint`: aprovado com 0 erros e 22 avisos preexistentes fora do âmbito;
+- `npm run build`: aprovado;
+- `git diff --check`: aprovado.
+
+Os 7 novos contratos provam a abertura do mesmo detalhe, preservação dos cinco filtros e quatro
+ordenações, acesso à pesquisa global, composição mobile em duas linhas, apresentação de estado,
+prioridade e atualização pelas regras existentes, filtros compactos sem faixa horizontal e
+preservação da tabela e controlos desktop a partir de 768 px.
+
+A responsividade foi validada estruturalmente para 320, 375, 390 e 430 px, para a transição em 768
+px e para desktop. Os limites de largura, `min-width: 0`, truncation e bloqueio de overflow cobrem
+títulos, estados e próximas ações longas. Não foi produzido screenshot de browser nesta execução.
+
+### Riscos residuais
+
+- Continua recomendada uma passagem em dispositivos físicos para confirmar densidade, legibilidade
+  e comportamento dos seletores com fontes ampliadas.
+- A próxima ação e títulos extensos são deliberadamente truncados na lista; o conteúdo integral
+  continua disponível no detalhe, como previsto.
+- O detalhe do Assunto mantém a experiência atual e deve ser tratado apenas numa missão própria.
+
+### Próxima missão recomendada
+
+Adaptar exclusivamente a lista de Sessões à consulta mobile, preservando o detalhe, preparação,
+regras, ordenação, filtros, dados e experiência desktop.
+
+---
+
 # Próxima ação
 
-Executar uma missão fechada para adaptar exclusivamente a lista de Assuntos à consulta mobile, sem
-alterar o detalhe, a lógica de próxima ação, os dados, as rotas ou o desktop e sem misturar trabalho
-do Problema n.º 14.
+Executar uma missão fechada para adaptar exclusivamente a lista de Sessões à consulta mobile, sem
+alterar o detalhe, a preparação, os dados, as rotas ou o desktop e sem misturar trabalho do
+Problema n.º 14.
 
 Não iniciar automaticamente outro problema após o fecho do Problema n.º 13.
 

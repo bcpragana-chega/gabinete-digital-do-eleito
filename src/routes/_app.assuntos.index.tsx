@@ -86,6 +86,13 @@ function formatarAtualizacao(dossie: Dossie) {
   }).format(new Date(dataAtualizacao(dossie)));
 }
 
+function formatarAtualizacaoMobile(dossie: Dossie) {
+  return new Intl.DateTimeFormat("pt-PT", {
+    day: "2-digit",
+    month: "short",
+  }).format(new Date(dataAtualizacao(dossie)));
+}
+
 function proximaAcaoDoAssunto(dossie: Dossie) {
   if (dossie.archivedAt || dossie.estado === "concluido") return "Sem ação definida";
   if (!dossie.objetivoPolitico.trim()) return "Definir objetivo político";
@@ -165,7 +172,45 @@ function DossiesPage() {
 
       <div className="sticky top-14 z-30 border-b border-border/60 bg-background/95 backdrop-blur-lg md:top-16">
         <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-2 px-4 py-2 sm:px-5 lg:px-6">
-          <div className="order-2 -mx-1 flex min-w-0 flex-1 basis-full items-center gap-0.5 overflow-x-auto px-1 sm:order-1 sm:basis-auto">
+          <div className="flex w-full min-w-0 items-center gap-2 md:hidden">
+            <Select
+              value={filtroAtivo}
+              onValueChange={(value) => setFiltroAtivo(value as FiltroId)}
+            >
+              <SelectTrigger
+                className="h-9 min-w-0 flex-1 border-border/70 bg-background/0 text-xs"
+                aria-label="Filtrar assuntos"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="start">
+                {filtros.map((filtro) => (
+                  <SelectItem key={filtro.id} value={filtro.id} className="text-xs">
+                    {filtro.label} ({contagens[filtro.id]})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={ordenacao} onValueChange={(value) => setOrdenacao(value as OrdenacaoId)}>
+              <SelectTrigger
+                className="h-9 w-36 shrink-0 border-border/70 bg-background/0 text-xs"
+                aria-label="Ordenar assuntos"
+              >
+                <ArrowUpDown className="mr-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end">
+                {ordenacoes.map((opcao) => (
+                  <SelectItem key={opcao.id} value={opcao.id} className="text-xs">
+                    {opcao.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="hidden min-w-0 flex-1 items-center gap-0.5 md:flex">
             {filtros.map((filtro) => (
               <button
                 key={filtro.id}
@@ -187,7 +232,7 @@ function DossiesPage() {
             ))}
           </div>
 
-          <div className="order-1 ml-auto shrink-0 sm:order-2 sm:ml-0">
+          <div className="ml-auto hidden shrink-0 md:block">
             <Select value={ordenacao} onValueChange={(value) => setOrdenacao(value as OrdenacaoId)}>
               <SelectTrigger
                 className="h-8 w-40 border-border/70 bg-background/0 text-xs sm:w-44"
@@ -208,7 +253,7 @@ function DossiesPage() {
         </div>
       </div>
 
-      <WorkspacePage>
+      <WorkspacePage contentClassName="overflow-x-hidden">
         <section aria-label="Lista de assuntos">
           {dossiesVisiveis.length === 0 ? (
             <EmptyState
@@ -230,7 +275,10 @@ const listGrid =
 
 function AssuntosList({ dossies }: { dossies: Dossie[] }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border/70 bg-card">
+    <div
+      className="min-w-0 overflow-hidden rounded-lg border border-border/70 bg-card"
+      data-assuntos-list
+    >
       <div
         className={cn(
           listGrid,
@@ -264,7 +312,7 @@ function AssuntoRow({ dossie }: { dossie: Dossie }) {
       params={{ dossieId: dossie.id }}
       className={cn(
         listGrid,
-        "group min-h-14 items-center gap-y-1.5 px-3 py-2.5 outline-none transition-colors hover:bg-muted/35 focus-visible:bg-muted/45 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30 md:min-h-12 md:py-2",
+        "group min-h-12 items-center gap-y-0.5 px-3 py-1.5 outline-none transition-colors hover:bg-muted/35 focus-visible:bg-muted/45 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30 md:min-h-12 md:gap-y-1.5 md:py-2",
       )}
       aria-label={`Abrir assunto: ${dossie.titulo}`}
     >
@@ -273,8 +321,40 @@ function AssuntoRow({ dossie }: { dossie: Dossie }) {
       </h2>
 
       <StatusBadge
+        tone={prioridadeTone(dossie.prioridade)}
+        dot={dossie.prioridade === "Crítica" || dossie.prioridade === "Alta"}
+        className="h-5 max-w-24 justify-self-end truncate border-transparent bg-background/0 px-1.5 py-0 text-[10px] md:hidden"
+      >
+        {dossie.prioridade}
+      </StatusBadge>
+
+      <div className="col-span-2 flex min-w-0 items-center gap-1.5 text-[10px] leading-4 text-muted-foreground md:hidden">
+        <span className="max-w-[38%] shrink truncate font-medium text-foreground/80">
+          {arquivado ? "Arquivado" : estadoLabel(dossie.estado)}
+        </span>
+        <span aria-hidden="true" className="shrink-0 text-border">
+          ·
+        </span>
+        <time dateTime={dataAtualizacao(dossie)} className="shrink-0 tabular-nums">
+          {formatarAtualizacaoMobile(dossie)}
+        </time>
+        {proximaAcao !== "Sem ação definida" && (
+          <>
+            <span aria-hidden="true" className="shrink-0 text-border">
+              ·
+            </span>
+            <span className="min-w-0 truncate">{proximaAcao}</span>
+            <ArrowRight
+              className="h-3 w-3 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
+              aria-hidden="true"
+            />
+          </>
+        )}
+      </div>
+
+      <StatusBadge
         tone={arquivado ? "muted" : estadoTone(dossie.estado)}
-        className="h-5 max-w-40 justify-self-end truncate border-transparent bg-background/0 px-1.5 py-0 text-[10px] md:justify-self-start"
+        className="hidden h-5 max-w-40 truncate border-transparent bg-background/0 px-1.5 py-0 text-[10px] md:inline-flex md:justify-self-start"
       >
         {arquivado ? "Arquivado" : estadoLabel(dossie.estado)}
       </StatusBadge>
@@ -287,10 +367,7 @@ function AssuntoRow({ dossie }: { dossie: Dossie }) {
         {dossie.prioridade}
       </StatusBadge>
 
-      <div className="col-span-2 flex min-w-0 items-center gap-1.5 md:col-span-1">
-        <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground md:hidden">
-          Próxima ação
-        </span>
+      <div className="hidden min-w-0 items-center gap-1.5 md:flex">
         <span
           className={cn(
             "truncate text-xs font-semibold text-foreground",
@@ -299,7 +376,10 @@ function AssuntoRow({ dossie }: { dossie: Dossie }) {
         >
           {proximaAcao}
         </span>
-        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+        <ArrowRight
+          className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
+          aria-hidden="true"
+        />
       </div>
 
       <time
