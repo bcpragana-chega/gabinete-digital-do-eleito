@@ -1,46 +1,21 @@
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { logAuthDiagnostic } from "@/lib/auth-diagnostics";
+import {
+  SupabaseAuthNotStartedError,
+  SupabaseAuthRequestError,
+  SupabaseAuthReturnedError,
+  SupabaseAuthTimeoutError,
+} from "@/lib/auth-errors";
+
+export {
+  SupabaseAuthNotStartedError,
+  SupabaseAuthRequestError,
+  SupabaseAuthReturnedError,
+  SupabaseAuthTimeoutError,
+} from "@/lib/auth-errors";
 
 let client: SupabaseClient | undefined;
 const SUPABASE_TIMEOUT_MS = 12000;
-
-export class SupabaseAuthTimeoutError extends Error {
-  constructor(etapa: string) {
-    super(`TIMEOUT_SUPABASE_${etapa}`);
-    this.name = "SupabaseAuthTimeoutError";
-  }
-}
-
-export class SupabaseAuthReturnedError extends Error {
-  status?: number;
-  code?: string;
-  cause: unknown;
-
-  constructor(error: { name?: string; status?: number; code?: string }) {
-    super("SUPABASE_AUTH_ERROR_RETURNED");
-    this.name = error.name || "SupabaseAuthReturnedError";
-    this.status = error.status;
-    this.code = error.code;
-    this.cause = error;
-  }
-}
-
-export class SupabaseAuthRequestError extends Error {
-  cause: unknown;
-
-  constructor(error: unknown) {
-    super("SUPABASE_AUTH_REQUEST_FAILED");
-    this.name = "SupabaseAuthRequestError";
-    this.cause = error;
-  }
-}
-
-export class SupabaseAuthNotStartedError extends Error {
-  constructor() {
-    super("SUPABASE_AUTH_REQUEST_NOT_STARTED");
-    this.name = "SupabaseAuthNotStartedError";
-  }
-}
 
 export function withSupabaseTimeout<T>(
   promise: PromiseLike<T>,
@@ -118,8 +93,20 @@ export async function iniciarSessaoSupabaseComGoogleCredential(
       throw returnedError;
     }
 
+    if (!data.user?.id) {
+      const missingUserError = new SupabaseAuthReturnedError({
+        name: "AuthUserMissingError",
+      });
+      logAuthDiagnostic("SUPABASE_ERROR_RETURNED", {
+        attemptId,
+        phase: "calling_supabase",
+        errorName: missingUserError.name,
+      });
+      throw missingUserError;
+    }
+
     logAuthDiagnostic("SUPABASE_REQUEST_COMPLETED", { attemptId, phase: "completed" });
-    return data.user ?? undefined;
+    return data.user;
   } catch (error) {
     if (error instanceof SupabaseAuthReturnedError) throw error;
     if (error instanceof SupabaseAuthTimeoutError) {
@@ -127,7 +114,48 @@ export async function iniciarSessaoSupabaseComGoogleCredential(
         attemptId,
         phase: "calling_supabase",
       });
-      throw error;
+      logAuthDiagnostic("AUTH_SESSION_RECOVERY_STARTED", {
+        attemptId,
+        phase: "calling_supabase",
+      });
+      let recovered: Awaited<ReturnType<typeof supabase.auth.getUser>>;
+      try {
+        recovered = await withSupabaseTimeout(
+          supabase.auth.getUser(),
+          "AUTH_RECOVER_AFTER_SIGN_IN_TIMEOUT",
+          8000,
+        );
+      } catch (recoveryFailure) {
+        logAuthDiagnostic("AUTH_SESSION_RECOVERY_FAILED", {
+          attemptId,
+          phase: "calling_supabase",
+        });
+        if (recoveryFailure instanceof SupabaseAuthTimeoutError) throw error;
+        throw new SupabaseAuthRequestError(recoveryFailure);
+      }
+      if (recovered.error) {
+        const returnedError = new SupabaseAuthReturnedError(recovered.error);
+        logAuthDiagnostic("SUPABASE_ERROR_RETURNED", {
+          attemptId,
+          phase: "calling_supabase",
+          errorName: returnedError.name,
+          supabaseStatus: returnedError.status,
+          supabaseCode: returnedError.code,
+        });
+        throw returnedError;
+      }
+      if (!recovered.data.user?.id) {
+        logAuthDiagnostic("AUTH_SESSION_RECOVERY_FAILED", {
+          attemptId,
+          phase: "calling_supabase",
+        });
+        throw error;
+      }
+      logAuthDiagnostic("AUTH_SESSION_RECOVERED", {
+        attemptId,
+        phase: "calling_supabase",
+      });
+      return recovered.data.user;
     }
 
     const requestError = new SupabaseAuthRequestError(error);
@@ -176,27 +204,61 @@ export async function diagnosticarSessaoSupabase() {
   }
 }
 
-export async function obterUtilizadorSupabaseValidado(): Promise<User | undefined> {
+export async function obterUtilizadorSupabaseValidado(
+  attemptId?: string,
+): Promise<User | undefined> {
   const supabase = getSupabaseClient();
   if (!supabase) return undefined;
 
-  const { data, error } = await withSupabaseTimeout(supabase.auth.getUser(), "AUTH_GET_USER", 8000);
-  if (error || !data.user?.id) return undefined;
-  return data.user;
+  logAuthDiagnostic("AUTH_USER_CHECK_STARTED", { attemptId });
+  try {
+    const { data, error } = await withSupabaseTimeout(
+      supabase.auth.getUser(),
+      "AUTH_GET_USER",
+      8000,
+    );
+    if (error) {
+      logAuthDiagnostic("AUTH_USER_CHECK_FAILED", { attemptId });
+      if (error.name === "AuthRetryableFetchError" || error.status === 0) {
+        throw new SupabaseAuthRequestError(error);
+      }
+      throw new SupabaseAuthReturnedError(error);
+    }
+    if (!data.user?.id) return undefined;
+    logAuthDiagnostic("AUTH_USER_CHECK_COMPLETED", { attemptId });
+    return data.user;
+  } catch (error) {
+    if (error instanceof SupabaseAuthTimeoutError) {
+      logAuthDiagnostic("AUTH_USER_CHECK_TIMEOUT", { attemptId });
+    } else {
+      logAuthDiagnostic("AUTH_USER_CHECK_FAILED", {
+        attemptId,
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
+    }
+    throw error;
+  }
 }
 
-export async function registarUltimoAcesso(userId: string): Promise<void> {
+export async function registarUltimoAcesso(userId: string, attemptId?: string): Promise<void> {
   const supabase = getSupabaseClient();
   if (!supabase) return;
 
   try {
-    const { error } = await supabase
-      .from("profiles")
-      .update({ last_login_at: new Date().toISOString() })
-      .eq("user_id", userId);
+    logAuthDiagnostic("LAST_LOGIN_UPDATE_STARTED", { attemptId });
+    const { error } = await withSupabaseTimeout(
+      supabase
+        .from("profiles")
+        .update({ last_login_at: new Date().toISOString() })
+        .eq("user_id", userId),
+      "LAST_LOGIN_UPDATE",
+      8000,
+    );
 
     if (error) throw error;
+    logAuthDiagnostic("LAST_LOGIN_UPDATE_COMPLETED", { attemptId });
   } catch {
+    logAuthDiagnostic("LAST_LOGIN_UPDATE_FAILED", { attemptId });
     console.warn("[Tribuno Auth] Não foi possível registar o último acesso.", {
       operacao: "AUTH_LAST_LOGIN_UPDATE_FALHOU",
     });

@@ -10,12 +10,12 @@ import {
   type AuthDiagnosticPhase,
 } from "@/lib/auth-diagnostics";
 import {
-  isSupabaseConfigured,
-  SupabaseAuthNotStartedError,
-  SupabaseAuthRequestError,
-  SupabaseAuthReturnedError,
-  SupabaseAuthTimeoutError,
-} from "@/lib/supabase";
+  codigoLoginDoErro,
+  executarNavegacaoAposAuthConfirmada,
+  GoogleCredentialError,
+  type LoginErroCodigo,
+} from "@/lib/auth-errors";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 const GOOGLE_CALLBACK_TIMEOUT_MS = 90_000;
 
@@ -100,17 +100,6 @@ function userFromCredential(credential: string): AuthUser {
 }
 
 type GoogleClientIdStatus = "missing" | "empty" | "loaded";
-type LoginErroCodigo =
-  | "ERRO_LOGIN_GOOGLE_CALLBACK"
-  | "ERRO_LOGIN_GOOGLE_CREDENTIAL"
-  | "ERRO_LOGIN_BROWSER"
-  | "ERRO_LOGIN_SUPABASE_NAO_INICIADO"
-  | "ERRO_LOGIN_SUPABASE_TIMEOUT"
-  | "ERRO_LOGIN_SUPABASE"
-  | "ERRO_LOGIN_PERFIL"
-  | "ERRO_LOGIN_NAVEGACAO"
-  | "ERRO_LOGIN_DESCONHECIDO";
-
 const mensagensErroLogin: Record<LoginErroCodigo, string> = {
   ERRO_LOGIN_GOOGLE_CALLBACK:
     "A Google não concluiu a resposta ao botão. Reveja as permissões de privacidade e tente novamente.",
@@ -139,36 +128,6 @@ function getGoogleClientIdStatus(rawClientId: unknown): GoogleClientIdStatus {
 function getCurrentOrigin() {
   if (typeof window === "undefined") return "origem indisponível";
   return window.location.origin;
-}
-
-function codigoLoginDoErro(error: unknown): LoginErroCodigo {
-  if (error instanceof SupabaseAuthNotStartedError) return "ERRO_LOGIN_SUPABASE_NAO_INICIADO";
-  if (error instanceof SupabaseAuthTimeoutError) return "ERRO_LOGIN_SUPABASE_TIMEOUT";
-  if (error instanceof SupabaseAuthReturnedError) return "ERRO_LOGIN_SUPABASE";
-  if (error instanceof SupabaseAuthRequestError) return "ERRO_LOGIN_BROWSER";
-
-  if (error instanceof Error) {
-    const mensagem = error.message.toLocaleLowerCase("pt-PT");
-    if (mensagem.includes("credential") || mensagem.includes("credencial")) {
-      return "ERRO_LOGIN_GOOGLE_CREDENTIAL";
-    }
-    if (
-      mensagem.includes("supabase") ||
-      mensagem.includes("auth") ||
-      mensagem.includes("timeout_supabase") ||
-      mensagem.includes("id token")
-    ) {
-      return "ERRO_LOGIN_SUPABASE";
-    }
-    if (mensagem.includes("perfil") || mensagem.includes("profile")) {
-      return "ERRO_LOGIN_PERFIL";
-    }
-    if (mensagem.includes("navigate") || mensagem.includes("navega")) {
-      return "ERRO_LOGIN_NAVEGACAO";
-    }
-  }
-
-  return "ERRO_LOGIN_DESCONHECIDO";
 }
 
 function LoginPage() {
@@ -224,7 +183,12 @@ function LoginPage() {
     const onboardingNecessario = !perfilCompleto(perfil);
     const destino = onboardingNecessario ? "/completar-perfil" : "/";
 
-    navigate({ to: destino, replace: true });
+    void navigate({ to: destino, replace: true }).catch((error: unknown) => {
+      logAuthDiagnostic("NAVIGATION_FAILED", {
+        phase: "completed",
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
+    });
   }, [initialized, isAuthenticated, navigate, perfil]);
 
   useEffect(() => {
@@ -333,7 +297,7 @@ function LoginPage() {
                 phase: phaseRef.current,
                 reason: "credential_missing",
               });
-              throw new Error("A Google não devolveu credencial.");
+              throw new GoogleCredentialError();
             }
 
             logAuthDiagnostic("GOOGLE_CREDENTIAL_PRESENT", {
@@ -341,7 +305,12 @@ function LoginPage() {
               phase: phaseRef.current,
             });
 
-            const googleUser = userFromCredential(response.credential);
+            let googleUser: AuthUser;
+            try {
+              googleUser = userFromCredential(response.credential);
+            } catch (error) {
+              throw new GoogleCredentialError(error);
+            }
             phaseRef.current = "calling_supabase";
             supabaseCallInvoked = true;
             const authState = await loginComGoogle(googleUser, response.credential, attemptId);
@@ -349,11 +318,25 @@ function LoginPage() {
 
             const onboardingNecessario = !perfilCompleto(authState.perfil);
             const destino = onboardingNecessario ? "/completar-perfil" : "/";
-
-            navigate({
-              to: destino,
-              replace: true,
+            logAuthDiagnostic("ONBOARDING_DECIDED", {
+              attemptId,
+              phase: "completed",
+              onboardingRequired: onboardingNecessario,
             });
+
+            logAuthDiagnostic("NAVIGATION_STARTED", { attemptId, phase: "completed" });
+            try {
+              await executarNavegacaoAposAuthConfirmada(() =>
+                navigate({
+                  to: destino,
+                  replace: true,
+                }),
+              );
+              logAuthDiagnostic("NAVIGATION_COMPLETED", { attemptId, phase: "completed" });
+            } catch (error) {
+              logAuthDiagnostic("NAVIGATION_FAILED", { attemptId, phase: "completed" });
+              throw error;
+            }
           } catch (error) {
             if (!supabaseCallInvoked && response.credential) {
               logAuthDiagnostic("SUPABASE_REQUEST_NOT_STARTED", {

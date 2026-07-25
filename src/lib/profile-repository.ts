@@ -1,6 +1,12 @@
 import type { PerfilEleito } from "@/lib/auth-store";
 import { readJSON, userScopedKey, writeInstitutionalJSON } from "@/lib/storage-provider";
-import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
+import {
+  getSupabaseClient,
+  isSupabaseConfigured,
+  SupabaseAuthRequestError,
+  SupabaseAuthReturnedError,
+  withSupabaseTimeout,
+} from "@/lib/supabase";
 
 export type ProfileRow = {
   user_id: string;
@@ -138,13 +144,17 @@ async function obterSupabaseUserIdValido(userId?: string) {
     "PROFILE_GET_USER",
     8000,
   );
-  if (error || !data.user?.id) {
+  if (error) {
     console.warn("[Tribuno Perfil] Sem sessão Supabase válida para sincronizar perfil.", {
       operacao: "PROFILE_AUTH_INVALIDA",
-      temErro: Boolean(error),
+      temErro: true,
     });
-    return undefined;
+    if (error.name === "AuthRetryableFetchError" || error.status === 0) {
+      throw new SupabaseAuthRequestError(error);
+    }
+    throw new SupabaseAuthReturnedError(error);
   }
+  if (!data.user?.id) return undefined;
 
   if (userId && userId !== data.user.id) {
     console.warn("[Tribuno Perfil] Sincronização ignorada por divergência de sessão.", {

@@ -23,6 +23,14 @@ import {
   terminarSessaoSupabase,
   withSupabaseTimeout,
 } from "@/lib/supabase";
+import { logAuthDiagnostic } from "@/lib/auth-diagnostics";
+import {
+  GoogleCredentialError,
+  LocalAuthStateError,
+  ProfileAfterAuthError,
+  SupabaseAuthRequestError,
+  SupabaseAuthTimeoutError,
+} from "@/lib/auth-errors";
 import type { User } from "@supabase/supabase-js";
 
 export type CargoEleito =
@@ -402,11 +410,15 @@ export function resolverEstadoComPerfilRemoto(
   };
 }
 
-type RegistarUltimoAcesso = (userId: string) => Promise<unknown> | unknown;
+type RegistarUltimoAcesso = (userId: string, attemptId?: string) => Promise<unknown> | unknown;
 
-function iniciarRegistoUltimoAcessoSemBloquear(userId: string, registar: RegistarUltimoAcesso) {
+function iniciarRegistoUltimoAcessoSemBloquear(
+  userId: string,
+  registar: RegistarUltimoAcesso,
+  attemptId?: string,
+) {
   try {
-    void Promise.resolve(registar(userId)).catch(() => {
+    void Promise.resolve(registar(userId, attemptId)).catch(() => {
       console.warn("[Tribuno Auth] Não foi possível registar o último acesso.", {
         operacao: "AUTH_LAST_LOGIN_UPDATE_FALHOU",
       });
@@ -434,11 +446,57 @@ export async function executarLoginSupabaseConfirmado<T>(input: {
   iniciar: () => Promise<User | undefined>;
   confirmar: (user: User) => Promise<T> | T;
   registar?: RegistarUltimoAcesso;
+  attemptId?: string;
 }) {
   const user = await input.iniciar();
   if (!user?.id) throw new Error("AUTH_REQUIRED");
-  iniciarRegistoUltimoAcessoSemBloquear(user.id, input.registar ?? registarUltimoAcesso);
+  iniciarRegistoUltimoAcessoSemBloquear(
+    user.id,
+    input.registar ?? registarUltimoAcesso,
+    input.attemptId,
+  );
   return input.confirmar(user);
+}
+
+export async function carregarPerfilDepoisDeAuthConfirmada(input: {
+  carregar: () => Promise<unknown>;
+  attemptId?: string;
+}) {
+  logAuthDiagnostic("PROFILE_LOAD_STARTED", { attemptId: input.attemptId });
+  let rawProfile: unknown;
+  try {
+    rawProfile = await input.carregar();
+  } catch (error) {
+    logAuthDiagnostic("PROFILE_LOAD_FAILED", {
+      attemptId: input.attemptId,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+    throw new ProfileAfterAuthError("load_failed", error);
+  }
+
+  if (rawProfile === undefined || rawProfile === null) {
+    logAuthDiagnostic("PROFILE_MISSING", { attemptId: input.attemptId });
+    return undefined;
+  }
+
+  const perfil = normalizarPerfilEleito(rawProfile as Partial<PerfilEleito>);
+  if (!perfil) {
+    logAuthDiagnostic("PROFILE_INVALID", { attemptId: input.attemptId });
+    throw new ProfileAfterAuthError("invalid");
+  }
+
+  logAuthDiagnostic("PROFILE_LOAD_COMPLETED", { attemptId: input.attemptId });
+  return perfil;
+}
+
+export function deveLimparEstadoLocalAposFalhaLogin(input: {
+  authConfirmada: boolean;
+  error: unknown;
+}) {
+  if (input.authConfirmada) return false;
+  return !(
+    input.error instanceof SupabaseAuthTimeoutError && input.error.etapa === "SIGN_IN_WITH_ID_TOKEN"
+  );
 }
 
 export async function loginComGoogle(
@@ -447,6 +505,7 @@ export async function loginComGoogle(
   diagnosticAttemptId?: string,
 ) {
   const state = lerAuthState();
+  let authConfirmada = false;
 
   console.info("[Tribuno Auth] loginComGoogle iniciado", {
     provider: user.provider,
@@ -455,24 +514,38 @@ export async function loginComGoogle(
 
   if (!googleCredential || user.provider !== "google") {
     guardarAuthState(resolverEstadoLocalAposLogout(state));
-    throw new Error("AUTH_REQUIRED");
+    throw new GoogleCredentialError();
   }
 
   try {
     console.info("[Tribuno Auth] A iniciar autenticação Supabase com Google ID token");
     return await executarLoginSupabaseConfirmado({
+      attemptId: diagnosticAttemptId,
       iniciar: () =>
         iniciarSessaoSupabaseComGoogleCredential(googleCredential, diagnosticAttemptId),
       confirmar: async (supabaseUser) => {
+        authConfirmada = true;
         limparBloqueioLogout();
         const userAutenticado = authUserDaSessao(supabaseUser, { ...user, googleSub: user.id });
         let perfilRemoto: PerfilEleito | undefined;
         try {
-          perfilRemoto = normalizarPerfilEleito(await carregarPerfilHibrido(userAutenticado.id));
-        } catch {
-          console.warn("[Tribuno Perfil] Perfil remoto indisponível durante o login.", {
-            operacao: "PROFILE_LOGIN_LOAD_FALHOU",
+          perfilRemoto = await carregarPerfilDepoisDeAuthConfirmada({
+            carregar: () => carregarPerfilHibrido(userAutenticado.id),
+            attemptId: diagnosticAttemptId,
           });
+        } catch (error) {
+          const authenticatedState = {
+            ...state,
+            user: userAutenticado,
+            perfil: undefined,
+            perfilRemotoConfirmado: false,
+          };
+          try {
+            guardarAuthState(authenticatedState);
+          } catch (storageError) {
+            throw new LocalAuthStateError(storageError);
+          }
+          throw error;
         }
         const nextState = {
           ...state,
@@ -480,7 +553,11 @@ export async function loginComGoogle(
           perfil: perfilRemoto,
           perfilRemotoConfirmado: Boolean(perfilRemoto),
         };
-        guardarAuthState(nextState);
+        try {
+          guardarAuthState(nextState);
+        } catch (error) {
+          throw new LocalAuthStateError(error);
+        }
         console.info("[Tribuno Auth] Sessão local guardada", {
           provider: nextState.user?.provider,
           perfilCarregado: Boolean(nextState.perfil),
@@ -490,7 +567,13 @@ export async function loginComGoogle(
       },
     });
   } catch (error) {
-    guardarAuthState(resolverEstadoLocalAposLogout(state));
+    if (deveLimparEstadoLocalAposFalhaLogin({ authConfirmada, error })) {
+      try {
+        guardarAuthState(resolverEstadoLocalAposLogout(state));
+      } catch {
+        // A falha original continua a ser a causa útil para o diagnóstico.
+      }
+    }
     throw error;
   }
 }
@@ -764,9 +847,10 @@ export function useAuth() {
 
       let perfilRemoto: PerfilEleito | undefined;
       try {
-        perfilRemoto = normalizarPerfilEleito(
-          await executarOperacaoRemotaHidratacao(() => carregarPerfilHibrido(userId), "PROFILE"),
-        );
+        perfilRemoto = await carregarPerfilDepoisDeAuthConfirmada({
+          carregar: () =>
+            executarOperacaoRemotaHidratacao(() => carregarPerfilHibrido(userId), "PROFILE"),
+        });
       } catch {
         console.warn("[Tribuno Perfil] Não foi possível confirmar o perfil remoto.", {
           operacao: "PROFILE_INIT_LOAD_FALHOU",
@@ -786,8 +870,9 @@ export function useAuth() {
     }
 
     async function executarAtualizacao() {
+      const stateLocal = lerAuthState();
+      logAuthDiagnostic("AUTH_HYDRATION_STARTED");
       try {
-        const stateLocal = lerAuthState();
         const userIdBloqueado = lerUtilizadorBloqueadoPorLogout();
         const supabaseUser = await executarOperacaoRemotaHidratacao(
           () =>
@@ -873,7 +958,27 @@ export function useAuth() {
             setOnboardingResolved(true);
           }
         }
-      } catch {
+      } catch (error) {
+        if (
+          error instanceof SupabaseAuthTimeoutError ||
+          error instanceof SupabaseAuthRequestError ||
+          error instanceof LocalAuthStateError
+        ) {
+          logAuthDiagnostic(
+            error instanceof SupabaseAuthTimeoutError
+              ? "AUTH_HYDRATION_TIMEOUT_PRESERVED"
+              : "AUTH_HYDRATION_TRANSIENT_ERROR_PRESERVED",
+            {
+              errorName: error.name,
+            },
+          );
+          if (!cancelled) {
+            setState(stateLocal);
+            setOnboardingVersion(undefined);
+            setOnboardingResolved(true);
+          }
+          return;
+        }
         console.error("[Tribuno Auth] Erro ao inicializar autenticação/perfil", {
           operacao: "AUTH_INIT_FALHOU",
         });
@@ -888,6 +993,7 @@ export function useAuth() {
         }
       } finally {
         if (!cancelled) {
+          logAuthDiagnostic("AUTH_HYDRATION_COMPLETED");
           setOnboardingResolved(true);
           setInitialized(true);
         }

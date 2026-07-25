@@ -12,6 +12,29 @@ export type AuthDiagnosticEvent =
   | "SUPABASE_REQUEST_COMPLETED"
   | "SUPABASE_REQUEST_TIMEOUT"
   | "SUPABASE_ERROR_RETURNED"
+  | "AUTH_SESSION_RECOVERY_STARTED"
+  | "AUTH_SESSION_RECOVERED"
+  | "AUTH_SESSION_RECOVERY_FAILED"
+  | "AUTH_USER_CHECK_STARTED"
+  | "AUTH_USER_CHECK_COMPLETED"
+  | "AUTH_USER_CHECK_FAILED"
+  | "AUTH_USER_CHECK_TIMEOUT"
+  | "PROFILE_LOAD_STARTED"
+  | "PROFILE_LOAD_COMPLETED"
+  | "PROFILE_MISSING"
+  | "PROFILE_INVALID"
+  | "PROFILE_LOAD_FAILED"
+  | "LAST_LOGIN_UPDATE_STARTED"
+  | "LAST_LOGIN_UPDATE_COMPLETED"
+  | "LAST_LOGIN_UPDATE_FAILED"
+  | "AUTH_HYDRATION_STARTED"
+  | "AUTH_HYDRATION_COMPLETED"
+  | "AUTH_HYDRATION_TIMEOUT_PRESERVED"
+  | "AUTH_HYDRATION_TRANSIENT_ERROR_PRESERVED"
+  | "ONBOARDING_DECIDED"
+  | "NAVIGATION_STARTED"
+  | "NAVIGATION_COMPLETED"
+  | "NAVIGATION_FAILED"
   | "BROWSER_REQUEST_ERROR"
   | "UNEXPECTED_JAVASCRIPT_ERROR";
 
@@ -37,6 +60,7 @@ type AuthDiagnosticDetails = {
   storageAvailable?: boolean;
   fedCmAvailable?: boolean;
   secureContext?: boolean;
+  onboardingRequired?: boolean;
   errorName?: string;
   supabaseStatus?: number;
   supabaseCode?: string;
@@ -86,7 +110,9 @@ export function getSafeBrowserAuthContext(): AuthDiagnosticDetails {
  */
 export function logAuthDiagnostic(event: AuthDiagnosticEvent, details: AuthDiagnosticDetails = {}) {
   const level =
-    event === "UNEXPECTED_JAVASCRIPT_ERROR" || event === "SUPABASE_ERROR_RETURNED"
+    event === "UNEXPECTED_JAVASCRIPT_ERROR" ||
+    event === "SUPABASE_ERROR_RETURNED" ||
+    event.endsWith("_FAILED")
       ? "error"
       : event.endsWith("FAILED") ||
           event.endsWith("TIMEOUT") ||
@@ -106,6 +132,7 @@ export function logAuthDiagnostic(event: AuthDiagnosticEvent, details: AuthDiagn
     storageAvailable: details.storageAvailable,
     fedCmAvailable: details.fedCmAvailable,
     secureContext: details.secureContext,
+    onboardingRequired: details.onboardingRequired,
     errorName: safeCode(details.errorName),
     supabaseStatus: typeof details.supabaseStatus === "number" ? details.supabaseStatus : undefined,
     supabaseCode: safeCode(details.supabaseCode),
