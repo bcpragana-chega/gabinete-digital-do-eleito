@@ -168,6 +168,65 @@ export async function iniciarSessaoSupabaseComGoogleCredential(
   }
 }
 
+export type ResultadoDemonstracao = {
+  status: "created" | "already_created";
+  seeded_at: string;
+  sessions?: number;
+  subjects?: number;
+  documents?: number;
+  follow_ups?: number;
+};
+
+export async function iniciarSessaoSupabaseDemonstracao(): Promise<{
+  user: User;
+  resultado: ResultadoDemonstracao;
+}> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new SupabaseAuthNotStartedError();
+
+  let sessaoAnonimaCriada = false;
+  try {
+    const { data: authData, error: authError } = await withSupabaseTimeout(
+      supabase.auth.signInAnonymously(),
+      "SIGN_IN_ANONYMOUS",
+    );
+    if (authError) throw new SupabaseAuthReturnedError(authError);
+    if (!authData.user?.id || authData.user.is_anonymous !== true) {
+      throw new SupabaseAuthReturnedError({ name: "AnonymousUserMissingError" });
+    }
+    sessaoAnonimaCriada = true;
+
+    const { data, error } = await withSupabaseTimeout(
+      supabase.rpc("criar_demonstracao_tribuno"),
+      "CREATE_DEMO_DATA",
+    );
+    if (error) throw new SupabaseAuthReturnedError(error);
+
+    const resultado = data as ResultadoDemonstracao | null;
+    if (!resultado || (resultado.status !== "created" && resultado.status !== "already_created")) {
+      throw new SupabaseAuthReturnedError({ name: "DemoSeedResultInvalidError" });
+    }
+
+    return { user: authData.user, resultado };
+  } catch (error) {
+    if (sessaoAnonimaCriada) {
+      try {
+        await withSupabaseTimeout(supabase.auth.signOut(), "ROLLBACK_DEMO_SESSION", 8000);
+      } catch {
+        // A RPC é transacional; mesmo que o logout falhe, não ficam dados parciais.
+      }
+    }
+    if (
+      error instanceof SupabaseAuthReturnedError ||
+      error instanceof SupabaseAuthTimeoutError ||
+      error instanceof SupabaseAuthNotStartedError
+    ) {
+      throw error;
+    }
+    throw new SupabaseAuthRequestError(error);
+  }
+}
+
 export async function diagnosticarSessaoSupabase() {
   const supabaseConfigurado = isSupabaseConfigured();
   const supabase = getSupabaseClient();

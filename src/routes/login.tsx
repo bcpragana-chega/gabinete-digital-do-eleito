@@ -1,8 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { loginComGoogle, perfilCompleto, useAuth, type AuthUser } from "@/lib/auth-store";
+import {
+  loginComGoogle,
+  loginDemonstracao,
+  perfilCompleto,
+  useAuth,
+  type AuthUser,
+} from "@/lib/auth-store";
 import {
   createAuthAttemptId,
   getSafeBrowserAuthContext,
@@ -137,6 +144,7 @@ function LoginPage() {
   const phaseRef = useRef<AuthDiagnosticPhase>("loading_script");
   const [erro, setErro] = useState("");
   const [aEntrar, setAEntrar] = useState(false);
+  const [aPrepararDemonstracao, setAPrepararDemonstracao] = useState(false);
   const [origin, setOrigin] = useState("origem atual");
   const rawGoogleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const googleClientId = typeof rawGoogleClientId === "string" ? rawGoogleClientId.trim() : "";
@@ -178,7 +186,7 @@ function LoginPage() {
   }, [googleClientId.length, googleClientIdStatus, origin]);
 
   useEffect(() => {
-    if (!initialized || !isAuthenticated) return;
+    if (!initialized || !isAuthenticated || aPrepararDemonstracao) return;
 
     const onboardingNecessario = !perfilCompleto(perfil);
     const destino = onboardingNecessario ? "/completar-perfil" : "/";
@@ -189,7 +197,7 @@ function LoginPage() {
         errorName: error instanceof Error ? error.name : "UnknownError",
       });
     });
-  }, [initialized, isAuthenticated, navigate, perfil]);
+  }, [aPrepararDemonstracao, initialized, isAuthenticated, navigate, perfil]);
 
   useEffect(() => {
     if (googleClientIdStatus !== "loaded" || !buttonRef.current) return;
@@ -418,6 +426,26 @@ function LoginPage() {
       ? "A variável VITE_GOOGLE_CLIENT_ID não foi encontrada pelo Vite. Confirme que o ficheiro .env está na raiz do projeto e reinicie o servidor de desenvolvimento."
       : "A variável VITE_GOOGLE_CLIENT_ID existe, mas está vazia. Verifique se .env.local está a sobrepor o valor ou se há espaços/aspas inválidas.";
 
+  async function experimentarTribuno() {
+    if (aPrepararDemonstracao) return;
+    setAPrepararDemonstracao(true);
+    setErro("");
+
+    try {
+      await loginDemonstracao();
+      await executarNavegacaoAposAuthConfirmada(() => navigate({ to: "/", replace: true }));
+    } catch (error) {
+      console.error("[Tribuno Auth] Não foi possível preparar a demonstração.", {
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
+      setErro(
+        "Não foi possível preparar a sua demonstração. Verifique a ligação e tente novamente.",
+      );
+    } finally {
+      setAPrepararDemonstracao(false);
+    }
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-10">
       <Card className="w-full max-w-md p-6 shadow-none">
@@ -452,6 +480,30 @@ function LoginPage() {
             <p className="text-sm leading-6 text-muted-foreground">{googleClientIdError}</p>
           </div>
         )}
+
+        <div className="my-6 flex items-center gap-3" aria-hidden="true">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            ou
+          </span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <div className="space-y-3">
+          <Button
+            type="button"
+            className="w-full"
+            variant="secondary"
+            disabled={aPrepararDemonstracao || aEntrar}
+            onClick={() => void experimentarTribuno()}
+          >
+            {aPrepararDemonstracao ? "A preparar a sua demonstração…" : "Experimentar o Tribuno"}
+          </Button>
+          <p className="text-center text-xs leading-5 text-muted-foreground">
+            Explore uma demonstração preenchida com dados fictícios. Pode alterar os dados
+            livremente.
+          </p>
+        </div>
 
         {erro && <p className="mt-4 text-sm text-destructive">{erro}</p>}
       </Card>

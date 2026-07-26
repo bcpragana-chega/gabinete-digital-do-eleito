@@ -16,6 +16,7 @@ import {
 } from "@/lib/onboarding-state";
 import {
   getSupabaseClient,
+  iniciarSessaoSupabaseDemonstracao,
   iniciarSessaoSupabaseComGoogleCredential,
   isSupabaseConfigured,
   obterUtilizadorSupabaseValidado,
@@ -55,7 +56,7 @@ export type AuthUser = {
   nome: string;
   email: string;
   avatarUrl?: string;
-  provider: "google" | "local-dev";
+  provider: "google" | "anonymous" | "local-dev";
   googleSub?: string;
   supabaseUserId?: string;
 };
@@ -360,6 +361,7 @@ export function obterAuthState() {
 
 function authUserDaSessao(user: User, local?: AuthUser): AuthUser {
   const metadata = user.user_metadata;
+  const demonstracao = user.is_anonymous === true;
   return {
     id: user.id,
     email: user.email ?? local?.email ?? "",
@@ -368,10 +370,10 @@ function authUserDaSessao(user: User, local?: AuthUser): AuthUser {
       textoSeguro(metadata?.name) ||
       local?.nome ||
       user.email ||
-      "Utilizador",
+      (demonstracao ? "Miguel Andrade" : "Utilizador"),
     avatarUrl:
       textoSeguro(metadata?.avatar_url) || textoSeguro(metadata?.picture) || local?.avatarUrl,
-    provider: "google",
+    provider: demonstracao ? "anonymous" : "google",
     googleSub: local?.googleSub,
     supabaseUserId: user.id,
   };
@@ -573,6 +575,48 @@ export async function loginComGoogle(
       } catch {
         // A falha original continua a ser a causa útil para o diagnóstico.
       }
+    }
+    throw error;
+  }
+}
+
+export async function loginDemonstracao() {
+  const state = lerAuthState();
+
+  try {
+    const { user: supabaseUser } = await iniciarSessaoSupabaseDemonstracao();
+    limparBloqueioLogout();
+    const userAutenticado = authUserDaSessao(supabaseUser);
+    const perfilRemoto = await carregarPerfilDepoisDeAuthConfirmada({
+      carregar: () => carregarPerfilHibrido(userAutenticado.id),
+    });
+
+    if (!perfilRemoto || !perfilCompleto(perfilRemoto)) {
+      throw new ProfileAfterAuthError("invalid");
+    }
+
+    const nextState: AuthState = {
+      ...state,
+      user: userAutenticado,
+      perfil: perfilRemoto,
+      perfisPorUserId: {
+        ...perfisPorUserIdSeguro(state.perfisPorUserId),
+        [userAutenticado.id]: perfilRemoto,
+      },
+      perfilRemotoConfirmado: true,
+    };
+    guardarAuthState(nextState);
+    return nextState;
+  } catch (error) {
+    try {
+      await terminarSessaoSupabase();
+    } catch {
+      // O seed é transacional; o erro original é mais útil para permitir nova tentativa.
+    }
+    try {
+      guardarAuthState(resolverEstadoLocalAposLogout(state));
+    } catch {
+      // Não esconder a causa original se o armazenamento local também estiver indisponível.
     }
     throw error;
   }
