@@ -3,7 +3,6 @@ import {
   AlignmentType,
   Document,
   Footer,
-  HeadingLevel,
   ImageRun,
   LevelFormat,
   Packer,
@@ -39,9 +38,9 @@ type PaginaPdf = {
 
 const larguraA4 = 1240;
 const alturaA4 = 1754;
-const margemX = 136;
-const margemTopo = 118;
-const margemFundo = 128;
+const margemX = 160;
+const margemTopo = 96;
+const margemFundo = 116;
 const larguraTexto = larguraA4 - margemX * 2;
 export const MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 export const mensagemLogoObrigatorio =
@@ -346,12 +345,20 @@ export async function criarBlobDocumentoWord(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ) {
-  const model = normalizeDocument(documento, contexto);
+  const model = obterModeloDocumentoExportacao(documento, contexto);
   const corpo = criarLinhasDocumento(documento, contexto)
     .filter((linha) => linha.tipo !== "espaco")
     .map((linha) => paragrafoDocx(linha));
   const logo = await imagemDocx(model.header.logoUrl);
   const documentoDocx = new Document({
+    styles: {
+      default: {
+        document: {
+          run: { font: "Arial", size: 22, color: "111111" },
+          paragraph: { spacing: { line: 276, after: 100 } },
+        },
+      },
+    },
     numbering: {
       config: [
         {
@@ -371,16 +378,20 @@ export async function criarBlobDocumentoWord(
     sections: [
       {
         properties: {
-          page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } },
+          page: { margin: { top: 1225, right: 1550, bottom: 1080, left: 1550 } },
         },
         footers: {
           default: new Footer({
             children: [
               new Paragraph({
-                alignment: AlignmentType.CENTER,
+                alignment: AlignmentType.START,
                 children: [
-                  new TextRun("Tribuno · "),
-                  new TextRun({ children: [PageNumber.CURRENT] }),
+                  new TextRun({
+                    text: "Tribuno • Documento preparado digitalmente • Página ",
+                    color: "8A8A8A",
+                    size: 18,
+                  }),
+                  new TextRun({ children: [PageNumber.CURRENT], color: "8A8A8A", size: 18 }),
                 ],
               }),
             ],
@@ -397,19 +408,20 @@ export async function criarBlobDocumentoWord(
               ]
             : []),
           new Paragraph({
-            alignment: AlignmentType.CENTER,
+            alignment: AlignmentType.START,
             children: [
               new TextRun({
                 text: (model.header.institution ?? "").toLocaleUpperCase("pt-PT"),
-                bold: true,
+                size: 32,
               }),
             ],
           }),
           ...(model.header.mandate
             ? [
                 new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: model.header.mandate })],
+                  alignment: AlignmentType.START,
+                  spacing: { before: 80 },
+                  children: [new TextRun({ text: model.header.mandate, size: 22 })],
                 }),
               ]
             : []),
@@ -419,30 +431,25 @@ export async function criarBlobDocumentoWord(
             children: [
               new TextRun({
                 text: model.header.documentType.toLocaleUpperCase("pt-PT"),
-                bold: true,
+                size: 32,
               }),
             ],
           }),
           new Paragraph({
-            heading: HeadingLevel.TITLE,
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 240, after: 480 },
-            children: [new TextRun({ text: model.header.title, bold: true })],
+            alignment: AlignmentType.START,
+            spacing: { before: 180, after: 460 },
+            children: [new TextRun({ text: model.header.title, size: 28 })],
           }),
           ...(model.documentData.length
             ? [
                 new Paragraph({
-                  heading: HeadingLevel.HEADING_2,
                   spacing: { after: 100 },
-                  children: [new TextRun({ text: "Dados do documento", bold: true })],
+                  children: [new TextRun({ text: "Dados do documento", size: 26 })],
                 }),
                 ...model.documentData.map(
                   (item) =>
                     new Paragraph({
-                      children: [
-                        new TextRun({ text: `${item.label}: `, bold: true }),
-                        new TextRun(item.value),
-                      ],
+                      children: [new TextRun({ text: `${item.label}: ` }), new TextRun(item.value)],
                     }),
                 ),
               ]
@@ -451,7 +458,7 @@ export async function criarBlobDocumentoWord(
           ...(model.closing.location || model.closing.date
             ? [
                 new Paragraph({
-                  spacing: { before: 600 },
+                  spacing: { before: 500, after: 360 },
                   text: [model.closing.location, model.closing.date].filter(Boolean).join(", "),
                 }),
               ]
@@ -459,7 +466,7 @@ export async function criarBlobDocumentoWord(
           ...(model.closing.signatureLabel
             ? [
                 new Paragraph({
-                  spacing: { before: 480 },
+                  spacing: { before: 280 },
                   children: [new TextRun(model.closing.signatureLabel)],
                 }),
               ]
@@ -469,7 +476,7 @@ export async function criarBlobDocumentoWord(
             .map(
               (linha, index) =>
                 new Paragraph({
-                  children: [new TextRun({ text: linha, bold: index === 0 })],
+                  children: [new TextRun({ text: linha })],
                 }),
             ),
         ],
@@ -479,6 +486,13 @@ export async function criarBlobDocumentoWord(
 
   const blob = await Packer.toBlob(documentoDocx);
   return new Blob([blob], { type: MIME_DOCX });
+}
+
+export function obterModeloDocumentoExportacao(
+  documento: DocumentoCriado,
+  contexto?: ContextoDocumentoInstitucional,
+) {
+  return normalizeDocument(documento, contexto);
 }
 
 async function imagemDocx(logoUrl?: string) {
@@ -494,22 +508,88 @@ async function imagemDocx(logoUrl?: string) {
       if (!response.ok) return undefined;
       bytes = new Uint8Array(await response.arrayBuffer());
     }
+    const tipo = tipoImagemDocx(bytes, logoUrl);
+    if (!tipo) return undefined;
     return new ImageRun({
       data: bytes,
-      type: logoUrl.includes("jpeg") ? "jpg" : "png",
-      transformation: { width: 120, height: 64 },
+      type: tipo,
+      transformation: dimensoesLogo(bytes),
     });
   } catch {
     return undefined;
   }
 }
 
+function dimensoesLogo(bytes: Uint8Array) {
+  const natural = dimensoesNaturaisImagem(bytes);
+  if (!natural) return { width: 170, height: 60 };
+
+  const scale = Math.min(170 / natural.width, 60 / natural.height, 1);
+  return {
+    width: Math.max(1, Math.round(natural.width * scale)),
+    height: Math.max(1, Math.round(natural.height * scale)),
+  };
+}
+
+function tipoImagemDocx(bytes: Uint8Array, logoUrl: string): "png" | "jpg" | undefined {
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+    return "png";
+  }
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return "jpg";
+  if (/\.jpe?g(?:$|[?#])/i.test(logoUrl)) return "jpg";
+  if (/\.png(?:$|[?#])/i.test(logoUrl)) return "png";
+  return undefined;
+}
+
+function dimensoesNaturaisImagem(bytes: Uint8Array) {
+  if (
+    bytes.length > 24 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  ) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const width = view.getUint32(16);
+    const height = view.getUint32(20);
+    if (width > 0 && height > 0) return { width, height };
+  }
+
+  if (bytes.length > 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let offset = 2;
+    while (offset + 8 < bytes.length) {
+      if (bytes[offset] !== 0xff) {
+        offset += 1;
+        continue;
+      }
+      const marker = bytes[offset + 1];
+      if (marker === 0xd8 || marker === 0xd9) {
+        offset += 2;
+        continue;
+      }
+      const segmentLength = view.getUint16(offset + 2);
+      const isStartOfFrame =
+        marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker);
+      if (isStartOfFrame && offset + 8 < bytes.length) {
+        const height = view.getUint16(offset + 5);
+        const width = view.getUint16(offset + 7);
+        if (width > 0 && height > 0) return { width, height };
+      }
+      if (segmentLength < 2) break;
+      offset += segmentLength + 2;
+    }
+  }
+
+  return undefined;
+}
+
 function paragrafoDocx(linha: Exclude<LinhaPdf, { tipo: "espaco" }>) {
   if (linha.tipo === "secao") {
     return new Paragraph({
-      heading: HeadingLevel.HEADING_1,
-      spacing: { before: 300, after: 120 },
-      children: [new TextRun({ text: linha.texto, bold: true })],
+      keepNext: true,
+      spacing: { before: 320, after: 120 },
+      children: [new TextRun({ text: linha.texto, size: 26 })],
     });
   }
   if (linha.tipo === "item") {
@@ -590,7 +670,7 @@ async function desenharPaginasDocumento(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ) {
-  const model = normalizeDocument(documento, contexto);
+  const model = obterModeloDocumentoExportacao(documento, contexto);
   const paginas: PaginaPdf[] = [];
   const criarPagina = () => {
     const canvas = document.createElement("canvas");
@@ -624,7 +704,7 @@ async function desenharPaginasDocumento(
   if (model.documentData.length) {
     pagina = desenharLinhaDocumento(pagina, paginas, {
       tipo: "secao",
-      texto: "DADOS DO DOCUMENTO",
+      texto: "Dados do documento",
     });
     model.documentData.forEach((item) => {
       pagina = desenharLinhaDocumento(pagina, paginas, {
@@ -645,43 +725,33 @@ async function desenharPaginasDocumento(
   const localData = [model.closing.location, model.closing.date].filter(Boolean).join(", ");
   if (localData)
     pagina = desenharParagrafo(pagina, paginas, localData, {
-      font: "32px 'Times New Roman', Times, serif",
-      lineHeight: 48,
+      font: "22px Arial, sans-serif",
+      lineHeight: 34,
     });
   pagina.y += 46;
   if (model.closing.signatureLabel)
     pagina = desenharParagrafo(pagina, paginas, model.closing.signatureLabel, {
-      font: "30px 'Times New Roman', Times, serif",
-      lineHeight: 44,
+      font: "22px Arial, sans-serif",
+      lineHeight: 34,
     });
-  pagina.y += 44;
-  pagina.ctx.strokeStyle = "#111827";
-  pagina.ctx.lineWidth = 2;
-  pagina.ctx.beginPath();
-  pagina.ctx.moveTo(margemX, pagina.y);
-  pagina.ctx.lineTo(margemX + 420, pagina.y);
-  pagina.ctx.stroke();
-  pagina.y += 38;
+  pagina.y += 30;
   [model.closing.name, model.closing.role, model.closing.politicalGroup]
     .filter((line): line is string => Boolean(line))
     .forEach((linha, index) => {
       pagina = desenharParagrafo(pagina, paginas, linha, {
-        font:
-          index === 0
-            ? "30px 'Times New Roman', Times, serif"
-            : "28px 'Times New Roman', Times, serif",
-        lineHeight: index === 0 ? 44 : 42,
+        font: "22px Arial, sans-serif",
+        lineHeight: 34,
       });
     });
 
   paginas.forEach((item, index) => {
     item.ctx.save();
-    item.ctx.textAlign = "center";
-    item.ctx.font = "22px Arial, sans-serif";
-    item.ctx.fillStyle = "#64748b";
+    item.ctx.textAlign = "left";
+    item.ctx.font = "19px Arial, sans-serif";
+    item.ctx.fillStyle = "#8a8a8a";
     item.ctx.fillText(
-      `Tribuno · Página ${index + 1} de ${paginas.length}`,
-      larguraA4 / 2,
+      `Tribuno • Documento preparado digitalmente • Página ${index + 1}`,
+      margemX,
       alturaA4 - 54,
     );
     item.ctx.restore();
@@ -701,72 +771,50 @@ function desenharCabecalho(
   ctx.textAlign = "center";
   return desenharLogoPdf(ctx, logoUrl, pagina.y).then((alturaLogo) => {
     pagina.y += alturaLogo;
-    desenharTextoQuebrado(
-      ctx,
-      cabecalho.orgao.toLocaleUpperCase("pt-PT"),
-      larguraA4 / 2,
-      pagina.y,
-      {
-        maxWidth: larguraTexto,
-        font: "800 32px Arial, sans-serif",
-        lineHeight: 42,
-        color: "#374151",
-      },
-    );
-    pagina.y += 60;
+    ctx.textAlign = "left";
+    desenharTextoQuebrado(ctx, cabecalho.orgao.toLocaleUpperCase("pt-PT"), margemX, pagina.y, {
+      maxWidth: larguraTexto,
+      font: "32px Arial, sans-serif",
+      lineHeight: 42,
+      color: "#111111",
+    });
+    pagina.y += 52;
 
     if (cabecalho.organizacao) {
       const alturaOrganizacao = desenharTextoQuebrado(
         ctx,
-        cabecalho.organizacao.toLocaleUpperCase("pt-PT"),
-        larguraA4 / 2,
+        cabecalho.organizacao,
+        margemX,
         pagina.y,
         {
           maxWidth: larguraTexto,
-          font: "700 25px Arial, sans-serif",
+          font: "23px Arial, sans-serif",
           lineHeight: 34,
-          color: "#111827",
+          color: "#111111",
         },
       );
-      pagina.y += alturaOrganizacao + 20;
+      pagina.y += alturaOrganizacao + 30;
     }
 
+    ctx.textAlign = "center";
     desenharTextoQuebrado(ctx, tipo.toLocaleUpperCase("pt-PT"), larguraA4 / 2, pagina.y, {
       maxWidth: larguraTexto,
-      font: "800 38px Arial, sans-serif",
+      font: "38px Arial, sans-serif",
       lineHeight: 48,
-      color: "#111827",
+      color: "#111111",
     });
-    pagina.y += 66;
+    pagina.y += 62;
 
-    const alturaTitulo = desenharTextoQuebrado(
-      ctx,
-      titulo.toLocaleUpperCase("pt-PT"),
-      larguraA4 / 2,
-      pagina.y,
-      {
-        maxWidth: larguraTexto,
-        font: "800 42px Arial, sans-serif",
-        lineHeight: 54,
-        color: "#111827",
-      },
-    );
-    pagina.y += alturaTitulo + 36;
-
-    ctx.strokeStyle = "#d1d5db";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(margemX, pagina.y);
-    ctx.lineTo(larguraA4 - margemX, pagina.y);
-    ctx.stroke();
-    pagina.y += 34;
+    ctx.textAlign = "left";
+    const alturaTitulo = desenharTextoQuebrado(ctx, titulo, margemX, pagina.y, {
+      maxWidth: larguraTexto,
+      font: "36px Arial, sans-serif",
+      lineHeight: 44,
+      color: "#111111",
+    });
+    pagina.y += alturaTitulo + 46;
     ctx.textAlign = "left";
   });
-}
-
-function perfilTemLogoInstitucional(contexto?: ContextoDocumentoInstitucional) {
-  const { perfil } = obterAuthState();
-  return Boolean(textoSeguro((contexto?.perfil ?? perfil)?.logoUrl));
 }
 
 function carregarImagem(src: string) {
@@ -788,14 +836,14 @@ async function desenharLogoPdf(
 
   try {
     const imagem = await carregarImagem(logoUrl);
-    const maxWidth = 240;
-    const maxHeight = 120;
+    const maxWidth = 210;
+    const maxHeight = 80;
     const escala = Math.min(maxWidth / imagem.naturalWidth, maxHeight / imagem.naturalHeight, 1);
     const largura = imagem.naturalWidth * escala;
     const altura = imagem.naturalHeight * escala;
 
     ctx.drawImage(imagem, (larguraA4 - largura) / 2, y, largura, altura);
-    return altura + 34;
+    return altura + 40;
   } catch {
     throw new Error("PDF_LOGO_LOAD_ERROR");
   }
@@ -805,7 +853,7 @@ function criarLinhasDocumento(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ): LinhaPdf[] {
-  const model = normalizeDocument(documento, contexto);
+  const model = obterModeloDocumentoExportacao(documento, contexto);
   return model.sections.flatMap((section): LinhaPdf[] => [
     { tipo: "espaco", altura: 24 },
     { tipo: "secao", texto: section.title },
@@ -849,10 +897,10 @@ function desenharLinhaDocumento(pagina: PaginaPdf, paginas: PaginaPdf[], linha: 
 
   if (linha.tipo === "secao") {
     pagina.y += 18;
-    pagina = desenharParagrafo(pagina, paginas, linha.texto.toLocaleUpperCase("pt-PT"), {
-      font: "800 28px Arial, sans-serif",
-      lineHeight: 38,
-      color: "#111827",
+    pagina = desenharParagrafo(pagina, paginas, linha.texto, {
+      font: "30px Arial, sans-serif",
+      lineHeight: 40,
+      color: "#111111",
     });
     pagina.y += 10;
     return pagina;
@@ -860,16 +908,16 @@ function desenharLinhaDocumento(pagina: PaginaPdf, paginas: PaginaPdf[], linha: 
 
   if (linha.tipo === "item") {
     return desenharParagrafo(pagina, paginas, `${linha.marcador} ${linha.texto}`, {
-      font: "29px 'Times New Roman', Times, serif",
-      lineHeight: 43,
+      font: "23px Arial, sans-serif",
+      lineHeight: 34,
       x: margemX + 22,
       maxWidth: larguraTexto - 22,
     });
   }
 
   return desenharParagrafo(pagina, paginas, linha.texto.replace(/\n/g, " "), {
-    font: "30px 'Times New Roman', Times, serif",
-    lineHeight: 46,
+    font: "23px Arial, sans-serif",
+    lineHeight: 34,
   });
 }
 

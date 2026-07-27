@@ -1,6 +1,7 @@
 import { obterAuthState, type PerfilEleito } from "@/lib/auth-store";
 import type { ResolvedInstitutionalContext } from "@/lib/ai/institutional-context";
 import type { Assembleia, DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
+import { resolverLogoPartidario } from "@/lib/party-branding";
 
 export type TipoDocumentoInstitucional = Extract<
   TipoDocumentoCriado,
@@ -325,7 +326,11 @@ export function obterDadosInstitucionais(
       textoSeguro(perfil?.cargo) ||
       "",
     grupoPolitico: normalizarGrupoPolitico(contexto?.grupoPolitico) || "",
-    logoUrl: textoSeguro(perfil?.logoUrl),
+    logoUrl: resolverLogoPartidario({
+      perfil,
+      partidoOuGrupo:
+        normalizarGrupoPolitico(contexto?.grupoPolitico) || textoSeguro(perfil?.organizacao),
+    }),
     local:
       textoSeguro(contexto?.assembleia?.local) ||
       textoSeguro(contexto?.institutionalContext?.territory.municipalityName) ||

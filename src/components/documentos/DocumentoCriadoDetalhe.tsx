@@ -45,6 +45,7 @@ import {
   serializeDocumentToMarkdown,
   type CanonicalDocument,
 } from "@/lib/document-model";
+import { resolverFormatoConteudoPersistido } from "@/lib/documentos-criados-repository";
 import { executarGravacaoConfirmadaDocumento } from "@/lib/document-save-flow";
 import {
   DocumentoCriadoServiceErro,
@@ -146,6 +147,7 @@ export function DocumentoCriadoDetalhe({
   const [assembleiaId, setAssembleiaId] = useState<string | undefined>();
   const [pontoId, setPontoId] = useState<string | undefined>();
   const [saveState, setSaveState] = useState<SaveFeedbackState>("saved");
+  const [erroGravacao, setErroGravacao] = useState<string>();
   const [copiado, setCopiado] = useState(false);
   const [modo, setModo] = useState<ModoDocumento>("visualizar");
   const [downloadPendente, setDownloadPendente] = useState<"pdf" | "word">();
@@ -280,15 +282,19 @@ export function DocumentoCriadoDetalhe({
 
     try {
       const atualizado = await executarGravacaoConfirmadaDocumento({
-        aoIniciar: () => setSaveState("saving"),
+        aoIniciar: () => {
+          setSaveState("saving");
+          setErroGravacao(undefined);
+        },
         persistir: () =>
           guardarDocumentoCriadoConfirmado(documento.id, {
             titulo: titulo.trim(),
             conteudo,
             conteudoJson,
-            formatoConteudo: isCanonicalDocument(conteudoJson)
-              ? "tribuno-document-v1"
-              : documento.formatoConteudo,
+            formatoConteudo: resolverFormatoConteudoPersistido({
+              conteudoJson,
+              formatoConteudo: documento.formatoConteudo,
+            }),
             estado,
             assuntoId: documento.assuntoId,
             assembleiaId,
@@ -309,8 +315,14 @@ export function DocumentoCriadoDetalhe({
           setAssembleiaId(persistido.assembleiaId);
           setPontoId(persistido.pontoId);
           setSaveState("saved");
+          setErroGravacao(undefined);
         },
-        aoFalhar: () => setSaveState("error"),
+        aoFalhar: () => {
+          setSaveState("error");
+          setErroGravacao(
+            "Não foi possível guardar o documento. As alterações continuam disponíveis. Tente novamente.",
+          );
+        },
       });
 
       if (assembleiaId && assembleiaId !== antesAssembleiaId) {
@@ -340,7 +352,12 @@ export function DocumentoCriadoDetalhe({
         registarEvento("Documento marcado como apresentado", atualizado.titulo, pontoId);
       }
       return atualizado;
-    } catch {
+    } catch (error) {
+      console.warn("[Tribuno] Falha segura ao guardar documento.", {
+        operacao: "DOCUMENTO_CRIADO_GUARDAR_FALHOU",
+        documentoId: documento.id.slice(0, 8),
+        tipoErro: error instanceof Error ? error.name : "UNKNOWN",
+      });
       // O texto editado permanece no estado React para permitir nova tentativa.
       return undefined;
     }
@@ -353,9 +370,10 @@ export function DocumentoCriadoDetalhe({
       titulo: titulo.trim() || base.titulo,
       conteudo,
       conteudoJson,
-      formatoConteudo: isCanonicalDocument(conteudoJson)
-        ? "tribuno-document-v1"
-        : base.formatoConteudo,
+      formatoConteudo: resolverFormatoConteudoPersistido({
+        conteudoJson,
+        formatoConteudo: base.formatoConteudo,
+      }),
       estado,
       assembleiaId,
       pontoId,
@@ -751,7 +769,7 @@ export function DocumentoCriadoDetalhe({
                       disabled={!titulo.trim() || saveState === "saving"}
                     >
                       <Save className="mr-2 h-4 w-4" />
-                      Guardar
+                      {saveState === "saving" ? "A guardar..." : "Guardar"}
                     </Button>
                     <Button
                       type="button"
@@ -948,6 +966,24 @@ export function DocumentoCriadoDetalhe({
                       <li key={erro}>{erro}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {erroGravacao && (
+                <div
+                  className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+                  role="alert"
+                >
+                  <span>{erroGravacao}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => void guardar()}
+                    disabled={saveState === "saving"}
+                  >
+                    Tentar guardar novamente
+                  </Button>
                 </div>
               )}
 

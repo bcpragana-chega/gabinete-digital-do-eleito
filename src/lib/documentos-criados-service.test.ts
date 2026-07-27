@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { readFileSync } from "node:fs";
 import {
   guardarDocumentoCriadoConfirmadoComDependencias,
   mesclarDocumentoCriadoNaCache,
 } from "@/lib/documentos-a-criar-store";
 import {
   guardarDocumentoCriadoSemRemoverRelacoes,
+  mapearDocumentoCriadoParaRemoto,
   mapearDocumentoCriadoRemoto,
+  resolverFormatoConteudoPersistido,
   type DocumentoCriadoRow,
 } from "@/lib/documentos-criados-repository";
 import { executarGravacaoConfirmadaDocumento } from "@/lib/document-save-flow";
@@ -436,5 +439,84 @@ describe("mapeamento remoto", () => {
     assert.equal(resultado.id, row.id);
     assert.equal(resultado.conteudo, row.conteudo);
     assert.equal(resultado.estado, "em revisão");
+  });
+
+  it("persiste o modelo canónico como blocks_json sem serializar JSON em conteúdo", () => {
+    const canonico = {
+      version: "tribuno-document-v1",
+      header: { documentType: "Moção", title: "Título" },
+      documentData: [],
+      sections: [],
+      closing: {},
+    };
+    const item = documento({
+      conteudo: "## ENQUADRAMENTO\n\nConteúdo humano.",
+      conteudoJson: canonico,
+      formatoConteudo: "tribuno-document-v1",
+    });
+    const row = mapearDocumentoCriadoParaRemoto("user-1", item);
+
+    assert.equal(resolverFormatoConteudoPersistido(item), "blocks_json");
+    assert.equal(row.formato_conteudo, "blocks_json");
+    assert.equal((row.conteudo_json as { version: string }).version, "tribuno-document-v1");
+    assert.match(row.conteudo ?? "", /Conteúdo humano/);
+    assert.doesNotMatch(row.conteudo ?? "", /"version"|\[object Object\]/);
+    assert.notEqual(row.formato_conteudo, "tribuno-document-v1");
+  });
+
+  it("documentos antigos conservam um formato permitido ao guardar", () => {
+    const antigo = documento({ formatoConteudo: "markdown", conteudoJson: undefined });
+    const row = mapearDocumentoCriadoParaRemoto("user-1", antigo);
+    assert.equal(row.formato_conteudo, "markdown");
+    assert.equal(row.conteudo, antigo.conteudo);
+  });
+
+  it("Intervenção usa outro_documento remotamente e reabre com o tipo visível", () => {
+    const row = mapearDocumentoCriadoParaRemoto(
+      "user-1",
+      documento({ tipo: "Intervenção", formatoConteudo: "markdown" }),
+    );
+    assert.equal(row.tipo, "outro_documento");
+    assert.equal((row.ia_metadata as { tipoVisivel: string }).tipoVisivel, "Intervenção");
+    assert.equal(mapearDocumentoCriadoRemoto(row).tipo, "Intervenção");
+
+    assert.equal(
+      mapearDocumentoCriadoRemoto({ ...row, ia_metadata: null, conteudo_json: null }).tipo,
+      "Outro documento",
+    );
+  });
+
+  it("mantém o contrato remoto compatível para todos os tipos documentais", () => {
+    const casos = [
+      ["Moção", "mocao"],
+      ["Requerimento", "requerimento"],
+      ["Recomendação", "recomendacao"],
+      ["Declaração de voto", "declaracao_voto"],
+      ["Intervenção", "outro_documento"],
+      ["Outro documento", "outro_documento"],
+    ] as const;
+
+    for (const [tipo, tipoRemoto] of casos) {
+      const row = mapearDocumentoCriadoParaRemoto("user-1", documento({ tipo }));
+      assert.equal(row.tipo, tipoRemoto);
+      assert.equal(mapearDocumentoCriadoRemoto(row).tipo, tipo);
+    }
+  });
+});
+
+describe("feedback de gravação documental", () => {
+  const editor = readFileSync(
+    new URL("../components/documentos/DocumentoCriadoDetalhe.tsx", import.meta.url),
+    "utf8",
+  );
+
+  it("explica a falha sem apagar alterações e permite nova tentativa", () => {
+    assert.match(
+      editor,
+      /Não foi possível guardar o documento\. As alterações continuam disponíveis\. Tente novamente\./,
+    );
+    assert.match(editor, /Tentar guardar novamente/);
+    assert.match(editor, /onClick=\{\(\) => void guardar\(\)\}/);
+    assert.match(editor, /A guardar\.\.\./);
   });
 });

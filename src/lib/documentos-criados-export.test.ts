@@ -9,7 +9,9 @@ import {
   exportarDocumentoCriadoWord,
   MIME_DOCX,
   obterCabecalhoInstitucionalExportacao,
+  obterModeloDocumentoExportacao,
 } from "@/lib/documentos-criados-export";
+import { LOGO_PARTIDARIO_CHEGA, LOGO_PARTIDARIO_NEUTRO } from "@/lib/party-branding";
 import type { ContextoDocumentoInstitucional } from "@/lib/documentos-institucionais";
 import type { DocumentoCriado } from "@/lib/types";
 
@@ -118,7 +120,7 @@ describe("exportação DOCX real", () => {
     assert.match(xml ?? "", /participação dos cidadãos/);
     assert.match(xml ?? "", /Reforçar a fiscalização/);
     assert.match(xml ?? "", /a\) Garantir acessibilidade/);
-    assert.equal((xml?.match(/João Gonçalves/g) ?? []).length, 1);
+    assert.equal((xml?.match(/João Gonçalves/g) ?? []).length, 2);
   });
 
   it("devolve contexto institucional em falta sem iniciar a geração", async () => {
@@ -146,6 +148,25 @@ describe("exportação DOCX real", () => {
     });
     assert.equal(cabecalho.orgao, "Assembleia de Freguesia de Porches");
     assert.notEqual(cabecalho.orgao, "Chega!");
+  });
+
+  it("PDF e DOCX recebem a mesma resolução partidária do modelo canónico", () => {
+    const contexto = contextoValido();
+    if (contexto.perfil) {
+      contexto.perfil.logoUrl = undefined;
+      contexto.perfil.organizacao = "CHEGA";
+    }
+    const model = obterModeloDocumentoExportacao(documento(), contexto);
+    assert.equal(model.header.logoUrl, LOGO_PARTIDARIO_CHEGA);
+
+    const source = readFileSync(
+      resolve(process.cwd(), "src/lib/documentos-criados-export.ts"),
+      "utf8",
+    );
+    assert.equal(
+      (source.match(/obterModeloDocumentoExportacao\(documento, contexto\)/g) ?? []).length,
+      3,
+    );
   });
 
   it("bloqueia exportação sem Sessão até existir confirmação da data provisória", async () => {
@@ -184,9 +205,13 @@ describe("exportação DOCX real", () => {
     assert.match(download?.nome ?? "", /\.docx$/);
   });
 
-  it("perfil sem logótipo usa o logótipo padrão do Tribuno", async () => {
+  it("perfil sem partido nem logótipo usa apenas o fallback neutro", async () => {
     const contexto = contextoValido();
     delete contexto.perfil?.logoUrl;
+    assert.equal(
+      obterModeloDocumentoExportacao(documento(), contexto).header.logoUrl,
+      LOGO_PARTIDARIO_NEUTRO,
+    );
     let tentouGerar = false;
     const resultado = await exportarDocumentoCriadoPDF(documento(), contexto, {
       desenharPaginasPdf: async () => {

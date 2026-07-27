@@ -52,20 +52,20 @@ export function InstitutionalDocumentEditor({
           Data provisória — associe este documento a uma Sessão para usar a data da apresentação.
         </div>
       )}
-      <article className="mx-auto min-h-[780px] max-w-3xl border border-slate-200 bg-white px-8 py-10 font-serif text-[15px] leading-7 text-slate-950 shadow-card md:px-14 md:py-12">
-        <header className="border-b border-slate-300 pb-6 text-center">
+      <article className="mx-auto min-h-[1123px] max-w-[794px] border border-slate-200 bg-white px-8 py-12 font-sans text-[16px] leading-[1.28] text-slate-950 shadow-card md:px-[82px] md:py-[76px]">
+        <header>
           {model.header.logoUrl && (
             <img
               src={model.header.logoUrl}
-              alt="Logótipo institucional"
-              className="mx-auto mb-5 max-h-20 max-w-[150px] object-contain"
+              alt="Logótipo do partido"
+              className="mx-auto mb-8 block max-h-[64px] max-w-[170px] object-contain"
               onError={(event) => event.currentTarget.remove()}
             />
           )}
           <EditableLine
             value={model.header.institution}
             readOnly={readOnly}
-            className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-700"
+            className="text-left text-[26px] font-normal uppercase leading-tight tracking-normal text-black"
             onChange={(institution) =>
               update({ ...model, header: { ...model.header, institution } })
             }
@@ -74,13 +74,13 @@ export function InstitutionalDocumentEditor({
             value={model.header.mandate}
             readOnly={readOnly}
             placeholder="Mandato"
-            className="mt-1 text-xs text-slate-500"
+            className="mt-2 text-left text-[15px] text-black"
             onChange={(mandate) => update({ ...model, header: { ...model.header, mandate } })}
           />
           <EditableLine
             value={model.header.documentType}
             readOnly={readOnly}
-            className="mt-4 text-lg font-extrabold uppercase tracking-[0.18em]"
+            className="mt-8 text-center text-[28px] font-normal uppercase tracking-normal"
             onChange={(documentType) =>
               update({ ...model, header: { ...model.header, documentType } })
             }
@@ -88,20 +88,20 @@ export function InstitutionalDocumentEditor({
           <EditableLine
             value={model.header.title}
             readOnly={readOnly}
-            className="mt-5 text-2xl font-extrabold uppercase leading-tight"
+            className="mt-4 text-left text-[24px] font-normal leading-tight"
             onChange={(title) => update({ ...model, header: { ...model.header, title } })}
           />
         </header>
 
         <DocumentData model={model} readOnly={readOnly} update={update} />
 
-        <main className="mt-8 space-y-7">
+        <main className="mt-9 space-y-8">
           {model.sections.map((section, index) => (
             <section key={section.id}>
               <EditableLine
                 value={section.title}
                 readOnly={readOnly}
-                className="mb-3 text-sm font-extrabold uppercase tracking-[0.1em]"
+                className="mb-3 text-left text-[20px] font-normal tracking-normal"
                 onChange={(title) =>
                   update({
                     ...model,
@@ -127,15 +127,15 @@ export function InstitutionalDocumentEditor({
                       ),
                     })
                   }
-                  className="min-h-[140px] resize-y border-slate-200 bg-white font-serif text-[15px] leading-7 shadow-none"
+                  className="min-h-[120px] resize-y border-slate-200 bg-white font-sans text-[16px] leading-[1.28] shadow-none"
                 />
               )}
             </section>
           ))}
         </main>
 
-        <footer className="mt-14 break-inside-avoid">
-          <div className="mb-9 flex gap-2">
+        <footer className="mt-12 break-inside-avoid">
+          <div className="mb-11 flex gap-1">
             <EditableLine
               value={model.closing.location}
               readOnly={readOnly}
@@ -158,7 +158,6 @@ export function InstitutionalDocumentEditor({
               update({ ...model, closing: { ...model.closing, signatureLabel } })
             }
           />
-          <div className="mb-3 mt-7 w-72 border-t border-slate-950 pt-3" />
           {(["name", "role", "politicalGroup"] as const).map((field) => (
             <EditableLine
               key={field}
@@ -171,6 +170,9 @@ export function InstitutionalDocumentEditor({
             />
           ))}
         </footer>
+        <div className="mt-14 text-left text-[13px] text-slate-400">
+          Tribuno • Documento preparado digitalmente • Página 1
+        </div>
       </article>
     </div>
   );
@@ -195,7 +197,7 @@ function EditableLine({
       value={value ?? ""}
       placeholder={placeholder}
       onChange={(event) => onChange(event.target.value)}
-      className={`h-auto border-transparent bg-transparent px-1 py-0 text-center font-sans shadow-none hover:border-slate-200 ${className}`}
+      className={`h-auto border-transparent bg-transparent px-0 py-0 font-sans shadow-none hover:border-slate-200 ${className}`}
     />
   );
 }
@@ -211,12 +213,12 @@ function DocumentData({
 }) {
   if (readOnly && model.documentData.length === 0) return null;
   return (
-    <section className="mt-6 rounded-md bg-slate-50 p-4 font-sans text-sm">
-      <h3 className="mb-2 font-bold uppercase tracking-wide">Dados do documento</h3>
+    <section className="mt-11 font-sans text-[15px]">
+      <h3 className="mb-3 text-[20px] font-normal">Dados do documento</h3>
       {model.documentData.map((item, index) => (
-        <div key={`${item.label}-${index}`} className="grid grid-cols-[9rem_1fr] gap-2 py-1">
+        <div key={`${item.label}-${index}`} className="flex gap-1">
           {readOnly ? (
-            <span className="font-semibold">{item.label}</span>
+            <span>{item.label}:</span>
           ) : (
             <Input
               aria-label={`Designação do dado ${index + 1}`}
@@ -229,7 +231,7 @@ function DocumentData({
                   ),
                 })
               }
-              className="h-auto border-transparent bg-transparent px-1 py-0 font-semibold shadow-none hover:border-slate-200"
+              className="h-auto w-32 border-transparent bg-transparent px-0 py-0 shadow-none hover:border-slate-200"
             />
           )}
           <EditableLine

@@ -121,16 +121,25 @@ function tipoParaRemoto(tipo: TipoDocumentoCriado) {
   if (tipo === "Recomendação") return "recomendacao";
   if (tipo === "Requerimento") return "requerimento";
   if (tipo === "Declaração de voto") return "declaracao_voto";
-  if (tipo === "Intervenção") return "intervencao";
+  if (tipo === "Intervenção") return "outro_documento";
   return "outro_documento";
 }
 
-function tipoDeRemoto(tipo: string): TipoDocumentoCriado {
+function tipoDeRemoto(tipo: string, metadata?: unknown): TipoDocumentoCriado {
   if (tipo === "mocao") return "Moção";
   if (tipo === "recomendacao") return "Recomendação";
   if (tipo === "requerimento") return "Requerimento";
   if (tipo === "declaracao_voto") return "Declaração de voto";
   if (tipo === "intervencao") return "Intervenção";
+  if (
+    tipo === "outro_documento" &&
+    metadata &&
+    typeof metadata === "object" &&
+    !Array.isArray(metadata) &&
+    (metadata as Record<string, unknown>).tipoVisivel === "Intervenção"
+  ) {
+    return "Intervenção";
+  }
   return "Outro documento";
 }
 
@@ -152,7 +161,7 @@ function mapearDocumentoCriado(row: DocumentoCriadoRow): DocumentoCriado {
   return {
     id: row.id,
     titulo: textoSeguro(row.titulo),
-    tipo: tipoDeRemoto(textoSeguro(row.tipo)),
+    tipo: tipoDeRemoto(textoSeguro(row.tipo), row.ia_metadata),
     estado: estadoDeRemoto(textoSeguro(row.estado)),
     conteudo: row.conteudo ?? "",
     formatoConteudo: textoSeguro(row.formato_conteudo) || "markdown",
@@ -417,6 +426,7 @@ export async function guardarDocumentoGeradoRemotamente(input: {
     ia_modelo: input.modelo,
     ia_metadata: {
       provider: input.provider,
+      ...(input.tipo === "Intervenção" ? { tipoVisivel: "Intervenção" } : {}),
       ...input.metadata,
     },
     assunto_id: input.assuntoId,

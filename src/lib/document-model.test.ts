@@ -6,6 +6,7 @@ import {
   normalizeDocument,
   serializeDocumentToMarkdown,
 } from "@/lib/document-model";
+import { LOGO_PARTIDARIO_CHEGA } from "@/lib/party-branding";
 import type { ContextoDocumentoInstitucional } from "@/lib/documentos-institucionais";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
@@ -116,5 +117,24 @@ describe("modelo documental canónico V1", () => {
     assert.equal(reopened.header.title, "Título editado");
     assert.equal(reopened.closing.politicalGroup, "Grupo independente");
     assert.doesNotMatch(serializeDocumentToMarkdown(reopened), /texto legado divergente/);
+  });
+
+  it("substitui o antigo logótipo do Tribuno pela identidade partidária atual", () => {
+    const original = normalizeDocument(legacy("Moção", cases[0][1]), context);
+    const antigo = {
+      ...original,
+      header: { ...original.header, logoUrl: "/logo.png" },
+    };
+    const contextoChega: ContextoDocumentoInstitucional = {
+      ...context,
+      perfil: context.perfil ? { ...context.perfil, organizacao: "CHEGA" } : undefined,
+    };
+
+    const reopened = normalizeDocument(
+      { ...legacy("Moção", "texto legado divergente"), conteudoJson: antigo },
+      contextoChega,
+    );
+
+    assert.equal(reopened.header.logoUrl, LOGO_PARTIDARIO_CHEGA);
   });
 });

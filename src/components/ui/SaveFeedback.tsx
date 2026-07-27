@@ -11,12 +11,12 @@ export function SaveFeedback({
 }) {
   const label =
     state === "saving"
-      ? "Saving..."
+      ? "A guardar..."
       : state === "saved"
-        ? "Saved"
+        ? "Guardado"
         : state === "error"
-          ? "Error while saving"
-          : "Unsaved changes";
+          ? "Erro ao guardar"
+          : "Alterações por guardar";
 
   return (
     <span

@@ -1,6 +1,7 @@
 import type { ContextoDocumentoInstitucional } from "@/lib/documentos-institucionais";
 import { obterDadosInstitucionais } from "@/lib/documentos-institucionais";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
+import { resolverLogoPartidario, resolverMandatoInstitucional } from "@/lib/party-branding";
 
 export const DOCUMENT_MODEL_VERSION = "tribuno-document-v1" as const;
 
@@ -219,23 +220,54 @@ export function normalizeDocument(
   contexto?: ContextoDocumentoInstitucional,
 ): CanonicalDocument {
   if (isCanonicalDocument(documento.conteudoJson)) {
-    return sanitizeDocument(documento.conteudoJson);
+    const canonical = sanitizeDocument(documento.conteudoJson);
+    const temIdentidadePartidaria = Boolean(
+      contexto?.perfil?.logoUrl?.trim() ||
+      contexto?.perfil?.organizacao?.trim() ||
+      contexto?.grupoPolitico?.trim(),
+    );
+    const mandatoResolvido = resolverMandatoInstitucional({
+      perfil: contexto?.perfil,
+      contexto: contexto?.institutionalContext,
+    });
+
+    return sanitizeDocument({
+      ...canonical,
+      header: {
+        ...canonical.header,
+        logoUrl: temIdentidadePartidaria
+          ? resolverLogoPartidario({
+              perfil: contexto?.perfil,
+              partidoOuGrupo: contexto?.grupoPolitico,
+            })
+          : canonical.header.logoUrl,
+        mandate: canonical.header.mandate ?? mandatoResolvido,
+      },
+    });
   }
 
   const data = obterDadosInstitucionais(contexto);
   const sections = parseLegacySections(documento.tipo, documento.conteudo || "");
   const documentData = [
-    { label: "Órgão", value: data.nomeOrgao },
-    { label: "Assunto", value: contexto?.assunto ?? "" },
     { label: "Sessão", value: contexto?.sessao ?? contexto?.assembleia?.nome ?? "" },
+    { label: "Proponente", value: data.nomeEleito === "Nome do eleito" ? "" : data.nomeEleito },
+    { label: "Grupo", value: data.grupoPolitico },
+    { label: "Assunto", value: contexto?.assunto ?? "" },
     { label: "Ponto", value: contexto?.ponto ?? "" },
   ].filter((item) => clean(item.value)) as Array<{ label: string; value: string }>;
 
   return sanitizeDocument({
     version: DOCUMENT_MODEL_VERSION,
     header: {
-      logoUrl: data.logoUrl || "/logo.png",
+      logoUrl: resolverLogoPartidario({
+        perfil: contexto?.perfil,
+        partidoOuGrupo: contexto?.grupoPolitico,
+      }),
       institution: data.nomeOrgao,
+      mandate: resolverMandatoInstitucional({
+        perfil: contexto?.perfil,
+        contexto: contexto?.institutionalContext,
+      }),
       documentType: documento.tipo,
       title: documento.titulo,
     },
@@ -248,7 +280,6 @@ export function normalizeDocument(
     closing: {
       location: data.local,
       date: data.data,
-      signatureLabel: "O Proponente,",
       name: data.nomeEleito === "Nome do eleito" ? undefined : data.nomeEleito,
       role: data.cargo,
       politicalGroup: data.grupoPolitico,

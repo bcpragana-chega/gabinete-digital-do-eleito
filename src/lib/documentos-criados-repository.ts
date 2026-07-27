@@ -1,5 +1,6 @@
 import { getSupabaseClient, isSupabaseConfigured, withSupabaseTimeout } from "@/lib/supabase";
 import type { DocumentoCriado, EstadoDocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
+import { isCanonicalDocument } from "@/lib/document-model";
 import {
   guardarJSONParaUtilizador,
   guardarJSONPorUtilizador,
@@ -61,17 +62,51 @@ function tipoParaRemoto(tipo: TipoDocumentoCriado): TipoDocumentoCriadoRemoto {
   if (tipo === "Recomendação") return "recomendacao";
   if (tipo === "Requerimento") return "requerimento";
   if (tipo === "Declaração de voto") return "declaracao_voto";
-  if (tipo === "Intervenção") return "intervencao";
+  if (tipo === "Intervenção") return "outro_documento";
   return "outro_documento";
 }
 
-function tipoDeRemoto(tipo: unknown): TipoDocumentoCriado {
+function tipoVisivelGuardado(row: Pick<DocumentoCriadoRow, "conteudo_json" | "ia_metadata">) {
+  if (
+    isCanonicalDocument(row.conteudo_json) &&
+    row.conteudo_json.header.documentType === "Intervenção"
+  ) {
+    return "Intervenção";
+  }
+  if (row.ia_metadata && typeof row.ia_metadata === "object" && !Array.isArray(row.ia_metadata)) {
+    const metadata = row.ia_metadata as Record<string, unknown>;
+    if (metadata.tipoVisivel === "Intervenção") return "Intervenção";
+  }
+  return undefined;
+}
+
+function tipoDeRemoto(
+  tipo: unknown,
+  row: Pick<DocumentoCriadoRow, "conteudo_json" | "ia_metadata">,
+): TipoDocumentoCriado {
   if (tipo === "mocao") return "Moção";
   if (tipo === "recomendacao") return "Recomendação";
   if (tipo === "requerimento") return "Requerimento";
   if (tipo === "declaracao_voto") return "Declaração de voto";
   if (tipo === "intervencao") return "Intervenção";
+  if (tipo === "outro_documento" && tipoVisivelGuardado(row)) return "Intervenção";
   return "Outro documento";
+}
+
+const formatosConteudoPermitidos = new Set([
+  "plain_text",
+  "markdown",
+  "html",
+  "prosemirror_json",
+  "blocks_json",
+]);
+
+export function resolverFormatoConteudoPersistido(
+  documento: Pick<DocumentoCriado, "conteudoJson" | "formatoConteudo">,
+) {
+  if (isCanonicalDocument(documento.conteudoJson)) return "blocks_json";
+  const formato = textoSeguro(documento.formatoConteudo);
+  return formatosConteudoPermitidos.has(formato) ? formato : "markdown";
 }
 
 function estadoParaRemoto(estado: EstadoDocumentoCriado): EstadoDocumentoCriadoRemoto {
@@ -98,7 +133,7 @@ function estadoDeRemoto(estado: unknown): EstadoDocumentoCriado {
 export function mapearDocumentoCriadoRemoto(row: DocumentoCriadoRow): DocumentoCriado {
   return {
     id: row.id,
-    tipo: tipoDeRemoto(row.tipo),
+    tipo: tipoDeRemoto(row.tipo, row),
     titulo: textoSeguro(row.titulo),
     conteudo: row.conteudo ?? "",
     conteudoJson: row.conteudo_json ?? undefined,
@@ -123,8 +158,19 @@ export function mapearDocumentoCriadoRemoto(row: DocumentoCriadoRow): DocumentoC
   };
 }
 
-function toRow(userId: string, documento: DocumentoCriado): DocumentoCriadoRow {
+/** @internal Contrato persistido, exportado para testes sem chamar Supabase. */
+export function mapearDocumentoCriadoParaRemoto(
+  userId: string,
+  documento: DocumentoCriado,
+): DocumentoCriadoRow {
   const agora = new Date().toISOString();
+  const metadata: Record<string, unknown> =
+    documento.iaMetadata &&
+    typeof documento.iaMetadata === "object" &&
+    !Array.isArray(documento.iaMetadata)
+      ? { ...documento.iaMetadata }
+      : {};
+  if (documento.tipo === "Intervenção") metadata.tipoVisivel = "Intervenção";
 
   return {
     id: documento.id,
@@ -134,14 +180,14 @@ function toRow(userId: string, documento: DocumentoCriado): DocumentoCriadoRow {
     estado: estadoParaRemoto(documento.estado),
     conteudo: documento.conteudo ?? "",
     conteudo_json: documento.conteudoJson ?? null,
-    formato_conteudo: textoSeguro(documento.formatoConteudo) || "plain_text",
+    formato_conteudo: resolverFormatoConteudoPersistido(documento),
     resumo: textoSeguro(documento.resumo) || null,
     notas: textoSeguro(documento.notas) || null,
     tags: Array.isArray(documento.tags) ? documento.tags : [],
     origem: textoSeguro(documento.origem) || "manual",
     origem_prompt: textoSeguro(documento.origemPrompt) || null,
     ia_modelo: textoSeguro(documento.iaModelo) || null,
-    ia_metadata: documento.iaMetadata ?? null,
+    ia_metadata: Object.keys(metadata).length ? metadata : null,
     assunto_id: textoSeguro(documento.assuntoId) || null,
     assembleia_id: textoSeguro(documento.assembleiaId) || null,
     ponto_id: textoSeguro(documento.pontoId) || null,
@@ -274,7 +320,7 @@ export async function guardarDocumentoCriadoRemoto(userId: string, documento: Do
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("SUPABASE_NOT_CONFIGURED");
 
-  const row = toRow(supabaseUserId, documento);
+  const row = mapearDocumentoCriadoParaRemoto(supabaseUserId, documento);
   const persistido = await guardarDocumentoCriadoSemRemoverRelacoes(row, (rowParaGuardar) =>
     withSupabaseTimeout(
       supabase
