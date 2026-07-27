@@ -8,11 +8,13 @@ import {
   criarHtmlDocumentoInstitucional,
   normalizarGrupoPolitico,
   obterDadosInstitucionais,
+  obterSecoesDocumentoInstitucional,
   resolverDataInstitucionalDocumento,
   resolverOrgaoInstitucional,
   validarDocumentoInstitucional,
   type ContextoDocumentoInstitucional,
 } from "@/lib/documentos-institucionais";
+import { normalizeDocument, serializeDocumentToMarkdown } from "@/lib/document-model";
 import type { ContextoGeracaoDocumento } from "@/lib/ai/types";
 import type { PerfilEleito } from "@/lib/auth-store";
 
@@ -230,6 +232,60 @@ describe("validação e composição institucional", () => {
     assert.equal(recomendacao.conteudo, original);
     assert.match(html, /Na Rua da Igreja existem três candeeiros apagados\./);
     assert.match(html, /A situação reduz a iluminação do percurso pedonal\./);
+  });
+
+  it("valida a proposta canónica sem criar uma secção vazia artificial", () => {
+    const mocaoLegada = {
+      tipo: "Moção" as const,
+      titulo: "Proteção da participação pública",
+      conteudo: `## ENQUADRAMENTO
+
+Existe uma necessidade documentada.
+
+## FUNDAMENTAÇÃO
+
+A medida é adequada ao problema identificado.
+
+## PROPOSTA / DELIBERAÇÃO
+
+1. Aprovar a medida.
+2. Publicar a deliberação.`,
+    };
+    const canonical = normalizeDocument(mocaoLegada, contexto);
+    const markdownCanonico = serializeDocumentToMarkdown(canonical);
+    const secoes = obterSecoesDocumentoInstitucional("Moção", markdownCanonico);
+    const proposta = secoes.find((secao) => secao.titulo === "PROPOSTA / DELIBERAÇÃO");
+    const validacao = validarDocumentoInstitucional(
+      { ...mocaoLegada, conteudo: markdownCanonico },
+      contexto,
+    );
+
+    assert.match(markdownCanonico, /## DELIBERAÇÃO \/ PROPOSTA/);
+    assert.match(proposta?.conteudo ?? "", /Aprovar a medida/);
+    assert.equal(validacao.pronto, true);
+    assert.doesNotMatch(validacao.erros.join("\n"), /PROPOSTA \/ DELIBERAÇÃO não tem conteúdo/);
+  });
+
+  it("continua a bloquear uma PROPOSTA / DELIBERAÇÃO realmente vazia", () => {
+    const resultado = validarDocumentoInstitucional(
+      {
+        tipo: "Moção",
+        titulo: "Moção incompleta",
+        conteudo: `## ENQUADRAMENTO
+
+Factos.
+
+## FUNDAMENTAÇÃO
+
+Fundamentos.
+
+## DELIBERAÇÃO / PROPOSTA`,
+      },
+      contexto,
+    );
+
+    assert.equal(resultado.pronto, false);
+    assert.ok(resultado.erros.includes("A secção PROPOSTA / DELIBERAÇÃO não tem conteúdo."));
   });
 
   it("deteta rodapé institucional produzido pela IA", () => {

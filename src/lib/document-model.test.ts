@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   DOCUMENT_MODEL_VERSION,
+  blocksToText,
   isCanonicalDocument,
   normalizeDocument,
+  parseBlocks,
   serializeDocumentToMarkdown,
 } from "@/lib/document-model";
 import { LOGO_PARTIDARIO_CHEGA } from "@/lib/party-branding";
@@ -136,5 +138,51 @@ describe("modelo documental canónico V1", () => {
     );
 
     assert.equal(reopened.header.logoUrl, LOGO_PARTIDARIO_CHEGA);
+  });
+
+  it("preserva PROPOSTA / DELIBERAÇÃO entre Markdown legado, editor e modelo canónico", () => {
+    const antigo = legacy(
+      "Moção",
+      `## ENQUADRAMENTO
+
+Factos.
+
+## FUNDAMENTAÇÃO
+
+Fundamentos.
+
+## PROPOSTA / DELIBERAÇÃO
+
+1. Aprovar a proposta apresentada.`,
+    );
+    const canonical = normalizeDocument(antigo, context);
+    const proposta = canonical.sections.find((section) => section.id === "deliberacao-proposta");
+
+    assert.ok(proposta);
+    assert.equal(proposta.title, "DELIBERAÇÃO / PROPOSTA");
+    assert.match(blocksToText(proposta.blocks), /Aprovar a proposta apresentada/);
+
+    const editado = {
+      ...canonical,
+      sections: canonical.sections.map((section) =>
+        section.id === "deliberacao-proposta"
+          ? { ...section, blocks: parseBlocks("1. Aprovar.\n2. Publicar a deliberação.") }
+          : section,
+      ),
+    };
+    const markdown = serializeDocumentToMarkdown(editado);
+    const reabertoCanonico = normalizeDocument(
+      { ...antigo, conteudo: markdown, conteudoJson: editado },
+      context,
+    );
+    const reabertoLegado = normalizeDocument({ ...antigo, conteudo: markdown }, context);
+
+    for (const reaberto of [reabertoCanonico, reabertoLegado]) {
+      const conteudo = blocksToText(
+        reaberto.sections.find((section) => section.id === "deliberacao-proposta")?.blocks ?? [],
+      );
+      assert.match(conteudo, /Aprovar/);
+      assert.match(conteudo, /Publicar a deliberação/);
+    }
   });
 });

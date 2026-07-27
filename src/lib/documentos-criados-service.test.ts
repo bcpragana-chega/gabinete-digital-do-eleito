@@ -14,6 +14,13 @@ import {
 } from "@/lib/documentos-criados-repository";
 import { executarGravacaoConfirmadaDocumento } from "@/lib/document-save-flow";
 import {
+  blocksToText,
+  normalizeDocument,
+  parseBlocks,
+  serializeDocumentToMarkdown,
+} from "@/lib/document-model";
+import { validarDocumentoInstitucional } from "@/lib/documentos-institucionais";
+import {
   documentoCriadoPertenceAoAssunto,
   DocumentoCriadoServiceErro,
   hrefDocumentoCriadoNoAssunto,
@@ -501,6 +508,67 @@ describe("mapeamento remoto", () => {
       assert.equal(row.tipo, tipoRemoto);
       assert.equal(mapearDocumentoCriadoRemoto(row).tipo, tipo);
     }
+  });
+
+  it("guarda e reabre o conteúdo editado de PROPOSTA / DELIBERAÇÃO", () => {
+    const contexto = {
+      assembleia: {
+        nome: "Sessão ordinária",
+        tipo: "ordinaria",
+        orgao: "Assembleia Municipal",
+        data: "2026-07-30",
+        local: "Lagoa",
+      },
+      nomeEleito: "Maria Silva",
+    } as const;
+    const base = documento({
+      tipo: "Moção",
+      conteudo: `## ENQUADRAMENTO
+
+Factos.
+
+## FUNDAMENTAÇÃO
+
+Fundamentos.
+
+## PROPOSTA / DELIBERAÇÃO
+
+Texto inicial.`,
+    });
+    const canonical = normalizeDocument(base, contexto);
+    const editado = {
+      ...canonical,
+      sections: canonical.sections.map((section) =>
+        section.id === "deliberacao-proposta"
+          ? {
+              ...section,
+              blocks: parseBlocks("1. Aprovar a proposta.\n2. Publicar a deliberação."),
+            }
+          : section,
+      ),
+    };
+    const prontoParaGuardar = {
+      ...base,
+      conteudo: serializeDocumentToMarkdown(editado),
+      conteudoJson: editado,
+      formatoConteudo: "blocks_json",
+    };
+    const row = mapearDocumentoCriadoParaRemoto("user-1", prontoParaGuardar);
+    const reaberto = mapearDocumentoCriadoRemoto(row);
+    const modeloReaberto = normalizeDocument(reaberto, contexto);
+    const proposta = modeloReaberto.sections.find(
+      (section) => section.id === "deliberacao-proposta",
+    );
+    const validacao = validarDocumentoInstitucional(reaberto, contexto);
+
+    assert.equal(row.formato_conteudo, "blocks_json");
+    assert.equal(
+      (row.conteudo_json as { sections: Array<{ id: string }> }).sections.at(-1)?.id,
+      "deliberacao-proposta",
+    );
+    assert.match(blocksToText(proposta?.blocks ?? []), /Aprovar a proposta/);
+    assert.match(blocksToText(proposta?.blocks ?? []), /Publicar a deliberação/);
+    assert.equal(validacao.pronto, true);
   });
 });
 

@@ -849,7 +849,8 @@ async function desenharLogoPdf(
   }
 }
 
-function criarLinhasDocumento(
+/** @internal Estrutura partilhada pelos compositores PDF e DOCX, exportada para regressão. */
+export function criarLinhasDocumento(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ): LinhaPdf[] {

@@ -506,6 +506,7 @@ function obterTituloSecaoNormalizado(
     DELIBERACAO: tipo === "Moção" ? "PROPOSTA / DELIBERAÇÃO" : undefined,
     PROPOSTA: tipo === "Moção" ? "PROPOSTA / DELIBERAÇÃO" : undefined,
     "PROPOSTA / DELIBERACAO": "PROPOSTA / DELIBERAÇÃO",
+    "DELIBERACAO / PROPOSTA": "PROPOSTA / DELIBERAÇÃO",
     PEDIDO: tipo === "Requerimento" ? "REQUERIMENTO" : "RECOMENDAÇÃO",
     RECOMENDACAO: "RECOMENDAÇÃO",
     REQUERIMENTO: "REQUERIMENTO",

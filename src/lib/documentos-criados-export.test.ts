@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import JSZip from "jszip";
 import {
   criarBlobDocumentoWord,
+  criarLinhasDocumento,
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
   MIME_DOCX,
@@ -167,6 +168,44 @@ describe("exportação DOCX real", () => {
       (source.match(/obterModeloDocumentoExportacao\(documento, contexto\)/g) ?? []).length,
       3,
     );
+  });
+
+  it("PDF e DOCX preservam o conteúdo de PROPOSTA / DELIBERAÇÃO", async () => {
+    const mocao: DocumentoCriado = {
+      ...documento(),
+      tipo: "Moção",
+      titulo: "Participação pública",
+      conteudo: `## ENQUADRAMENTO
+
+Existe uma necessidade documentada.
+
+## FUNDAMENTAÇÃO
+
+A medida é adequada.
+
+## PROPOSTA / DELIBERAÇÃO
+
+1. Aprovar a medida.
+2. Publicar a deliberação.`,
+    };
+    const contexto = contextoValido();
+    const model = obterModeloDocumentoExportacao(mocao, contexto);
+    const proposta = model.sections.find((section) => section.id === "deliberacao-proposta");
+    const linhasPdf = criarLinhasDocumento(mocao, contexto);
+    const blob = await criarBlobDocumentoWord(mocao, contexto);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file("word/document.xml")?.async("string");
+
+    assert.ok(proposta);
+    assert.ok(
+      linhasPdf.some(
+        (linha) =>
+          linha.tipo === "item" && linha.texto === "Aprovar a medida." && linha.marcador === "1.",
+      ),
+    );
+    assert.match(xml ?? "", /DELIBERAÇÃO \/ PROPOSTA/);
+    assert.match(xml ?? "", /Aprovar a medida\./);
+    assert.match(xml ?? "", /Publicar a deliberação\./);
   });
 
   it("bloqueia exportação sem Sessão até existir confirmação da data provisória", async () => {
