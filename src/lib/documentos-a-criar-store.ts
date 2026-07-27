@@ -378,7 +378,15 @@ export function atualizarDocumentoACriarRascunho(
 type AlteracoesDocumentoCriado = Partial<
   Pick<
     DocumentoCriado,
-    "titulo" | "conteudo" | "estado" | "assuntoId" | "assembleiaId" | "pontoId" | "iaMetadata"
+    | "titulo"
+    | "conteudo"
+    | "conteudoJson"
+    | "formatoConteudo"
+    | "estado"
+    | "assuntoId"
+    | "assembleiaId"
+    | "pontoId"
+    | "iaMetadata"
   >
 >;
 

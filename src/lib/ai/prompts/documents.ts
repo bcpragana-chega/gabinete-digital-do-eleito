@@ -2,12 +2,17 @@ import type { ContextoGeracaoDocumento } from "@/lib/ai/types";
 import type { TipoDocumentoCriado } from "@/lib/types";
 
 const estruturasPorTipo: Record<TipoDocumentoCriado, string[]> = {
-  Moção: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "PROPOSTA / DELIBERAÇÃO"],
-  Recomendação: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "RECOMENDAÇÃO"],
-  Requerimento: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "REQUERIMENTO"],
-  "Declaração de voto": ["Contexto", "Fundamentação", "Declaração"],
+  Moção: ["ENQUADRAMENTO", "CONSIDERANDOS", "DELIBERAÇÃO / PROPOSTA"],
+  Recomendação: ["ENQUADRAMENTO", "PROBLEMA IDENTIFICADO", "FUNDAMENTAÇÃO", "RECOMENDAÇÕES"],
+  Requerimento: ["DESTINATÁRIO", "ENQUADRAMENTO", "FUNDAMENTAÇÃO", "PEDIDOS / PERGUNTAS"],
+  "Declaração de voto": [
+    "IDENTIFICAÇÃO DA VOTAÇÃO",
+    "SENTIDO DE VOTO",
+    "FUNDAMENTAÇÃO",
+    "CONCLUSÃO",
+  ],
   Intervenção: ["Abertura", "Contexto", "Argumentação", "Conclusão"],
-  "Outro documento": ["Enquadramento", "Conteúdo", "Conclusão"],
+  "Outro documento": ["SECÇÕES ADEQUADAS AO CONTEÚDO, SEM FORÇAR UMA ESTRUTURA FIXA"],
 };
 
 function limitarTexto(texto: string | undefined, max = 4000) {
@@ -27,11 +32,11 @@ function instrucaoOficialMocao() {
     "Especificação oficial para Moções do Tribuno:",
     "- A Moção deve seguir o padrão institucional oficial do Tribuno para este tipo documental.",
     "- Não copies conteúdo, frases ou ideias de modelos anteriores; replica apenas a forma técnica: hierarquia, ritmo, secções, sobriedade e consistência.",
-    "- O conteúdo deve ter apenas: ENQUADRAMENTO, FUNDAMENTAÇÃO e PROPOSTA / DELIBERAÇÃO.",
+    "- O conteúdo deve ter apenas: ENQUADRAMENTO, CONSIDERANDOS e DELIBERAÇÃO / PROPOSTA.",
     "- Nunca mostres a estrutura de raciocínio interno. É proibido escrever títulos como Factos, Problema, Consequência, Objetivo, Riscos, Notas ou Informação complementar.",
     "- O ENQUADRAMENTO contextualiza o problema e prepara o leitor. Não deve antecipar nem repetir a fundamentação.",
-    "- A FUNDAMENTAÇÃO liga os factos, explica a razão da intervenção, enquadra a competência do órgão e usa legislação apenas quando existir no contexto.",
-    "- A PROPOSTA / DELIBERAÇÃO deve ser curta, objetiva e diretamente decorrente da fundamentação.",
+    "- Os CONSIDERANDOS ligam os factos, explicam a razão da intervenção, enquadram a competência do órgão e usam legislação apenas quando existir no contexto.",
+    "- A DELIBERAÇÃO / PROPOSTA deve ser curta, objetiva e diretamente decorrente dos considerandos.",
     "- Usa parágrafos curtos, linguagem institucional, natural, fluida e em português europeu.",
     "- Evita juridiquês excessivo, adjetivos inúteis, linguagem de chatbot, frases genéricas e enumerações que pareçam relatório.",
     "- Adapta sempre a Moção ao tema concreto: histórico, taxa turística, iluminação pública, parque infantil ou qualquer outro assunto recebido no contexto.",
@@ -324,7 +329,7 @@ export function construirPromptDocumento(contexto: ContextoGeracaoDocumento) {
     "Instruções finais de saída:",
     "- Entrega apenas o conteúdo final do documento.",
     "- Respeita os títulos das secções adequados ao tipo documental.",
-    "- Para Moções, usa obrigatoriamente as secções ENQUADRAMENTO, FUNDAMENTAÇÃO e PROPOSTA / DELIBERAÇÃO, sem revelar etapas internas de raciocínio.",
+    "- Para Moções, usa obrigatoriamente as secções ENQUADRAMENTO, CONSIDERANDOS e DELIBERAÇÃO / PROPOSTA, sem revelar etapas internas de raciocínio.",
     "- Não incluas cabeçalho institucional, título geral, local/data, identificação do proponente, grupo político ou assinatura.",
     "- A deliberação, pedido ou recomendação deve ser objetiva e responder diretamente ao problema identificado; não a transformes num novo enquadramento.",
     "- Não incluas avisos, notas, disclaimers, comentários sobre falta de informação ou pedidos de dados adicionais.",

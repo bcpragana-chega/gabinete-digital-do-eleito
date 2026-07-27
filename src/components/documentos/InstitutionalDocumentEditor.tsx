@@ -1,155 +1,286 @@
 import { useMemo } from "react";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  obterDadosInstitucionais,
-  obterSecoesDocumentoInstitucional,
-  serializarSecoesDocumentoInstitucional,
-  type ContextoDocumentoInstitucional,
-  type SecaoDocumentoInstitucional,
-  type TipoDocumentoInstitucional,
-} from "@/lib/documentos-institucionais";
+  blocksToText,
+  normalizeDocument,
+  parseBlocks,
+  type CanonicalDocument,
+} from "@/lib/document-model";
+import type { ContextoDocumentoInstitucional } from "@/lib/documentos-institucionais";
+import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
-type InstitutionalDocumentEditorProps = {
-  tipo: TipoDocumentoInstitucional;
+type Props = {
+  tipo: TipoDocumentoCriado;
   titulo: string;
   conteudo: string;
+  conteudoJson?: unknown;
   contexto?: ContextoDocumentoInstitucional;
   readOnly?: boolean;
-  onConteudoChange?: (conteudo: string) => void;
+  onDocumentoChange?: (documento: CanonicalDocument) => void;
 };
 
 export function InstitutionalDocumentEditor({
   tipo,
   titulo,
   conteudo,
+  conteudoJson,
   contexto,
   readOnly = false,
-  onConteudoChange,
-}: InstitutionalDocumentEditorProps) {
-  const dados = obterDadosInstitucionais(contexto);
-  const secoes = useMemo(() => obterSecoesDocumentoInstitucional(tipo, conteudo), [conteudo, tipo]);
+  onDocumentoChange,
+}: Props) {
+  const model = useMemo(
+    () =>
+      normalizeDocument(
+        { tipo, titulo, conteudo, conteudoJson } as Pick<
+          DocumentoCriado,
+          "tipo" | "titulo" | "conteudo" | "conteudoJson"
+        >,
+        contexto,
+      ),
+    [conteudo, conteudoJson, contexto, tipo, titulo],
+  );
 
-  function atualizarSecao(tituloSecao: string, proximoConteudo: string) {
-    const proximasSecoes = secoes.map((secao) =>
-      secao.titulo === tituloSecao ? { ...secao, conteudo: proximoConteudo } : secao,
-    );
-
-    onConteudoChange?.(serializarSecoesDocumentoInstitucional(proximasSecoes));
+  function update(next: CanonicalDocument) {
+    onDocumentoChange?.({ ...next, version: model.version });
   }
 
   return (
     <div className="rounded-xl border border-border bg-background p-3 md:p-6">
-      {dados.dataProvisoria && (
+      {!contexto?.assembleia?.data && (
         <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 font-sans text-sm text-amber-900">
           Data provisória — associe este documento a uma Sessão para usar a data da apresentação.
         </div>
       )}
-      <article className="mx-auto min-h-[780px] max-w-3xl border border-border bg-white px-8 py-10 font-serif text-[15px] leading-7 text-slate-950 shadow-card md:px-14 md:py-12">
+      <article className="mx-auto min-h-[780px] max-w-3xl border border-slate-200 bg-white px-8 py-10 font-serif text-[15px] leading-7 text-slate-950 shadow-card md:px-14 md:py-12">
         <header className="border-b border-slate-300 pb-6 text-center">
-          {dados.logoUrl && (
+          {model.header.logoUrl && (
             <img
-              src={dados.logoUrl}
-              alt=""
+              src={model.header.logoUrl}
+              alt="Logótipo institucional"
               className="mx-auto mb-5 max-h-20 max-w-[150px] object-contain"
-              onError={(event) => {
-                event.currentTarget.remove();
-              }}
+              onError={(event) => event.currentTarget.remove()}
             />
           )}
-          {dados.nomeOrgao ? (
-            <div className="font-sans text-[13px] font-bold uppercase tracking-[0.12em] text-slate-700">
-              {dados.nomeOrgao}
-            </div>
-          ) : (
-            <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 font-sans text-sm text-amber-900">
-              Falta configurar o órgão institucional.
-            </div>
-          )}
-          <div className="mt-4 font-sans text-lg font-extrabold uppercase tracking-[0.18em] text-slate-950">
-            {tipo}
-          </div>
-          <h2 className="mt-5 font-sans text-2xl font-extrabold uppercase leading-tight tracking-normal text-slate-950">
-            {titulo || "Documento sem título"}
-          </h2>
+          <EditableLine
+            value={model.header.institution}
+            readOnly={readOnly}
+            className="text-[13px] font-bold uppercase tracking-[0.12em] text-slate-700"
+            onChange={(institution) =>
+              update({ ...model, header: { ...model.header, institution } })
+            }
+          />
+          <EditableLine
+            value={model.header.mandate}
+            readOnly={readOnly}
+            placeholder="Mandato"
+            className="mt-1 text-xs text-slate-500"
+            onChange={(mandate) => update({ ...model, header: { ...model.header, mandate } })}
+          />
+          <EditableLine
+            value={model.header.documentType}
+            readOnly={readOnly}
+            className="mt-4 text-lg font-extrabold uppercase tracking-[0.18em]"
+            onChange={(documentType) =>
+              update({ ...model, header: { ...model.header, documentType } })
+            }
+          />
+          <EditableLine
+            value={model.header.title}
+            readOnly={readOnly}
+            className="mt-5 text-2xl font-extrabold uppercase leading-tight"
+            onChange={(title) => update({ ...model, header: { ...model.header, title } })}
+          />
         </header>
 
+        <DocumentData model={model} readOnly={readOnly} update={update} />
+
         <main className="mt-8 space-y-7">
-          {secoes.map((secao) => (
-            <section key={secao.titulo}>
-              <h3 className="mb-3 font-sans text-sm font-extrabold uppercase tracking-[0.1em] text-slate-950">
-                {secao.titulo}
-              </h3>
+          {model.sections.map((section, index) => (
+            <section key={section.id}>
+              <EditableLine
+                value={section.title}
+                readOnly={readOnly}
+                className="mb-3 text-sm font-extrabold uppercase tracking-[0.1em]"
+                onChange={(title) =>
+                  update({
+                    ...model,
+                    sections: model.sections.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, title } : item,
+                    ),
+                  })
+                }
+              />
               {readOnly ? (
-                <SecaoRenderizada secao={secao} />
+                <Blocks blocks={section.blocks} />
               ) : (
                 <Textarea
-                  value={secao.conteudo}
-                  onChange={(event) => atualizarSecao(secao.titulo, event.target.value)}
-                  className="min-h-[150px] resize-y border-slate-200 bg-white font-serif text-[15px] leading-7 text-slate-950 shadow-none focus-visible:ring-1 focus-visible:ring-slate-300"
+                  aria-label={`Conteúdo de ${section.title}`}
+                  value={blocksToText(section.blocks)}
+                  onChange={(event) =>
+                    update({
+                      ...model,
+                      sections: model.sections.map((item, itemIndex) =>
+                        itemIndex === index
+                          ? { ...item, blocks: parseBlocks(event.target.value) }
+                          : item,
+                      ),
+                    })
+                  }
+                  className="min-h-[140px] resize-y border-slate-200 bg-white font-serif text-[15px] leading-7 shadow-none"
                 />
               )}
             </section>
           ))}
         </main>
 
-        <footer className="mt-14">
-          <p className="mb-9 text-left">
-            {dados.local}, {dados.data}
-          </p>
-          <p className="mb-7 text-left">O Proponente,</p>
-          <div className="mb-3 w-72 border-t border-slate-950 pt-3" />
-          <p className="m-0 text-left">{dados.nomeEleito}</p>
-          {dados.cargo && <p className="m-0 text-left">{dados.cargo}</p>}
-          {dados.grupoPolitico && <p className="m-0 text-left">{dados.grupoPolitico}</p>}
+        <footer className="mt-14 break-inside-avoid">
+          <div className="mb-9 flex gap-2">
+            <EditableLine
+              value={model.closing.location}
+              readOnly={readOnly}
+              placeholder="Local"
+              onChange={(location) => update({ ...model, closing: { ...model.closing, location } })}
+            />
+            {(model.closing.location || model.closing.date) && <span>,</span>}
+            <EditableLine
+              value={model.closing.date}
+              readOnly={readOnly}
+              placeholder="Data"
+              onChange={(date) => update({ ...model, closing: { ...model.closing, date } })}
+            />
+          </div>
+          <EditableLine
+            value={model.closing.signatureLabel}
+            readOnly={readOnly}
+            placeholder="Designação da assinatura"
+            onChange={(signatureLabel) =>
+              update({ ...model, closing: { ...model.closing, signatureLabel } })
+            }
+          />
+          <div className="mb-3 mt-7 w-72 border-t border-slate-950 pt-3" />
+          {(["name", "role", "politicalGroup"] as const).map((field) => (
+            <EditableLine
+              key={field}
+              value={model.closing[field]}
+              readOnly={readOnly}
+              placeholder={{ name: "Nome", role: "Cargo", politicalGroup: "Grupo político" }[field]}
+              onChange={(value) =>
+                update({ ...model, closing: { ...model.closing, [field]: value } })
+              }
+            />
+          ))}
         </footer>
       </article>
     </div>
   );
 }
 
-function SecaoRenderizada({ secao }: { secao: SecaoDocumentoInstitucional }) {
-  const blocos = secao.conteudo
-    .split(/\n{2,}/)
-    .map((bloco) => bloco.trim())
-    .filter(Boolean);
+function EditableLine({
+  value,
+  placeholder,
+  readOnly,
+  className = "",
+  onChange,
+}: {
+  value?: string;
+  placeholder?: string;
+  readOnly: boolean;
+  className?: string;
+  onChange: (value: string) => void;
+}) {
+  if (readOnly) return value ? <div className={className}>{value}</div> : null;
+  return (
+    <Input
+      value={value ?? ""}
+      placeholder={placeholder}
+      onChange={(event) => onChange(event.target.value)}
+      className={`h-auto border-transparent bg-transparent px-1 py-0 text-center font-sans shadow-none hover:border-slate-200 ${className}`}
+    />
+  );
+}
 
-  if (blocos.length === 0) {
-    return <p className="text-left text-slate-500">Sem conteúdo nesta secção.</p>;
-  }
+function DocumentData({
+  model,
+  readOnly,
+  update,
+}: {
+  model: CanonicalDocument;
+  readOnly: boolean;
+  update: (model: CanonicalDocument) => void;
+}) {
+  if (readOnly && model.documentData.length === 0) return null;
+  return (
+    <section className="mt-6 rounded-md bg-slate-50 p-4 font-sans text-sm">
+      <h3 className="mb-2 font-bold uppercase tracking-wide">Dados do documento</h3>
+      {model.documentData.map((item, index) => (
+        <div key={`${item.label}-${index}`} className="grid grid-cols-[9rem_1fr] gap-2 py-1">
+          {readOnly ? (
+            <span className="font-semibold">{item.label}</span>
+          ) : (
+            <Input
+              aria-label={`Designação do dado ${index + 1}`}
+              value={item.label}
+              onChange={(event) =>
+                update({
+                  ...model,
+                  documentData: model.documentData.map((current, itemIndex) =>
+                    itemIndex === index ? { ...current, label: event.target.value } : current,
+                  ),
+                })
+              }
+              className="h-auto border-transparent bg-transparent px-1 py-0 font-semibold shadow-none hover:border-slate-200"
+            />
+          )}
+          <EditableLine
+            value={item.value}
+            readOnly={readOnly}
+            onChange={(value) =>
+              update({
+                ...model,
+                documentData: model.documentData.map((current, itemIndex) =>
+                  itemIndex === index ? { ...current, value } : current,
+                ),
+              })
+            }
+          />
+        </div>
+      ))}
+    </section>
+  );
+}
 
+function Blocks({ blocks }: { blocks: CanonicalDocument["sections"][number]["blocks"] }) {
   return (
     <div className="space-y-3">
-      {blocos.map((bloco, index) => {
-        const linhas = bloco
-          .split(/\r?\n/)
-          .map((linha) => linha.trim())
-          .filter(Boolean);
-        const todosNumerados = linhas.every((linha) => /^\d+\.\s+/.test(linha));
-        const todasAlineas = linhas.every((linha) => /^(?:[a-z]|[ivxlcdm]+\))\s+/i.test(linha));
-
-        if (todosNumerados) {
+      {blocks.map((block, index) => {
+        if (block.type === "ordered-list")
           return (
-            <ol key={`${secao.titulo}-${index}`} className="ml-6 list-decimal space-y-2">
-              {linhas.map((linha) => (
-                <li key={linha}>{linha.replace(/^\d+\.\s*/, "")}</li>
+            <ol key={index} className="ml-6 list-decimal space-y-2">
+              {block.items.map((item) => (
+                <li key={item}>{item}</li>
               ))}
             </ol>
           );
-        }
-
-        if (todasAlineas) {
+        if (block.type === "bullet-list")
           return (
-            <div key={`${secao.titulo}-${index}`} className="ml-6 space-y-2">
-              {linhas.map((linha) => (
-                <p key={linha}>{linha}</p>
+            <ul key={index} className="ml-6 list-disc space-y-2">
+              {block.items.map((item) => (
+                <li key={item}>{item}</li>
               ))}
-            </div>
+            </ul>
           );
-        }
-
         return (
-          <p key={`${secao.titulo}-${index}`} className="whitespace-pre-line text-justify">
-            {bloco}
+          <p key={index} className="whitespace-pre-line text-justify">
+            {block.runs
+              ? block.runs.map((run, runIndex) =>
+                  run.bold ? (
+                    <strong key={runIndex}>{run.text}</strong>
+                  ) : (
+                    <span key={runIndex}>{run.text}</span>
+                  ),
+                )
+              : block.text}
           </p>
         );
       })}

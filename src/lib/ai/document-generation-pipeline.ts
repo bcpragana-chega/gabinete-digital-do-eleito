@@ -8,9 +8,15 @@ export const GENERATION_PIPELINE = Object.freeze({
 });
 
 const secoesObrigatorias: Partial<Record<TipoDocumentoCriado, string[]>> = {
-  Moção: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "PROPOSTA / DELIBERAÇÃO"],
-  Recomendação: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "RECOMENDAÇÃO"],
-  Requerimento: ["ENQUADRAMENTO", "FUNDAMENTAÇÃO", "REQUERIMENTO"],
+  Moção: ["ENQUADRAMENTO", "CONSIDERANDOS", "DELIBERAÇÃO / PROPOSTA"],
+  Recomendação: ["ENQUADRAMENTO", "PROBLEMA IDENTIFICADO", "FUNDAMENTAÇÃO", "RECOMENDAÇÕES"],
+  Requerimento: ["DESTINATÁRIO", "ENQUADRAMENTO", "FUNDAMENTAÇÃO", "PEDIDOS / PERGUNTAS"],
+  "Declaração de voto": [
+    "IDENTIFICAÇÃO DA VOTAÇÃO",
+    "SENTIDO DE VOTO",
+    "FUNDAMENTAÇÃO",
+    "CONCLUSÃO",
+  ],
 };
 
 function normalizarTitulo(valor: string) {
@@ -32,10 +38,21 @@ function conteudoDasSecoes(texto: string) {
     if (
       [
         "ENQUADRAMENTO",
+        "CONSIDERANDOS",
         "FUNDAMENTACAO",
         "PROPOSTA / DELIBERACAO",
+        "DELIBERACAO / PROPOSTA",
+        "DESTINATARIO",
+        "PEDIDOS / PERGUNTAS",
+        "PROBLEMA IDENTIFICADO",
+        "RECOMENDACOES",
         "RECOMENDACAO",
         "REQUERIMENTO",
+        "CONTEXTO",
+        "DECLARACAO",
+        "IDENTIFICACAO DA VOTACAO",
+        "SENTIDO DE VOTO",
+        "CONCLUSAO",
       ].includes(titulo)
     ) {
       atual = titulo;
@@ -47,6 +64,18 @@ function conteudoDasSecoes(texto: string) {
 
   return secoes;
 }
+
+const aliasesCompatibilidade: Record<string, string[]> = {
+  CONSIDERANDOS: ["FUNDAMENTACAO"],
+  "DELIBERACAO / PROPOSTA": ["PROPOSTA / DELIBERACAO"],
+  DESTINATARIO: ["ENQUADRAMENTO"],
+  "PEDIDOS / PERGUNTAS": ["REQUERIMENTO"],
+  "PROBLEMA IDENTIFICADO": ["ENQUADRAMENTO"],
+  RECOMENDACOES: ["RECOMENDACAO"],
+  "IDENTIFICACAO DA VOTACAO": ["CONTEXTO"],
+  "SENTIDO DE VOTO": ["DECLARACAO"],
+  CONCLUSAO: ["DECLARACAO"],
+};
 
 export function validarConteudoSubstantivoGerado(tipo: TipoDocumentoCriado, conteudo: string) {
   const erros: string[] = [];
@@ -69,7 +98,10 @@ export function validarConteudoSubstantivoGerado(tipo: TipoDocumentoCriado, cont
     const secoes = conteudoDasSecoes(texto);
     obrigatorias.forEach((secao) => {
       const chave = normalizarTitulo(secao);
-      const valor = secoes.get(chave)?.join("\n").trim();
+      const alternativas = [chave, ...(aliasesCompatibilidade[chave] ?? [])];
+      const valor = alternativas
+        .map((alternativa) => secoes.get(alternativa)?.join("\n").trim())
+        .find(Boolean);
       if (!valor) erros.push(`A secção ${secao} está ausente ou vazia.`);
     });
   }

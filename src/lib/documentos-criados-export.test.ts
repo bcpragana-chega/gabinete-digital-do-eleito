@@ -184,7 +184,7 @@ describe("exportação DOCX real", () => {
     assert.match(download?.nome ?? "", /\.docx$/);
   });
 
-  it("perfil sem logótipo devolve requisito visível e não tenta gerar", async () => {
+  it("perfil sem logótipo usa o logótipo padrão do Tribuno", async () => {
     const contexto = contextoValido();
     delete contexto.perfil?.logoUrl;
     let tentouGerar = false;
@@ -193,10 +193,12 @@ describe("exportação DOCX real", () => {
         tentouGerar = true;
         return [];
       },
+      criarPdf: async () => new Blob(["pdf"], { type: "application/pdf" }),
+      iniciarDownload: () => undefined,
     });
 
-    assert.deepEqual(resultado, { status: "logo-em-falta" });
-    assert.equal(tentouGerar, false);
+    assert.deepEqual(resultado, { status: "sucesso" });
+    assert.equal(tentouGerar, true);
   });
 
   it("documento institucional inválido devolve os respetivos erros", async () => {

@@ -40,6 +40,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
 import { guardarDocumentoCriadoConfirmado } from "@/lib/documentos-a-criar-store";
+import {
+  isCanonicalDocument,
+  serializeDocumentToMarkdown,
+  type CanonicalDocument,
+} from "@/lib/document-model";
 import { executarGravacaoConfirmadaDocumento } from "@/lib/document-save-flow";
 import {
   DocumentoCriadoServiceErro,
@@ -136,6 +141,7 @@ export function DocumentoCriadoDetalhe({
   const [tentativa, setTentativa] = useState(0);
   const [titulo, setTitulo] = useState("");
   const [conteudo, setConteudo] = useState("");
+  const [conteudoJson, setConteudoJson] = useState<unknown>();
   const [estado, setEstado] = useState<EstadoDocumentoCriado>("rascunho");
   const [assembleiaId, setAssembleiaId] = useState<string | undefined>();
   const [pontoId, setPontoId] = useState<string | undefined>();
@@ -169,6 +175,7 @@ export function DocumentoCriadoDetalhe({
         setErroCarregamento(undefined);
         setTitulo(proximo.titulo);
         setConteudo(proximo.conteudo);
+        setConteudoJson(proximo.conteudoJson);
         setEstado(proximo.estado);
         setAssembleiaId(proximo.assembleiaId);
         setPontoId(proximo.pontoId);
@@ -229,6 +236,7 @@ export function DocumentoCriadoDetalhe({
     documento &&
     (titulo !== documento.titulo ||
       conteudo !== documento.conteudo ||
+      conteudoJson !== documento.conteudoJson ||
       estado !== documento.estado ||
       assembleiaId !== documento.assembleiaId ||
       pontoId !== documento.pontoId),
@@ -277,6 +285,10 @@ export function DocumentoCriadoDetalhe({
           guardarDocumentoCriadoConfirmado(documento.id, {
             titulo: titulo.trim(),
             conteudo,
+            conteudoJson,
+            formatoConteudo: isCanonicalDocument(conteudoJson)
+              ? "tribuno-document-v1"
+              : documento.formatoConteudo,
             estado,
             assuntoId: documento.assuntoId,
             assembleiaId,
@@ -292,6 +304,7 @@ export function DocumentoCriadoDetalhe({
           setDocumento(persistido);
           setTitulo(persistido.titulo);
           setConteudo(persistido.conteudo);
+          setConteudoJson(persistido.conteudoJson);
           setEstado(persistido.estado);
           setAssembleiaId(persistido.assembleiaId);
           setPontoId(persistido.pontoId);
@@ -339,6 +352,10 @@ export function DocumentoCriadoDetalhe({
       ...base,
       titulo: titulo.trim() || base.titulo,
       conteudo,
+      conteudoJson,
+      formatoConteudo: isCanonicalDocument(conteudoJson)
+        ? "tribuno-document-v1"
+        : base.formatoConteudo,
       estado,
       assembleiaId,
       pontoId,
@@ -963,7 +980,16 @@ export function DocumentoCriadoDetalhe({
                     <Input
                       value={titulo}
                       onChange={(event) => {
-                        setTitulo(event.target.value);
+                        const nextTitle = event.target.value;
+                        setTitulo(nextTitle);
+                        setConteudoJson((current: unknown) =>
+                          isCanonicalDocument(current)
+                            ? {
+                                ...current,
+                                header: { ...current.header, title: nextTitle },
+                              }
+                            : current,
+                        );
                         setSaveState("unsaved");
                       }}
                     />
@@ -993,56 +1019,26 @@ export function DocumentoCriadoDetalhe({
                 </div>
               )}
 
-              {documento && isTipoDocumentoInstitucional(documento.tipo) ? (
+              {documento && (
                 <div className="mt-5">
                   <InstitutionalDocumentEditor
                     tipo={documento.tipo}
                     titulo={titulo}
                     conteudo={conteudo}
+                    conteudoJson={conteudoJson}
                     contexto={contextoDocumento}
                     readOnly={modo === "visualizar"}
-                    onConteudoChange={
+                    onDocumentoChange={
                       modo === "editar"
-                        ? (valor) => {
-                            setConteudo(valor);
+                        ? (valor: CanonicalDocument) => {
+                            setTitulo(valor.header.title);
+                            setConteudo(serializeDocumentToMarkdown(valor));
+                            setConteudoJson(valor);
                             setSaveState("unsaved");
                           }
                         : undefined
                     }
                   />
-                </div>
-              ) : (
-                <div className="mt-4">
-                  {modo === "editar" ? (
-                    <>
-                      <label className="mb-1 block text-xs font-medium text-foreground">
-                        Conteúdo
-                      </label>
-                      <Textarea
-                        value={conteudo}
-                        onChange={(event) => {
-                          setConteudo(event.target.value);
-                          setSaveState("unsaved");
-                        }}
-                        rows={18}
-                        className="min-h-[420px]"
-                      />
-                    </>
-                  ) : (
-                    <article className="mx-auto min-h-[640px] max-w-3xl border border-border bg-white px-8 py-10 font-serif text-[15px] leading-7 text-slate-950 shadow-card md:px-14 md:py-12">
-                      <header className="border-b border-slate-300 pb-6 text-center">
-                        <div className="font-sans text-lg font-extrabold uppercase tracking-[0.14em]">
-                          {documento?.tipo ?? "Documento"}
-                        </div>
-                        <h2 className="mt-5 font-sans text-2xl font-extrabold uppercase leading-tight">
-                          {titulo || "Documento sem título"}
-                        </h2>
-                      </header>
-                      <section className="mt-8 whitespace-pre-line text-justify">
-                        {limparSintaxeMarkdownVisivel(conteudo) || "Documento por preencher."}
-                      </section>
-                    </article>
-                  )}
                 </div>
               )}
             </WorkspaceSection>

@@ -2,9 +2,12 @@ import { obterAuthState } from "@/lib/auth-store";
 import {
   AlignmentType,
   Document,
+  Footer,
   HeadingLevel,
+  ImageRun,
   LevelFormat,
   Packer,
+  PageNumber,
   Paragraph,
   TextRun,
 } from "docx";
@@ -12,22 +15,20 @@ import { construirBaseJuridicaInstitucional } from "@/lib/ai/legal-basis";
 import { resolveStoredInstitutionalContext } from "@/lib/ai/institutional-context";
 import type { PerfilInstitucionalContexto } from "@/lib/ai/types";
 import {
-  isTipoDocumentoInstitucional,
   nomeFicheiroDocumento,
   obterContextoInstitucionalGuardado,
   obterDadosInstitucionais,
-  obterSecoesDocumentoInstitucional,
   resolverOrgaoInstitucional,
   validarDocumentoInstitucional,
   type ContextoDocumentoInstitucional,
-  type SecaoDocumentoInstitucional,
 } from "@/lib/documentos-institucionais";
+import { normalizeDocument, type InlineRun } from "@/lib/document-model";
 import type { DocumentoCriado } from "@/lib/types";
 
 type LinhaPdf =
   | { tipo: "espaco"; altura: number }
   | { tipo: "secao"; texto: string }
-  | { tipo: "paragrafo"; texto: string }
+  | { tipo: "paragrafo"; texto: string; runs?: InlineRun[] }
   | { tipo: "item"; marcador: string; texto: string };
 
 type PaginaPdf = {
@@ -338,10 +339,6 @@ function prepararExportacao(
   const erros = validarAntesDeExportar(documento, contextoResolvido);
   if (erros) return { status: "documento-invalido", erros };
 
-  if (!perfilTemLogoInstitucional(contextoResolvido)) {
-    return { status: "logo-em-falta" };
-  }
-
   return { contexto: contextoResolvido };
 }
 
@@ -349,13 +346,11 @@ export async function criarBlobDocumentoWord(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ) {
-  const dados = obterDadosInstitucionais(contexto);
-  const cabecalho = obterCabecalhoInstitucionalExportacao(contexto);
-  const assinatura = obterAssinaturaUnica(contexto);
-  const titulo = documento.titulo.trim() || "Documento sem título";
-  const corpo = criarLinhasDocumento(documento)
+  const model = normalizeDocument(documento, contexto);
+  const corpo = criarLinhasDocumento(documento, contexto)
     .filter((linha) => linha.tipo !== "espaco")
     .map((linha) => paragrafoDocx(linha));
+  const logo = await imagemDocx(model.header.logoUrl);
   const documentoDocx = new Document({
     numbering: {
       config: [
@@ -378,18 +373,43 @@ export async function criarBlobDocumentoWord(
         properties: {
           page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } },
         },
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
+        footers: {
+          default: new Footer({
             children: [
-              new TextRun({ text: cabecalho.orgao.toLocaleUpperCase("pt-PT"), bold: true }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun("Tribuno · "),
+                  new TextRun({ children: [PageNumber.CURRENT] }),
+                ],
+              }),
             ],
           }),
-          ...(cabecalho.organizacao
+        },
+        children: [
+          ...(logo
             ? [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: cabecalho.organizacao, bold: true })],
+                  spacing: { after: 200 },
+                  children: [logo],
+                }),
+              ]
+            : []),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: (model.header.institution ?? "").toLocaleUpperCase("pt-PT"),
+                bold: true,
+              }),
+            ],
+          }),
+          ...(model.header.mandate
+            ? [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: model.header.mandate })],
                 }),
               ]
             : []),
@@ -397,24 +417,61 @@ export async function criarBlobDocumentoWord(
             alignment: AlignmentType.CENTER,
             spacing: { before: 240 },
             children: [
-              new TextRun({ text: documento.tipo.toLocaleUpperCase("pt-PT"), bold: true }),
+              new TextRun({
+                text: model.header.documentType.toLocaleUpperCase("pt-PT"),
+                bold: true,
+              }),
             ],
           }),
           new Paragraph({
             heading: HeadingLevel.TITLE,
             alignment: AlignmentType.CENTER,
             spacing: { before: 240, after: 480 },
-            children: [new TextRun({ text: titulo, bold: true })],
+            children: [new TextRun({ text: model.header.title, bold: true })],
           }),
+          ...(model.documentData.length
+            ? [
+                new Paragraph({
+                  heading: HeadingLevel.HEADING_2,
+                  spacing: { after: 100 },
+                  children: [new TextRun({ text: "Dados do documento", bold: true })],
+                }),
+                ...model.documentData.map(
+                  (item) =>
+                    new Paragraph({
+                      children: [
+                        new TextRun({ text: `${item.label}: `, bold: true }),
+                        new TextRun(item.value),
+                      ],
+                    }),
+                ),
+              ]
+            : []),
           ...corpo,
-          new Paragraph({ spacing: { before: 600 }, text: `${dados.local}, ${dados.data}` }),
-          new Paragraph({ spacing: { before: 480 }, children: [new TextRun("O Proponente,")] }),
-          ...assinatura.map(
-            (linha, index) =>
-              new Paragraph({
-                children: [new TextRun({ text: linha, bold: index === 0 })],
-              }),
-          ),
+          ...(model.closing.location || model.closing.date
+            ? [
+                new Paragraph({
+                  spacing: { before: 600 },
+                  text: [model.closing.location, model.closing.date].filter(Boolean).join(", "),
+                }),
+              ]
+            : []),
+          ...(model.closing.signatureLabel
+            ? [
+                new Paragraph({
+                  spacing: { before: 480 },
+                  children: [new TextRun(model.closing.signatureLabel)],
+                }),
+              ]
+            : []),
+          ...[model.closing.name, model.closing.role, model.closing.politicalGroup]
+            .filter((line): line is string => Boolean(line))
+            .map(
+              (linha, index) =>
+                new Paragraph({
+                  children: [new TextRun({ text: linha, bold: index === 0 })],
+                }),
+            ),
         ],
       },
     ],
@@ -422,6 +479,29 @@ export async function criarBlobDocumentoWord(
 
   const blob = await Packer.toBlob(documentoDocx);
   return new Blob([blob], { type: MIME_DOCX });
+}
+
+async function imagemDocx(logoUrl?: string) {
+  if (!logoUrl) return undefined;
+  try {
+    let bytes: Uint8Array;
+    if (logoUrl.startsWith("data:")) {
+      const encoded = logoUrl.split(",")[1];
+      if (!encoded) return undefined;
+      bytes = Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0));
+    } else {
+      const response = await fetch(logoUrl);
+      if (!response.ok) return undefined;
+      bytes = new Uint8Array(await response.arrayBuffer());
+    }
+    return new ImageRun({
+      data: bytes,
+      type: logoUrl.includes("jpeg") ? "jpg" : "png",
+      transformation: { width: 120, height: 64 },
+    });
+  } catch {
+    return undefined;
+  }
 }
 
 function paragrafoDocx(linha: Exclude<LinhaPdf, { tipo: "espaco" }>) {
@@ -446,7 +526,9 @@ function paragrafoDocx(linha: Exclude<LinhaPdf, { tipo: "espaco" }>) {
   }
   return new Paragraph({
     spacing: { after: 160 },
-    children: [new TextRun(linha.texto.replace(/\n/g, " "))],
+    children: linha.runs?.length
+      ? linha.runs.map((run) => new TextRun({ text: run.text.replace(/\n/g, " "), bold: run.bold }))
+      : [new TextRun(linha.texto.replace(/\n/g, " "))],
   });
 }
 
@@ -508,10 +590,7 @@ async function desenharPaginasDocumento(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ) {
-  const dados = obterDadosInstitucionais(contexto);
-  const titulo = documento.titulo.trim() || "Documento sem título";
-  const cabecalho = obterCabecalhoInstitucionalExportacao(contexto);
-  const assinatura = obterAssinaturaUnica(contexto);
+  const model = normalizeDocument(documento, contexto);
   const paginas: PaginaPdf[] = [];
   const criarPagina = () => {
     const canvas = document.createElement("canvas");
@@ -533,10 +612,29 @@ async function desenharPaginasDocumento(
 
   let pagina = criarPagina();
 
-  await desenharCabecalho(pagina, cabecalho, documento.tipo, titulo, dados.logoUrl);
+  await desenharCabecalho(
+    pagina,
+    { orgao: model.header.institution ?? "", organizacao: model.header.mandate },
+    model.header.documentType,
+    model.header.title,
+    model.header.logoUrl,
+  );
   pagina.y += 34;
 
-  const linhas = criarLinhasDocumento(documento);
+  if (model.documentData.length) {
+    pagina = desenharLinhaDocumento(pagina, paginas, {
+      tipo: "secao",
+      texto: "DADOS DO DOCUMENTO",
+    });
+    model.documentData.forEach((item) => {
+      pagina = desenharLinhaDocumento(pagina, paginas, {
+        tipo: "paragrafo",
+        texto: `${item.label}: ${item.value}`,
+      });
+    });
+  }
+
+  const linhas = criarLinhasDocumento(documento, contexto);
   linhas.forEach((linha) => {
     pagina = garantirEspaco(pagina, paginas, linha.tipo === "secao" ? 82 : 58);
     pagina = desenharLinhaDocumento(pagina, paginas, linha);
@@ -544,15 +642,18 @@ async function desenharPaginasDocumento(
 
   pagina = garantirEspaco(pagina, paginas, 280);
   pagina.y += 54;
-  pagina = desenharParagrafo(pagina, paginas, `${dados.local}, ${dados.data}`, {
-    font: "32px 'Times New Roman', Times, serif",
-    lineHeight: 48,
-  });
+  const localData = [model.closing.location, model.closing.date].filter(Boolean).join(", ");
+  if (localData)
+    pagina = desenharParagrafo(pagina, paginas, localData, {
+      font: "32px 'Times New Roman', Times, serif",
+      lineHeight: 48,
+    });
   pagina.y += 46;
-  pagina = desenharParagrafo(pagina, paginas, "O Proponente,", {
-    font: "30px 'Times New Roman', Times, serif",
-    lineHeight: 44,
-  });
+  if (model.closing.signatureLabel)
+    pagina = desenharParagrafo(pagina, paginas, model.closing.signatureLabel, {
+      font: "30px 'Times New Roman', Times, serif",
+      lineHeight: 44,
+    });
   pagina.y += 44;
   pagina.ctx.strokeStyle = "#111827";
   pagina.ctx.lineWidth = 2;
@@ -561,16 +662,30 @@ async function desenharPaginasDocumento(
   pagina.ctx.lineTo(margemX + 420, pagina.y);
   pagina.ctx.stroke();
   pagina.y += 38;
-  assinatura.forEach((linha, index) => {
-    pagina = desenharParagrafo(pagina, paginas, linha, {
-      font:
-        index === 0
-          ? "30px 'Times New Roman', Times, serif"
-          : "28px 'Times New Roman', Times, serif",
-      lineHeight: index === 0 ? 44 : 42,
+  [model.closing.name, model.closing.role, model.closing.politicalGroup]
+    .filter((line): line is string => Boolean(line))
+    .forEach((linha, index) => {
+      pagina = desenharParagrafo(pagina, paginas, linha, {
+        font:
+          index === 0
+            ? "30px 'Times New Roman', Times, serif"
+            : "28px 'Times New Roman', Times, serif",
+        lineHeight: index === 0 ? 44 : 42,
+      });
     });
-  });
 
+  paginas.forEach((item, index) => {
+    item.ctx.save();
+    item.ctx.textAlign = "center";
+    item.ctx.font = "22px Arial, sans-serif";
+    item.ctx.fillStyle = "#64748b";
+    item.ctx.fillText(
+      `Tribuno · Página ${index + 1} de ${paginas.length}`,
+      larguraA4 / 2,
+      alturaA4 - 54,
+    );
+    item.ctx.restore();
+  });
   return paginas.map((item) => item.canvas);
 }
 
@@ -686,77 +801,24 @@ async function desenharLogoPdf(
   }
 }
 
-function criarLinhasDocumento(documento: DocumentoCriado): LinhaPdf[] {
-  if (isTipoDocumentoInstitucional(documento.tipo)) {
-    return obterSecoesDocumentoInstitucional(
-      documento.tipo,
-      normalizarConteudoDocumento(documento.conteudo),
-    )
-      .map((secao) => ({ ...secao, conteudo: normalizarConteudoSecao(secao.conteudo) }))
-      .filter((secao) => secao.conteudo.trim())
-      .flatMap((secao) => linhasDaSecao(secao));
-  }
-
-  return normalizarConteudoDocumento(documento.conteudo)
-    .split(/\n{2,}/)
-    .map((bloco) => bloco.trim())
-    .filter(Boolean)
-    .flatMap((bloco): LinhaPdf[] => {
-      const tituloMarkdown = bloco.match(/^#{1,3}\s+(.+)$/m);
-      if (tituloMarkdown?.[1]) return [{ tipo: "secao", texto: tituloMarkdown[1].trim() }];
-      const linhas = bloco
-        .split(/\r?\n/)
-        .map((linha) => linha.trim())
-        .filter(Boolean);
-      if (linhas.every((linha) => /^(\d+\.|[-*•])\s+/.test(linha))) {
-        return linhas.flatMap((linha): LinhaPdf[] => {
-          const item = linha.match(/^(\d+\.|[-*•])\s+(.+)$/);
-          return item?.[1] && item[2] ? [{ tipo: "item", marcador: item[1], texto: item[2] }] : [];
-        });
-      }
-      return [{ tipo: "paragrafo", texto: bloco.replace(/^[-*]\s+/gm, "") }];
-    });
-}
-
-function linhasDaSecao(secao: SecaoDocumentoInstitucional): LinhaPdf[] {
-  const linhas: LinhaPdf[] = [
+function criarLinhasDocumento(
+  documento: DocumentoCriado,
+  contexto?: ContextoDocumentoInstitucional,
+): LinhaPdf[] {
+  const model = normalizeDocument(documento, contexto);
+  return model.sections.flatMap((section): LinhaPdf[] => [
     { tipo: "espaco", altura: 24 },
-    { tipo: "secao", texto: secao.titulo },
-  ];
-  let contadorListaPrincipal = 1;
-
-  secao.conteudo
-    .split(/\n{2,}/)
-    .map((bloco) => bloco.trim())
-    .filter(Boolean)
-    .forEach((bloco) => {
-      const linhasBloco = bloco
-        .split(/\r?\n/)
-        .map((linha) => linha.trim())
-        .filter(Boolean);
-      const todosItens = linhasBloco.every((linha) =>
-        /^(\d+\.|[a-z]\)|[ivxlcdm]+\))\s+/i.test(linha),
-      );
-
-      if (todosItens) {
-        linhasBloco.forEach((item) => {
-          const match = item.match(/^(\d+\.|[a-z]\)|[ivxlcdm]+\))\s+(.+)$/i);
-          if (!match?.[1] || !match[2]) return;
-
-          const marcadorOriginal = match[1];
-          const marcador = /^\d+\.$/.test(marcadorOriginal)
-            ? `${contadorListaPrincipal++}.`
-            : marcadorOriginal;
-
-          linhas.push({ tipo: "item", marcador, texto: match[2] });
-        });
-        return;
-      }
-
-      linhas.push({ tipo: "paragrafo", texto: bloco });
-    });
-
-  return linhas;
+    { tipo: "secao", texto: section.title },
+    ...section.blocks.flatMap((block): LinhaPdf[] => {
+      if (block.type === "paragraph")
+        return [{ tipo: "paragrafo", texto: block.text, runs: block.runs }];
+      return block.items.map((item, index) => ({
+        tipo: "item" as const,
+        marcador: block.type === "ordered-list" ? `${index + 1}.` : "•",
+        texto: item,
+      }));
+    }),
+  ]);
 }
 
 function garantirEspaco(pagina: PaginaPdf, paginas: PaginaPdf[], alturaMinima: number) {
