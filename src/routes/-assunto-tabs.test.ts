@@ -79,6 +79,20 @@ describe("tabs do detalhe do Assunto", () => {
     assert.match(detalhe, /md:flex-wrap/);
   });
 
+  it("apresenta separadores maiores, independentes e com estado ativo evidente", () => {
+    assert.match(detalhe, /min-h-11 rounded-md border px-4 py-2 text-sm font-semibold md:px-5/);
+    assert.match(detalhe, /gap-x-2 gap-y-2 border-b border-border/);
+    assert.match(
+      detalhe,
+      /border-border border-b-2 border-b-primary bg-card text-foreground hover:bg-card/,
+    );
+    assert.match(
+      detalhe,
+      /border-border\/70 bg-transparent text-muted-foreground hover:border-border hover:bg-muted\/70/,
+    );
+    assert.doesNotMatch(detalhe, /gradient|shadow-(?:lg|xl|2xl)/);
+  });
+
   it("mantém os componentes montados para preservar o seu estado interno", () => {
     assert.doesNotMatch(detalhe, /tabAtiva === "[^"]+"\s*&&\s*\(/);
     for (const componente of [

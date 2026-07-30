@@ -348,7 +348,7 @@ function DossieDetalhePage() {
             <div
               role="tablist"
               aria-label="Áreas do assunto"
-              className="flex w-max min-w-full gap-x-1 gap-y-2 border-b border-border pb-3 md:w-auto md:flex-wrap"
+              className="flex w-max min-w-full gap-x-2 gap-y-2 border-b border-border pb-3 md:w-auto md:flex-wrap"
             >
               {assuntoTabs.map(({ id, label }) => (
                 <Button
@@ -364,7 +364,11 @@ function DossieDetalhePage() {
                   aria-selected={tabAtiva === id}
                   aria-controls={`tabpanel-${id}`}
                   tabIndex={tabAtiva === id ? 0 : -1}
-                  className={tabAtiva === id ? "bg-muted/70 text-foreground" : undefined}
+                  className={`min-h-11 rounded-md border px-4 py-2 text-sm font-semibold md:px-5 ${
+                    tabAtiva === id
+                      ? "border-border border-b-2 border-b-primary bg-card text-foreground hover:bg-card hover:text-foreground"
+                      : "border-border/70 bg-transparent text-muted-foreground hover:border-border hover:bg-muted/70 hover:text-foreground"
+                  }`}
                   onClick={() => selecionarTab(id)}
                   onKeyDown={(event) => navegarComTeclado(event, id)}
                 >
