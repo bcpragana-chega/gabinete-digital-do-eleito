@@ -164,6 +164,167 @@ describe("modelo documental canónico V1", () => {
     assert.equal(result.header.logoUrl, undefined);
   });
 
+  it("remove placeholders históricos relativos, absolutos e com query sem alterar o título", () => {
+    const original = normalizeDocument(legacy("Moção", cases[0][1]), context);
+    for (const logoUrl of [
+      "/branding/neutral-mark.svg",
+      "https://tribuno.example/branding/neutral-mark.svg#antigo",
+      "/logo.png?cache=1",
+    ]) {
+      const result = normalizeDocument(
+        {
+          ...legacy("Moção", "texto legado divergente"),
+          titulo: "MBcaixa",
+          conteudoJson: {
+            ...original,
+            header: { ...original.header, logoUrl, title: "MBcaixa" },
+          },
+        },
+        context,
+      );
+      assert.equal(result.header.logoUrl, undefined);
+      assert.equal(result.header.title, "MBcaixa");
+    }
+  });
+
+  it("substitui qualquer logo persistido pelo logo atual do perfil", () => {
+    const original = normalizeDocument(legacy("Moção", cases[0][1]), context);
+    const logoAtual = "data:image/png;base64,LOGO_ATUAL";
+    const result = normalizeDocument(
+      {
+        ...legacy("Moção", "texto legado divergente"),
+        conteudoJson: {
+          ...original,
+          header: {
+            ...original.header,
+            logoUrl: "https://arquivo.test/logo-partidario-antigo.png",
+          },
+        },
+      },
+      {
+        ...context,
+        perfil: context.perfil ? { ...context.perfil, logoUrl: logoAtual } : undefined,
+      },
+    );
+
+    assert.equal(result.header.logoUrl, logoAtual);
+  });
+
+  it("converte uma sequência inequívoca de parágrafos numerados antigos", () => {
+    const original = normalizeDocument(legacy("Moção", cases[0][1]), context);
+    const result = normalizeDocument(
+      {
+        ...legacy("Moção", "ignorado"),
+        conteudoJson: {
+          ...original,
+          sections: [
+            {
+              id: "proposta",
+              title: "DELIBERAÇÃO / PROPOSTA",
+              blocks: [
+                { type: "paragraph", text: "1. Aprovar a proposta." },
+                { type: "paragraph", text: "1) Publicar a deliberação." },
+                { type: "paragraph", text: "1. Notificar os interessados." },
+                { type: "paragraph", text: "1. Executar a medida." },
+              ],
+            },
+          ],
+        },
+      },
+      context,
+    );
+
+    assert.deepEqual(result.sections[0]?.blocks, [
+      { type: "ordered-list", items: ["Aprovar a proposta."] },
+      { type: "ordered-list", items: ["Publicar a deliberação."] },
+      { type: "ordered-list", items: ["Notificar os interessados."] },
+      { type: "ordered-list", items: ["Executar a medida."] },
+    ]);
+  });
+
+  it("converte vários itens numerados inequívocos dentro do mesmo parágrafo", () => {
+    const original = normalizeDocument(legacy("Moção", cases[0][1]), context);
+    const result = normalizeDocument(
+      {
+        ...legacy("Moção", "ignorado"),
+        conteudoJson: {
+          ...original,
+          sections: [
+            {
+              id: "proposta",
+              title: "DELIBERAÇÃO / PROPOSTA",
+              blocks: [
+                {
+                  type: "paragraph",
+                  text: "1. Aprovar a proposta.\n1. Publicar a deliberação.\n1) Executar a medida.",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      context,
+    );
+
+    assert.deepEqual(result.sections[0]?.blocks, [
+      {
+        type: "ordered-list",
+        items: ["Aprovar a proposta.", "Publicar a deliberação.", "Executar a medida."],
+      },
+    ]);
+  });
+
+  it("não converte artigos legais, datas, quantias, percentagens ou parágrafos isolados", () => {
+    const original = normalizeDocument(legacy("Moção", cases[0][1]), context);
+    const blocks = [
+      { type: "paragraph" as const, text: "Nos termos do artigo 9.º do regulamento." },
+      { type: "paragraph" as const, text: "Data da deliberação: 30.07.2026." },
+      { type: "paragraph" as const, text: "1. julho de 2026" },
+      { type: "paragraph" as const, text: "A verba ascende a 1.000 euros." },
+      { type: "paragraph" as const, text: "A execução atingiu 50% do previsto." },
+      { type: "bullet-list" as const, items: ["Marcador preservado"] },
+    ];
+    const result = normalizeDocument(
+      {
+        ...legacy("Moção", "ignorado"),
+        conteudoJson: {
+          ...original,
+          sections: [{ id: "fundamentacao", title: "FUNDAMENTAÇÃO", blocks }],
+        },
+      },
+      context,
+    );
+
+    assert.deepEqual(result.sections[0]?.blocks, blocks);
+  });
+
+  it("normaliza listas por secção sem misturar as respetivas sequências", () => {
+    const original = normalizeDocument(legacy("Moção", cases[0][1]), context);
+    const result = normalizeDocument(
+      {
+        ...legacy("Moção", "ignorado"),
+        conteudoJson: {
+          ...original,
+          sections: ["PRIMEIRA", "SEGUNDA"].map((title, index) => ({
+            id: `secao-${index + 1}`,
+            title,
+            blocks: [
+              { type: "paragraph", text: "1. Primeiro item." },
+              { type: "paragraph", text: "1. Segundo item." },
+            ],
+          })),
+        },
+      },
+      context,
+    );
+
+    assert.ok(
+      result.sections.every((section) =>
+        section.blocks.every((block) => block.type === "ordered-list"),
+      ),
+    );
+  });
+
   it("preserva PROPOSTA / DELIBERAÇÃO entre Markdown legado, editor e modelo canónico", () => {
     const antigo = legacy(
       "Moção",

@@ -43,6 +43,7 @@ import { useAuth } from "@/lib/auth-store";
 import { guardarDocumentoCriadoConfirmado } from "@/lib/documentos-a-criar-store";
 import {
   isCanonicalDocument,
+  normalizeDocument,
   serializeDocumentToMarkdown,
   type CanonicalDocument,
 } from "@/lib/document-model";
@@ -282,6 +283,12 @@ export function DocumentoCriadoDetalhe({
     const antesAssembleiaId = documento.assembleiaId;
     const antesPontoId = documento.pontoId;
     const antesEstado = documento.estado;
+    const conteudoJsonNormalizado = isCanonicalDocument(conteudoJson)
+      ? normalizeDocument(
+          { tipo: documento.tipo, titulo, conteudo, conteudoJson },
+          contextoDocumento,
+        )
+      : conteudoJson;
 
     try {
       const atualizado = await executarGravacaoConfirmadaDocumento({
@@ -293,9 +300,9 @@ export function DocumentoCriadoDetalhe({
           guardarDocumentoCriadoConfirmado(documento.id, {
             titulo: titulo.trim(),
             conteudo,
-            conteudoJson,
+            conteudoJson: conteudoJsonNormalizado,
             formatoConteudo: resolverFormatoConteudoPersistido({
-              conteudoJson,
+              conteudoJson: conteudoJsonNormalizado,
               formatoConteudo: documento.formatoConteudo,
             }),
             estado,

@@ -39,7 +39,22 @@ describe("resolução central de identidade partidária", () => {
   it("reconhece os placeholders históricos para nunca os voltar a exportar", () => {
     assert.equal(isLogoPartidarioPlaceholder(LOGO_PARTIDARIO_NEUTRO), true);
     assert.equal(isLogoPartidarioPlaceholder("/logo.png"), true);
-    assert.equal(isLogoPartidarioPlaceholder("https://storage.test/logo.png"), false);
+    assert.equal(
+      isLogoPartidarioPlaceholder(
+        "https://tribuno.example/branding/neutral-mark.svg?cache=antiga#cabecalho",
+      ),
+      true,
+    );
+    assert.equal(isLogoPartidarioPlaceholder("https://tribuno.example/logo.png?v=1"), true);
+    assert.equal(isLogoPartidarioPlaceholder("https://storage.test/logo.png"), true);
+    assert.equal(isLogoPartidarioPlaceholder("https://storage.test/logos/user/logo.png"), false);
+  });
+
+  it("não aceita um placeholder histórico guardado no perfil", () => {
+    assert.equal(
+      resolverLogoPartidario({ perfil: { logoUrl: "/logo.png", organizacao: "" } }),
+      undefined,
+    );
   });
 
   it("recupera mandato real do perfil ou contexto e nunca o inventa", () => {

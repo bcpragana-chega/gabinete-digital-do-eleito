@@ -1,7 +1,7 @@
 import type { ContextoDocumentoInstitucional } from "@/lib/documentos-institucionais";
 import { obterDadosInstitucionais } from "@/lib/documentos-institucionais";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
-import { isLogoPartidarioPlaceholder, resolverMandatoInstitucional } from "@/lib/party-branding";
+import { resolverMandatoInstitucional } from "@/lib/party-branding";
 
 export const DOCUMENT_MODEL_VERSION = "tribuno-document-v1" as const;
 
@@ -145,6 +145,69 @@ function parseInlineRuns(text: string): InlineRun[] {
   return runs.length ? runs : [{ text }];
 }
 
+const marcadorListaNumeradaAntiga = /^\s*\d+[.)]\s+(.+?)\s*$/u;
+const mesesPorExtenso =
+  /^(?:janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/iu;
+
+function itemListaNumeradaAntiga(line: string) {
+  const match = marcadorListaNumeradaAntiga.exec(line);
+  const item = clean(match?.[1]);
+  if (!item || !/^[\p{L}"“«(]/u.test(item) || mesesPorExtenso.test(item)) return undefined;
+  return item;
+}
+
+function itensNumeradosNoMesmoParagrafo(block: Extract<DocumentBlock, { type: "paragraph" }>) {
+  const lines = block.text.replace(/\r\n/g, "\n").split("\n");
+  if (lines.length < 2) return undefined;
+  const items = lines.map(itemListaNumeradaAntiga);
+  return items.every((item): item is string => Boolean(item)) ? items : undefined;
+}
+
+function normalizarListasNumeradasAntigas(blocks: DocumentBlock[]): DocumentBlock[] {
+  const normalizados: DocumentBlock[] = [];
+
+  for (let index = 0; index < blocks.length; ) {
+    const block = blocks[index];
+    if (!block || block.type !== "paragraph") {
+      if (block) normalizados.push(block);
+      index += 1;
+      continue;
+    }
+
+    const itemsNoMesmoParagrafo = itensNumeradosNoMesmoParagrafo(block);
+    if (itemsNoMesmoParagrafo) {
+      normalizados.push({ type: "ordered-list", items: itemsNoMesmoParagrafo });
+      index += 1;
+      continue;
+    }
+
+    const sequencia: Array<{ block: Extract<DocumentBlock, { type: "paragraph" }>; item: string }> =
+      [];
+    let cursor = index;
+    while (cursor < blocks.length) {
+      const candidato = blocks[cursor];
+      if (!candidato || candidato.type !== "paragraph" || candidato.text.includes("\n")) break;
+      const item = itemListaNumeradaAntiga(candidato.text);
+      if (!item) break;
+      sequencia.push({ block: candidato, item });
+      cursor += 1;
+    }
+
+    if (sequencia.length >= 2) {
+      normalizados.push(
+        ...sequencia.map(({ item }) => ({ type: "ordered-list" as const, items: [item] })),
+      );
+      index = cursor;
+      continue;
+    }
+
+    normalizados.push(block);
+    index += 1;
+  }
+
+  return normalizados;
+}
+
 export function blocksToText(blocks: DocumentBlock[]) {
   return blocks
     .map((block) => {
@@ -232,11 +295,7 @@ export function normalizeDocument(
       ...canonical,
       header: {
         ...canonical.header,
-        logoUrl:
-          data.logoUrl ??
-          (isLogoPartidarioPlaceholder(canonical.header.logoUrl)
-            ? undefined
-            : canonical.header.logoUrl),
+        logoUrl: data.logoUrl,
         mandate: canonical.header.mandate ?? mandatoResolvido,
       },
     });
@@ -296,8 +355,10 @@ export function sanitizeDocument(document: CanonicalDocument): CanonicalDocument
     sections: (document.sections ?? []).map((section, index) => ({
       id: clean(section.id) ?? slug(section.title, index),
       title: clean(section.title) ?? `SECÇÃO ${index + 1}`,
-      blocks: (section.blocks ?? []).filter((block) =>
-        block.type === "paragraph" ? Boolean(clean(block.text)) : block.items.some(Boolean),
+      blocks: normalizarListasNumeradasAntigas(
+        (section.blocks ?? []).filter((block) =>
+          block.type === "paragraph" ? Boolean(clean(block.text)) : block.items.some(Boolean),
+        ),
       ),
     })),
     closing: {

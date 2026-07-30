@@ -3,6 +3,8 @@ import type { PerfilEleito } from "@/lib/auth-store";
 export const LOGO_PARTIDARIO_NEUTRO = "/branding/neutral-mark.svg";
 export const LOGO_PARTIDARIO_CHEGA = "https://partidochega.pt/wp-content/uploads/2019/04/CHEGA.png";
 
+const caminhosPlaceholderHistoricos = new Set([LOGO_PARTIDARIO_NEUTRO, "/logo.png"]);
+
 const logosPorPartido: Record<string, string> = {
   CHEGA: LOGO_PARTIDARIO_CHEGA,
 };
@@ -23,8 +25,18 @@ function normalizarPartido(value: unknown) {
 export function isLogoPartidarioPlaceholder(value: unknown) {
   const logoUrl = textoSeguro(value);
   if (!logoUrl) return false;
-  const caminhoLocal = logoUrl.split(/[?#]/, 1)[0];
-  return caminhoLocal === LOGO_PARTIDARIO_NEUTRO || caminhoLocal === "/logo.png";
+  try {
+    const pathname = decodeURIComponent(new URL(logoUrl, "https://tribuno.invalid").pathname)
+      .replace(/\/+/g, "/")
+      .toLocaleLowerCase("pt-PT");
+    return caminhosPlaceholderHistoricos.has(pathname);
+  } catch {
+    const caminhoLocal = logoUrl
+      .split(/[?#]/, 1)[0]
+      ?.replace(/\/+/g, "/")
+      .toLocaleLowerCase("pt-PT");
+    return Boolean(caminhoLocal && caminhosPlaceholderHistoricos.has(caminhoLocal));
+  }
 }
 
 export function resolverLogoPartidario(input?: {
@@ -32,7 +44,7 @@ export function resolverLogoPartidario(input?: {
   partidoOuGrupo?: string;
 }) {
   const explicito = textoSeguro(input?.perfil?.logoUrl);
-  if (explicito) return explicito;
+  if (explicito && !isLogoPartidarioPlaceholder(explicito)) return explicito;
 
   const partido = normalizarPartido(input?.partidoOuGrupo || input?.perfil?.organizacao);
   if (partido && logosPorPartido[partido]) return logosPorPartido[partido];

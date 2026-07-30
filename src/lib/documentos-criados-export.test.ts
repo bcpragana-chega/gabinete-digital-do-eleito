@@ -18,6 +18,10 @@ import {
 } from "@/lib/documentos-criados-export";
 import { LOGO_PARTIDARIO_CHEGA, LOGO_PARTIDARIO_NEUTRO } from "@/lib/party-branding";
 import { DOCUMENT_MODEL_VERSION, normalizeDocument } from "@/lib/document-model";
+import {
+  mapearDocumentoCriadoParaRemoto,
+  mapearDocumentoCriadoRemoto,
+} from "@/lib/documentos-criados-repository";
 import type { ContextoDocumentoInstitucional } from "@/lib/documentos-institucionais";
 import type { DocumentoCriado } from "@/lib/types";
 
@@ -122,6 +126,24 @@ describe("exportação DOCX real", () => {
       }),
       undefined,
     );
+  });
+
+  it("rejeita placeholders históricos por URL e pelos bytes exatos do PNG antigo", async () => {
+    let pedidos = 0;
+    assert.equal(
+      await carregarLogoExportacao(
+        "https://tribuno.example/branding/neutral-mark.svg?antigo=1",
+        async () => {
+          pedidos += 1;
+          return new Response(PNG_1X1);
+        },
+      ),
+      undefined,
+    );
+    assert.equal(pedidos, 0);
+
+    const pngAntigo = new Uint8Array(readFileSync(resolve(process.cwd(), "public/logo.png")));
+    assert.equal(await carregarLogoExportacao(dataUrl(pngAntigo, "image/png")), undefined);
   });
 
   it("incorpora uma imagem válida e omite totalmente uma imagem inválida no DOCX", async () => {
@@ -531,6 +553,100 @@ A medida é adequada.
     assert.equal(new Set(ids.slice(0, 4)).size, 1);
     assert.equal(new Set(ids.slice(4, 6)).size, 1);
     assert.notEqual(ids[0], ids[4]);
+  });
+
+  it("faz round-trip de documento canónico antigo e exporta a estrutura atualizada", async () => {
+    const contexto = contextoValido();
+    const base = normalizeDocument({ ...documento(), titulo: "MBcaixa" }, contexto);
+    const antigo: DocumentoCriado = {
+      ...documento(),
+      titulo: "MBcaixa",
+      conteudoJson: {
+        ...base,
+        header: {
+          ...base.header,
+          title: "MBcaixa",
+          logoUrl: "https://tribuno.example/branding/neutral-mark.svg",
+        },
+        sections: [
+          {
+            id: "proposta",
+            title: "DELIBERAÇÃO / PROPOSTA",
+            blocks: [
+              { type: "paragraph", text: "1. Aprovar." },
+              { type: "paragraph", text: "1. Publicar." },
+              { type: "paragraph", text: "1. Notificar." },
+              { type: "paragraph", text: "1. Executar." },
+            ],
+          },
+          {
+            id: "segunda",
+            title: "SEGUNDA SECÇÃO",
+            blocks: [
+              { type: "paragraph", text: "1. Recomeçar." },
+              { type: "paragraph", text: "1. Concluir." },
+            ],
+          },
+        ],
+      },
+    };
+    const normalizado = normalizeDocument(antigo, contexto);
+    const row = mapearDocumentoCriadoParaRemoto("user-1", {
+      ...antigo,
+      conteudoJson: normalizado,
+      formatoConteudo: "blocks_json",
+    });
+    const recarregado = mapearDocumentoCriadoRemoto(row);
+    const linhas = criarLinhasDocumento(recarregado, contexto).filter(
+      (linha) => linha.tipo === "item",
+    );
+
+    assert.equal((recarregado.conteudoJson as typeof normalizado).header.logoUrl, PNG_1X1);
+    assert.equal((recarregado.conteudoJson as typeof normalizado).header.title, "MBcaixa");
+    assert.deepEqual(
+      linhas.map((linha) => linha.marcador),
+      ["1.", "2.", "3.", "4.", "1.", "2."],
+    );
+
+    const blob = await criarBlobDocumentoWord(recarregado, contexto);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file("word/document.xml")?.async("string");
+    assert.match(xml ?? "", />MBcaixa</);
+    assert.equal(
+      Object.keys(zip.files).some((path) => path.startsWith("word/media/")),
+      true,
+    );
+  });
+
+  it("placeholder antigo sem logo atual não chega ao canvas nem ao DOCX", async () => {
+    const contexto = contextoValido();
+    delete contexto.perfil?.logoUrl;
+    const base = normalizeDocument(documento(), contexto);
+    const antigo = {
+      ...documento(),
+      conteudoJson: {
+        ...base,
+        header: { ...base.header, logoUrl: "/logo.png?versao=antiga" },
+      },
+    };
+    const model = obterModeloDocumentoExportacao(antigo, contexto);
+    assert.equal(model.header.logoUrl, undefined);
+
+    let desenhos = 0;
+    const altura = await desenharLogoPdf(
+      { drawImage: () => desenhos++ } as unknown as CanvasRenderingContext2D,
+      model.header.logoUrl,
+      20,
+    );
+    assert.equal(altura, 0);
+    assert.equal(desenhos, 0);
+
+    const blob = await criarBlobDocumentoWord(antigo, contexto);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    assert.equal(
+      Object.keys(zip.files).some((path) => path.startsWith("word/media/")),
+      false,
+    );
   });
 
   it("preserva exatamente o título escolhido pelo utilizador", async () => {

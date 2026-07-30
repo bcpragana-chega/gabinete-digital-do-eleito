@@ -22,6 +22,7 @@ import {
   type ContextoDocumentoInstitucional,
 } from "@/lib/documentos-institucionais";
 import { normalizeDocument, type InlineRun } from "@/lib/document-model";
+import { isLogoPartidarioPlaceholder } from "@/lib/party-branding";
 import type { DocumentoCriado } from "@/lib/types";
 
 type LinhaPdf =
@@ -43,6 +44,9 @@ const margemTopo = 96;
 const margemFundo = 116;
 const larguraTexto = larguraA4 - margemX * 2;
 export const MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const HASH_LOGO_TRIBUNO_HISTORICO =
+  "9779a279845e9d89a3a86845afd71c71b9e976631499d358972108d56af0d6ea";
+const TAMANHO_LOGO_TRIBUNO_HISTORICO = 1_118_090;
 export const mensagemLogoObrigatorio =
   "Para gerar documentos oficiais, adicione primeiro o logótipo institucional no seu perfil.";
 export const mensagemContextoInstitucionalObrigatorio =
@@ -545,7 +549,7 @@ export async function carregarLogoExportacao(
   logoUrl?: string,
   fetcher: typeof fetch = fetch,
 ): Promise<LogoExportacaoCarregado | undefined> {
-  if (!logoUrl) return undefined;
+  if (!logoUrl || isLogoPartidarioPlaceholder(logoUrl)) return undefined;
   try {
     const bytes = logoUrl.startsWith("data:")
       ? bytesDataUrl(logoUrl)
@@ -555,6 +559,7 @@ export async function carregarLogoExportacao(
           return new Uint8Array(await response.arrayBuffer());
         })();
     if (!bytes) return undefined;
+    if (await bytesSaoLogoTribunoHistorico(bytes)) return undefined;
 
     const dimensoes = dimensoesNaturaisImagem(bytes);
     if (!dimensoes) return undefined;
@@ -567,6 +572,23 @@ export async function carregarLogoExportacao(
     return undefined;
   } catch {
     return undefined;
+  }
+}
+
+async function bytesSaoLogoTribunoHistorico(bytes: Uint8Array) {
+  if (bytes.byteLength !== TAMANHO_LOGO_TRIBUNO_HISTORICO || !globalThis.crypto?.subtle) {
+    return false;
+  }
+  try {
+    const buffer = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength,
+    ) as ArrayBuffer;
+    const digest = new Uint8Array(await globalThis.crypto.subtle.digest("SHA-256", buffer));
+    const hash = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    return hash === HASH_LOGO_TRIBUNO_HISTORICO;
+  } catch {
+    return false;
   }
 }
 
