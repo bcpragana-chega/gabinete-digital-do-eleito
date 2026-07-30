@@ -23,7 +23,7 @@ import {
   mapearDocumentoCriadoRemoto,
 } from "@/lib/documentos-criados-repository";
 import type { ContextoDocumentoInstitucional } from "@/lib/documentos-institucionais";
-import type { DocumentoCriado } from "@/lib/types";
+import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
 const PNG_1X1 =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
@@ -171,7 +171,7 @@ describe("exportação DOCX real", () => {
 
   it("desenha uma imagem válida no PDF e reserva altura zero quando ela falha", async () => {
     const imageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "Image");
-    let desenhos = 0;
+    const desenhos: unknown[][] = [];
     class ImageMock {
       crossOrigin = "";
       naturalWidth = 100;
@@ -190,19 +190,129 @@ describe("exportação DOCX real", () => {
 
     try {
       const ctx = {
-        drawImage: () => {
-          desenhos += 1;
-        },
+        drawImage: (...args: unknown[]) => desenhos.push(args),
       } as unknown as CanvasRenderingContext2D;
       const alturaValida = await desenharLogoPdf(ctx, PNG_1X1, 10);
       const alturaInvalida = await desenharLogoPdf(ctx, "data:image/png;base64,AA==", 10);
 
-      assert.equal(alturaValida, 90);
+      assert.equal(alturaValida, 286);
       assert.equal(alturaInvalida, 0);
-      assert.equal(desenhos, 1);
+      assert.equal(desenhos.length, 1);
+      assert.deepEqual(desenhos[0]?.slice(1), [460, 10, 320, 160]);
     } finally {
       if (imageDescriptor) Object.defineProperty(globalThis, "Image", imageDescriptor);
       else Reflect.deleteProperty(globalThis, "Image");
+    }
+  });
+
+  it("usa em todos os tipos o mesmo cabeçalho DOCX centrado, ampliado e com espaço solene", async () => {
+    const tipos: TipoDocumentoCriado[] = [
+      "Moção",
+      "Recomendação",
+      "Requerimento",
+      "Declaração de voto",
+      "Intervenção",
+      "Outro documento",
+    ];
+    const tituloLongo =
+      "Título institucional longo que deve permanecer centrado e quebrar automaticamente em várias linhas";
+    const pngComProporcaoDoisParaUm = Uint8Array.from(
+      Buffer.from(PNG_1X1.split(",")[1] ?? "", "base64"),
+    );
+    const view = new DataView(
+      pngComProporcaoDoisParaUm.buffer,
+      pngComProporcaoDoisParaUm.byteOffset,
+      pngComProporcaoDoisParaUm.byteLength,
+    );
+    view.setUint32(16, 1_000);
+    view.setUint32(20, 500);
+    const logo = dataUrl(pngComProporcaoDoisParaUm, "image/png");
+
+    for (const tipo of tipos) {
+      const contexto = contextoValido();
+      if (contexto.perfil) contexto.perfil.logoUrl = logo;
+      const base = normalizeDocument({ ...documento(), tipo, titulo: tituloLongo }, contexto);
+      const designacao = tipo === "Outro documento" ? "Pedido de esclarecimento" : tipo;
+      const canonico = {
+        ...base,
+        header: { ...base.header, documentType: designacao, title: tituloLongo },
+      };
+      const blob = await criarBlobDocumentoWord(
+        { ...documento(), tipo, titulo: tituloLongo, conteudoJson: canonico },
+        contexto,
+      );
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const xml = (await zip.file("word/document.xml")?.async("string")) ?? "";
+      const paragrafos = [...xml.matchAll(/<w:p(?: |>).*?<\/w:p>/g)].map((match) => match[0]);
+      const encontrar = (texto: string) =>
+        paragrafos.find((paragrafo) => paragrafo.includes(`>${texto}<`)) ?? "";
+
+      assert.match(encontrar("ASSEMBLEIA DE FREGUESIA DE PORCHES"), /w:jc w:val="center"/);
+      assert.match(encontrar(designacao.toLocaleUpperCase("pt-PT")), /w:jc w:val="center"/);
+      assert.match(encontrar(tituloLongo), /w:jc w:val="center"/);
+      assert.doesNotMatch(encontrar("Dados do documento"), /w:jc w:val="center"/);
+      assert.match(xml, /w:after="720"/);
+      assert.match(xml, /wp:extent cx="2286000" cy="1143000"/);
+    }
+  });
+
+  it("mantém no PDF o cabeçalho e títulos longos centrados e os dados à esquerda", async () => {
+    const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, "document");
+    const contexto = contextoValido();
+    delete contexto.perfil?.logoUrl;
+    const titulo =
+      "Título institucional suficientemente longo para quebrar automaticamente em mais de uma linha";
+    const registos: Array<{ texto: string; alinhamento: CanvasTextAlign; x: number }> = [];
+    let alinhamento: CanvasTextAlign = "left";
+    const ctx = {
+      fillStyle: "",
+      textBaseline: "alphabetic",
+      get textAlign() {
+        return alinhamento;
+      },
+      set textAlign(value: CanvasTextAlign) {
+        alinhamento = value;
+      },
+      font: "",
+      fillRect: () => undefined,
+      fillText: (texto: string, x: number) => registos.push({ texto, alinhamento, x }),
+      measureText: (texto: string) => ({ width: texto.length * 18 }),
+      drawImage: () => undefined,
+      save: () => undefined,
+      restore: () => undefined,
+    } as unknown as CanvasRenderingContext2D;
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: {
+        createElement: () =>
+          ({
+            width: 0,
+            height: 0,
+            getContext: () => ctx,
+          }) as unknown as HTMLCanvasElement,
+      },
+    });
+
+    try {
+      await desenharPaginasDocumento({ ...documento(), titulo }, contexto);
+      const instituicao = registos.find((item) =>
+        item.texto.includes("ASSEMBLEIA DE FREGUESIA DE PORCHES"),
+      );
+      const tipo = registos.find((item) => item.texto === "RECOMENDAÇÃO");
+      const linhasTitulo = registos.filter((item) => titulo.includes(item.texto));
+      const dados = registos.find((item) => item.texto === "Dados do documento");
+
+      assert.deepEqual(
+        [instituicao?.alinhamento, tipo?.alinhamento, dados?.alinhamento],
+        ["center", "center", "left"],
+      );
+      assert.equal(instituicao?.x, 620);
+      assert.equal(tipo?.x, 620);
+      assert.ok(linhasTitulo.length >= 2);
+      assert.ok(linhasTitulo.every((item) => item.alinhamento === "center" && item.x === 620));
+    } finally {
+      if (documentDescriptor) Object.defineProperty(globalThis, "document", documentDescriptor);
+      else Reflect.deleteProperty(globalThis, "document");
     }
   });
 
@@ -289,7 +399,7 @@ Fundamentação da proposta.
 
     try {
       const paginas = await desenharPaginasDocumento(documentoReal, contextoReal);
-      assert.equal(paginas.length, 1);
+      assert.ok(paginas.length >= 1);
       assert.equal(logosDesenhados, 1);
       for (const linha of [
         "1. Primeira deliberação.",

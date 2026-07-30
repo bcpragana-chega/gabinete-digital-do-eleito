@@ -43,6 +43,12 @@ const margemX = 160;
 const margemTopo = 96;
 const margemFundo = 116;
 const larguraTexto = larguraA4 - margemX * 2;
+const larguraMaximaLogoPdf = 420;
+const alturaMaximaLogoPdf = 160;
+const espacoLogoOrgaoPdf = 126;
+const larguraMaximaLogoDocx = 340;
+const alturaMaximaLogoDocx = 120;
+const espacoLogoOrgaoDocx = 720;
 export const MIME_DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const HASH_LOGO_TRIBUNO_HISTORICO =
   "9779a279845e9d89a3a86845afd71c71b9e976631499d358972108d56af0d6ea";
@@ -405,13 +411,13 @@ export async function criarBlobDocumentoWord(
             ? [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  spacing: { after: 200 },
+                  spacing: { after: espacoLogoOrgaoDocx },
                   children: [logo],
                 }),
               ]
             : []),
           new Paragraph({
-            alignment: AlignmentType.START,
+            alignment: AlignmentType.CENTER,
             children: [
               new TextRun({
                 text: (model.header.institution ?? "").toLocaleUpperCase("pt-PT"),
@@ -422,7 +428,7 @@ export async function criarBlobDocumentoWord(
           ...(model.header.mandate
             ? [
                 new Paragraph({
-                  alignment: AlignmentType.START,
+                  alignment: AlignmentType.CENTER,
                   spacing: { before: 80 },
                   children: [new TextRun({ text: model.header.mandate, size: 22 })],
                 }),
@@ -439,7 +445,7 @@ export async function criarBlobDocumentoWord(
             ],
           }),
           new Paragraph({
-            alignment: AlignmentType.START,
+            alignment: AlignmentType.CENTER,
             spacing: { before: 180, after: 460 },
             children: [new TextRun({ text: model.header.title, size: 28 })],
           }),
@@ -513,7 +519,10 @@ async function imagemDocx(logoUrl?: string) {
 }
 
 function dimensoesLogo(natural: { width: number; height: number }) {
-  const scale = Math.min(170 / natural.width, 60 / natural.height, 1);
+  const scale = Math.min(
+    larguraMaximaLogoDocx / natural.width,
+    alturaMaximaLogoDocx / natural.height,
+  );
   return {
     width: Math.max(1, Math.round(natural.width * scale)),
     height: Math.max(1, Math.round(natural.height * scale)),
@@ -821,20 +830,25 @@ function desenharCabecalho(
   ctx.textAlign = "center";
   return desenharLogoPdf(ctx, logoUrl, pagina.y).then((alturaLogo) => {
     pagina.y += alturaLogo;
-    ctx.textAlign = "left";
-    desenharTextoQuebrado(ctx, cabecalho.orgao.toLocaleUpperCase("pt-PT"), margemX, pagina.y, {
-      maxWidth: larguraTexto,
-      font: "32px Arial, sans-serif",
-      lineHeight: 42,
-      color: "#111111",
-    });
-    pagina.y += 52;
+    const alturaOrgao = desenharTextoQuebrado(
+      ctx,
+      cabecalho.orgao.toLocaleUpperCase("pt-PT"),
+      larguraA4 / 2,
+      pagina.y,
+      {
+        maxWidth: larguraTexto,
+        font: "32px Arial, sans-serif",
+        lineHeight: 42,
+        color: "#111111",
+      },
+    );
+    pagina.y += alturaOrgao + 10;
 
     if (cabecalho.organizacao) {
       const alturaOrganizacao = desenharTextoQuebrado(
         ctx,
         cabecalho.organizacao,
-        margemX,
+        larguraA4 / 2,
         pagina.y,
         {
           maxWidth: larguraTexto,
@@ -855,8 +869,7 @@ function desenharCabecalho(
     });
     pagina.y += 62;
 
-    ctx.textAlign = "left";
-    const alturaTitulo = desenharTextoQuebrado(ctx, titulo, margemX, pagina.y, {
+    const alturaTitulo = desenharTextoQuebrado(ctx, titulo, larguraA4 / 2, pagina.y, {
       maxWidth: larguraTexto,
       font: "36px Arial, sans-serif",
       lineHeight: 44,
@@ -896,14 +909,15 @@ export async function desenharLogoPdf(
     objectUrl = URL.createObjectURL(new Blob([buffer], { type: logo.mimeType }));
     const imagem = await carregarImagem(objectUrl);
     if (!imagem.naturalWidth || !imagem.naturalHeight) return 0;
-    const maxWidth = 210;
-    const maxHeight = 80;
-    const escala = Math.min(maxWidth / imagem.naturalWidth, maxHeight / imagem.naturalHeight, 1);
+    const escala = Math.min(
+      larguraMaximaLogoPdf / imagem.naturalWidth,
+      alturaMaximaLogoPdf / imagem.naturalHeight,
+    );
     const largura = imagem.naturalWidth * escala;
     const altura = imagem.naturalHeight * escala;
 
     ctx.drawImage(imagem, (larguraA4 - largura) / 2, y, largura, altura);
-    return altura + 40;
+    return altura + espacoLogoOrgaoPdf;
   } catch {
     return 0;
   } finally {
