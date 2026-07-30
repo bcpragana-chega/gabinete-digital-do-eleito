@@ -15,8 +15,13 @@ import {
   type ContextoDocumentoInstitucional,
 } from "@/lib/documentos-institucionais";
 import { normalizeDocument, serializeDocumentToMarkdown } from "@/lib/document-model";
+import {
+  mapearDocumentoCriadoParaRemoto,
+  mapearDocumentoCriadoRemoto,
+} from "@/lib/documentos-criados-repository";
 import type { ContextoGeracaoDocumento } from "@/lib/ai/types";
 import type { PerfilEleito } from "@/lib/auth-store";
+import type { DocumentoCriado } from "@/lib/types";
 
 const contexto: ContextoDocumentoInstitucional = {
   assembleia: {
@@ -264,6 +269,61 @@ A medida é adequada ao problema identificado.
     assert.match(proposta?.conteudo ?? "", /Aprovar a medida/);
     assert.equal(validacao.pronto, true);
     assert.doesNotMatch(validacao.erros.join("\n"), /PROPOSTA \/ DELIBERAÇÃO não tem conteúdo/);
+  });
+
+  it('mantém PEDIDOS / PERGUNTAS no pipeline sem declarar "A secção REQUERIMENTO não tem conteúdo."', () => {
+    const conteudoGerado = `## DESTINATÁRIO
+
+Câmara Municipal de Lagoa.
+
+## ENQUADRAMENTO
+
+Foram reportadas falhas recorrentes na iluminação pública.
+
+## FUNDAMENTAÇÃO
+
+Compete ao município assegurar a manutenção da rede de iluminação pública.
+
+## PEDIDOS / PERGUNTAS
+
+1. Qual é o calendário previsto para reparar os candeeiros afetados?
+2. Que medidas preventivas serão adotadas?`;
+    const gerado: DocumentoCriado = {
+      id: "requerimento-1",
+      tipo: "Requerimento",
+      titulo: "Iluminação pública",
+      conteudo: conteudoGerado,
+      estado: "rascunho",
+      createdAt: "2026-07-30T10:00:00.000Z",
+    };
+
+    const modeloEditor = normalizeDocument(gerado, contexto);
+    const prontoParaGuardar = {
+      ...gerado,
+      conteudo: serializeDocumentToMarkdown(modeloEditor),
+      conteudoJson: modeloEditor,
+      formatoConteudo: "blocks_json",
+    };
+    const row = mapearDocumentoCriadoParaRemoto("user-1", prontoParaGuardar);
+    const reaberto = mapearDocumentoCriadoRemoto(row);
+    const modeloReaberto = normalizeDocument(reaberto, contexto);
+    const markdownReaberto = serializeDocumentToMarkdown(modeloReaberto);
+    const validacao = validarDocumentoInstitucional(
+      { ...reaberto, conteudo: markdownReaberto },
+      contexto,
+    );
+    const html = criarHtmlDocumentoInstitucional(
+      { ...reaberto, conteudo: markdownReaberto },
+      contexto,
+    );
+
+    assert.equal(row.tipo, "requerimento");
+    assert.equal(row.formato_conteudo, "blocks_json");
+    assert.equal(reaberto.tipo, "Requerimento");
+    assert.match(markdownReaberto, /## PEDIDOS \/ PERGUNTAS/);
+    assert.match(html, /Qual é o calendário previsto/);
+    assert.equal(validacao.pronto, true);
+    assert.doesNotMatch(validacao.erros.join("\n"), /A secção REQUERIMENTO não tem conteúdo\./);
   });
 
   it("continua a bloquear uma PROPOSTA / DELIBERAÇÃO realmente vazia", () => {
