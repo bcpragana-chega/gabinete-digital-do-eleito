@@ -22,6 +22,7 @@ import {
   type ContextoDocumentoInstitucional,
 } from "@/lib/documentos-institucionais";
 import { normalizeDocument, type InlineRun } from "@/lib/document-model";
+import { composeInstitutionalDocumentHeader } from "@/lib/institutional-document-header";
 import { isLogoPartidarioPlaceholder } from "@/lib/party-branding";
 import type { DocumentoCriado } from "@/lib/types";
 
@@ -356,10 +357,11 @@ export async function criarBlobDocumentoWord(
   contexto?: ContextoDocumentoInstitucional,
 ) {
   const { model, linhas } = comporDocumentoExportacao(documento, contexto);
+  const header = composeInstitutionalDocumentHeader(model.header);
   const corpo = linhas
     .filter((linha) => linha.tipo !== "espaco")
     .map((linha) => paragrafoDocx(linha));
-  const logo = await imagemDocx(model.header.logoUrl);
+  const logo = await imagemDocx(header.logoUrl);
   const referenciasNumeracao = model.sections.map((_, index) => `tribuno-numerada-${index + 1}`);
   const documentoDocx = new Document({
     styles: {
@@ -420,17 +422,17 @@ export async function criarBlobDocumentoWord(
             alignment: AlignmentType.CENTER,
             children: [
               new TextRun({
-                text: (model.header.institution ?? "").toLocaleUpperCase("pt-PT"),
+                text: header.institutionDisplay,
                 size: 32,
               }),
             ],
           }),
-          ...(model.header.mandate
+          ...(header.mandate
             ? [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
                   spacing: { before: 80 },
-                  children: [new TextRun({ text: model.header.mandate, size: 22 })],
+                  children: [new TextRun({ text: header.mandate, size: 22 })],
                 }),
               ]
             : []),
@@ -439,7 +441,7 @@ export async function criarBlobDocumentoWord(
             spacing: { before: 240 },
             children: [
               new TextRun({
-                text: model.header.documentType.toLocaleUpperCase("pt-PT"),
+                text: header.documentTypeDisplay,
                 size: 32,
               }),
             ],
@@ -447,7 +449,7 @@ export async function criarBlobDocumentoWord(
           new Paragraph({
             alignment: AlignmentType.CENTER,
             spacing: { before: 180, after: 460 },
-            children: [new TextRun({ text: model.header.title, size: 28 })],
+            children: [new TextRun({ text: header.title, size: 28 })],
           }),
           ...(model.documentData.length
             ? [
@@ -752,12 +754,13 @@ export async function desenharPaginasDocumento(
 
   let pagina = criarPagina();
 
+  const header = composeInstitutionalDocumentHeader(model.header);
   await desenharCabecalho(
     pagina,
-    { orgao: model.header.institution ?? "", organizacao: model.header.mandate },
-    model.header.documentType,
-    model.header.title,
-    model.header.logoUrl,
+    { orgao: header.institutionDisplay, organizacao: header.mandate },
+    header.documentTypeDisplay,
+    header.title,
+    header.logoUrl,
   );
   pagina.y += 34;
 
@@ -830,18 +833,12 @@ function desenharCabecalho(
   ctx.textAlign = "center";
   return desenharLogoPdf(ctx, logoUrl, pagina.y).then((alturaLogo) => {
     pagina.y += alturaLogo;
-    const alturaOrgao = desenharTextoQuebrado(
-      ctx,
-      cabecalho.orgao.toLocaleUpperCase("pt-PT"),
-      larguraA4 / 2,
-      pagina.y,
-      {
-        maxWidth: larguraTexto,
-        font: "32px Arial, sans-serif",
-        lineHeight: 42,
-        color: "#111111",
-      },
-    );
+    const alturaOrgao = desenharTextoQuebrado(ctx, cabecalho.orgao, larguraA4 / 2, pagina.y, {
+      maxWidth: larguraTexto,
+      font: "32px Arial, sans-serif",
+      lineHeight: 42,
+      color: "#111111",
+    });
     pagina.y += alturaOrgao + 10;
 
     if (cabecalho.organizacao) {
@@ -861,7 +858,7 @@ function desenharCabecalho(
     }
 
     ctx.textAlign = "center";
-    desenharTextoQuebrado(ctx, tipo.toLocaleUpperCase("pt-PT"), larguraA4 / 2, pagina.y, {
+    desenharTextoQuebrado(ctx, tipo, larguraA4 / 2, pagina.y, {
       maxWidth: larguraTexto,
       font: "38px Arial, sans-serif",
       lineHeight: 48,

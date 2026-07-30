@@ -2,6 +2,7 @@ import { obterAuthState, type PerfilEleito } from "@/lib/auth-store";
 import type { ResolvedInstitutionalContext } from "@/lib/ai/institutional-context";
 import type { Assembleia, DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 import { resolverLogoPartidario } from "@/lib/party-branding";
+import { composeInstitutionalDocumentHeader } from "@/lib/institutional-document-header";
 
 export type TipoDocumentoInstitucional = Extract<
   TipoDocumentoCriado,
@@ -663,68 +664,70 @@ function renderMarkdownInstitucional(markdown: string) {
 
 function cssDocumentoInstitucional() {
   return `
-      @page { size: A4; margin: 24mm 22mm 24mm; }
+      @page { size: A4; margin: 76px 82px; }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        color: #111827;
+        color: #020617;
         background: #ffffff;
-        font-family: "Times New Roman", Times, serif;
-        font-size: 12.5pt;
-        line-height: 1.62;
+        font-family: Arial, sans-serif;
+        font-size: 16px;
+        line-height: 1.28;
       }
       .documento-institucional {
         margin: 0 auto;
-        max-width: 760px;
+        max-width: 794px;
       }
       header {
-        border-bottom: 1px solid #d1d5db;
-        margin-bottom: 26px;
-        padding-bottom: 22px;
-        text-align: center;
+        margin: 0;
+        padding: 0;
       }
       .logo {
         display: block;
         height: auto;
-        margin: 0 auto 18px;
-        max-height: 72px;
-        max-width: 150px;
+        margin: 0 auto 32px;
+        max-height: 64px;
+        max-width: 170px;
+        object-fit: contain;
       }
       .orgao {
-        color: #374151;
-        font-family: Arial, sans-serif;
-        font-size: 10.5pt;
-        font-weight: 700;
-        letter-spacing: 0.08em;
+        color: #000000;
+        font-size: 26px;
+        font-weight: 400;
+        line-height: 1.25;
+        text-align: left;
         text-transform: uppercase;
       }
+      .mandato {
+        color: #000000;
+        font-size: 15px;
+        margin-top: 8px;
+        text-align: left;
+      }
       .tipo {
-        color: #111827;
-        font-family: Arial, sans-serif;
-        font-size: 15pt;
-        font-weight: 800;
-        letter-spacing: 0.16em;
-        margin-top: 16px;
+        color: #020617;
+        font-size: 28px;
+        font-weight: 400;
+        margin-top: 32px;
+        text-align: center;
         text-transform: uppercase;
       }
       h1 {
-        color: #111827;
-        font-family: Arial, sans-serif;
-        font-size: 18pt;
-        font-weight: 800;
-        letter-spacing: 0.02em;
-        line-height: 1.28;
-        margin: 18px 0 0;
-        text-transform: uppercase;
+        color: #020617;
+        font-size: 24px;
+        font-weight: 400;
+        line-height: 1.25;
+        margin: 16px 0 0;
+        text-align: left;
+      }
+      main {
+        margin-top: 36px;
       }
       main h2 {
         color: #111827;
-        font-family: Arial, sans-serif;
-        font-size: 11.5pt;
-        font-weight: 800;
-        letter-spacing: 0.08em;
+        font-size: 20px;
+        font-weight: 400;
         margin: 26px 0 10px;
-        text-transform: uppercase;
       }
       p {
         margin: 0 0 12px;
@@ -768,7 +771,9 @@ function cssDocumentoInstitucional() {
 }
 
 export function criarHtmlDocumentoInstitucional(
-  documento: Pick<DocumentoCriado, "tipo" | "titulo" | "conteudo">,
+  documento: Pick<DocumentoCriado, "tipo" | "titulo" | "conteudo"> & {
+    conteudoJson?: unknown;
+  },
   contexto?: ContextoDocumentoInstitucional,
 ) {
   const dados = obterDadosInstitucionais(contexto);
@@ -778,7 +783,31 @@ export function criarHtmlDocumentoInstitucional(
         obterSecoesDocumentoInstitucional(documento.tipo, documento.conteudo || ""),
       )
     : removerTituloMarkdown(documento.conteudo || "", titulo);
-  const tipo = capitalizarTipo(documento.tipo);
+  const cabecalhoCanonico =
+    documento.conteudoJson &&
+    typeof documento.conteudoJson === "object" &&
+    !Array.isArray(documento.conteudoJson) &&
+    "header" in documento.conteudoJson &&
+    documento.conteudoJson.header &&
+    typeof documento.conteudoJson.header === "object" &&
+    !Array.isArray(documento.conteudoJson.header)
+      ? (documento.conteudoJson.header as Record<string, unknown>)
+      : undefined;
+  const tipoCanonico =
+    typeof cabecalhoCanonico?.documentType === "string"
+      ? cabecalhoCanonico.documentType
+      : capitalizarTipo(documento.tipo);
+  const tituloCanonico =
+    typeof cabecalhoCanonico?.title === "string" ? cabecalhoCanonico.title : titulo;
+  const mandatoCanonico =
+    typeof cabecalhoCanonico?.mandate === "string" ? cabecalhoCanonico.mandate : undefined;
+  const header = composeInstitutionalDocumentHeader({
+    logoUrl: dados.logoUrl,
+    institution: dados.nomeOrgao,
+    mandate: mandatoCanonico,
+    documentType: tipoCanonico,
+    title: tituloCanonico,
+  });
 
   return `<!doctype html>
 <html lang="pt">
@@ -791,13 +820,14 @@ export function criarHtmlDocumentoInstitucional(
     <article class="documento-institucional">
       <header>
         ${
-          dados.logoUrl
-            ? `<img class="logo" src="${escaparHtml(dados.logoUrl)}" alt="" onerror="this.remove()" />`
+          header.logoUrl
+            ? `<img class="logo" src="${escaparHtml(header.logoUrl)}" alt="" onerror="this.remove()" />`
             : ""
         }
-        <div class="orgao">${escaparHtml(dados.nomeOrgao)}</div>
-        <div class="tipo">${escaparHtml(tipo)}</div>
-        <h1>${escaparHtml(titulo)}</h1>
+        <div class="orgao">${escaparHtml(header.institution)}</div>
+        ${header.mandate ? `<div class="mandato">${escaparHtml(header.mandate)}</div>` : ""}
+        <div class="tipo">${escaparHtml(header.documentType)}</div>
+        <h1>${escaparHtml(header.title)}</h1>
       </header>
       <main>
         ${renderMarkdownInstitucional(conteudo)}

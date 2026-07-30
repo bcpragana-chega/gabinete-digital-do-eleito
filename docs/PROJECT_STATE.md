@@ -1441,6 +1441,30 @@ pontos, documentos, regras, dados e desktop fora dessa futura alteração.
 
 ---
 
+## ✅ Correção — Compatibilidade retroativa da exportação de documentos institucionais
+
+Estado: FECHADO
+
+### Implementação concluída
+
+- Foi implementada compatibilidade retroativa para documentos institucionais antigos já guardados
+  em `conteudo_json`.
+- Os documentos antigos passam a utilizar o logótipo atual do perfil autenticado.
+- Os placeholders históricos deixaram de ser utilizados no editor e nas exportações PDF e DOCX.
+- As listas numeradas antigas são normalizadas para manter numeração contínua dentro da mesma
+  secção: 1, 2, 3, 4.
+- A normalização acontece em memória durante a leitura, edição e exportação e é persistida quando o
+  documento é novamente guardado.
+- Não foi necessária qualquer migração destrutiva da base de dados.
+
+### Validação
+
+A correção foi validada manualmente no fluxo real da aplicação através da exportação PDF, que
+confirmou o logótipo atual do perfil, a ausência de placeholders históricos e a numeração contínua
+das listas em documentos antigos.
+
+---
+
 # Próxima ação
 
 Executar uma missão fechada para auditar e adaptar exclusivamente o detalhe de Sessão à experiência

@@ -8,6 +8,7 @@ import {
   type CanonicalDocument,
 } from "@/lib/document-model";
 import type { ContextoDocumentoInstitucional } from "@/lib/documentos-institucionais";
+import { composeInstitutionalDocumentHeader } from "@/lib/institutional-document-header";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
 type Props = {
@@ -44,6 +45,7 @@ export function InstitutionalDocumentEditor({
   function update(next: CanonicalDocument) {
     onDocumentoChange?.({ ...next, version: model.version });
   }
+  const header = composeInstitutionalDocumentHeader(model.header);
 
   return (
     <div className="rounded-xl border border-border bg-background p-3 md:p-6">
@@ -54,16 +56,16 @@ export function InstitutionalDocumentEditor({
       )}
       <article className="mx-auto min-h-[1123px] max-w-[794px] border border-slate-200 bg-white px-8 py-12 font-sans text-[16px] leading-[1.28] text-slate-950 shadow-card md:px-[82px] md:py-[76px]">
         <header>
-          {model.header.logoUrl && (
+          {header.logoUrl && (
             <img
-              src={model.header.logoUrl}
+              src={header.logoUrl}
               alt="Logótipo do partido"
               className="mx-auto mb-8 block max-h-[64px] max-w-[170px] object-contain"
               onError={(event) => event.currentTarget.remove()}
             />
           )}
           <EditableLine
-            value={model.header.institution}
+            value={header.institution}
             readOnly={readOnly}
             className="text-left text-[26px] font-normal uppercase leading-tight tracking-normal text-black"
             onChange={(institution) =>
@@ -71,14 +73,14 @@ export function InstitutionalDocumentEditor({
             }
           />
           <EditableLine
-            value={model.header.mandate}
+            value={header.mandate}
             readOnly={readOnly}
             placeholder="Mandato"
             className="mt-2 text-left text-[15px] text-black"
             onChange={(mandate) => update({ ...model, header: { ...model.header, mandate } })}
           />
           <EditableLine
-            value={model.header.documentType}
+            value={header.documentType}
             readOnly={readOnly}
             className="mt-8 text-center text-[28px] font-normal uppercase tracking-normal"
             onChange={(documentType) =>
@@ -86,7 +88,7 @@ export function InstitutionalDocumentEditor({
             }
           />
           <EditableLine
-            value={model.header.title}
+            value={header.title}
             readOnly={readOnly}
             className="mt-4 text-left text-[24px] font-normal leading-tight"
             onChange={(title) => update({ ...model, header: { ...model.header, title } })}

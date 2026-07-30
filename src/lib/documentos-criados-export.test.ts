@@ -33,6 +33,16 @@ const JPEG_1X1 = Uint8Array.from([
   0x00, 0x02, 0x11, 0x00, 0x03, 0x11, 0x00, 0xff, 0xd9,
 ]);
 
+const variantesCabecalho: Array<{ tipo: TipoDocumentoCriado; designacao: string }> = [
+  { tipo: "Moção", designacao: "Moção" },
+  { tipo: "Recomendação", designacao: "Recomendação" },
+  { tipo: "Requerimento", designacao: "Requerimento" },
+  { tipo: "Outro documento", designacao: "Pedido de esclarecimento" },
+  { tipo: "Declaração de voto", designacao: "Declaração de voto" },
+  { tipo: "Intervenção", designacao: "Intervenção" },
+  { tipo: "Outro documento", designacao: "Outro documento" },
+];
+
 function dataUrl(bytes: Uint8Array, mimeType: string) {
   return `data:${mimeType};base64,${Buffer.from(bytes).toString("base64")}`;
 }
@@ -206,14 +216,6 @@ describe("exportação DOCX real", () => {
   });
 
   it("usa em todos os tipos o mesmo cabeçalho DOCX centrado, ampliado e com espaço solene", async () => {
-    const tipos: TipoDocumentoCriado[] = [
-      "Moção",
-      "Recomendação",
-      "Requerimento",
-      "Declaração de voto",
-      "Intervenção",
-      "Outro documento",
-    ];
     const tituloLongo =
       "Título institucional longo que deve permanecer centrado e quebrar automaticamente em várias linhas";
     const pngComProporcaoDoisParaUm = Uint8Array.from(
@@ -228,11 +230,10 @@ describe("exportação DOCX real", () => {
     view.setUint32(20, 500);
     const logo = dataUrl(pngComProporcaoDoisParaUm, "image/png");
 
-    for (const tipo of tipos) {
+    for (const { tipo, designacao } of variantesCabecalho) {
       const contexto = contextoValido();
       if (contexto.perfil) contexto.perfil.logoUrl = logo;
       const base = normalizeDocument({ ...documento(), tipo, titulo: tituloLongo }, contexto);
-      const designacao = tipo === "Outro documento" ? "Pedido de esclarecimento" : tipo;
       const canonico = {
         ...base,
         header: { ...base.header, documentType: designacao, title: tituloLongo },
@@ -294,22 +295,35 @@ describe("exportação DOCX real", () => {
     });
 
     try {
-      await desenharPaginasDocumento({ ...documento(), titulo }, contexto);
-      const instituicao = registos.find((item) =>
-        item.texto.includes("ASSEMBLEIA DE FREGUESIA DE PORCHES"),
-      );
-      const tipo = registos.find((item) => item.texto === "RECOMENDAÇÃO");
-      const linhasTitulo = registos.filter((item) => titulo.includes(item.texto));
-      const dados = registos.find((item) => item.texto === "Dados do documento");
+      for (const { tipo, designacao } of variantesCabecalho) {
+        registos.length = 0;
+        const base = normalizeDocument({ ...documento(), tipo, titulo }, contexto);
+        const canonico = {
+          ...base,
+          header: { ...base.header, documentType: designacao, title: titulo },
+        };
+        await desenharPaginasDocumento(
+          { ...documento(), tipo, titulo, conteudoJson: canonico },
+          contexto,
+        );
+        const instituicao = registos.find((item) =>
+          item.texto.includes("ASSEMBLEIA DE FREGUESIA DE PORCHES"),
+        );
+        const tipoDesenhado = registos.find(
+          (item) => item.texto === designacao.toLocaleUpperCase("pt-PT"),
+        );
+        const linhasTitulo = registos.filter((item) => titulo.includes(item.texto));
+        const dados = registos.find((item) => item.texto === "Dados do documento");
 
-      assert.deepEqual(
-        [instituicao?.alinhamento, tipo?.alinhamento, dados?.alinhamento],
-        ["center", "center", "left"],
-      );
-      assert.equal(instituicao?.x, 620);
-      assert.equal(tipo?.x, 620);
-      assert.ok(linhasTitulo.length >= 2);
-      assert.ok(linhasTitulo.every((item) => item.alinhamento === "center" && item.x === 620));
+        assert.deepEqual(
+          [instituicao?.alinhamento, tipoDesenhado?.alinhamento, dados?.alinhamento],
+          ["center", "center", "left"],
+        );
+        assert.equal(instituicao?.x, 620);
+        assert.equal(tipoDesenhado?.x, 620);
+        assert.ok(linhasTitulo.length >= 2);
+        assert.ok(linhasTitulo.every((item) => item.alinhamento === "center" && item.x === 620));
+      }
     } finally {
       if (documentDescriptor) Object.defineProperty(globalThis, "document", documentDescriptor);
       else Reflect.deleteProperty(globalThis, "document");

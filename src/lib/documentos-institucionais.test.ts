@@ -192,6 +192,45 @@ describe("validação e composição institucional", () => {
     assert.doesNotMatch(html, />\s*Chega!\s*</i);
   });
 
+  it("usa no HTML o cabeçalho canónico único para todos os tipos e designações", () => {
+    const variantes = [
+      ["Moção", "Moção"],
+      ["Recomendação", "Recomendação"],
+      ["Requerimento", "Requerimento"],
+      ["Outro documento", "Pedido de esclarecimento"],
+      ["Declaração de voto", "Declaração de voto"],
+      ["Intervenção", "Intervenção"],
+      ["Outro documento", "Outro documento"],
+    ] as const;
+
+    for (const [tipo, designacao] of variantes) {
+      const html = criarHtmlDocumentoInstitucional(
+        {
+          tipo,
+          titulo: "Título institucional",
+          conteudo: recomendacao.conteudo,
+          conteudoJson: {
+            header: {
+              documentType: designacao,
+              title: "Título institucional",
+              mandate: "Mandato 2025–2029",
+            },
+          },
+        },
+        contexto,
+      );
+
+      assert.match(html, /max-height: 64px/);
+      assert.match(html, /max-width: 170px/);
+      assert.match(html, /margin: 0 auto 32px/);
+      assert.match(html, /@page \{ size: A4; margin: 76px 82px; \}/);
+      assert.match(html, /<div class="orgao">Assembleia de Freguesia de Porches<\/div>/);
+      assert.match(html, /<div class="mandato">Mandato 2025–2029<\/div>/);
+      assert.match(html, new RegExp(`<div class="tipo">${designacao}</div>`, "i"));
+      assert.doesNotMatch(html, /border-bottom/);
+    }
+  });
+
   for (const [placeholder, esperado] of [
     ["Texto por preencher.", "conteúdo por preencher"],
     ["[data]", "data"],

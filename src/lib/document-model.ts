@@ -296,6 +296,7 @@ export function normalizeDocument(
       header: {
         ...canonical.header,
         logoUrl: data.logoUrl,
+        institution: data.nomeOrgao || canonical.header.institution,
         mandate: canonical.header.mandate ?? mandatoResolvido,
       },
     });
