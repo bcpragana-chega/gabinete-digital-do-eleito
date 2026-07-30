@@ -86,7 +86,33 @@ function decodeJwtPayload(token: string) {
     family_name?: string;
     email?: string;
     picture?: string;
+    aud?: string | string[];
+    iss?: string;
+    exp?: number;
   };
+}
+
+function diagnosticarMetadadosCredentialGoogle(
+  credential: string,
+  expectedAudience: string,
+  now = Date.now(),
+) {
+  try {
+    const payload = decodeJwtPayload(credential);
+    const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud].filter(Boolean);
+    return {
+      issuerValid:
+        payload.iss === "https://accounts.google.com" || payload.iss === "accounts.google.com",
+      audienceValid: audiences.includes(expectedAudience),
+      expired: typeof payload.exp !== "number" || payload.exp * 1000 <= now,
+    };
+  } catch {
+    return {
+      issuerValid: false,
+      audienceValid: false,
+      expired: true,
+    };
+  }
 }
 
 function userFromCredential(credential: string): AuthUser {
@@ -311,6 +337,17 @@ function LoginPage() {
             logAuthDiagnostic("GOOGLE_CREDENTIAL_PRESENT", {
               attemptId,
               phase: phaseRef.current,
+            });
+            const credentialMetadata = diagnosticarMetadadosCredentialGoogle(
+              response.credential,
+              googleClientId,
+            );
+            logAuthDiagnostic("GOOGLE_CREDENTIAL_METADATA_VALIDATED", {
+              attemptId,
+              phase: phaseRef.current,
+              credentialIssuerValid: credentialMetadata.issuerValid,
+              credentialAudienceValid: credentialMetadata.audienceValid,
+              credentialExpired: credentialMetadata.expired,
             });
 
             let googleUser: AuthUser;

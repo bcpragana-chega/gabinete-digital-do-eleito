@@ -9,6 +9,41 @@ export type LoginErroCodigo =
   | "ERRO_LOGIN_NAVEGACAO"
   | "ERRO_LOGIN_DESCONHECIDO";
 
+export type SupabaseAuthFailureReason =
+  | "audience_mismatch"
+  | "issuer_mismatch"
+  | "token_rejected"
+  | "provider_disabled"
+  | "signup_disabled"
+  | "rate_limited"
+  | "server_error"
+  | "unknown";
+
+export function classificarErroSupabaseAuth(error: {
+  message?: string;
+  status?: number;
+  code?: string;
+}): SupabaseAuthFailureReason {
+  const code = error.code?.toLocaleLowerCase("en") ?? "";
+  const message = error.message?.toLocaleLowerCase("en") ?? "";
+  const searchable = `${code} ${message}`;
+
+  if (/audien|client.?id/.test(searchable)) return "audience_mismatch";
+  if (/issuer|\biss\b/.test(searchable)) return "issuer_mismatch";
+  if (/provider.*(?:disabled|not enabled)|unsupported.*provider/.test(searchable)) {
+    return "provider_disabled";
+  }
+  if (/signup.*disabled|signups.*not allowed/.test(searchable)) return "signup_disabled";
+  if (error.status === 429 || /rate.?limit|too many requests/.test(searchable)) {
+    return "rate_limited";
+  }
+  if (/id.?token|jwt|signature|token.*(?:invalid|expired|malformed)|bad_jwt/.test(searchable)) {
+    return "token_rejected";
+  }
+  if (typeof error.status === "number" && error.status >= 500) return "server_error";
+  return "unknown";
+}
+
 class SafeAuthFlowError extends Error {
   cause: unknown;
 
@@ -37,11 +72,13 @@ export class SupabaseAuthTimeoutError extends SafeAuthFlowError {
 export class SupabaseAuthReturnedError extends SafeAuthFlowError {
   status?: number;
   code?: string;
+  reason: SupabaseAuthFailureReason;
 
-  constructor(error: { name?: string; status?: number; code?: string }) {
+  constructor(error: { name?: string; message?: string; status?: number; code?: string }) {
     super(error.name || "SupabaseAuthReturnedError", "SUPABASE_AUTH_ERROR_RETURNED", error);
     this.status = error.status;
     this.code = error.code;
+    this.reason = classificarErroSupabaseAuth(error);
   }
 }
 

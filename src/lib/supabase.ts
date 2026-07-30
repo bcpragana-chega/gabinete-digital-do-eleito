@@ -89,6 +89,7 @@ export async function iniciarSessaoSupabaseComGoogleCredential(
         errorName: returnedError.name,
         supabaseStatus: returnedError.status,
         supabaseCode: returnedError.code,
+        authFailureReason: returnedError.reason,
       });
       throw returnedError;
     }
@@ -141,6 +142,7 @@ export async function iniciarSessaoSupabaseComGoogleCredential(
           errorName: returnedError.name,
           supabaseStatus: returnedError.status,
           supabaseCode: returnedError.code,
+          authFailureReason: returnedError.reason,
         });
         throw returnedError;
       }

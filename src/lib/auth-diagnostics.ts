@@ -1,3 +1,5 @@
+import type { SupabaseAuthFailureReason } from "@/lib/auth-errors";
+
 export type AuthDiagnosticEvent =
   | "GIS_SCRIPT_LOADED"
   | "GIS_SCRIPT_FAILED"
@@ -7,6 +9,7 @@ export type AuthDiagnosticEvent =
   | "GOOGLE_CALLBACK_NOT_EXECUTED"
   | "GOOGLE_CREDENTIAL_PRESENT"
   | "GOOGLE_CREDENTIAL_MISSING"
+  | "GOOGLE_CREDENTIAL_METADATA_VALIDATED"
   | "SUPABASE_REQUEST_NOT_STARTED"
   | "SUPABASE_REQUEST_STARTED"
   | "SUPABASE_REQUEST_COMPLETED"
@@ -64,6 +67,10 @@ type AuthDiagnosticDetails = {
   errorName?: string;
   supabaseStatus?: number;
   supabaseCode?: string;
+  authFailureReason?: SupabaseAuthFailureReason;
+  credentialIssuerValid?: boolean;
+  credentialAudienceValid?: boolean;
+  credentialExpired?: boolean;
 };
 
 let attemptSequence = 0;
@@ -136,6 +143,10 @@ export function logAuthDiagnostic(event: AuthDiagnosticEvent, details: AuthDiagn
     errorName: safeCode(details.errorName),
     supabaseStatus: typeof details.supabaseStatus === "number" ? details.supabaseStatus : undefined,
     supabaseCode: safeCode(details.supabaseCode),
+    authFailureReason: details.authFailureReason,
+    credentialIssuerValid: details.credentialIssuerValid,
+    credentialAudienceValid: details.credentialAudienceValid,
+    credentialExpired: details.credentialExpired,
   };
 
   console[level](`[Tribuno Auth] ${event}`, safeDetails);

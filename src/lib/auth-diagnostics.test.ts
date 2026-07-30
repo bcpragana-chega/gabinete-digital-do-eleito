@@ -5,6 +5,7 @@ import {
   getSafeBrowserAuthContext,
   logAuthDiagnostic,
 } from "./auth-diagnostics";
+import { classificarErroSupabaseAuth } from "./auth-errors";
 import { SupabaseAuthReturnedError, SupabaseAuthTimeoutError } from "./supabase";
 
 describe("diagnóstico seguro do login Google", () => {
@@ -52,5 +53,42 @@ describe("diagnóstico seguro do login Google", () => {
     });
     assert.equal(returned.status, 400);
     assert.equal(returned.code, "bad_jwt");
+    assert.equal(returned.reason, "token_rejected");
+  });
+
+  it("classifica causas Supabase sem expor a mensagem original", () => {
+    assert.equal(
+      classificarErroSupabaseAuth({ status: 400, message: "Unacceptable audience in id_token" }),
+      "audience_mismatch",
+    );
+    assert.equal(
+      classificarErroSupabaseAuth({ status: 400, message: "Issuer does not match" }),
+      "issuer_mismatch",
+    );
+    assert.equal(
+      classificarErroSupabaseAuth({ status: 400, message: "Provider is not enabled" }),
+      "provider_disabled",
+    );
+    assert.equal(classificarErroSupabaseAuth({ status: 429 }), "rate_limited");
+    assert.equal(classificarErroSupabaseAuth({ status: 503 }), "server_error");
+  });
+
+  it("regista apenas a categoria segura do erro remoto", () => {
+    const calls: unknown[][] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => calls.push(args);
+    try {
+      logAuthDiagnostic("SUPABASE_ERROR_RETURNED", {
+        attemptId: "auth-2",
+        authFailureReason: "audience_mismatch",
+        ...({ message: "token e email privados" } as object),
+      });
+    } finally {
+      console.error = original;
+    }
+
+    const serialized = JSON.stringify(calls);
+    assert.match(serialized, /audience_mismatch/);
+    assert.doesNotMatch(serialized, /token e email privados/);
   });
 });
