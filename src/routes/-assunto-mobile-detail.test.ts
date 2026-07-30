@@ -122,21 +122,25 @@ describe("detalhe mobile do Assunto", () => {
     assert.match(documents, /min-w-0 flex-1 truncate text-sm/);
     assert.match(relations, /min-w-0 flex-1/);
     assert.match(relations, /truncate text-sm font-semibold/);
-    assert.doesNotMatch(detail + documents + relations, /overflow-x-auto|overflow-x-scroll/);
+    assert.match(detail, /<nav[\s\S]*className="mt-3 overflow-x-auto"/);
+    assert.doesNotMatch(documents + relations, /overflow-x-auto|overflow-x-scroll/);
     assert.doesNotMatch(detail, /min-w-\[(?:320|375|390|430)px\]/);
   });
 
-  it("usa coluna ampla no desktop e áreas expansíveis acessíveis no mobile", () => {
+  it("usa coluna ampla e as mesmas tabs acessíveis no desktop e no mobile", () => {
     assert.match(detail, /max-w-\[1280px\]/);
     assert.doesNotMatch(detail, /WorkspaceLayout|sidebar=/);
-    assert.match(detail, /aria-expanded=\{aberta\}/);
-    assert.match(detail, /aria-controls=\{painelId\}/);
-    assert.match(detail, /onClick=\{\(\) => setAberta\(\(atual\) => !atual\)\}/);
-    assert.match(detail, /aberta \? "" : "max-md:hidden"/);
-    assert.match(detail, /focus-visible:ring-2/);
-    for (const area of ["Trabalho", "Notas", "Relações", "Histórico"]) {
-      assert.match(detail, new RegExp(`title="${area}"`));
-    }
+    assert.match(detail, /role="tablist"/);
+    assert.match(detail, /role="tab"/);
+    assert.match(detail, /role="tabpanel"/);
+    assert.match(detail, /aria-selected=\{tabAtiva === id\}/);
+    assert.match(detail, /tabIndex=\{tabAtiva === id \? 0 : -1\}/);
+    assert.match(detail, /ArrowRight/);
+    assert.match(detail, /ArrowLeft/);
+    assert.match(detail, /Home/);
+    assert.match(detail, /End/);
+    assert.match(detail, /overflow-x-auto/);
+    assert.doesNotMatch(detail, /MobileArea|aria-expanded=\{aberta\}/);
     assert.match(documents, /mt-5 hidden gap-3 md:grid/);
     assert.match(relations, /className="mt-4 space-y-4 md:hidden" data-relacoes-assunto-mobile/);
 
@@ -160,16 +164,20 @@ describe("detalhe mobile do Assunto", () => {
     }
   });
 
-  it("mantém navegação por âncoras e reúne os marcos técnicos no Histórico", () => {
+  it("usa tabs ligadas à URL e reúne os marcos técnicos no Histórico", () => {
     assert.match(detail, /aria-label="Navegação nesta página"/);
-    for (const href of [
-      "#visao-geral",
-      "#trabalho-assunto",
-      "#relacoes-assunto",
-      "#atividade-assunto",
-    ]) {
-      assert.match(detail, new RegExp(`"${href}"`));
+    assert.match(detail, /validateSearch/);
+    assert.match(detail, /const tabAtiva = tab \?\? "visao-geral"/);
+    assert.match(detail, /navigate\(\{ search: \{ tab: novaTab \} \}\)/);
+    for (const tab of ["visao-geral", "trabalho", "relacoes", "historico"]) {
+      assert.match(detail, new RegExp(`id: "${tab}"`));
+      assert.match(detail, new RegExp(`id="tabpanel-${tab}"`));
+      assert.match(detail, new RegExp(`hidden=\\{tabAtiva !== "${tab}"\\}`));
     }
+    assert.doesNotMatch(
+      detail,
+      /href="#(?:visao-geral|trabalho-assunto|relacoes-assunto|atividade-assunto)"/,
+    );
     assert.match(detail, /id="atividade-assunto"/);
     assert.match(detail, /title="Marcos do assunto"/);
     assert.match(detail, /title="Assunto criado"/);

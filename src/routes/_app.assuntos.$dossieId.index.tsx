@@ -1,14 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import {
-  Activity,
-  Archive,
-  ArrowLeft,
-  ChevronDown,
-  Clock3,
-  FileText,
-  NotebookText,
-} from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Activity, Archive, ArrowLeft, Clock3, FileText, NotebookText } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { EditarDossieDialog } from "@/components/dossies/EditarDossieDialog";
 import { DossieDocumentosCriadosSection } from "@/components/dossies/DossieDocumentosCriadosSection";
@@ -35,7 +27,27 @@ import { calcularEstadoUxAssunto, type AcaoAssunto } from "@/lib/assunto-ux";
 import type { DocumentoCriado } from "@/lib/types";
 import type { EstadoDossie, PrioridadeDossie } from "@/lib/types";
 
+type AssuntoTab = "visao-geral" | "trabalho" | "relacoes" | "historico";
+
+type AssuntoTabsSearch = {
+  tab?: AssuntoTab;
+};
+
+const assuntoTabs: ReadonlyArray<{ id: AssuntoTab; label: string }> = [
+  { id: "visao-geral", label: "Visão geral" },
+  { id: "trabalho", label: "Trabalho" },
+  { id: "relacoes", label: "Relações" },
+  { id: "historico", label: "Histórico" },
+];
+
+function isAssuntoTab(value: unknown): value is AssuntoTab {
+  return assuntoTabs.some((tab) => tab.id === value);
+}
+
 export const Route = createFileRoute("/_app/assuntos/$dossieId/")({
+  validateSearch: (search: Record<string, unknown>): AssuntoTabsSearch => ({
+    tab: isAssuntoTab(search.tab) ? search.tab : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Assunto — Tribuno" },
@@ -77,40 +89,12 @@ function formatarData(data?: string) {
   }).format(new Date(data));
 }
 
-type MobileAreaProps = {
-  id: string;
-  title: string;
-  children: ReactNode;
-};
-
-function MobileArea({ id, title, children }: MobileAreaProps) {
-  const [aberta, setAberta] = useState(false);
-  const painelId = `${id}-painel`;
-
-  return (
-    <div className="min-w-0 md:contents">
-      <button
-        type="button"
-        aria-expanded={aberta}
-        aria-controls={painelId}
-        onClick={() => setAberta((atual) => !atual)}
-        className="flex min-h-12 w-full items-center justify-between gap-3 border-b border-border px-1 py-3 text-left text-sm font-semibold text-foreground outline-none transition-colors hover:text-primary focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:hidden"
-      >
-        <span>{title}</span>
-        <ChevronDown
-          aria-hidden="true"
-          className={`h-4 w-4 shrink-0 transition-transform ${aberta ? "rotate-180" : ""}`}
-        />
-      </button>
-      <div id={painelId} className={`min-w-0 md:contents ${aberta ? "" : "max-md:hidden"}`}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function DossieDetalhePage() {
   const { dossieId } = Route.useParams();
+  const { tab } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const tabAtiva = tab ?? "visao-geral";
+  const tabRefs = useRef<Partial<Record<AssuntoTab, HTMLButtonElement>>>({});
   const dossie = useDossie(dossieId);
   const notas = useNotasDossie(dossieId);
   const eventos = useEventosTimelineDossie(dossieId);
@@ -126,6 +110,27 @@ function DossieDetalhePage() {
     atualizar();
     return subscreverDocumentosACriar(atualizar);
   }, [dossieId]);
+
+  function selecionarTab(novaTab: AssuntoTab) {
+    void navigate({ search: { tab: novaTab } });
+  }
+
+  function navegarComTeclado(event: KeyboardEvent<HTMLButtonElement>, tabAtual: AssuntoTab) {
+    const indiceAtual = assuntoTabs.findIndex((item) => item.id === tabAtual);
+    let proximoIndice = indiceAtual;
+
+    if (event.key === "ArrowRight") proximoIndice = (indiceAtual + 1) % assuntoTabs.length;
+    else if (event.key === "ArrowLeft") {
+      proximoIndice = (indiceAtual - 1 + assuntoTabs.length) % assuntoTabs.length;
+    } else if (event.key === "Home") proximoIndice = 0;
+    else if (event.key === "End") proximoIndice = assuntoTabs.length - 1;
+    else return;
+
+    event.preventDefault();
+    const proximaTab = assuntoTabs[proximoIndice].id;
+    selecionarTab(proximaTab);
+    tabRefs.current[proximaTab]?.focus();
+  }
 
   if (!dossie) {
     return (
@@ -335,107 +340,140 @@ function DossieDetalhePage() {
             </div>
           </WorkspaceSection>
 
-          <nav aria-label="Navegação nesta página" className="mt-3 hidden md:block">
-            <ul className="flex flex-wrap gap-x-1 gap-y-2 border-b border-border pb-3">
-              {[
-                ["Visão geral", "#visao-geral"],
-                ["Trabalho", "#trabalho-assunto"],
-                ["Relações", "#relacoes-assunto"],
-                ["Histórico", "#atividade-assunto"],
-              ].map(([label, href]) => (
-                <li key={href}>
-                  <Button asChild variant="ghost" size="sm">
-                    <a href={href}>{label}</a>
-                  </Button>
-                </li>
+          <nav aria-label="Navegação nesta página" className="mt-3 overflow-x-auto">
+            <div
+              role="tablist"
+              aria-label="Áreas do assunto"
+              className="flex w-max min-w-full gap-x-1 gap-y-2 border-b border-border pb-3 md:w-auto md:flex-wrap"
+            >
+              {assuntoTabs.map(({ id, label }) => (
+                <Button
+                  key={id}
+                  ref={(element) => {
+                    tabRefs.current[id] = element ?? undefined;
+                  }}
+                  id={`tab-${id}`}
+                  type="button"
+                  role="tab"
+                  variant="ghost"
+                  size="sm"
+                  aria-selected={tabAtiva === id}
+                  aria-controls={`tabpanel-${id}`}
+                  tabIndex={tabAtiva === id ? 0 : -1}
+                  className={tabAtiva === id ? "bg-muted/70 text-foreground" : undefined}
+                  onClick={() => selecionarTab(id)}
+                  onKeyDown={(event) => navegarComTeclado(event, id)}
+                >
+                  {label}
+                </Button>
               ))}
-            </ul>
+            </div>
           </nav>
 
-          <WorkspaceSection id="visao-geral" className="mt-4 scroll-mt-24 p-4 md:p-5">
-            <SectionTitle
-              icon={FileText}
-              title="Visão geral"
-              description="O essencial sobre este tema de mandato."
-            />
-            <div className="mt-5 grid gap-5 md:grid-cols-2 md:gap-8">
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-foreground">Resumo</h3>
-                <p className="mt-2 whitespace-pre-line break-words text-sm leading-7 text-muted-foreground">
-                  {dossie.resumo || "Sem resumo registado."}
-                </p>
+          <div
+            id="tabpanel-visao-geral"
+            role="tabpanel"
+            aria-labelledby="tab-visao-geral"
+            hidden={tabAtiva !== "visao-geral"}
+          >
+            <WorkspaceSection id="visao-geral" className="mt-4 scroll-mt-24 p-4 md:p-5">
+              <SectionTitle
+                icon={FileText}
+                title="Visão geral"
+                description="O essencial sobre este tema de mandato."
+              />
+              <div className="mt-5 grid gap-5 md:grid-cols-2 md:gap-8">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-foreground">Resumo</h3>
+                  <p className="mt-2 whitespace-pre-line break-words text-sm leading-7 text-muted-foreground">
+                    {dossie.resumo || "Sem resumo registado."}
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-foreground">Objetivo</h3>
+                  <p className="mt-2 whitespace-pre-line break-words text-sm leading-7 text-muted-foreground">
+                    {dossie.objetivoPolitico || "Sem objetivo político registado."}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-foreground">Objetivo</h3>
-                <p className="mt-2 whitespace-pre-line break-words text-sm leading-7 text-muted-foreground">
-                  {dossie.objetivoPolitico || "Sem objetivo político registado."}
-                </p>
-              </div>
-            </div>
-            <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-border pt-4 sm:grid-cols-3">
-              <div>
-                <dt className="text-xs text-muted-foreground">Estado</dt>
-                <dd className="mt-1 text-sm font-medium text-foreground">
-                  {estadoLabel(dossie.estado)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">Prioridade</dt>
-                <dd className="mt-1 text-sm font-medium text-foreground">{dossie.prioridade}</dd>
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <dt className="text-xs text-muted-foreground">Última atualização</dt>
-                <dd className="mt-1 text-sm font-medium text-foreground">{ultimaAtualizacao}</dd>
-              </div>
-            </dl>
-          </WorkspaceSection>
+              <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-border pt-4 sm:grid-cols-3">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Estado</dt>
+                  <dd className="mt-1 text-sm font-medium text-foreground">
+                    {estadoLabel(dossie.estado)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Prioridade</dt>
+                  <dd className="mt-1 text-sm font-medium text-foreground">{dossie.prioridade}</dd>
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <dt className="text-xs text-muted-foreground">Última atualização</dt>
+                  <dd className="mt-1 text-sm font-medium text-foreground">{ultimaAtualizacao}</dd>
+                </div>
+              </dl>
+            </WorkspaceSection>
+          </div>
 
-          <section id="trabalho-assunto" className="mt-8 scroll-mt-24">
-            <div className="mb-4 hidden md:block">
-              <h2 className="font-display text-lg font-semibold text-foreground">Trabalho</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Documentos, notas e acompanhamento operacional deste assunto.
-              </p>
-            </div>
-            <div className="grid min-w-0 gap-4 md:grid-cols-2">
-              <MobileArea id="area-trabalho" title="Trabalho">
+          <div
+            id="tabpanel-trabalho"
+            role="tabpanel"
+            aria-labelledby="tab-trabalho"
+            hidden={tabAtiva !== "trabalho"}
+          >
+            <section id="trabalho-assunto" className="mt-8 scroll-mt-24">
+              <div className="mb-4 hidden md:block">
+                <h2 className="font-display text-lg font-semibold text-foreground">Trabalho</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Documentos, notas e acompanhamento operacional deste assunto.
+                </p>
+              </div>
+              <div className="grid min-w-0 gap-4 md:grid-cols-2">
                 <div id="documentos-assunto" className="min-w-0 scroll-mt-24 md:order-1">
                   <DossieDocumentosCriadosSection dossieId={dossie.id} />
                 </div>
                 <div className="min-w-0 pt-4 md:order-3 md:col-span-2 md:pt-0">
                   <DossieAcompanhamentoSection dossieId={dossie.id} />
                 </div>
-              </MobileArea>
-              <MobileArea id="area-notas" title="Notas">
                 <div className="min-w-0 pt-4 md:order-2 md:pt-0">
                   <DossieNotasSection dossieId={dossie.id} />
                 </div>
-              </MobileArea>
-            </div>
-          </section>
+              </div>
+            </section>
+          </div>
 
-          <section id="relacoes-assunto" className="mt-8 scroll-mt-24">
-            <div className="mb-4 hidden md:block">
-              <h2 className="font-display text-lg font-semibold text-foreground">Relações</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Ligações deste assunto a elementos institucionais.
-              </p>
-            </div>
-            <MobileArea id="area-relacoes" title="Relações">
+          <div
+            id="tabpanel-relacoes"
+            role="tabpanel"
+            aria-labelledby="tab-relacoes"
+            hidden={tabAtiva !== "relacoes"}
+          >
+            <section id="relacoes-assunto" className="mt-8 scroll-mt-24">
+              <div className="mb-4 hidden md:block">
+                <h2 className="font-display text-lg font-semibold text-foreground">Relações</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Ligações deste assunto a elementos institucionais.
+                </p>
+              </div>
               <div className="min-w-0 pt-4 md:pt-0">
                 <DossieRelacionadosSection dossieId={dossie.id} />
               </div>
-            </MobileArea>
-          </section>
+            </section>
+          </div>
 
-          <section id="atividade-assunto" className="mt-8 scroll-mt-24">
-            <div className="mb-4 hidden md:block">
-              <h2 className="font-display text-lg font-semibold text-foreground">Histórico</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Acontecimentos e marcos técnicos ao longo da vida deste assunto.
-              </p>
-            </div>
-            <MobileArea id="area-historico" title="Histórico">
+          <div
+            id="tabpanel-historico"
+            role="tabpanel"
+            aria-labelledby="tab-historico"
+            hidden={tabAtiva !== "historico"}
+          >
+            <section id="atividade-assunto" className="mt-8 scroll-mt-24">
+              <div className="mb-4 hidden md:block">
+                <h2 className="font-display text-lg font-semibold text-foreground">Histórico</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Acontecimentos e marcos técnicos ao longo da vida deste assunto.
+                </p>
+              </div>
               <div className="grid min-w-0 gap-4 pt-4 md:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] md:pt-0">
                 <DossieTimelineSection dossieId={dossie.id} />
                 <WorkspaceSection>
@@ -470,8 +508,8 @@ function DossieDetalhePage() {
                   </Timeline>
                 </WorkspaceSection>
               </div>
-            </MobileArea>
-          </section>
+            </section>
+          </div>
         </div>
       </main>
     </>
