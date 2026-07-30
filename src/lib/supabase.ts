@@ -57,8 +57,17 @@ export function getSupabaseClient() {
   return client;
 }
 
-export async function iniciarSessaoSupabaseComGoogleCredential(
+export function criarCredenciaisGoogleIdToken(credential: string, rawNonce: string) {
+  return {
+    provider: "google" as const,
+    token: credential,
+    nonce: rawNonce,
+  };
+}
+
+export async function autenticarComGoogleIdToken(
   credential: string,
+  rawNonce: string,
   attemptId?: string,
 ): Promise<User | undefined> {
   const supabase = getSupabaseClient();
@@ -74,10 +83,7 @@ export async function iniciarSessaoSupabaseComGoogleCredential(
 
   try {
     const { data, error } = await withSupabaseTimeout(
-      supabase.auth.signInWithIdToken({
-        provider: "google",
-        token: credential,
-      }),
+      supabase.auth.signInWithIdToken(criarCredenciaisGoogleIdToken(credential, rawNonce)),
       "SIGN_IN_WITH_ID_TOKEN",
     );
 

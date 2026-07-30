@@ -17,7 +17,7 @@ import {
 import {
   getSupabaseClient,
   iniciarSessaoSupabaseDemonstracao,
-  iniciarSessaoSupabaseComGoogleCredential,
+  autenticarComGoogleIdToken,
   isSupabaseConfigured,
   obterUtilizadorSupabaseValidado,
   registarUltimoAcesso,
@@ -501,9 +501,19 @@ export function deveLimparEstadoLocalAposFalhaLogin(input: {
   );
 }
 
+export function criarInicioAutenticacaoGoogle(
+  credential: string,
+  rawNonce: string,
+  attemptId?: string,
+  autenticar: typeof autenticarComGoogleIdToken = autenticarComGoogleIdToken,
+) {
+  return () => autenticar(credential, rawNonce, attemptId);
+}
+
 export async function loginComGoogle(
   user: AuthUser,
   googleCredential?: string,
+  googleNonce?: string,
   diagnosticAttemptId?: string,
 ) {
   const state = lerAuthState();
@@ -514,7 +524,7 @@ export async function loginComGoogle(
     temGoogleCredential: Boolean(googleCredential),
   });
 
-  if (!googleCredential || user.provider !== "google") {
+  if (!googleCredential || !googleNonce || user.provider !== "google") {
     guardarAuthState(resolverEstadoLocalAposLogout(state));
     throw new GoogleCredentialError();
   }
@@ -523,8 +533,7 @@ export async function loginComGoogle(
     console.info("[Tribuno Auth] A iniciar autenticação Supabase com Google ID token");
     return await executarLoginSupabaseConfirmado({
       attemptId: diagnosticAttemptId,
-      iniciar: () =>
-        iniciarSessaoSupabaseComGoogleCredential(googleCredential, diagnosticAttemptId),
+      iniciar: criarInicioAutenticacaoGoogle(googleCredential, googleNonce, diagnosticAttemptId),
       confirmar: async (supabaseUser) => {
         authConfirmada = true;
         limparBloqueioLogout();

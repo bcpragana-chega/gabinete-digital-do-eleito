@@ -10,6 +10,7 @@ export type LoginErroCodigo =
   | "ERRO_LOGIN_DESCONHECIDO";
 
 export type SupabaseAuthFailureReason =
+  | "nonce_mismatch"
   | "audience_mismatch"
   | "issuer_mismatch"
   | "token_rejected"
@@ -28,6 +29,7 @@ export function classificarErroSupabaseAuth(error: {
   const message = error.message?.toLocaleLowerCase("en") ?? "";
   const searchable = `${code} ${message}`;
 
+  if (/nonce/.test(searchable)) return "nonce_mismatch";
   if (/audien|client.?id/.test(searchable)) return "audience_mismatch";
   if (/issuer|\biss\b/.test(searchable)) return "issuer_mismatch";
   if (/provider.*(?:disabled|not enabled)|unsupported.*provider/.test(searchable)) {
