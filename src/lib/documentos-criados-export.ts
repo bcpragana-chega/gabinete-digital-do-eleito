@@ -28,7 +28,7 @@ type LinhaPdf =
   | { tipo: "espaco"; altura: number }
   | { tipo: "secao"; texto: string }
   | { tipo: "paragrafo"; texto: string; runs?: InlineRun[] }
-  | { tipo: "item"; marcador: string; texto: string };
+  | { tipo: "item"; marcador: string; texto: string; referenciaNumeracao?: string };
 
 type PaginaPdf = {
   canvas: HTMLCanvasElement;
@@ -350,6 +350,7 @@ export async function criarBlobDocumentoWord(
     .filter((linha) => linha.tipo !== "espaco")
     .map((linha) => paragrafoDocx(linha));
   const logo = await imagemDocx(model.header.logoUrl);
+  const referenciasNumeracao = model.sections.map((_, index) => `tribuno-numerada-${index + 1}`);
   const documentoDocx = new Document({
     styles: {
       default: {
@@ -360,20 +361,18 @@ export async function criarBlobDocumentoWord(
       },
     },
     numbering: {
-      config: [
-        {
-          reference: "tribuno-numerada",
-          levels: [
-            {
-              level: 0,
-              format: LevelFormat.DECIMAL,
-              text: "%1.",
-              alignment: AlignmentType.START,
-              style: { paragraph: { indent: { left: 720, hanging: 360 } } },
-            },
-          ],
-        },
-      ],
+      config: referenciasNumeracao.map((reference) => ({
+        reference,
+        levels: [
+          {
+            level: 0,
+            format: LevelFormat.DECIMAL,
+            text: "%1.",
+            alignment: AlignmentType.START,
+            style: { paragraph: { indent: { left: 720, hanging: 360 } } },
+          },
+        ],
+      })),
     },
     sections: [
       {
@@ -496,34 +495,20 @@ export function obterModeloDocumentoExportacao(
 }
 
 async function imagemDocx(logoUrl?: string) {
-  if (!logoUrl) return undefined;
+  const logo = await carregarLogoExportacao(logoUrl);
+  if (!logo) return undefined;
   try {
-    let bytes: Uint8Array;
-    if (logoUrl.startsWith("data:")) {
-      const encoded = logoUrl.split(",")[1];
-      if (!encoded) return undefined;
-      bytes = Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0));
-    } else {
-      const response = await fetch(logoUrl);
-      if (!response.ok) return undefined;
-      bytes = new Uint8Array(await response.arrayBuffer());
-    }
-    const tipo = tipoImagemDocx(bytes, logoUrl);
-    if (!tipo) return undefined;
     return new ImageRun({
-      data: bytes,
-      type: tipo,
-      transformation: dimensoesLogo(bytes),
+      data: logo.bytes,
+      type: logo.type,
+      transformation: dimensoesLogo(logo.dimensoes),
     });
   } catch {
     return undefined;
   }
 }
 
-function dimensoesLogo(bytes: Uint8Array) {
-  const natural = dimensoesNaturaisImagem(bytes);
-  if (!natural) return { width: 170, height: 60 };
-
+function dimensoesLogo(natural: { width: number; height: number }) {
   const scale = Math.min(170 / natural.width, 60 / natural.height, 1);
   return {
     width: Math.max(1, Math.round(natural.width * scale)),
@@ -531,14 +516,58 @@ function dimensoesLogo(bytes: Uint8Array) {
   };
 }
 
-function tipoImagemDocx(bytes: Uint8Array, logoUrl: string): "png" | "jpg" | undefined {
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
-    return "png";
+export type LogoExportacaoCarregado = {
+  bytes: Uint8Array;
+  type: "png" | "jpg";
+  mimeType: "image/png" | "image/jpeg";
+  dimensoes: { width: number; height: number };
+};
+
+function bytesDataUrl(logoUrl: string) {
+  const match = /^data:([^,]*),(.*)$/is.exec(logoUrl);
+  if (!match) return undefined;
+  try {
+    if (/(?:^|;)base64(?:;|$)/i.test(match[1] ?? "")) {
+      const decoded = atob((match[2] ?? "").replace(/\s/g, ""));
+      return Uint8Array.from(decoded, (character) => character.charCodeAt(0));
+    }
+    return new TextEncoder().encode(decodeURIComponent(match[2] ?? ""));
+  } catch {
+    return undefined;
   }
-  if (bytes[0] === 0xff && bytes[1] === 0xd8) return "jpg";
-  if (/\.jpe?g(?:$|[?#])/i.test(logoUrl)) return "jpg";
-  if (/\.png(?:$|[?#])/i.test(logoUrl)) return "png";
-  return undefined;
+}
+
+/**
+ * @internal Carrega e valida os bytes usados por ambos os exportadores.
+ * A extensão e o Content-Type nunca substituem a assinatura real da imagem.
+ */
+export async function carregarLogoExportacao(
+  logoUrl?: string,
+  fetcher: typeof fetch = fetch,
+): Promise<LogoExportacaoCarregado | undefined> {
+  if (!logoUrl) return undefined;
+  try {
+    const bytes = logoUrl.startsWith("data:")
+      ? bytesDataUrl(logoUrl)
+      : await (async () => {
+          const response = await fetcher(logoUrl);
+          if (!response.ok) return undefined;
+          return new Uint8Array(await response.arrayBuffer());
+        })();
+    if (!bytes) return undefined;
+
+    const dimensoes = dimensoesNaturaisImagem(bytes);
+    if (!dimensoes) return undefined;
+    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+      return { bytes, type: "png", mimeType: "image/png", dimensoes };
+    }
+    if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+      return { bytes, type: "jpg", mimeType: "image/jpeg", dimensoes };
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function dimensoesNaturaisImagem(bytes: Uint8Array) {
@@ -593,9 +622,9 @@ function paragrafoDocx(linha: Exclude<LinhaPdf, { tipo: "espaco" }>) {
     });
   }
   if (linha.tipo === "item") {
-    if (/^\d+\.$/.test(linha.marcador)) {
+    if (/^\d+\.$/.test(linha.marcador) && linha.referenciaNumeracao) {
       return new Paragraph({
-        numbering: { reference: "tribuno-numerada", level: 0 },
+        numbering: { reference: linha.referenciaNumeracao, level: 0 },
         children: [new TextRun(linha.texto)],
       });
     }
@@ -827,15 +856,25 @@ function carregarImagem(src: string) {
   });
 }
 
-async function desenharLogoPdf(
+/** @internal Exportada apenas para validar a composição PDF sem gerar um documento visual inteiro. */
+export async function desenharLogoPdf(
   ctx: CanvasRenderingContext2D,
   logoUrl: string | undefined,
   y: number,
 ) {
   if (!logoUrl) return 0;
 
+  let objectUrl: string | undefined;
   try {
-    const imagem = await carregarImagem(logoUrl);
+    const logo = await carregarLogoExportacao(logoUrl);
+    if (!logo) return 0;
+    const buffer = logo.bytes.buffer.slice(
+      logo.bytes.byteOffset,
+      logo.bytes.byteOffset + logo.bytes.byteLength,
+    ) as ArrayBuffer;
+    objectUrl = URL.createObjectURL(new Blob([buffer], { type: logo.mimeType }));
+    const imagem = await carregarImagem(objectUrl);
+    if (!imagem.naturalWidth || !imagem.naturalHeight) return 0;
     const maxWidth = 210;
     const maxHeight = 80;
     const escala = Math.min(maxWidth / imagem.naturalWidth, maxHeight / imagem.naturalHeight, 1);
@@ -845,7 +884,9 @@ async function desenharLogoPdf(
     ctx.drawImage(imagem, (larguraA4 - largura) / 2, y, largura, altura);
     return altura + 40;
   } catch {
-    throw new Error("PDF_LOGO_LOAD_ERROR");
+    return 0;
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
   }
 }
 
@@ -855,19 +896,24 @@ export function criarLinhasDocumento(
   contexto?: ContextoDocumentoInstitucional,
 ): LinhaPdf[] {
   const model = obterModeloDocumentoExportacao(documento, contexto);
-  return model.sections.flatMap((section): LinhaPdf[] => [
-    { tipo: "espaco", altura: 24 },
-    { tipo: "secao", texto: section.title },
-    ...section.blocks.flatMap((block): LinhaPdf[] => {
-      if (block.type === "paragraph")
-        return [{ tipo: "paragrafo", texto: block.text, runs: block.runs }];
-      return block.items.map((item, index) => ({
-        tipo: "item" as const,
-        marcador: block.type === "ordered-list" ? `${index + 1}.` : "•",
-        texto: item,
-      }));
-    }),
-  ]);
+  return model.sections.flatMap((section, sectionIndex): LinhaPdf[] => {
+    let proximoNumero = 1;
+    const referenciaNumeracao = `tribuno-numerada-${sectionIndex + 1}`;
+    return [
+      { tipo: "espaco", altura: 24 },
+      { tipo: "secao", texto: section.title },
+      ...section.blocks.flatMap((block): LinhaPdf[] => {
+        if (block.type === "paragraph")
+          return [{ tipo: "paragrafo", texto: block.text, runs: block.runs }];
+        return block.items.map((item) => ({
+          tipo: "item" as const,
+          marcador: block.type === "ordered-list" ? `${proximoNumero++}.` : "•",
+          texto: item,
+          referenciaNumeracao: block.type === "ordered-list" ? referenciaNumeracao : undefined,
+        }));
+      }),
+    ];
+  });
 }
 
 function garantirEspaco(pagina: PaginaPdf, paginas: PaginaPdf[], alturaMinima: number) {

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   LOGO_PARTIDARIO_CHEGA,
-  LOGO_PARTIDARIO_NEUTRO,
   resolverLogoPartidario,
   resolverMandatoInstitucional,
 } from "@/lib/party-branding";
@@ -28,10 +27,10 @@ describe("resolução central de identidade partidária", () => {
     assert.equal(resolverLogoPartidario({ partidoOuGrupo: "CHEGA" }), LOGO_PARTIDARIO_CHEGA);
   });
 
-  it("usa fallback neutro apenas sem identidade partidária resolvida", () => {
+  it("não inventa nem apresenta um placeholder sem identidade partidária resolvida", () => {
     assert.equal(
       resolverLogoPartidario({ perfil: { organizacao: "Lista não configurada" } }),
-      LOGO_PARTIDARIO_NEUTRO,
+      undefined,
     );
   });
 

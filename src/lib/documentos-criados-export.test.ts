@@ -4,17 +4,32 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import JSZip from "jszip";
 import {
+  carregarLogoExportacao,
   criarBlobDocumentoWord,
   criarLinhasDocumento,
+  desenharLogoPdf,
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
   MIME_DOCX,
   obterCabecalhoInstitucionalExportacao,
   obterModeloDocumentoExportacao,
 } from "@/lib/documentos-criados-export";
-import { LOGO_PARTIDARIO_CHEGA, LOGO_PARTIDARIO_NEUTRO } from "@/lib/party-branding";
+import { LOGO_PARTIDARIO_CHEGA } from "@/lib/party-branding";
+import { DOCUMENT_MODEL_VERSION, normalizeDocument } from "@/lib/document-model";
 import type { ContextoDocumentoInstitucional } from "@/lib/documentos-institucionais";
 import type { DocumentoCriado } from "@/lib/types";
+
+const PNG_1X1 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+const JPEG_1X1 = Uint8Array.from([
+  0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01,
+  0x00, 0x01, 0x00, 0x00, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x00, 0x01, 0x00, 0x01, 0x03, 0x01, 0x11,
+  0x00, 0x02, 0x11, 0x00, 0x03, 0x11, 0x00, 0xff, 0xd9,
+]);
+
+function dataUrl(bytes: Uint8Array, mimeType: string) {
+  return `data:${mimeType};base64,${Buffer.from(bytes).toString("base64")}`;
+}
 
 function documento(): DocumentoCriado {
   return {
@@ -61,13 +76,112 @@ function contextoValido(): ContextoDocumentoInstitucional {
       territorio: "Porches",
       municipio: "Lagoa",
       freguesia: "Porches",
-      logoUrl: "data:image/png;base64,AA==",
+      logoUrl: PNG_1X1,
       updatedAt: "2026-07-13T10:00:00.000Z",
     },
   };
 }
 
 describe("exportação DOCX real", () => {
+  it("reconhece PNG e JPEG pelos bytes, em data URL e URL remoto", async () => {
+    const png = await carregarLogoExportacao(PNG_1X1);
+    const jpeg = await carregarLogoExportacao(
+      "https://storage.test/logo-sem-extensao",
+      async () =>
+        new Response(JPEG_1X1, { status: 200, headers: { "Content-Type": "image/jpeg" } }),
+    );
+
+    assert.equal(png?.type, "png");
+    assert.deepEqual(png?.dimensoes, { width: 1, height: 1 });
+    assert.equal(jpeg?.type, "jpg");
+    assert.deepEqual(jpeg?.dimensoes, { width: 1, height: 1 });
+    assert.equal((await carregarLogoExportacao(dataUrl(JPEG_1X1, "image/jpeg")))?.type, "jpg");
+  });
+
+  it("rejeita HTML, bytes desconhecidos, respostas falhadas e URLs inacessíveis", async () => {
+    assert.equal(
+      await carregarLogoExportacao(
+        "https://storage.test/logo.png",
+        async () => new Response("<html>login</html>", { status: 200 }),
+      ),
+      undefined,
+    );
+    assert.equal(await carregarLogoExportacao("data:image/png;base64,AA=="), undefined);
+    assert.equal(
+      await carregarLogoExportacao(
+        "https://storage.test/indisponivel.png",
+        async () => new Response("", { status: 404 }),
+      ),
+      undefined,
+    );
+    assert.equal(
+      await carregarLogoExportacao("https://storage.test/falha.png", async () => {
+        throw new Error("network unavailable");
+      }),
+      undefined,
+    );
+  });
+
+  it("incorpora uma imagem válida e omite totalmente uma imagem inválida no DOCX", async () => {
+    const valido = await criarBlobDocumentoWord(documento(), contextoValido());
+    const zipValido = await JSZip.loadAsync(await valido.arrayBuffer());
+    const mediaValida = Object.keys(zipValido.files).filter(
+      (name) => name.startsWith("word/media/") && !name.endsWith("/"),
+    );
+    const xmlValido = await zipValido.file("word/document.xml")?.async("string");
+
+    const contextoInvalido = contextoValido();
+    if (contextoInvalido.perfil) contextoInvalido.perfil.logoUrl = "data:image/png;base64,AA==";
+    const invalido = await criarBlobDocumentoWord(documento(), contextoInvalido);
+    const zipInvalido = await JSZip.loadAsync(await invalido.arrayBuffer());
+    const mediaInvalida = Object.keys(zipInvalido.files).filter(
+      (name) => name.startsWith("word/media/") && !name.endsWith("/"),
+    );
+    const xmlInvalido = await zipInvalido.file("word/document.xml")?.async("string");
+
+    assert.equal(mediaValida.length, 1);
+    assert.match(xmlValido ?? "", /<w:drawing>/);
+    assert.equal(mediaInvalida.length, 0);
+    assert.doesNotMatch(xmlInvalido ?? "", /<w:drawing>/);
+  });
+
+  it("desenha uma imagem válida no PDF e reserva altura zero quando ela falha", async () => {
+    const imageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "Image");
+    let desenhos = 0;
+    class ImageMock {
+      crossOrigin = "";
+      naturalWidth = 100;
+      naturalHeight = 50;
+      onload?: () => void;
+      onerror?: () => void;
+
+      set src(_value: string) {
+        queueMicrotask(() => this.onload?.());
+      }
+    }
+    Object.defineProperty(globalThis, "Image", {
+      configurable: true,
+      value: ImageMock,
+    });
+
+    try {
+      const ctx = {
+        drawImage: () => {
+          desenhos += 1;
+        },
+      } as unknown as CanvasRenderingContext2D;
+      const alturaValida = await desenharLogoPdf(ctx, PNG_1X1, 10);
+      const alturaInvalida = await desenharLogoPdf(ctx, "data:image/png;base64,AA==", 10);
+
+      assert.equal(alturaValida, 90);
+      assert.equal(alturaInvalida, 0);
+      assert.equal(desenhos, 1);
+    } finally {
+      if (imageDescriptor) Object.defineProperty(globalThis, "Image", imageDescriptor);
+      else Reflect.deleteProperty(globalThis, "Image");
+    }
+  });
+
   it("gera pacote Office Open XML, MIME oficial e conteúdo português", async () => {
     const blob = await criarBlobDocumentoWord(documento(), {
       assembleia: {
@@ -244,13 +358,10 @@ A medida é adequada.
     assert.match(download?.nome ?? "", /\.docx$/);
   });
 
-  it("perfil sem partido nem logótipo usa apenas o fallback neutro", async () => {
+  it("perfil sem partido nem logótipo não cria placeholder nem bloqueia a exportação", async () => {
     const contexto = contextoValido();
     delete contexto.perfil?.logoUrl;
-    assert.equal(
-      obterModeloDocumentoExportacao(documento(), contexto).header.logoUrl,
-      LOGO_PARTIDARIO_NEUTRO,
-    );
+    assert.equal(obterModeloDocumentoExportacao(documento(), contexto).header.logoUrl, undefined);
     let tentouGerar = false;
     const resultado = await exportarDocumentoCriadoPDF(documento(), contexto, {
       desenharPaginasPdf: async () => {
@@ -263,6 +374,81 @@ A medida é adequada.
 
     assert.deepEqual(resultado, { status: "sucesso" });
     assert.equal(tentouGerar, true);
+  });
+
+  it("mantém a numeração entre blocos da mesma secção e reinicia numa nova secção", async () => {
+    const base = normalizeDocument(documento(), contextoValido());
+    const canonico = {
+      ...base,
+      version: DOCUMENT_MODEL_VERSION,
+      sections: [
+        {
+          id: "primeira",
+          title: "PRIMEIRA SECÇÃO",
+          blocks: [
+            { type: "ordered-list" as const, items: ["Um", "Dois"] },
+            { type: "ordered-list" as const, items: ["Três", "Quatro"] },
+            { type: "bullet-list" as const, items: ["Marcador"] },
+          ],
+        },
+        {
+          id: "segunda",
+          title: "SEGUNDA SECÇÃO",
+          blocks: [{ type: "ordered-list" as const, items: ["Novo um", "Novo dois"] }],
+        },
+      ],
+    };
+    const comBlocos = { ...documento(), conteudoJson: canonico };
+    const linhas = criarLinhasDocumento(comBlocos, contextoValido());
+    const itens = linhas.filter((linha) => linha.tipo === "item");
+
+    assert.deepEqual(
+      itens.map((item) => [item.marcador, item.texto]),
+      [
+        ["1.", "Um"],
+        ["2.", "Dois"],
+        ["3.", "Três"],
+        ["4.", "Quatro"],
+        ["•", "Marcador"],
+        ["1.", "Novo um"],
+        ["2.", "Novo dois"],
+      ],
+    );
+    assert.equal(itens[0]?.referenciaNumeracao, itens[3]?.referenciaNumeracao);
+    assert.notEqual(itens[3]?.referenciaNumeracao, itens[5]?.referenciaNumeracao);
+
+    const blob = await criarBlobDocumentoWord(comBlocos, contextoValido());
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file("word/document.xml")?.async("string");
+    const paragrafosNumerados = [...(xml ?? "").matchAll(/<w:p(?: |>).*?<\/w:p>/g)]
+      .map((match) => match[0])
+      .filter(
+        (paragraph) =>
+          /<w:numPr>/.test(paragraph) &&
+          !paragraph.includes('<w:t xml:space="preserve">Marcador</w:t>'),
+      );
+    const ids = paragrafosNumerados.map(
+      (paragraph) => /<w:numId w:val="(\d+)"\/>/.exec(paragraph)?.[1],
+    );
+
+    assert.equal(paragrafosNumerados.length, 6);
+    assert.equal(new Set(ids.slice(0, 4)).size, 1);
+    assert.equal(new Set(ids.slice(4, 6)).size, 1);
+    assert.notEqual(ids[0], ids[4]);
+  });
+
+  it("preserva exatamente o título escolhido pelo utilizador", async () => {
+    const original = { ...documento(), titulo: "MBcaixa" };
+    assert.equal(
+      obterModeloDocumentoExportacao(original, contextoValido()).header.title,
+      "MBcaixa",
+    );
+
+    const blob = await criarBlobDocumentoWord(original, contextoValido());
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file("word/document.xml")?.async("string");
+    assert.match(xml ?? "", />MBcaixa</);
+    assert.doesNotMatch(xml ?? "", /MB\s+caixa/i);
   });
 
   it("documento institucional inválido devolve os respetivos erros", async () => {

@@ -140,6 +140,16 @@ describe("modelo documental canónico V1", () => {
     assert.equal(reopened.header.logoUrl, LOGO_PARTIDARIO_CHEGA);
   });
 
+  it("leva o URL do logótipo guardado no perfil até ao modelo documental", () => {
+    const logoUrl = "https://project.supabase.co/storage/v1/object/public/logos/user/logo.png";
+    const result = normalizeDocument(legacy("Moção", cases[0][1]), {
+      ...context,
+      perfil: context.perfil ? { ...context.perfil, logoUrl } : undefined,
+    });
+
+    assert.equal(result.header.logoUrl, logoUrl);
+  });
+
   it("preserva PROPOSTA / DELIBERAÇÃO entre Markdown legado, editor e modelo canónico", () => {
     const antigo = legacy(
       "Moção",

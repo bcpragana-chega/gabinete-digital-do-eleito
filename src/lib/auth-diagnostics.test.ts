@@ -6,7 +6,12 @@ import {
   logAuthDiagnostic,
 } from "./auth-diagnostics";
 import { classificarErroSupabaseAuth } from "./auth-errors";
-import { SupabaseAuthReturnedError, SupabaseAuthTimeoutError } from "./supabase";
+import { criarInicioAutenticacaoGoogle } from "./auth-store";
+import {
+  criarCredenciaisGoogleIdToken,
+  SupabaseAuthReturnedError,
+  SupabaseAuthTimeoutError,
+} from "./supabase";
 
 describe("diagnóstico seguro do login Google", () => {
   it("correlaciona tentativas sem usar dados do utilizador", () => {
@@ -58,6 +63,13 @@ describe("diagnóstico seguro do login Google", () => {
 
   it("classifica causas Supabase sem expor a mensagem original", () => {
     assert.equal(
+      classificarErroSupabaseAuth({
+        status: 400,
+        message: "Passed nonce and nonce in id_token should either both exist or not.",
+      }),
+      "nonce_mismatch",
+    );
+    assert.equal(
       classificarErroSupabaseAuth({ status: 400, message: "Unacceptable audience in id_token" }),
       "audience_mismatch",
     );
@@ -90,5 +102,44 @@ describe("diagnóstico seguro do login Google", () => {
     const serialized = JSON.stringify(calls);
     assert.match(serialized, /audience_mismatch/);
     assert.doesNotMatch(serialized, /token e email privados/);
+  });
+
+  it("não permite que um nonce seja incluído no diagnóstico", () => {
+    const calls: unknown[][] = [];
+    const original = console.info;
+    console.info = (...args: unknown[]) => calls.push(args);
+    try {
+      logAuthDiagnostic("GOOGLE_CREDENTIAL_PRESENT", {
+        attemptId: "auth-3",
+        ...({ nonce: "nonce-privado", rawNonce: "raw-privado" } as object),
+      });
+    } finally {
+      console.info = original;
+    }
+
+    const serialized = JSON.stringify(calls);
+    assert.doesNotMatch(serialized, /nonce-privado|raw-privado/);
+  });
+
+  it("encaminha explicitamente o mesmo raw nonce até ao Supabase", async () => {
+    const received: unknown[][] = [];
+    const iniciar = criarInicioAutenticacaoGoogle(
+      "id-token",
+      "raw-nonce",
+      "auth-4",
+      async (...args) => {
+        received.push(args);
+        return undefined;
+      },
+    );
+
+    await iniciar();
+
+    assert.deepEqual(received, [["id-token", "raw-nonce", "auth-4"]]);
+    assert.deepEqual(criarCredenciaisGoogleIdToken("id-token", "raw-nonce"), {
+      provider: "google",
+      token: "id-token",
+      nonce: "raw-nonce",
+    });
   });
 });

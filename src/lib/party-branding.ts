@@ -30,7 +30,7 @@ export function resolverLogoPartidario(input?: {
   const partido = normalizarPartido(input?.partidoOuGrupo || input?.perfil?.organizacao);
   if (partido && logosPorPartido[partido]) return logosPorPartido[partido];
 
-  return LOGO_PARTIDARIO_NEUTRO;
+  return undefined;
 }
 
 export function resolverMandatoInstitucional(input?: {

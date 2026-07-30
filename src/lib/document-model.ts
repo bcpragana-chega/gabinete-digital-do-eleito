@@ -219,13 +219,10 @@ export function normalizeDocument(
   documento: Pick<DocumentoCriado, "tipo" | "titulo" | "conteudo" | "conteudoJson">,
   contexto?: ContextoDocumentoInstitucional,
 ): CanonicalDocument {
+  const data = obterDadosInstitucionais(contexto);
+
   if (isCanonicalDocument(documento.conteudoJson)) {
     const canonical = sanitizeDocument(documento.conteudoJson);
-    const temIdentidadePartidaria = Boolean(
-      contexto?.perfil?.logoUrl?.trim() ||
-      contexto?.perfil?.organizacao?.trim() ||
-      contexto?.grupoPolitico?.trim(),
-    );
     const mandatoResolvido = resolverMandatoInstitucional({
       perfil: contexto?.perfil,
       contexto: contexto?.institutionalContext,
@@ -235,18 +232,12 @@ export function normalizeDocument(
       ...canonical,
       header: {
         ...canonical.header,
-        logoUrl: temIdentidadePartidaria
-          ? resolverLogoPartidario({
-              perfil: contexto?.perfil,
-              partidoOuGrupo: contexto?.grupoPolitico,
-            })
-          : canonical.header.logoUrl,
+        logoUrl: data.logoUrl ?? canonical.header.logoUrl,
         mandate: canonical.header.mandate ?? mandatoResolvido,
       },
     });
   }
 
-  const data = obterDadosInstitucionais(contexto);
   const sections = parseLegacySections(documento.tipo, documento.conteudo || "");
   const documentData = [
     { label: "Sessão", value: contexto?.sessao ?? contexto?.assembleia?.nome ?? "" },
@@ -259,10 +250,7 @@ export function normalizeDocument(
   return sanitizeDocument({
     version: DOCUMENT_MODEL_VERSION,
     header: {
-      logoUrl: resolverLogoPartidario({
-        perfil: contexto?.perfil,
-        partidoOuGrupo: contexto?.grupoPolitico,
-      }),
+      logoUrl: data.logoUrl,
       institution: data.nomeOrgao,
       mandate: resolverMandatoInstitucional({
         perfil: contexto?.perfil,
