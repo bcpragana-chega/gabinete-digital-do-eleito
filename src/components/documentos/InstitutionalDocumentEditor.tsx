@@ -253,17 +253,21 @@ function DocumentData({
 }
 
 function Blocks({ blocks }: { blocks: CanonicalDocument["sections"][number]["blocks"] }) {
+  let proximoNumero = 1;
   return (
     <div className="space-y-3">
       {blocks.map((block, index) => {
-        if (block.type === "ordered-list")
+        if (block.type === "ordered-list") {
+          const inicio = proximoNumero;
+          proximoNumero += block.items.length;
           return (
-            <ol key={index} className="ml-6 list-decimal space-y-2">
+            <ol key={index} start={inicio} className="ml-6 list-decimal space-y-2">
               {block.items.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ol>
           );
+        }
         if (block.type === "bullet-list")
           return (
             <ul key={index} className="ml-6 list-disc space-y-2">

@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   LOGO_PARTIDARIO_CHEGA,
+  LOGO_PARTIDARIO_NEUTRO,
+  isLogoPartidarioPlaceholder,
   resolverLogoPartidario,
   resolverMandatoInstitucional,
 } from "@/lib/party-branding";
@@ -32,6 +34,12 @@ describe("resolução central de identidade partidária", () => {
       resolverLogoPartidario({ perfil: { organizacao: "Lista não configurada" } }),
       undefined,
     );
+  });
+
+  it("reconhece os placeholders históricos para nunca os voltar a exportar", () => {
+    assert.equal(isLogoPartidarioPlaceholder(LOGO_PARTIDARIO_NEUTRO), true);
+    assert.equal(isLogoPartidarioPlaceholder("/logo.png"), true);
+    assert.equal(isLogoPartidarioPlaceholder("https://storage.test/logo.png"), false);
   });
 
   it("recupera mandato real do perfil ou contexto e nunca o inventa", () => {

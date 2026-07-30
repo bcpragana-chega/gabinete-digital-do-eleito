@@ -1,7 +1,7 @@
 import type { ContextoDocumentoInstitucional } from "@/lib/documentos-institucionais";
 import { obterDadosInstitucionais } from "@/lib/documentos-institucionais";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
-import { resolverLogoPartidario, resolverMandatoInstitucional } from "@/lib/party-branding";
+import { isLogoPartidarioPlaceholder, resolverMandatoInstitucional } from "@/lib/party-branding";
 
 export const DOCUMENT_MODEL_VERSION = "tribuno-document-v1" as const;
 
@@ -232,7 +232,11 @@ export function normalizeDocument(
       ...canonical,
       header: {
         ...canonical.header,
-        logoUrl: data.logoUrl ?? canonical.header.logoUrl,
+        logoUrl:
+          data.logoUrl ??
+          (isLogoPartidarioPlaceholder(canonical.header.logoUrl)
+            ? undefined
+            : canonical.header.logoUrl),
         mandate: canonical.header.mandate ?? mandatoResolvido,
       },
     });

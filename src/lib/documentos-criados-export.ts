@@ -345,8 +345,8 @@ export async function criarBlobDocumentoWord(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ) {
-  const model = obterModeloDocumentoExportacao(documento, contexto);
-  const corpo = criarLinhasDocumento(documento, contexto)
+  const { model, linhas } = comporDocumentoExportacao(documento, contexto);
+  const corpo = linhas
     .filter((linha) => linha.tipo !== "espaco")
     .map((linha) => paragrafoDocx(linha));
   const logo = await imagemDocx(model.header.logoUrl);
@@ -695,11 +695,11 @@ function iniciarDownload(blob: Blob, nomeFicheiro: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-async function desenharPaginasDocumento(
+export async function desenharPaginasDocumento(
   documento: DocumentoCriado,
   contexto?: ContextoDocumentoInstitucional,
 ) {
-  const model = obterModeloDocumentoExportacao(documento, contexto);
+  const { model, linhas } = comporDocumentoExportacao(documento, contexto);
   const paginas: PaginaPdf[] = [];
   const criarPagina = () => {
     const canvas = document.createElement("canvas");
@@ -743,7 +743,6 @@ async function desenharPaginasDocumento(
     });
   }
 
-  const linhas = criarLinhasDocumento(documento, contexto);
   linhas.forEach((linha) => {
     pagina = garantirEspaco(pagina, paginas, linha.tipo === "secao" ? 82 : 58);
     pagina = desenharLinhaDocumento(pagina, paginas, linha);
@@ -896,6 +895,19 @@ export function criarLinhasDocumento(
   contexto?: ContextoDocumentoInstitucional,
 ): LinhaPdf[] {
   const model = obterModeloDocumentoExportacao(documento, contexto);
+  return criarLinhasModelo(model);
+}
+
+/** @internal Snapshot único consumido pelos compositores PDF e DOCX. */
+export function comporDocumentoExportacao(
+  documento: DocumentoCriado,
+  contexto?: ContextoDocumentoInstitucional,
+) {
+  const model = obterModeloDocumentoExportacao(documento, contexto);
+  return { model, linhas: criarLinhasModelo(model) };
+}
+
+function criarLinhasModelo(model: ReturnType<typeof obterModeloDocumentoExportacao>): LinhaPdf[] {
   return model.sections.flatMap((section, sectionIndex): LinhaPdf[] => {
     let proximoNumero = 1;
     const referenciaNumeracao = `tribuno-numerada-${sectionIndex + 1}`;

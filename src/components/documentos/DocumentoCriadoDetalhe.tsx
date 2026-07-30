@@ -39,6 +39,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { WorkspaceHeader, WorkspaceLayout, WorkspaceSection } from "@/components/ui/workspace";
 import { useAssembleias } from "@/lib/assembleias-store";
+import { useAuth } from "@/lib/auth-store";
 import { guardarDocumentoCriadoConfirmado } from "@/lib/documentos-a-criar-store";
 import {
   isCanonicalDocument,
@@ -136,6 +137,7 @@ export function DocumentoCriadoDetalhe({
   origem: DocumentoOrigemSearch;
 }) {
   const assembleias = useAssembleias();
+  const { perfil } = useAuth();
   const [documento, setDocumento] = useState<DocumentoCriado | undefined>();
   const [carregou, setCarregou] = useState(false);
   const [erroCarregamento, setErroCarregamento] = useState<ErroCarregamento>();
@@ -230,9 +232,10 @@ export function DocumentoCriadoDetalhe({
       ponto: pontoSelecionado
         ? `Ponto ${pontoSelecionado.numero} · ${pontoSelecionado.titulo}`
         : undefined,
+      perfil,
       institutionalContext: documento ? obterContextoInstitucionalGuardado(documento) : undefined,
     }),
-    [assembleiaSelecionada, documento, dossie?.titulo, pontoSelecionado],
+    [assembleiaSelecionada, documento, dossie?.titulo, perfil, pontoSelecionado],
   );
   const dirty = Boolean(
     documento &&

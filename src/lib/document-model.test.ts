@@ -8,7 +8,7 @@ import {
   parseBlocks,
   serializeDocumentToMarkdown,
 } from "@/lib/document-model";
-import { LOGO_PARTIDARIO_CHEGA } from "@/lib/party-branding";
+import { LOGO_PARTIDARIO_CHEGA, LOGO_PARTIDARIO_NEUTRO } from "@/lib/party-branding";
 import type { ContextoDocumentoInstitucional } from "@/lib/documentos-institucionais";
 import type { DocumentoCriado, TipoDocumentoCriado } from "@/lib/types";
 
@@ -148,6 +148,20 @@ describe("modelo documental canónico V1", () => {
     });
 
     assert.equal(result.header.logoUrl, logoUrl);
+  });
+
+  it("remove o placeholder cinzento persistido num documento canónico antigo", () => {
+    const original = normalizeDocument(legacy("Moção", cases[0][1]), context);
+    const comPlaceholder = {
+      ...original,
+      header: { ...original.header, logoUrl: LOGO_PARTIDARIO_NEUTRO },
+    };
+    const result = normalizeDocument(
+      { ...legacy("Moção", "texto legado divergente"), conteudoJson: comPlaceholder },
+      context,
+    );
+
+    assert.equal(result.header.logoUrl, undefined);
   });
 
   it("preserva PROPOSTA / DELIBERAÇÃO entre Markdown legado, editor e modelo canónico", () => {

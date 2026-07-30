@@ -20,6 +20,13 @@ function normalizarPartido(value: unknown) {
     .toLocaleUpperCase("pt-PT");
 }
 
+export function isLogoPartidarioPlaceholder(value: unknown) {
+  const logoUrl = textoSeguro(value);
+  if (!logoUrl) return false;
+  const caminhoLocal = logoUrl.split(/[?#]/, 1)[0];
+  return caminhoLocal === LOGO_PARTIDARIO_NEUTRO || caminhoLocal === "/logo.png";
+}
+
 export function resolverLogoPartidario(input?: {
   perfil?: Partial<PerfilEleito>;
   partidoOuGrupo?: string;

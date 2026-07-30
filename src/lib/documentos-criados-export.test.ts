@@ -5,16 +5,18 @@ import { resolve } from "node:path";
 import JSZip from "jszip";
 import {
   carregarLogoExportacao,
+  comporDocumentoExportacao,
   criarBlobDocumentoWord,
   criarLinhasDocumento,
   desenharLogoPdf,
+  desenharPaginasDocumento,
   exportarDocumentoCriadoPDF,
   exportarDocumentoCriadoWord,
   MIME_DOCX,
   obterCabecalhoInstitucionalExportacao,
   obterModeloDocumentoExportacao,
 } from "@/lib/documentos-criados-export";
-import { LOGO_PARTIDARIO_CHEGA } from "@/lib/party-branding";
+import { LOGO_PARTIDARIO_CHEGA, LOGO_PARTIDARIO_NEUTRO } from "@/lib/party-branding";
 import { DOCUMENT_MODEL_VERSION, normalizeDocument } from "@/lib/document-model";
 import type { ContextoDocumentoInstitucional } from "@/lib/documentos-institucionais";
 import type { DocumentoCriado } from "@/lib/types";
@@ -182,6 +184,107 @@ describe("exportação DOCX real", () => {
     }
   });
 
+  it("reproduz perfil autenticado → criação → PDF com logo real e 1, 2, 3, 4", async () => {
+    const documentoReal: DocumentoCriado = {
+      ...documento(),
+      tipo: "Moção",
+      titulo: "MBcaixa",
+      conteudo: `## ENQUADRAMENTO
+
+Enquadramento institucional.
+
+## FUNDAMENTAÇÃO
+
+Fundamentação da proposta.
+
+## PROPOSTA / DELIBERAÇÃO
+
+1. Primeira deliberação.
+
+1. Segunda deliberação.
+
+1. Terceira deliberação.
+
+1. Quarta deliberação.`,
+    };
+    const contextoReal = contextoValido();
+    const composicao = comporDocumentoExportacao(documentoReal, contextoReal);
+    const itens = composicao.linhas.filter((linha) => linha.tipo === "item");
+
+    assert.equal(composicao.model.header.logoUrl, PNG_1X1);
+    assert.notEqual(composicao.model.header.logoUrl, LOGO_PARTIDARIO_NEUTRO);
+    assert.equal(composicao.model.header.title, "MBcaixa");
+    assert.deepEqual(
+      itens.map((item) => item.marcador),
+      ["1.", "2.", "3.", "4."],
+    );
+
+    const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, "document");
+    const imageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "Image");
+    const textos: string[] = [];
+    let logosDesenhados = 0;
+    class ImageMock {
+      crossOrigin = "";
+      naturalWidth = 100;
+      naturalHeight = 50;
+      onload?: () => void;
+
+      set src(_value: string) {
+        queueMicrotask(() => this.onload?.());
+      }
+    }
+    const ctx = {
+      fillStyle: "",
+      textBaseline: "alphabetic",
+      textAlign: "left",
+      font: "",
+      fillRect: () => undefined,
+      fillText: (text: string) => textos.push(text),
+      measureText: (text: string) => ({ width: text.length * 10 }),
+      drawImage: () => {
+        logosDesenhados += 1;
+      },
+      save: () => undefined,
+      restore: () => undefined,
+    } as unknown as CanvasRenderingContext2D;
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: {
+        createElement: (tag: string) => {
+          assert.equal(tag, "canvas");
+          return {
+            width: 0,
+            height: 0,
+            getContext: () => ctx,
+          } as unknown as HTMLCanvasElement;
+        },
+      },
+    });
+    Object.defineProperty(globalThis, "Image", {
+      configurable: true,
+      value: ImageMock,
+    });
+
+    try {
+      const paginas = await desenharPaginasDocumento(documentoReal, contextoReal);
+      assert.equal(paginas.length, 1);
+      assert.equal(logosDesenhados, 1);
+      for (const linha of [
+        "1. Primeira deliberação.",
+        "2. Segunda deliberação.",
+        "3. Terceira deliberação.",
+        "4. Quarta deliberação.",
+      ]) {
+        assert.ok(textos.includes(linha), `Linha ausente no canvas PDF: ${linha}`);
+      }
+    } finally {
+      if (documentDescriptor) Object.defineProperty(globalThis, "document", documentDescriptor);
+      else Reflect.deleteProperty(globalThis, "document");
+      if (imageDescriptor) Object.defineProperty(globalThis, "Image", imageDescriptor);
+      else Reflect.deleteProperty(globalThis, "Image");
+    }
+  });
+
   it("gera pacote Office Open XML, MIME oficial e conteúdo português", async () => {
     const blob = await criarBlobDocumentoWord(documento(), {
       assembleia: {
@@ -272,16 +375,9 @@ describe("exportação DOCX real", () => {
       contexto.perfil.organizacao = "CHEGA";
     }
     const model = obterModeloDocumentoExportacao(documento(), contexto);
+    const composicao = comporDocumentoExportacao(documento(), contexto);
     assert.equal(model.header.logoUrl, LOGO_PARTIDARIO_CHEGA);
-
-    const source = readFileSync(
-      resolve(process.cwd(), "src/lib/documentos-criados-export.ts"),
-      "utf8",
-    );
-    assert.equal(
-      (source.match(/obterModeloDocumentoExportacao\(documento, contexto\)/g) ?? []).length,
-      3,
-    );
+    assert.equal(composicao.model.header.logoUrl, LOGO_PARTIDARIO_CHEGA);
   });
 
   it("PDF e DOCX preservam o conteúdo de PROPOSTA / DELIBERAÇÃO", async () => {
@@ -505,6 +601,10 @@ describe("feedback de exportação no detalhe do documento", () => {
     resolve(process.cwd(), "src/components/documentos/DocumentoCriadoDetalhe.tsx"),
     "utf8",
   );
+  const listaDossie = readFileSync(
+    resolve(process.cwd(), "src/components/dossies/DossieDocumentosCriadosSection.tsx"),
+    "utf8",
+  );
 
   it("desativa ambos os botões durante a exportação e mostra progresso", () => {
     assert.equal(
@@ -529,5 +629,13 @@ describe("feedback de exportação no detalhe do documento", () => {
     assert.match(detalhe, /await exportarDocumentoCriadoPDF/);
     assert.match(detalhe, /await exportarDocumentoCriadoWord/);
     assert.doesNotMatch(detalhe, /tribuno:(?:contexto|logo|documento)-institucional/);
+  });
+
+  it("passa explicitamente o perfil autenticado ao contexto de exportação real", () => {
+    assert.match(detalhe, /const \{ perfil \} = useAuth\(\)/);
+    assert.match(detalhe, /perfil,\s+institutionalContext:/);
+    assert.match(listaDossie, /const \{ user, perfil \} = useAuth\(\)/);
+    assert.match(listaDossie, /const contexto = \{ assunto: dossie\?\.titulo, perfil \}/);
+    assert.match(listaDossie, /exportarDocumentoCriadoWord\(documento, contexto\)/);
   });
 });

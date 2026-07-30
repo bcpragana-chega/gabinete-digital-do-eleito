@@ -114,7 +114,7 @@ function mensagemErroGeracao(code?: string, message?: string) {
 
 export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, perfil } = useAuth();
   const dossie = useDossie(dossieId);
   const sessoesRelacionadas = useAssembleiasDoDossie(dossieId);
   const [documentos, setDocumentos] = useState<DocumentoCriado[]>([]);
@@ -197,10 +197,11 @@ export function DossieDocumentosCriadosSection({ dossieId }: { dossieId: string 
   async function exportarDaLista(documento: DocumentoCriado, tipo: "pdf" | "word") {
     setErroLogo(undefined);
     setErroInstitucional(undefined);
+    const contexto = { assunto: dossie?.titulo, perfil };
     const resultado =
       tipo === "pdf"
-        ? await exportarDocumentoCriadoPDF(documento, { assunto: dossie?.titulo })
-        : await exportarDocumentoCriadoWord(documento);
+        ? await exportarDocumentoCriadoPDF(documento, contexto)
+        : await exportarDocumentoCriadoWord(documento, contexto);
     apresentarResultadoExportacao(resultado, tipo);
   }
 
