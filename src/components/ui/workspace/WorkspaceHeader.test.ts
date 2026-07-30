@@ -25,6 +25,13 @@ describe("composição responsiva do WorkspaceHeader", () => {
     );
   });
 
+  it("oferece compactação opcional sem alterar os consumidores existentes", () => {
+    assert.match(header, /compact\?: boolean/);
+    assert.match(header, /compact = false/);
+    assert.match(header, /compact && "p-3 md:p-4"/);
+    assert.match(header, /compact && "mt-1\.5 gap-1\.5"/);
+  });
+
   it("é usado pelos quatro workspaces que precisam de cabeçalho detalhado", () => {
     const consumidores = [
       "src/routes/_app.assuntos.$dossieId.index.tsx",

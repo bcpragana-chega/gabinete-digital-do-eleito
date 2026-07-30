@@ -11,6 +11,7 @@ type WorkspaceHeaderProps = {
   actions?: ReactNode;
   children?: ReactNode;
   className?: string;
+  compact?: boolean;
   mobileCompact?: boolean;
 };
 
@@ -23,12 +24,14 @@ export function WorkspaceHeader({
   actions,
   children,
   className,
+  compact = false,
   mobileCompact = false,
 }: WorkspaceHeaderProps) {
   return (
     <section
       className={cn(
         "rounded-lg border border-border/90 bg-card p-4 shadow-card",
+        compact && "p-3 md:p-4",
         mobileCompact && "max-md:p-3 max-md:shadow-none",
         className,
       )}
@@ -36,10 +39,16 @@ export function WorkspaceHeader({
       <div
         className={cn(
           "flex flex-col items-stretch gap-4 xl:flex-row xl:items-start xl:justify-between",
+          compact && "gap-2 md:flex-row md:items-center md:justify-between xl:items-center",
           mobileCompact && "max-md:gap-2",
         )}
       >
-        <div className="flex w-full min-w-0 items-start gap-3 xl:flex-1">
+        <div
+          className={cn(
+            "flex w-full min-w-0 items-start gap-3 xl:flex-1",
+            compact && "gap-2 md:flex-1",
+          )}
+        >
           {Icon && (
             <div
               className={cn(
@@ -84,6 +93,7 @@ export function WorkspaceHeader({
               <div
                 className={cn(
                   "mt-3 flex flex-wrap gap-2",
+                  compact && "mt-1.5 gap-1.5",
                   mobileCompact && "max-md:mt-2 max-md:gap-1",
                 )}
               >
@@ -95,7 +105,12 @@ export function WorkspaceHeader({
         </div>
 
         {actions && (
-          <div className="w-full min-w-0 max-w-full xl:w-auto xl:max-w-[60%] xl:shrink-0">
+          <div
+            className={cn(
+              "w-full min-w-0 max-w-full xl:w-auto xl:max-w-[60%] xl:shrink-0",
+              compact && "md:w-auto md:max-w-[50%] md:shrink-0",
+            )}
+          >
             {actions}
           </div>
         )}

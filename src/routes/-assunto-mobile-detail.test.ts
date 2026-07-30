@@ -32,6 +32,7 @@ describe("detalhe mobile do Assunto", () => {
   });
 
   it("coloca título, estado, próxima ação e visão geral no início visual mobile", () => {
+    assert.match(detail, /title=\{dossie\.titulo\}[\s\S]*compact[\s\S]*mobileCompact/);
     assert.match(detail, /mobileCompact/);
     assert.match(detail, /title=\{dossie\.titulo\}/);
     assert.match(workspaceHeader, /max-md:line-clamp-2/);
@@ -40,6 +41,33 @@ describe("detalhe mobile do Assunto", () => {
     assert.match(detail, /id="visao-geral"/);
     assert.match(detail, />Resumo</);
     assert.match(detail, />Objetivo</);
+  });
+
+  it("compacta apenas o cabeçalho e a próxima ação sem remover conteúdo ou ações", () => {
+    assert.match(workspaceHeader, /compact\?: boolean/);
+    assert.match(workspaceHeader, /compact && "p-3 md:p-4"/);
+    assert.match(
+      workspaceHeader,
+      /compact && "gap-2 md:flex-row md:items-center md:justify-between xl:items-center"/,
+    );
+    assert.match(workspaceHeader, /compact && "mt-1\.5 gap-1\.5"/);
+
+    assert.match(detail, /className="mt-3 border-l-2 border-l-primary p-3 md:p-4"/);
+    assert.match(detail, /lg:grid-cols-\[auto_minmax\(0,1fr\)_auto\] lg:items-center lg:gap-3/);
+    assert.match(detail, /flex min-w-0 flex-wrap items-baseline gap-x-2/);
+    assert.match(detail, /flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1/);
+    assert.match(detail, /flex min-w-0 flex-wrap gap-2 lg:max-w-sm lg:justify-end/);
+
+    for (const conteudo of [
+      "estadoUx.titulo",
+      "estadoUx.descricao",
+      "estadoUx.estadoResumido",
+      "estadoUx.recomendacoes.map",
+      "estadoUx.acaoPrincipal",
+      "estadoUx.acoesSecundarias.map",
+    ]) {
+      assert.match(detail, new RegExp(conteudo.replaceAll(".", "\\.")));
+    }
   });
 
   it("reutiliza integralmente o motor existente da próxima ação", () => {

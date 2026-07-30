@@ -237,7 +237,7 @@ function DossieDetalhePage() {
             icon={NotebookText}
             eyebrow="Assunto"
             title={dossie.titulo}
-            className="p-4 md:p-5"
+            compact
             mobileCompact
             actions={
               <div className="flex w-full flex-wrap gap-2 md:w-auto md:justify-end">
@@ -291,47 +291,51 @@ function DossieDetalhePage() {
             </p>
           )}
 
-          <WorkspaceSection className="mt-4 border-l-2 border-l-primary p-4 md:p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-              Próxima ação
-            </p>
-            <div className="mt-3 grid min-w-0 gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+          <WorkspaceSection className="mt-3 border-l-2 border-l-primary p-3 md:p-4">
+            <div className="grid min-w-0 gap-2 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                Próxima ação
+              </p>
               <div className="min-w-0">
-                <div className="flex min-w-0 items-start gap-3">
+                <div className="flex min-w-0 items-start gap-2">
                   <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/80 bg-muted/40 text-muted-foreground sm:flex">
                     <Clock3 className="h-4 w-4" strokeWidth={1.75} />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="break-words font-display text-base font-semibold leading-6 text-foreground">
-                      {estadoUx.titulo}
-                    </h2>
-                    <p className="mt-1 break-words text-sm leading-6 text-muted-foreground">
-                      {estadoUx.descricao}
-                    </p>
-                    <p className="mt-3 text-sm font-medium text-foreground">
-                      Situação atual: {estadoUx.estadoResumido}.
-                    </p>
-                    {estadoUx.recomendacoes.length > 0 && (
-                      <ul className="mt-2 space-y-1 text-sm leading-6 text-muted-foreground">
-                        {estadoUx.recomendacoes.map((recomendacao) => (
-                          <li key={recomendacao} className="flex gap-2">
-                            <span aria-hidden="true">•</span>
-                            <span>{recomendacao}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                      <h2 className="break-words font-display text-base font-semibold leading-6 text-foreground">
+                        {estadoUx.titulo}
+                      </h2>
+                      <p className="min-w-0 break-words text-sm leading-6 text-muted-foreground">
+                        {estadoUx.descricao}
+                      </p>
+                    </div>
+                    <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <p className="text-sm font-medium text-foreground">
+                        Situação atual: {estadoUx.estadoResumido}.
+                      </p>
+                      {estadoUx.recomendacoes.length > 0 && (
+                        <ul className="flex min-w-0 flex-wrap gap-x-3 text-sm leading-6 text-muted-foreground">
+                          {estadoUx.recomendacoes.map((recomendacao) => (
+                            <li key={recomendacao} className="flex gap-2">
+                              <span aria-hidden="true">•</span>
+                              <span>{recomendacao}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="flex min-w-0 flex-col gap-2 sm:flex-row md:max-w-sm md:flex-wrap md:justify-end">
-                <div className="max-md:[&>button]:w-full max-md:[&>a]:w-full">
+              <div className="flex min-w-0 flex-wrap gap-2 lg:max-w-sm lg:justify-end">
+                <div className="max-md:flex-1 max-md:[&>button]:w-full max-md:[&>a]:w-full">
                   {renderAcao(estadoUx.acaoPrincipal, true)}
                 </div>
                 {estadoUx.acoesSecundarias.map((acao) => (
                   <div
                     key={`${acao.tipo}-${acao.label}`}
-                    className="max-md:[&>button]:w-full max-md:[&>a]:w-full"
+                    className="max-md:flex-1 max-md:[&>button]:w-full max-md:[&>a]:w-full"
                   >
                     {renderAcao(acao)}
                   </div>
